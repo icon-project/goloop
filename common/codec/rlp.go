@@ -30,8 +30,8 @@ func sizeToBytes(s int) []byte {
 }
 
 func bytesToSize(bs []byte) (int, error) {
-	if value := int(intconv.BytesToSize(bs)); value < 0 {
-		return 0, cerrors.Wrapf(ErrInvalidFormat, "InvalidFormat(size=%d)", value)
+	if value, ok := intconv.SafeBytesToSize(bs); !ok {
+		return 0, cerrors.Wrapf(ErrInvalidFormat, "InvalidSizeFormat(bs=%#x)", bs)
 	} else {
 		return value, nil
 	}
@@ -197,29 +197,85 @@ func (r *rlpReader) readBytes() ([]byte, error) {
 	}
 }
 
+func (r *rlpReader) readUintValue(v reflect.Value) error {
+	bs, err := r.readBytes()
+	if err != nil {
+		return err
+	}
+	value, ok := intconv.SafeBytesToUint64(bs)
+	if !ok {
+		return cerrors.Wrapf(ErrInvalidFormat, "UintOverflow(bs=%#x)", bs)
+	}
+	switch v.Kind() {
+	case reflect.Bool:
+		if value == 0 {
+			v.SetBool(false)
+		} else if value == 1 {
+			v.SetBool(true)
+		} else {
+			return cerrors.Wrapf(ErrInvalidFormat, "UintOverflow(bs=%#x,type=bool)", bs)
+		}
+		return nil
+	case reflect.Uint:
+		if value != uint64(uint(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "UintOverflow(bs=%#x,type=uint)", bs)
+		}
+	case reflect.Uint8:
+		if value != uint64(uint8(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "UintOverflow(bs=%#x,type=uint8)", bs)
+		}
+	case reflect.Uint16:
+		if value != uint64(uint16(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "UintOverflow(bs=%#x,type=uint16)", bs)
+		}
+	case reflect.Uint32:
+		if value != uint64(uint32(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "UintOverflow(bs=%#x,type=uint32)", bs)
+		}
+	}
+	v.SetUint(value)
+	return nil
+}
+
+func (r *rlpReader) readIntValue(v reflect.Value) error {
+	bs, err := r.readBytes()
+	if err != nil {
+		return err
+	}
+	value, ok := intconv.SafeBytesToInt64(bs)
+	if !ok {
+		return cerrors.Wrapf(ErrInvalidFormat, "Int64Overflow(bs=%#x)", bs)
+	}
+	switch v.Kind() {
+	case reflect.Int:
+		if value != int64(int(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "IntOverflow(bs=%#x,type=int)", bs)
+		}
+	case reflect.Int8:
+		if value != int64(int8(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "IntOverflow(bs=%#x,type=int8)", bs)
+		}
+	case reflect.Int16:
+		if value != int64(int16(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "IntOverflow(bs=%#x,type=int16)", bs)
+		}
+	case reflect.Int32:
+		if value != int64(int32(value)) {
+			return cerrors.Wrapf(ErrInvalidFormat, "IntOverflow(bs=%#x,type=int32)", bs)
+		}
+	}
+	v.SetInt(value)
+	return nil
+}
+
 func (r *rlpReader) ReadValue(v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.Bool:
-		bs, err := r.readBytes()
-		if err != nil {
-			return err
-		}
-		v.SetBool(intconv.BytesToUint64(bs) != 0)
-		return nil
+		fallthrough
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		bs, err := r.readBytes()
-		if err != nil {
-			return err
-		}
-		v.SetUint(intconv.BytesToUint64(bs))
-		return nil
+		return r.readUintValue(v)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		bs, err := r.readBytes()
-		if err != nil {
-			return err
-		}
-		v.SetInt(intconv.BytesToInt64(bs))
-		return nil
+		return r.readIntValue(v)
 	case reflect.String:
 		bs, err := r.readBytes()
 		if err != nil {
@@ -478,4 +534,3 @@ func (c *rlpCodec) NewEncoder(w io.Writer) EncodeAndCloser {
 		writer: w,
 	})
 }
-

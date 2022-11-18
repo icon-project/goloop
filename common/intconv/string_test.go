@@ -19,6 +19,10 @@ func TestParseUint(t *testing.T) {
 		{"T1", args{"0x0", 16}, 0, false},
 		{"T2", args{"0xffff", 16}, 0xffff, false},
 		{"T3", args{"0xffffffffffffffff", 64}, 0xffffffffffffffff, false},
+		{"T4", args{"0x01ffffffffffffffff", 64}, 0, true},
+		{"T5", args{"-0x1", 64}, 0, true},
+		{"T6", args{"0x00ffffffffffffffff", 64}, 0xffffffffffffffff, false},
+		{"T7", args{"1556309404241523", 64}, 1556309404241523, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -52,6 +56,12 @@ func TestParseInt(t *testing.T) {
 		{"T5", args{"0x0ffff", 16}, 0, true},
 		{"T6", args{"-0x8000000000000000", 64}, -0x8000000000000000, false},
 		{"T7", args{"-0x10000000000000000", 64}, 0, true},
+		{"T8", args{"0x7fffffffffffffff", 64}, 0x7fffffffffffffff, false},
+		{"T9", args{"0x07fff", 16}, 0x7fff, false},
+		{"T10", args{"0x07fffffff", 32}, 0x7fffffff, false},
+		{"T11", args{"0x07fffffffffffffff", 64}, 0x7fffffffffffffff, false},
+		{"T12", args{"1556309404241523", 64}, 1556309404241523, false},
+		{"T13", args{"0x", 8}, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -140,6 +150,8 @@ func TestFormatInt(t *testing.T) {
 		{"T2", args{-0x80}, "-0x80"},
 		{"T3", args{0x80}, "0x80"},
 		{"T4", args{-0xff}, "-0xff"},
+		{"T5", args{-0x8000000000000000}, "-0x8000000000000000"},
+		{"T6", args{0x7f7f7f7f7f7f7f7f}, "0x7f7f7f7f7f7f7f7f"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

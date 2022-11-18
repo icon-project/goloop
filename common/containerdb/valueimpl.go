@@ -47,14 +47,11 @@ func (e *valueImpl) BigInt() *big.Int {
 }
 
 func (e *valueImpl) Int64() int64 {
-	if bs := e.Bytes(); len(bs) != 0 {
-		if len(bs) <= 8 {
-			return intconv.BytesToInt64(bs)
-		} else {
-			return intconv.BytesToInt64(bs[len(bs)-8:])
-		}
-	}
-	return 0
+	return intconv.BytesToInt64(e.Bytes())
+}
+
+func (e *valueImpl) Uint64() uint64 {
+	return intconv.BytesToUint64(e.Bytes())
 }
 
 func (e *valueImpl) Address() module.Address {
@@ -75,8 +72,10 @@ func (e *valueImpl) String() string {
 }
 
 func (e *valueImpl) Bool() bool {
-	if bs := e.Bytes(); len(bs) <= 1 {
-		return intconv.BytesToInt64(bs) != 0
+	if bs := e.Bytes(); len(bs) == 0 {
+		return false
+	} else if len(bs) == 1 {
+		return bs[0] != 0
 	} else {
 		var value big.Int
 		return intconv.BigIntSetBytes(&value, bs).Sign() != 0

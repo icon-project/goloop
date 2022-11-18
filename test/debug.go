@@ -26,8 +26,8 @@ import (
 )
 
 func bytesToSize(bs []byte) (int, error) {
-	if value := int(intconv.BytesToSize(bs)); value < 0 {
-		return 0, cerrors.Wrapf(codec.ErrInvalidFormat, "InvalidFormat(size=%d)", value)
+	if value, ok := intconv.SafeBytesToSize(bs); !ok {
+		return 0, cerrors.Wrapf(codec.ErrInvalidFormat, "InvalidSizeFormat(bs=%#x)", bs)
 	} else {
 		return value, nil
 	}
