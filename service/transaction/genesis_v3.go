@@ -299,10 +299,11 @@ func (g *genesisV3) installContracts(cc contract.CallContext) error {
 		}
 		score := acc.Score
 		if score.Content != "" {
-			if strings.HasPrefix(score.Content, "0x") {
-				score.Content = strings.TrimPrefix(score.Content, "0x")
+			data, err := hex.DecodeString(strings.TrimPrefix(score.Content, "0x"))
+			if err != nil {
+				return InvalidGenesisError.Wrapf(err,
+					"Invalid content(content=%s,addr=%s)", score.Content, &acc.Address)
 			}
-			data, _ := hex.DecodeString(score.Content)
 			handler := contract.NewDeployHandlerForPreInstall(score.Owner,
 				&acc.Address, score.ContentType, data, score.Params, cc.Logger())
 			status, _, _, _ := cc.Call(handler, cc.StepAvailable())
