@@ -74,9 +74,7 @@ func (cb *transitionCallbackForTrace) OnExecute(tr module.Transition, e error) {
 	cb.info.Callback.OnEnd(e)
 }
 
-type transitionID struct {
-	dummy int
-}
+type transitionID struct{}
 
 type transitionContext struct {
 	db    db.Database
