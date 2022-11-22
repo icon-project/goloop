@@ -69,10 +69,14 @@ public class AvmExecutor {
 
         task.startNewTransaction();
         task.attachInstrumentationForThread();
-        Result result = runCommon(task.getThisTransactionalKernel(),
-                transaction, eid, prevEID);
-        task.getReentrantDAppStack().unloadDApps(loader);
-        task.detachInstrumentationForThread();
+        Result result;
+        try {
+            result = runCommon(task.getThisTransactionalKernel(),
+                    transaction, eid, prevEID);
+        } finally {
+            task.getReentrantDAppStack().unloadDApps(loader);
+            task.detachInstrumentationForThread();
+        }
 
         logger.trace("{}", result);
         task = null;
