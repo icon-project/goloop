@@ -14,6 +14,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import foundation.icon.ee.types.UnknownFailureException;
 import i.*;
 import s.java.lang.Float;
 import s.java.lang.Integer;
@@ -155,7 +156,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
                 }
             }
             // Any failure below us shouldn't be anything other than RuntimeException.
-            throw RuntimeAssertionError.unexpected(cause);
+            throw new UnknownFailureException(cause);
         }
     }
 

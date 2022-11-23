@@ -11,6 +11,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import foundation.icon.ee.types.UnknownFailureException;
 import i.CodecIdioms;
 import i.IInstrumentation;
 import i.IObjectDeserializer;
@@ -105,7 +106,7 @@ public final class InternalRunnable extends s.java.lang.Object implements s.java
                 }
             }
             // Any failure below us shouldn't be anything other than RuntimeException.
-            throw RuntimeAssertionError.unexpected(cause);
+            throw new UnknownFailureException(cause);
         }
     }
 
