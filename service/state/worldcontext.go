@@ -285,17 +285,11 @@ func (c *worldContext) GetStepLimit(t string) *big.Int {
 }
 
 func (c *worldContext) FeeEnabled() bool {
-	if c.systemInfo.sysConfig&SysConfigFee == 0 {
-		return false
-	}
-	return true
+	return (c.systemInfo.sysConfig & SysConfigFee) != 0
 }
 
 func (c *worldContext) AuditEnabled() bool {
-	if c.systemInfo.sysConfig&SysConfigAudit == 0 {
-		return false
-	}
-	return true
+	return (c.systemInfo.sysConfig & SysConfigAudit) != 0
 }
 
 func (c *worldContext) FeeSharingEnabled() bool {
@@ -303,24 +297,15 @@ func (c *worldContext) FeeSharingEnabled() bool {
 }
 
 func (c *worldContext) DeployerWhiteListEnabled() bool {
-	if c.systemInfo.sysConfig&SysConfigDeployerWhiteList == 0 {
-		return false
-	}
-	return true
+	return (c.systemInfo.sysConfig & SysConfigDeployerWhiteList) != 0
 }
 
 func (c *worldContext) PackageValidatorEnabled() bool {
-	if c.systemInfo.sysConfig&SysConfigScorePackageValidator == 0 {
-		return false
-	}
-	return true
+	return (c.systemInfo.sysConfig & SysConfigScorePackageValidator) != 0
 }
 
 func (c *worldContext) MembershipEnabled() bool {
-	if c.systemInfo.sysConfig&SysConfigMembership == 0 {
-		return false
-	}
-	return true
+	return (c.systemInfo.sysConfig & SysConfigMembership) != 0
 }
 
 func (c *worldContext) TransactionTimestampThreshold() int64 {

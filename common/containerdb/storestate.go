@@ -87,6 +87,7 @@ type BytesStore interface {
 type Value interface {
 	BigInt() *big.Int
 	Int64() int64
+	Uint64() uint64
 	Address() module.Address
 	Bytes() []byte
 	String() string

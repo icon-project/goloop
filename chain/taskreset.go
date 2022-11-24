@@ -493,6 +493,6 @@ func newTaskReset(chain *singleChain, gsfile string, height int64, blockHash []b
 		gsfile:    gsfile,
 		height:    height,
 		blockHash: blockHash,
-		cancelCh:  make(chan struct{}),
+		cancelCh:  make(chan struct{}, 1),
 	}
 }

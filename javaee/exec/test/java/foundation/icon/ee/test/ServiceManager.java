@@ -99,6 +99,14 @@ public class ServiceManager implements Agent {
                 .withRenamer().withLog(System.out).getOptimizedBytes();
     }
 
+    public static byte[] makeJar(String name, byte[] bc) {
+        byte[] preopt = JarBuilder.buildJarForExplicitClassNamesAndBytecode(
+                name, bc, Map.of());
+        return new OptimizedJarBuilder(true, preopt, true)
+                .withUnreachableMethodRemover()
+                .withRenamer().withLog(System.out).getOptimizedBytes();
+    }
+
     public Address newScoreAddress() {
         var addr = new Address(Arrays.copyOf(new byte[]{
                 1,
@@ -130,6 +138,11 @@ public class ServiceManager implements Agent {
     }
 
     public ContractAddress mustDeploy(byte[] jar, Object ... params) {
+        return doMustDeploy(jar, null, params);
+    }
+
+    public ContractAddress mustDeploy(String className, byte[] byteCode, Object ...params) {
+        byte[] jar = makeJar(className, byteCode);
         return doMustDeploy(jar, null, params);
     }
 

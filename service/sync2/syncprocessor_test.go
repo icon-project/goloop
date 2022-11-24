@@ -20,13 +20,26 @@ import (
 var (
 	value1 = []byte("My Test value")
 	value2 = []byte("My Sample value")
+
+	nmFail   = newTNetworkManager(createAPeerID())
+	nmExpire = newTNetworkManager(createAPeerID())
 )
 
 type mockReactor struct {
-	logger log.Logger
+	ReactorCommon
+}
 
-	version   byte
-	readyPool *peerPool
+func newMockReactor(logger log.Logger, protoVersion byte) *mockReactor {
+	reactor := &mockReactor{
+		ReactorCommon: ReactorCommon{
+			logger:    logger,
+			version:   protoVersion,
+			readyPool: newPeerPool(),
+		},
+	}
+	reactor.sender = reactor
+
+	return reactor
 }
 
 func (r *mockReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
@@ -45,29 +58,21 @@ func (r *mockReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 	}()
 }
 
-func (r *mockReactor) OnJoin(id module.PeerID) {
-	r.logger.Debugf("mockReactor(%v) OnJoin() peer=%v", r.version, id)
-
-	var dataSender DataSender = r
-	peer := newPeer(id, dataSender, r.logger)
-	r.readyPool.push(peer)
-}
-
 func (r *mockReactor) GetVersion() byte {
 	return r.version
 }
 
-func (r *mockReactor) WatchPeers(w PeerWatcher) []*peer {
-	return r.readyPool.peerList()
-}
-
-func (r *mockReactor) UnwatchPeers(watcher PeerWatcher) bool {
-	/* do nothing */
-	return true
-}
-
 func (r *mockReactor) RequestData(id module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
 	r.logger.Debugf("mockReactor(%v) RequestData() reqID=%d", r.version, reqID)
+
+	switch id {
+	case nmFail.id:
+		r.logger.Tracef("mockReactor(%v) request fail with error", r.version)
+		return errors.ErrIllegalArgument
+	case nmExpire.id:
+		r.logger.Tracef("mockReactor(%v) request time expired", r.version)
+		return nil
+	}
 
 	peer := r.readyPool.getPeer(id)
 	dummyPeer := peer
@@ -140,28 +145,17 @@ func TestSyncProcessorState(t *testing.T) {
 	logger.SetLevel(log.FatalLevel)
 
 	srcdb := db.NewMapDB()
-	dstdb := db.NewMapDB()
 	nm1 := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
 	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm1.id.String()[2:]})
+	log2 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm2.id.String()[2:]})
 
 	var builder merkle.Builder
 
-	reactor1 := &mockReactor{
-		logger:    log1,
-		version:   protoV1,
-		readyPool: newPeerPool(),
-	}
-	reactor2 := &mockReactor{
-		logger:    log1,
-		version:   protoV2,
-		readyPool: newPeerPool(),
-	}
+	reactor1 := newMockReactor(log1, protoV1)
+	reactor2 := newMockReactor(log2, protoV2)
 
 	reactors := []SyncReactor{reactor1, reactor2}
-
-	reactor1.OnJoin(nm1.id)
-	reactor2.OnJoin(nm2.id)
 
 	req1 := &requestor{
 		logger: log1,
@@ -177,30 +171,60 @@ func TestSyncProcessorState(t *testing.T) {
 	err = DBSet(srcdb, db.BytesByHash, key2, value2)
 	assert.NoError(t, err)
 
-	// when create syncProcessor
-	builder = merkle.NewBuilder(dstdb)
-	builder.RequestData(db.BytesByHash, key1, req1)
-	sproc := newSyncProcessor(builder, reactors, log1, false)
+	// test case
+	tests := map[string]struct {
+		sr  []SyncReactor
+		ids []module.PeerID
+	}{
+		"tc_reactor":           {sr: reactors, ids: []module.PeerID{nm1.id, nm2.id}},
+		"tc_withFailReactor":   {sr: reactors, ids: []module.PeerID{nmFail.id, nm1.id, nm2.id}},
+		"tc_withExpireReactor": {sr: reactors, ids: []module.PeerID{nmExpire.id, nm1.id, nm2.id}},
+	}
 
-	// then unresolved count is 1
-	expected1 := 1
-	actual1 := sproc.UnresolvedCount()
-	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			dstdb := db.NewMapDB()
 
-	// when start sync
-	err = sproc.DoSync()
-	assert.NoError(t, err)
-	builder.Flush(true)
+			for _, reactor := range tc.sr {
+				r := reactor.(*mockReactor)
+				for _, id := range tc.ids {
+					r.OnJoin(id)
+				}
+			}
 
-	// then
-	bk, _ := dstdb.GetBucket(db.BytesByHash)
-	expected2 := value1
-	actual2, _ := bk.Get(key1)
-	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
+			// when create syncProcessor
+			builder = merkle.NewBuilder(dstdb)
+			builder.RequestData(db.BytesByHash, key1, req1)
+			sproc := newSyncProcessor(builder, tc.sr, log1, false)
 
-	expected3 := value2
-	actual3, _ := bk.Get(key2)
-	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
+			// then unresolved count is 1
+			expected1 := 1
+			actual1 := sproc.UnresolvedCount()
+			assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
+
+			// when start sync
+			err := sproc.DoSync()
+			assert.NoError(t, err)
+			builder.Flush(true)
+
+			// then
+			bk, _ := dstdb.GetBucket(db.BytesByHash)
+			expected2 := value1
+			actual2, _ := bk.Get(key1)
+			assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
+
+			expected3 := value2
+			actual3, _ := bk.Get(key2)
+			assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
+
+			for _, reactor := range tc.sr {
+				r := reactor.(*mockReactor)
+				for _, id := range tc.ids {
+					r.OnLeave(id)
+				}
+			}
+		})
+	}
 }
 
 const TestHasher db.BucketID = "T"
@@ -227,33 +251,16 @@ func TestSyncProcessorBTPData(t *testing.T) {
 	logger.SetLevel(log.FatalLevel)
 
 	srcdb := db.NewMapDB()
-	dstdb := db.NewMapDB()
 	nm1 := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
 	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm1.id.String()[2:]})
+	log2 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm2.id.String()[2:]})
 
 	var builder merkle.Builder
 
-	reactor1 := &mockReactor{
-		logger:    log1,
-		version:   protoV2,
-		readyPool: newPeerPool(),
-	}
-	reactor2 := &mockReactor{
-		logger:    log1,
-		version:   protoV2,
-		readyPool: newPeerPool(),
-	}
-
-	syncer1 := &syncer{
-		logger:   log1,
-		database: srcdb,
-		reactors: []SyncReactor{reactor1, reactor2},
-		plt:      dummyExBuilder,
-	}
-
-	reactor1.OnJoin(nm1.id)
-	reactor2.OnJoin(nm2.id)
+	reactor1 := newMockReactor(log1, protoV1)
+	reactor2 := newMockReactor(log2, protoV2)
+	reactors := []SyncReactor{reactor1, reactor2}
 
 	req1 := &requestor{
 		logger: log1,
@@ -269,59 +276,76 @@ func TestSyncProcessorBTPData(t *testing.T) {
 	err = DBSet(srcdb, TestHasher, key2, value2)
 	assert.NoError(t, err)
 
-	// when create syncProcessor
-	builder = merkle.NewBuilder(dstdb)
-	builder.RequestData(TestHasher, key1, req1)
-	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
+	// test case
+	tests := map[string]struct {
+		sr  []SyncReactor
+		ids []module.PeerID
+	}{
+		"tc_reactor":           {sr: reactors, ids: []module.PeerID{nm1.id, nm2.id}},
+		"tc_withFailReactor":   {sr: reactors, ids: []module.PeerID{nmFail.id, nm1.id, nm2.id}},
+		"tc_withExpireReactor": {sr: reactors, ids: []module.PeerID{nmExpire.id, nm1.id, nm2.id}},
+	}
 
-	// then unresolved count is 1
-	expected1 := 1
-	actual1 := sproc.builder.UnresolvedCount()
-	assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			dstdb := db.NewMapDB()
 
-	// when start sync
-	err = sproc.DoSync()
-	assert.NoError(t, err)
-	builder.Flush(true)
+			for _, reactor := range tc.sr {
+				r := reactor.(*mockReactor)
+				for _, id := range tc.ids {
+					r.OnJoin(id)
+				}
+			}
 
-	// then
-	bk, _ := dstdb.GetBucket(TestHasher)
-	expected2 := value1
-	actual2, _ := bk.Get(key1)
-	assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
+			// when create syncProcessor
+			builder = merkle.NewBuilder(dstdb)
+			builder.RequestData(TestHasher, key1, req1)
+			sproc := newSyncProcessor(builder, tc.sr, log1, false)
 
-	expected3 := value2
-	actual3, _ := bk.Get(key2)
-	assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
+			// then unresolved count is 1
+			expected1 := 1
+			actual1 := sproc.builder.UnresolvedCount()
+			assert.EqualValuesf(t, expected1, actual1, "UnresolveCount expected=%v, actual=%v", expected1, actual1)
+
+			// when start sync
+			err = sproc.DoSync()
+			assert.NoError(t, err)
+			builder.Flush(true)
+
+			// then
+			bk, _ := dstdb.GetBucket(TestHasher)
+			expected2 := value1
+			actual2, _ := bk.Get(key1)
+			assert.EqualValuesf(t, expected2, actual2, "Sync Result expected=%v, actual=%v", expected2, actual2)
+
+			expected3 := value2
+			actual3, _ := bk.Get(key2)
+			assert.EqualValuesf(t, expected3, actual3, "Sync Result expected=%v, actual=%v", expected3, actual3)
+
+			for _, reactor := range tc.sr {
+				r := reactor.(*mockReactor)
+				for _, id := range tc.ids {
+					r.OnLeave(id)
+				}
+			}
+		})
+	}
 }
 
 func TestSyncProcessorDataSyncer(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
-	srcdb := db.NewMapDB()
+	// srcdb := db.NewMapDB()
 	dstdb := db.NewMapDB()
 	nm1 := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
 	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm1.id.String()[2:]})
 
-	reactor1 := &mockReactor{
-		logger:    log1,
-		version:   protoV1,
-		readyPool: newPeerPool(),
-	}
-	reactor2 := &mockReactor{
-		logger:    log1,
-		version:   protoV2,
-		readyPool: newPeerPool(),
-	}
+	reactor1 := newMockReactor(log1, protoV1)
+	reactor2 := newMockReactor(log1, protoV2)
 
-	syncer1 := &syncer{
-		logger:   log1,
-		database: srcdb,
-		reactors: []SyncReactor{reactor1, reactor2},
-		plt:      dummyExBuilder,
-	}
+	reactors := []SyncReactor{reactor1, reactor2}
 
 	reactor1.OnJoin(nm1.id)
 	reactor2.OnJoin(nm2.id)
@@ -331,7 +355,7 @@ func TestSyncProcessorDataSyncer(t *testing.T) {
 
 	// create data syncProcessor
 	builder := merkle.NewBuilder(dstdb)
-	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, true)
+	sproc := newSyncProcessor(builder, reactors, log1, true)
 
 	wg.Add(1)
 	sproc.Start(func(err error) {
@@ -380,23 +404,10 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	nm2 := newTNetworkManager(createAPeerID())
 	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm1.id.String()[2:]})
 
-	reactor1 := &mockReactor{
-		logger:    log1,
-		version:   protoV1,
-		readyPool: newPeerPool(),
-	}
-	reactor2 := &mockReactor{
-		logger:    log1,
-		version:   protoV2,
-		readyPool: newPeerPool(),
-	}
+	reactor1 := newMockReactor(log1, protoV1)
+	reactor2 := newMockReactor(log1, protoV2)
 
-	syncer1 := &syncer{
-		logger:   log1,
-		database: srcdb,
-		reactors: []SyncReactor{reactor1, reactor2},
-		plt:      dummyExBuilder,
-	}
+	reactors := []SyncReactor{reactor1, reactor2}
 
 	reactor1.OnJoin(nm1.id)
 	reactor2.OnJoin(nm2.id)
@@ -423,7 +434,7 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	// when async start finished by done
 	builder := merkle.NewBuilder(dstdb)
 	builder.RequestData(db.BytesByHash, key1, req1)
-	sproc := newSyncProcessor(builder, syncer1.reactors, syncer1.logger, false)
+	sproc := newSyncProcessor(builder, reactors, log1, false)
 
 	wg.Add(1)
 	sproc.Start(doneCb)
@@ -438,7 +449,7 @@ func TestSyncProcessorStartAsync(t *testing.T) {
 	// when async start finished by external stop call
 	builder2 := merkle.NewBuilder(dstdb2)
 	builder2.RequestData(db.BytesByHash, key1, req1)
-	sproc2 := newSyncProcessor(builder2, syncer1.reactors, syncer1.logger, false)
+	sproc2 := newSyncProcessor(builder2, reactors, log1, false)
 
 	wg.Add(1)
 	sproc2.Start(doneCb)
@@ -544,6 +555,12 @@ func TestSyncProcessorRequestData(t *testing.T) {
 
 		return size
 	}
+
+	// when peerSize = 0
+	var getPacksPanic assert.PanicTestFunc = func() {
+		sp1.getPacks()
+	}
+	assert.Panicsf(t, getPacksPanic, "panic when peerSize 0, actual peerSize=%v", sp1.readyPool.size())
 
 	// given peerSize = 10, packSize = configPackSize(50), roundLimit = configRoundLimit(500)
 	logger.Debugf("configPackSize=%d, configRoundLimit=%d", configPackSize, configRoundLimit)

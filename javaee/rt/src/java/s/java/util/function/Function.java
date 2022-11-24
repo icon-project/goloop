@@ -7,6 +7,6 @@ import i.IObject;
  */
 public interface Function extends IObject {
 
-    i.IObject avm_apply(i.IObject t);
+    i.IObject avm_apply(i.IObject t) throws e.s.java.lang.Throwable;
 
 }

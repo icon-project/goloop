@@ -74,9 +74,7 @@ func (cb *transitionCallbackForTrace) OnExecute(tr module.Transition, e error) {
 	cb.info.Callback.OnEnd(e)
 }
 
-type transitionID struct {
-	dummy int
-}
+type transitionID struct{}
 
 type transitionContext struct {
 	db    db.Database
@@ -142,7 +140,6 @@ type transition struct {
 
 	transactionCount int
 	executeDuration  time.Duration
-	flushDuration    time.Duration
 
 	syncer ssync.Syncer
 
@@ -729,7 +726,7 @@ func (t *transition) doExecute(alreadyValidated bool) {
 
 	t.worldSnapshot = ctx.GetSnapshot()
 
-	txDuration := time.Now().Sub(startTime)
+	txDuration := time.Since(startTime)
 	txCount := t.ntxCount + t.ptxCount
 	t.transactionCount = txCount
 	t.executeDuration = txDuration

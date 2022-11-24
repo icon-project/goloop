@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -43,7 +42,7 @@ func newPeer(id module.PeerID, sender DataSender, logger log.Logger) *peer {
 }
 
 func (p *peer) String() string {
-	return fmt.Sprintf("peer=%v, reqID=%d", p.id, p.reqID)
+	return fmt.Sprintf("{id=%v}", p.id)
 }
 
 func (p *peer) getExpired() time.Duration {
@@ -74,10 +73,10 @@ func (p *peer) RequestData(reqData []BucketIDAndBytes, handler DataHandler) erro
 }
 
 func (p *peer) OnData(reqID uint32, status errCode, data []BucketIDAndBytes) error {
-	locker := common.LockForAutoCall(&p.lock)
-	defer locker.Unlock()
+	p.lock.Lock()
+	defer p.lock.Unlock()
 
-	p.logger.Tracef("OnData() peer=%s reqID=%d status=%s data=%d", p.id, reqID, status, len(data))
+	p.logger.Tracef("OnData() peer=%v expired=%v reqID=%d status=%s data=%d", p.id, p.expired, reqID, status, len(data))
 	if status == ErrTimeExpired && p.expired < configMaxExpiredTime {
 		p.expired += 200 * time.Millisecond
 	}
@@ -85,9 +84,7 @@ func (p *peer) OnData(reqID uint32, status errCode, data []BucketIDAndBytes) err
 	if request, ok := p.reqMap[reqID]; ok {
 		delete(p.reqMap, reqID)
 		request.timer.Stop()
-		locker.CallAfterUnlock(func() {
-			request.handler(reqID, p, data)
-		})
+		go request.handler(reqID, p, data)
 		return nil
 	} else {
 		p.logger.Debugf("OnData() peer=%v, reqID=%v: unknown request", p.id, reqID)

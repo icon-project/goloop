@@ -235,12 +235,22 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         var prevState = rds.getTop();
         rds.pushState();
-        foundation.icon.ee.types.Result res = externalState.call(
-                new Address(targetAddress.toByteArray()),
-                value.getUnderlying(),
-                stepLeft,
-                dataType,
-                dataObj);
+        foundation.icon.ee.types.Result res;
+        try {
+            res = externalState.call(
+                    new Address(targetAddress.toByteArray()),
+                    value.getUnderlying(),
+                    stepLeft,
+                    dataType,
+                    dataObj);
+        } finally {
+            // Any exception from ExternalState.call() is critical. Even though
+            // the exception would terminate the thread, restore the runtime
+            // setup attachment state for easy debugging. Without this, a new
+            // RuntimeAssertionError is thrown due to imbalanced attach/detach
+            InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
+        }
+
         if (res.getStatus() == 0 && prevState != null) {
             prevState.inherit(rds.getTop());
         }
@@ -249,7 +259,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         task.setEID(res.getEID());
         task.setPrevEID(res.getPrevEID());
 
-        InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
         var newRS = rds.getTop().getRuntimeState(task.getPrevEID());
         rds.getTop().removeRuntimeStatesByAddress(cid);
         assert newRS!=null;

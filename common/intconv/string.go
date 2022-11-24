@@ -53,59 +53,19 @@ func encodeHexNumber(neg bool, b []byte) string {
 	}
 }
 
-func decodeHexNumber(s string) (bool, []byte, error) {
-	negative := false
-	if len(s) > 0 && s[0] == '-' {
-		negative = true
-		s = s[1:]
-	}
-	if len(s) > 2 && s[0:2] == "0x" {
-		s = s[2:]
-	}
-	if (len(s) % 2) == 1 {
-		s = "0" + s
-	}
-	bs, err := hex.DecodeString(s)
-	return negative, bs, err
-}
-
 func ParseInt(s string, bits int) (int64, error) {
-	if v64, err := strconv.ParseInt(s, 0, bits); err == nil {
-		return v64, nil
-	}
-	if negative, bs, err := decodeHexNumber(s); err == nil {
-		if len(bs)*8 > bits {
-			return 0, errors.New("OutOfRange")
-		}
-		u64 := BytesToSize(bs)
-		edge := (uint64(1)) << uint(bits-1)
-		if negative {
-			if u64 > edge {
-				return 0, errors.New("OutOfRange")
-			}
-			return -int64(u64), nil
-		} else {
-			if u64 >= edge {
-				return 0, errors.New("OutOfRange")
-			}
-			return int64(u64), nil
-		}
-	} else {
+	if v, err := strconv.ParseInt(s, 0, bits); err != nil {
 		return 0, err
+	} else {
+		return v, nil
 	}
 }
 
 func ParseUint(s string, bits int) (uint64, error) {
-	if v64, err := strconv.ParseUint(s, 0, bits); err == nil {
-		return v64, nil
-	}
-	if negative, bs, err := decodeHexNumber(s); err == nil && !negative {
-		if len(bs)*8 > bits {
-			return 0, errors.New("OutOfRange")
-		}
-		return BytesToSize(bs), nil
+	if v, err := strconv.ParseUint(s, 0, bits); err != nil {
+		return 0, err
 	} else {
-		return 0, errors.New("IllegalFormat")
+		return v, nil
 	}
 }
 

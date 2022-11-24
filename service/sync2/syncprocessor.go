@@ -47,7 +47,7 @@ type syncProcessor struct {
 }
 
 func (s *syncProcessor) onTermInLock() {
-	s.logger.Infoln("onTermInLock()")
+	s.logger.Debugln("onTermInLock()")
 
 	s.stopMigrateTimerInLock()
 
@@ -65,6 +65,7 @@ func (s *syncProcessor) onTermInLock() {
 func (s *syncProcessor) OnPeerJoin(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	s.logger.Tracef("OnPeerJoin() peer=%v", p.id)
 
 	if s.readyPool == nil {
 		return
@@ -77,6 +78,7 @@ func (s *syncProcessor) OnPeerJoin(p *peer) {
 func (s *syncProcessor) OnPeerLeave(p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	s.logger.Tracef("OnPeerLeave() peer=%v", p.id)
 
 	if s.readyPool == nil || s.sentPool == nil || s.checkedPool == nil {
 		return
@@ -143,7 +145,7 @@ func (s *syncProcessor) DoSync() error {
 	for {
 		if s.builder == nil {
 			err = errors.ErrInterrupted
-			s.logger.Infof("DoSync() stop syncProcessor by %v", err)
+			s.logger.Debugf("DoSync() stop syncProcessor by %v", err)
 			break
 		}
 
@@ -151,7 +153,7 @@ func (s *syncProcessor) DoSync() error {
 		s.logger.Tracef("DoSync() unresolvedCount=%d", count)
 
 		if count == 0 && !s.datasyncer {
-			s.logger.Infof("DoSync() done syncProcessor")
+			s.logger.Debugf("DoSync() done syncProcessor")
 			break
 		}
 
@@ -171,7 +173,7 @@ func (s *syncProcessor) DoSync() error {
 
 // Stop sync processor
 func (s *syncProcessor) Stop() {
-	s.logger.Infoln("Stop() sync processor")
+	s.logger.Debugln("Stop() sync processor")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -352,7 +354,7 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 
 	p := s.sentPool.remove(sender.id)
 	if p == nil {
-		s.logger.Debugf("HandleData() peer=%v not in sentPool", sender.id)
+		s.logger.Debugf("HandleData() sender=%v not in sentPool", sender.id)
 		return
 	}
 

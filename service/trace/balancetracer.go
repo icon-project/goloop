@@ -135,7 +135,7 @@ func (bt *BalanceTracer) getCurrentTx() (*transaction, error) {
 
 func (bt *BalanceTracer) checkCurrentTx(curTx *transaction, txIndex int, txHash []byte) error {
 	if curTx != nil {
-		if curTx.index != txIndex || bytes.Compare(curTx.hash, txHash) != 0 {
+		if curTx.index != txIndex || !bytes.Equal(curTx.hash, txHash) {
 			return errors.InvalidStateError.Errorf(
 				"Invalid txHash: curTxHash=%#x hash=%#x", curTx.hash, txHash)
 		}

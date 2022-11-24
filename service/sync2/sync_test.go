@@ -43,6 +43,7 @@ type tPacket struct {
 
 type tNetworkManager struct {
 	module.NetworkManager
+	mutex        sync.Mutex
 	id           module.PeerID
 	reactorItems []*tReactorItem
 	joinReactors []*tReactorItem
@@ -66,6 +67,24 @@ func (nm *tNetworkManager) GetPeers() []module.PeerID {
 		res[i] = nm.peers[i].id
 	}
 	return res
+}
+
+func (nm *tNetworkManager) getPeer(id module.PeerID) *tNetworkManager {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	for _, p := range nm.peers {
+		if p.id.Equal(id) {
+			return p
+		}
+	}
+	return nil
+}
+
+func (nm *tNetworkManager) appendPeer(nm2 *tNetworkManager) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+	nm.peers = append(nm.peers, nm2)
 }
 
 func (nm *tNetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8, policy module.NotRegisteredProtocolPolicy) (module.ProtocolHandler, error) {
@@ -93,10 +112,7 @@ func (nm *tNetworkManager) RegisterReactorForStreams(name string, pi module.Prot
 	//return registerReactorForStreams(nm, name, reactor, piList, priority, &common.GoTimeClock{})
 }
 
-func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
-	nm.peers = append(nm.peers, nm2)
-	nm2.peers = append(nm2.peers, nm)
-
+func getPiVer(nm *tNetworkManager, nm2 *tNetworkManager) byte {
 	var nmPiVer, nm2PiVer, piVer byte
 
 	for _, r := range nm.reactorItems {
@@ -124,17 +140,90 @@ func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
 		}(nmPiVer, nm2PiVer)
 	}
 
+	return piVer
+}
+
+func deletePeer(srcnm *tNetworkManager, dstnm *tNetworkManager) {
+	srcnm.mutex.Lock()
+	defer srcnm.mutex.Unlock()
+
+	for i, peer := range srcnm.peers {
+		if peer.id.Equal(dstnm.id) {
+			copy(srcnm.peers[i:], srcnm.peers[i+1:])
+			srcnm.peers[len(srcnm.peers)-1] = nil
+			srcnm.peers = srcnm.peers[:len(srcnm.peers)-1]
+			break
+		}
+	}
+}
+
+func deleteJoinReactor(nm *tNetworkManager, i int) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	copy(nm.joinReactors[i:], nm.joinReactors[i+1:])
+	nm.joinReactors[len(nm.joinReactors)-1] = nil
+	nm.joinReactors = nm.joinReactors[:len(nm.joinReactors)-1]
+}
+
+func (nm *tNetworkManager) appendJoinReactor(reactor *tReactorItem) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	nm.joinReactors = append(nm.joinReactors, reactor)
+}
+
+func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
+	nm.appendPeer(nm2)
+	nm2.appendPeer(nm)
+
+	piVer := getPiVer(nm, nm2)
+
 	for _, r := range nm.reactorItems {
 		if piVer == r.pi.Version() {
-			nm.joinReactors = append(nm.joinReactors, r)
+			nm.appendJoinReactor(r)
 			r.reactor.OnJoin(nm2.id)
 		}
 	}
+
 	for _, r := range nm2.reactorItems {
 		if piVer == r.pi.Version() {
-			nm2.joinReactors = append(nm2.joinReactors, r)
+			nm2.appendJoinReactor(r)
 			r.reactor.OnJoin(nm.id)
 		}
+	}
+}
+
+func (nm *tNetworkManager) leave(nm2 *tNetworkManager) {
+	deletePeer(nm, nm2)
+	deletePeer(nm2, nm)
+
+	piVer := getPiVer(nm, nm2)
+
+	for i, r := range nm.joinReactors {
+		if piVer == r.pi.Version() {
+			deleteJoinReactor(nm, i)
+			r.reactor.OnLeave(nm2.id)
+			break
+		}
+	}
+
+	for i, r := range nm2.joinReactors {
+		if piVer == r.pi.Version() {
+			deleteJoinReactor(nm2, i)
+			r.reactor.OnLeave(nm.id)
+			break
+		}
+	}
+}
+
+func (nm *tNetworkManager) callOnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
+	nm.mutex.Lock()
+	defer nm.mutex.Unlock()
+
+	for _, r := range nm.joinReactors {
+		runtime.Gosched()
+		r.reactor.OnReceive(pi, b, id)
 	}
 }
 
@@ -163,15 +252,12 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 	if ph.nm.drop {
 		return nil
 	}
-	for _, p := range ph.nm.peers {
-		if p.id.Equal(id) {
-			for _, r := range p.joinReactors {
-				runtime.Gosched()
-				r.reactor.OnReceive(pi, b, ph.nm.id)
-			}
-			return nil
-		}
+
+	if p := ph.nm.getPeer(id); p != nil {
+		p.callOnReceive(pi, b, ph.nm.id)
+		return nil
 	}
+
 	return errors.Errorf("Unknown peer")
 }
 
@@ -224,23 +310,34 @@ func DBGet(database db.Database, id db.BucketID, k []byte) ([]byte, error) {
 	return bk.Get(k)
 }
 
+func newSyncManagerV1(database db.Database, nm module.NetworkManager, plt Platform, logger log.Logger) *Manager {
+	logger = logger.WithFields(log.Fields{log.FieldKeyModule: "statesync"})
+	m := new(Manager)
+
+	reactorV1 := newReactorV1(database, logger)
+	ph, err := nm.RegisterReactorForStreams("statesync", module.ProtoStateSync, reactorV1, protocol, configSyncPriority, module.NotRegisteredProtocolPolicyClose)
+	if err != nil {
+		logger.Panicf("Failed to register reactorV1 for stateSync")
+		return nil
+	}
+	reactorV1.ph = ph
+	m.reactors = append(m.reactors, reactorV1)
+
+	m.db = database
+	m.plt = plt
+	m.logger = logger
+
+	m.ds = newDataSyncer(m.db, m.reactors, logger)
+	return m
+}
+
 func TestSyncSimpleAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
 	srcdb := db.NewMapDB()
-	dstdb := db.NewMapDB()
-	nm1 := newTNetworkManager(createAPeerID())
-	nm2 := newTNetworkManager(createAPeerID())
-	log1 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm1.id.String()[2:]})
-	log2 := logger.WithFields(log.Fields{log.FieldKeyWallet: nm2.id.String()[2:]})
 
-	NewSyncManager(srcdb, nm1, dummyExBuilder, log1)
-
-	manager2 := NewSyncManager(dstdb, nm2, dummyExBuilder, log2)
-	nm1.join(nm2)
-
-	// given
+	// given init db for source sync manager
 	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
 	ac := ws.GetAccountState([]byte("ABC"))
 	ac.SetValue([]byte("ABC"), []byte("XYZ"))
@@ -259,48 +356,248 @@ func TestSyncSimpleAccountSync(t *testing.T) {
 
 	acHash := ws.GetSnapshot().StateHash()
 	ws.GetSnapshot().Flush()
-	logger.Printf("account hash : (%x)\n", acHash)
+	t.Logf("account hash : (%x)", acHash)
 
-	syncer2 := manager2.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
-	result, err := syncer2.ForceSync()
-	assert.NoError(t, err)
-
-	// then
-	as := result.Wss.GetAccountSnapshot([]byte("ABC"))
-	v, err := as.GetValue([]byte("ABC"))
-	assert.NoError(t, err)
-	assert.Equal(t, []byte("XYZ"), v)
-
-	// when start data syncer
-	manager2.Start()
-
-	err = manager2.AddRequest(db.BytesByHash, key1)
-	assert.NoError(t, err)
-
-	var try int
-	for {
-		if manager2.UnresolvedRequestCount() == 0 {
-			break
-		} else if try >= 10 {
-			t.Logf("datasyncer sync failed. tried(%v)", try)
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-		try += 1
+	// test table
+	tests := map[string]struct {
+		getSrcMgr func(database db.Database, srcnm *tNetworkManager, srcLog log.Logger) *Manager
+		getDstMgr func(database db.Database, dstnm *tNetworkManager, dstLog log.Logger) *Manager
+	}{
+		"useProtocolV1": {
+			getSrcMgr: func(database db.Database, srcnm *tNetworkManager, srcLog log.Logger) *Manager {
+				return newSyncManagerV1(database, srcnm, dummyExBuilder, srcLog)
+			},
+			getDstMgr: func(database db.Database, dstnm *tNetworkManager, dstLog log.Logger) *Manager {
+				return NewSyncManager(database, dstnm, dummyExBuilder, dstLog)
+			},
+		},
+		"useProtocoV2": {
+			getSrcMgr: func(database db.Database, srcnm *tNetworkManager, srcLog log.Logger) *Manager {
+				return NewSyncManager(database, srcnm, dummyExBuilder, srcLog)
+			},
+			getDstMgr: func(database db.Database, dstnm *tNetworkManager, dstLog log.Logger) *Manager {
+				return NewSyncManager(database, dstnm, dummyExBuilder, dstLog)
+			},
+		},
 	}
 
-	// then
-	expected1 := value1
-	actual1, err := DBGet(dstdb, db.BytesByHash, key1)
-	assert.NoError(t, err)
-	assert.Equal(t, expected1, actual1)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			dstdb := db.NewMapDB()
+			srcNM := newTNetworkManager(createAPeerID())
+			dstNM := newTNetworkManager(createAPeerID())
+			srcLog := logger.WithFields(log.Fields{log.FieldKeyWallet: srcNM.id.String()[2:]})
+			dstLog := logger.WithFields(log.Fields{log.FieldKeyWallet: dstNM.id.String()[2:]})
 
-	manager2.Term()
+			tc.getSrcMgr(srcdb, srcNM, srcLog)
+			dstMgr := tc.getDstMgr(dstdb, dstNM, dstLog)
+
+			srcNM.join(dstNM)
+			syncer := dstMgr.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
+
+			// when forceSync
+			result, err := syncer.ForceSync()
+			assert.NoError(t, err)
+
+			// then
+			as := result.Wss.GetAccountSnapshot([]byte("ABC"))
+			v, err := as.GetValue([]byte("ABC"))
+			assert.NoError(t, err)
+			assert.Equal(t, []byte("XYZ"), v)
+
+			// when start data syncer
+			dstMgr.Start()
+
+			err = dstMgr.AddRequest(db.BytesByHash, key1)
+			assert.NoError(t, err)
+
+			var try int
+			for {
+				if dstMgr.UnresolvedRequestCount() == 0 {
+					break
+				} else if try >= 10 {
+					t.Logf("datasyncer sync failed. tried(%v)", try)
+					break
+				}
+				time.Sleep(100 * time.Millisecond)
+				try += 1
+			}
+
+			// then
+			expected1 := value1
+			actual1, err := DBGet(dstdb, db.BytesByHash, key1)
+			assert.NoError(t, err)
+			assert.Equal(t, expected1, actual1)
+
+			dstMgr.Term()
+		})
+	}
+}
+
+func TestSyncSimpleStateSyncStop(t *testing.T) {
+	logger := log.New()
+	logger.SetLevel(log.FatalLevel)
+
+	srcdb := db.NewMapDB()
+	dstdb := db.NewMapDB()
+	srcNM := newTNetworkManager(createAPeerID())
+	dstNM := newTNetworkManager(createAPeerID())
+	srcLog := logger.WithFields(log.Fields{log.FieldKeyWallet: srcNM.id.String()[2:]})
+	dstLog := logger.WithFields(log.Fields{log.FieldKeyWallet: dstNM.id.String()[2:]})
+
+	newSyncManagerV1(srcdb, srcNM, dummyExBuilder, srcLog)
+	dstMgr := NewSyncManager(dstdb, dstNM, dummyExBuilder, dstLog)
+
+	srcNM.join(dstNM)
+
+	// given init db for source sync manager
+	const dataSize = 100
+	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
+	for i := range [dataSize]int{} {
+		v := []byte{byte(i)}
+		ac := ws.GetAccountState(v)
+		ac.SetValue(v, v)
+	}
+	vs := ws.GetValidatorState()
+
+	tvList := []module.Validator{
+		&testValidator{addr: wallet.New().Address()},
+		&testValidator{addr: wallet.New().Address()},
+	}
+	vs.Set(tvList)
+
+	acHash := ws.GetSnapshot().StateHash()
+	ws.GetSnapshot().Flush()
+	t.Logf("account hash : (%x)", acHash)
+
+	sSyncer := dstMgr.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
+
+	var wg sync.WaitGroup
+
+	// start forceSync
+	wg.Add(1)
+	go func() {
+		result, err := sSyncer.ForceSync()
+		t.Logf("ForceSync result=%v, err=%v", result, err)
+
+		// then result is nil, err is ErrInterrupted
+		assert.Nilf(t, result, "sync stop. result=%v", result)
+		assert.EqualErrorf(t, err, errors.ErrInterrupted.Error(), "sync stop. err=%v", err)
+
+		wg.Done()
+	}()
+
+	// when stop syncer
+	wg.Add(1)
+	time.AfterFunc(time.Millisecond, func() {
+		t.Logf("call syncer Stop")
+		sSyncer.Stop()
+		wg.Done()
+	})
+
+	wg.Wait()
+}
+
+func TestSyncSimpleStateSyncJoinAndLeave(t *testing.T) {
+	logger := log.New()
+	logger.SetLevel(log.FatalLevel)
+
+	srcdb := db.NewMapDB()
+	dstdb := db.NewMapDB()
+	srcNM := newTNetworkManager(createAPeerID())
+	dstNM := newTNetworkManager(createAPeerID())
+	newNM := newTNetworkManager(createAPeerID())
+	srcLog := logger.WithFields(log.Fields{log.FieldKeyWallet: srcNM.id.String()[2:]})
+	dstLog := logger.WithFields(log.Fields{log.FieldKeyWallet: dstNM.id.String()[2:]})
+	newLog := logger.WithFields(log.Fields{log.FieldKeyWallet: newNM.id.String()[2:]})
+
+	newSyncManagerV1(srcdb, srcNM, dummyExBuilder, srcLog)
+	dstMgr := NewSyncManager(dstdb, dstNM, dummyExBuilder, dstLog)
+
+	srcNM.join(dstNM)
+
+	// given init db for source sync manager
+	const dataSize = 100
+	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
+	for i := range [dataSize]int{} {
+		v := []byte{byte(i)}
+		ac := ws.GetAccountState(v)
+		ac.SetValue(v, v)
+	}
+	vs := ws.GetValidatorState()
+
+	tvList := []module.Validator{
+		&testValidator{addr: wallet.New().Address()},
+		&testValidator{addr: wallet.New().Address()},
+	}
+	vs.Set(tvList)
+
+	ws.GetSnapshot().Flush()
+	acHash := ws.GetSnapshot().StateHash()
+	t.Logf("account hash : (%x)", acHash)
+
+	sSyncer := dstMgr.NewSyncer(acHash, nil, nil, nil, nil, nil, true)
+
+	var wg sync.WaitGroup
+
+	// start forceSync
+	wg.Add(1)
+	go func() {
+		result, err := sSyncer.ForceSync()
+		t.Logf("ForceSync result=%v, err=%v", result, err)
+
+		// then
+		expected := acHash
+		actual := result.Wss.StateHash()
+		t.Logf("src acHash=%#x, result acHash=%#x", expected, actual)
+		assert.EqualValuesf(t, expected, actual, "result accountHash expected=%v, actual=%v", expected, actual)
+
+		for i := 0; i < dataSize; i++ {
+			key := []byte{byte(i)}
+			ac := ws.GetAccountState(key)
+			expected, err := ac.GetValue(key)
+			assert.NoError(t, err)
+			rac := result.Wss.GetAccountSnapshot(key)
+			actual, err := rac.GetValue(key)
+			assert.NoError(t, err)
+			assert.EqualValuesf(t, expected, actual, "account state expected=%v, actual=%v", expected, actual)
+		}
+		wg.Done()
+	}()
+
+	// when join new peer
+	wg.Add(1)
+	newSyncManagerV1(srcdb, newNM, dummyExBuilder, newLog)
+
+	time.AfterFunc(time.Millisecond, func() {
+		t.Logf("join peerid=%v", newNM.id)
+		newNM.join(dstNM)
+		wg.Done()
+	})
+
+	// when leave peer
+	wg.Add(1)
+	time.AfterFunc(10*time.Millisecond, func() {
+		t.Logf("leave peerid=%v", srcNM.id)
+		srcNM.leave(dstNM)
+		wg.Done()
+	})
+	wg.Wait()
+}
+
+func getRandomSyncManager(database db.Database, nm module.NetworkManager, logger log.Logger) *Manager {
+	if rand.Intn(2) == 0 {
+		return newSyncManagerV1(database, nm, dummyExBuilder, logger)
+	} else {
+		return NewSyncManager(database, nm, dummyExBuilder, logger)
+	}
 }
 
 func TestSyncDataSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
+
+	rand.Seed(time.Now().UnixNano())
 
 	// given 16 peers
 	const cPeers int = 16
@@ -312,7 +609,7 @@ func TestSyncDataSync(t *testing.T) {
 		databases[i] = db.NewMapDB()
 		nms[i] = newTNetworkManager(createAPeerID())
 		slog[i] = logger.WithFields(log.Fields{log.FieldKeyWallet: nms[i].id.String()[2:]})
-		syncM[i] = NewSyncManager(databases[i], nms[i], dummyExBuilder, slog[i])
+		syncM[i] = getRandomSyncManager(databases[i], nms[i], slog[i])
 		syncM[i].Start()
 	}
 
@@ -392,6 +689,8 @@ func TestSyncAccountSync(t *testing.T) {
 	logger := log.New()
 	logger.SetLevel(log.FatalLevel)
 
+	rand.Seed(time.Now().UnixNano())
+
 	var testItems [1000]byte
 	for i := range testItems {
 		testItems[i] = byte(i)
@@ -407,7 +706,7 @@ func TestSyncAccountSync(t *testing.T) {
 		databases[i] = db.NewMapDB()
 		nms[i] = newTNetworkManager(createAPeerID())
 		slog[i] = logger.WithFields(log.Fields{log.FieldKeyWallet: nms[i].id.String()[2:]})
-		syncM[i] = NewSyncManager(databases[i], nms[i], dummyExBuilder, slog[i])
+		syncM[i] = getRandomSyncManager(databases[i], nms[i], slog[i])
 		syncM[i].Start()
 	}
 

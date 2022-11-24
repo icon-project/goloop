@@ -11,7 +11,9 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import foundation.icon.ee.types.UnknownFailureException;
 import i.CodecIdioms;
+import i.IInstrumentation;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
 import i.RuntimeAssertionError;
@@ -85,7 +87,7 @@ public final class InternalRunnable extends s.java.lang.Object implements s.java
     }
 
     @Override
-    public void avm_run() {
+    public void avm_run() throws e.s.java.lang.Throwable {
         try {
             target.invoke(null);
         } catch (IllegalAccessException | IllegalArgumentException e) {
@@ -96,10 +98,15 @@ public final class InternalRunnable extends s.java.lang.Object implements s.java
             Throwable cause = e.getCause();
             if (cause instanceof RuntimeException) {
                 throw (RuntimeException) cause;
-            } else {
-                // Any failure below us shouldn't be anything other than RuntimeException.
-                throw RuntimeAssertionError.unexpected(cause);
+            } else if (cause instanceof e.s.java.lang.Throwable) {
+                var se = IInstrumentation.attachedThreadInstrumentation
+                        .get().unwrapThrowable(cause);
+                if (se instanceof s.java.lang.RuntimeException) {
+                    throw (e.s.java.lang.Throwable) cause;
+                }
             }
+            // Any failure below us shouldn't be anything other than RuntimeException.
+            throw new UnknownFailureException(cause);
         }
     }
 

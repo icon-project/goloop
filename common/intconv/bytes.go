@@ -1,6 +1,7 @@
 package intconv
 
 import (
+	"math"
 	"math/big"
 )
 
@@ -72,43 +73,80 @@ func SizeToBytes(v uint64) []byte {
 	return bs
 }
 
+func SafeBytesToUint64(bs []byte) (uint64, bool) {
+	if len(bs) == 0 {
+		return 0, true
+	}
+	if b := bs[0]; b == 0 {
+		bs = bs[1:]
+	} else if (b & 0x80) != 0 {
+		return 0, false
+	}
+	if len(bs) > 8 {
+		return 0, false
+	}
+	var v uint64
+	for _, b := range bs {
+		v = (v << 8) | uint64(b)
+	}
+	return v, true
+}
+
 func BytesToUint64(bs []byte) uint64 {
+	if value, ok := SafeBytesToUint64(bs); ok {
+		return value
+	} else {
+		panic("BytesToUint64 overflow")
+	}
+}
+
+func SafeBytesToSize(bs []byte) (int, bool) {
+	if s64, ok := SafeBytesToSize64(bs); ok && s64 <= math.MaxInt {
+		return int(s64), true
+	}
+	return 0, false
+}
+
+func SafeBytesToSize64(bs []byte) (uint64, bool) {
 	if len(bs) == 0 {
-		return 0
+		return 0, true
+	}
+	if len(bs) > 8 {
+		return 0, false
 	}
 	var v uint64
-	if (bs[0] & 0x80) != 0 {
-		v = 0xffffffffffffffff
-	}
 	for _, b := range bs {
 		v = (v << 8) | uint64(b)
 	}
-	return v
+	return v, true
 }
 
-func BytesToSize(bs []byte) uint64 {
-	var v uint64
-	for _, b := range bs {
-		v = (v << 8) | uint64(b)
-	}
-	return v
-}
-
-func BytesToInt64(bs []byte) int64 {
+func SafeBytesToInt64(bs []byte) (int64, bool) {
 	if len(bs) == 0 {
-		return 0
+		return 0, true
+	}
+	if len(bs) > 8 {
+		return 0, false
 	}
 	var v int64
 	if (bs[0] & 0x80) != 0 {
 		for _, b := range bs {
 			v = (v << 8) | int64(b^0xff)
 		}
-		return -v - 1
+		return -v - 1, true
 	} else {
 		for _, b := range bs {
 			v = (v << 8) | int64(b)
 		}
-		return v
+		return v, true
+	}
+}
+
+func BytesToInt64(bs []byte) int64 {
+	if value, ok := SafeBytesToInt64(bs); ok {
+		return value
+	} else {
+		panic("Int64Overflow")
 	}
 }
 

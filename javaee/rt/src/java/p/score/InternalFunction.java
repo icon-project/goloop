@@ -14,6 +14,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import foundation.icon.ee.types.UnknownFailureException;
 import i.*;
 import s.java.lang.Float;
 import s.java.lang.Integer;
@@ -124,7 +125,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
     }
 
     @Override
-    public i.IObject avm_apply(i.IObject input) {
+    public i.IObject avm_apply(i.IObject input) throws e.s.java.lang.Throwable {
         try {
             Object result;
             if (target instanceof Constructor) {
@@ -147,10 +148,15 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
             Throwable cause = e.getCause();
             if (cause instanceof RuntimeException) {
                 throw (RuntimeException) cause;
-            } else {
-                // Any failure below us shouldn't be anything other than RuntimeException.
-                throw RuntimeAssertionError.unexpected(cause);
+            } else if (cause instanceof e.s.java.lang.Throwable) {
+                var se = IInstrumentation.attachedThreadInstrumentation
+                        .get().unwrapThrowable(cause);
+                if (se instanceof s.java.lang.RuntimeException) {
+                    throw (e.s.java.lang.Throwable) cause;
+                }
             }
+            // Any failure below us shouldn't be anything other than RuntimeException.
+            throw new UnknownFailureException(cause);
         }
     }
 

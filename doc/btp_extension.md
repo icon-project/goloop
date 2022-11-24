@@ -577,7 +577,7 @@ Suffixed `(N)` means a nullable value.
 
 ### Votes
 
-> B_LIST of followings
+> B_LIST of followings. Note that this list can have zero or more extension fields after Items field.
 
 | Field          | Type                    | Description                                                                |
 |:---------------|:------------------------|:---------------------------------------------------------------------------|
@@ -618,10 +618,10 @@ SHA3Sum256([VoteMessage](#votemessage)).
 
 > B_LIST of followings
 
-| Field          | Type       | Description                                                                |
-|:---------------|:-----------|:---------------------------------------------------------------------------|
-| Count          | B_INT      | Number of block parts                                                      |
-| Hash           | B_BYTES(N) | Hash of block parts                                                        |
+| Field     | Type       | Description                                                                 |
+|:----------|:-----------|:----------------------------------------------------------------------------|
+| CountWord | B_INT      | High 16 bits are extension specific data. Low 16 bits are block part count. |
+| Hash      | B_BYTES(N) | Hash of block parts                                                         |
 
 
 ### Receipt

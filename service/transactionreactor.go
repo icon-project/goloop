@@ -30,7 +30,6 @@ type TransactionReactor struct {
 	nm         module.NetworkManager
 	membership module.ProtocolHandler
 	tm         *TransactionManager
-	tsc        *TxTimestampChecker
 	log        log.Logger
 	ts         *TransactionShare
 }

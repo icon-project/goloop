@@ -31,7 +31,6 @@ type finalizeRequest struct {
 	syncTr   module.Transition
 	dbase    db.Database
 	resCh    chan error
-	cancelCh <-chan struct{}
 }
 
 func (r *finalizeRequest) finalize(blk module.BlockData) error {
@@ -88,7 +87,6 @@ func UnsafeFinalize(
 		syncTr:   syncTr,
 		dbase:    c.Database(),
 		resCh:    make(chan error, 2),
-		cancelCh: cancelCh,
 	}
 	canceler, err := syncTr.Execute(r)
 	if err != nil {
@@ -100,7 +98,7 @@ func UnsafeFinalize(
 			return err
 		}
 		return r.finalize(blk)
-	case <-r.cancelCh:
+	case <-cancelCh:
 		canceler()
 		return errors.Errorf("sync canceled height=%d hash=%x", blk.Height(), blk.Height())
 	}

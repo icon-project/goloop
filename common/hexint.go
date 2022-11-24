@@ -127,7 +127,7 @@ type HexUint16 struct {
 }
 
 func (i HexUint16) String() string {
-	return intconv.FormatInt(int64(i.Value))
+	return intconv.FormatUint(uint64(i.Value))
 }
 
 func (i HexUint16) MarshalJSON() ([]byte, error) {
