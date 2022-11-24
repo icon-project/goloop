@@ -151,3 +151,51 @@ func TestDatabase_SetReopenGet(t *testing.T) {
 		})
 	}
 }
+
+func testDatabase_OperationAfterClose(t *testing.T, creator dbCreator) {
+	dir := t.TempDir()
+	key := []byte("hello")
+	value := []byte("world")
+	value2 := []byte("world2")
+
+	testDB, err := creator("test", dir)
+	assert.NoError(t, err)
+
+	bucket, err := testDB.GetBucket(MerkleTrie)
+	assert.NoError(t, err)
+
+	err = bucket.Set(key, value)
+	assert.NoError(t, err)
+
+	err = testDB.Close()
+	assert.NoError(t, err)
+
+	// all operations after close should fail.
+	err = testDB.Close()
+	assert.Error(t, err)
+
+	bucket2, err := testDB.GetBucket(MerkleTrie)
+	assert.Error(t, err)
+	assert.Nil(t, bucket2)
+
+	bs, err := bucket.Get(key)
+	assert.Error(t, err)
+	assert.Nil(t, bs)
+
+	err = bucket.Delete(key)
+	assert.Error(t, err)
+
+	err = bucket.Set(key, value2)
+	assert.Error(t, err)
+}
+
+func TestDatabase_OperationAfterClose(t *testing.T) {
+	for name, creator := range backends {
+		if name == MapDBBackend {
+			continue
+		}
+		t.Run(string(name), func(t *testing.T) {
+			testDatabase_OperationAfterClose(t, creator)
+		})
+	}
+}

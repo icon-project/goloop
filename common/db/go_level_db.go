@@ -49,6 +49,10 @@ func (db *GoLevelDB) GetBucket(id BucketID) (Bucket, error) {
 	db.lock.Lock()
 	defer db.lock.Unlock()
 
+	if db.db == nil {
+		return nil, leveldb.ErrClosed
+	}
+
 	if bk, ok := db.buckets[id]; ok {
 		return bk, nil
 	} else {
@@ -62,7 +66,17 @@ func (db *GoLevelDB) GetBucket(id BucketID) (Bucket, error) {
 }
 
 func (db *GoLevelDB) Close() error {
-	return db.db.Close()
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if db.db == nil {
+		return leveldb.ErrClosed
+	}
+	if err := db.db.Close(); err != nil {
+		return err
+	}
+	db.db = nil
+	return nil
 }
 
 //----------------------------------------
