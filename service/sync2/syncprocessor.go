@@ -218,7 +218,7 @@ func (s *syncProcessor) UnresolvedCount() int {
 
 // syncProcessor --> peer --> PeerHandler(Reactor) --> module.ProtocolHandler
 func (s *syncProcessor) sendRequestsInLock() {
-	s.logger.Debugln("sendRequests()")
+	s.logger.Traceln("sendRequests()")
 
 	packs := s.getPacks()
 	for len(packs) >= 1 && s.readyPool.size() > 0 {
@@ -299,7 +299,7 @@ func (s *syncProcessor) onPoolChangeInLock() {
 	}
 
 	if s.readyPool.size() > 0 {
-		s.logger.Debugf("onPoolChangeInLock() readyPool=%d", s.readyPool.size())
+		s.logger.Tracef("onPoolChangeInLock() readyPool=%d", s.readyPool.size())
 		s.wakeupInLock()
 	}
 }
@@ -342,7 +342,7 @@ func (s *syncProcessor) checkedPoolPushInLock(p *peer) {
 // HandleData handle data from peer. If it expires timeout, data would
 // be nil.
 func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAndBytes) {
-	s.logger.Debugf("HandleData()")
+	s.logger.Tracef("HandleData()")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.logger.Tracef("HandleData() reqID=%d sender=%v data=%d", reqID, sender.id, len(data))
