@@ -52,3 +52,10 @@ func (w *resultStore) Wait() error {
 	w.waiter.Wait()
 	return w.result
 }
+
+func (w *resultStore) GetValue() (error, bool) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	return w.result, w.have
+}

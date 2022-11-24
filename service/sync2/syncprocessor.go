@@ -14,6 +14,8 @@ import (
 const (
 	configPackSize   int = 50
 	configRoundLimit int = 500
+
+	configReportInterval = 100
 )
 
 type SyncProcessor interface {
@@ -44,6 +46,9 @@ type syncProcessor struct {
 
 	reqIter  merkle.RequestIterator
 	reqCount int
+
+	progressCB  ProgressCallback
+	reportTimer int
 }
 
 func (s *syncProcessor) onTermInLock() {
@@ -71,6 +76,11 @@ func (s *syncProcessor) OnPeerJoin(p *peer) {
 		return
 	}
 
+	defer func() {
+		s.logger.Debugf("OnPeerJoin() peer=%v -> ready=%d sent=%d checked=%d",
+			p.id, s.readyPool.size(), s.sentPool.size(), s.checkedPool.size())
+	}()
+
 	s.readyPool.push(p)
 	s.wakeupInLock()
 }
@@ -83,6 +93,11 @@ func (s *syncProcessor) OnPeerLeave(p *peer) {
 	if s.readyPool == nil || s.sentPool == nil || s.checkedPool == nil {
 		return
 	}
+
+	defer func() {
+		s.logger.Debugf("OnPeerLeave() peer=%v -> ready=%d sent=%d checked=%d",
+			p.id, s.readyPool.size(), s.sentPool.size(), s.checkedPool.size())
+	}()
 
 	if p2 := s.readyPool.remove(p.id); p2 != nil {
 		s.onPoolChangeInLock()
@@ -154,6 +169,7 @@ func (s *syncProcessor) DoSync() error {
 
 		if count == 0 && !s.datasyncer {
 			s.logger.Debugf("DoSync() done syncProcessor")
+			s.reportProgressInLock(true)
 			break
 		}
 
@@ -373,11 +389,34 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 
 	s.logger.Tracef("HandleData() reqID=%d data=%d received=%d hasError=%v", reqID, len(data), received, hasError)
 	if len(data) > 0 && !hasError {
+		s.reportProgressInLock(false)
 		s.readyPool.push(p)
 	} else {
 		s.checkedPoolPushInLock(p)
 	}
 	s.onPoolChangeInLock()
+}
+
+func (s *syncProcessor) SetProgressCallback(cb ProgressCallback) {
+	s.progressCB = cb
+}
+
+func (s *syncProcessor) reportProgressInLock(force bool) {
+	s.reportTimer += 1
+	if !force && s.reportTimer < configReportInterval {
+		return
+	} else {
+		s.reportTimer = 0
+	}
+	r, u := s.builder.ResolvedCount(), s.builder.UnresolvedCount()
+	s.logger.Debugf("Progress resolved=%d unresolved:%d", r, u)
+
+	if s.progressCB == nil {
+		return
+	}
+	if err := s.progressCB(r, u); err != nil {
+		s.progressCB = nil
+	}
 }
 
 func newSyncProcessor(builder merkle.Builder, reactors []SyncReactor, logger log.Logger, datasyncer bool) *syncProcessor {

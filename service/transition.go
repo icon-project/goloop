@@ -895,6 +895,17 @@ func (t *transition) BTPSection() module.BTPSection {
 	return t.bs
 }
 
+func (t *transition) SetProgressCallback(on module.ProgressCallback) {
+	if t.syncer != nil {
+		// Transactions belong to the block at bi.Height().
+		// So the block that it syncs is at bi.Height() + 1
+		height := t.bi.Height() + 1
+		t.syncer.SetProgressCallback(func(r, u int) error {
+			return on(height, r, u)
+		})
+	}
+}
+
 // NewInitTransition creates initial transition based on the last result.
 // It's only for development purpose. So, normally it should not be used.
 func NewInitTransition(

@@ -1525,11 +1525,11 @@ func (m *manager) ExportGenesis(blk module.BlockData, votes module.CommitVoteSet
 	return nil
 }
 
-func (m *manager) ExportBlocks(from, to int64, dst db.Database, on func(h int64) error) error {
-	return m.ExportBlocksWithFlag(from, to, dst, exportAll, on)
+func (m *manager) ExportBlocks(from, to int64, dst db.Database, cb module.ProgressCallback) error {
+	return m.ExportBlocksWithFlag(from, to, dst, exportAll, cb)
 }
 
-func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int, on func(h int64) error) error {
+func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int, cb module.ProgressCallback) error {
 	al := common.Lock(&m.syncer)
 	defer al.Unlock()
 
@@ -1538,6 +1538,7 @@ func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int
 	}
 
 	ctx := merkle.NewCopyContext(m.db(), dst)
+	ctx.SetProgressCallback(cb)
 	if hasBits(flag, exportValidator) && from > 0 {
 		// export the block for validators
 		blk, err := m.getBlockByHeight(from - 1)
@@ -1561,11 +1562,6 @@ func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int
 	al.Unlock()
 
 	for h := from; h <= to; h++ {
-		if on != nil {
-			if err := on(h); err != nil {
-				return err
-			}
-		}
 		m.syncer.begin()
 		if !m.running {
 			return errors.New("not running")
@@ -1586,6 +1582,7 @@ func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int
 }
 
 func (m *manager) _export(blk module.Block, ctx *merkle.CopyContext, flag int) error {
+	ctx.SetHeight(blk.Height())
 	if hasBits(flag, exportResult) {
 		if err := m.sm.ExportResult(blk.Result(), blk.NextValidatorsHash(), ctx.TargetDB()); err != nil {
 			return err

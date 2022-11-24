@@ -24,11 +24,13 @@ var (
 )
 
 type RequestCallback func(ver byte, dataLen int, id module.PeerID)
+type ProgressCallback func(r, u int) error
 
 type Syncer interface {
 	ForceSync() (*Result, error)
 	Stop()
 	Finalize() error
+	SetProgressCallback(cb ProgressCallback)
 }
 
 type PeerWatcher interface {

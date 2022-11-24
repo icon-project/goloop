@@ -496,7 +496,7 @@ func TestManager_ExportGenesis(t *testing.T) {
 	assert.NoError(err)
 	gs := newGenesisStorage(module.GenesisPruned, nd.Chain.CID(), nd.Chain.NID(), 2, gb)
 	dbase := db.NewMapDB()
-	err = nd.BM.ExportBlocks(2, 2, dbase, func(h int64) error {
+	err = nd.BM.ExportBlocks(2, 2, dbase, func(h int64, r, u int) error {
 		return nil
 	})
 	assert.NoError(err)
@@ -515,15 +515,21 @@ func TestManager_ExportBlocks(t *testing.T) {
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
 	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
 	dbase := db.NewMapDB()
-	ch := make(chan int64, 3)
-	err := nd.BM.ExportBlocks(0, 2, dbase, func(h int64) error {
-		ch <- h
+	var lastHeight int64
+	var lastResolved int
+	err := nd.BM.ExportBlocks(0, 2, dbase, func(h int64, r, u int) error {
+		if h == lastHeight {
+			assert.GreaterOrEqual(r, lastResolved)
+			lastResolved = r
+		} else {
+			assert.EqualValues(lastHeight+1, h)
+			lastResolved = 0
+		}
+		lastHeight = h
 		return nil
 	})
 	assert.NoError(err)
-	assert.EqualValues(0, <-ch)
-	assert.EqualValues(1, <-ch)
-	assert.EqualValues(2, <-ch)
+	assert.Equal(int64(2), lastHeight)
 	block.ResetDB(dbase, nil, 1)
 
 	nd2 := test.NewNode(t, test.UseDB(dbase))

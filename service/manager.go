@@ -808,7 +808,7 @@ func (m *manager) ExportResult(result []byte, vh []byte, d db.Database) error {
 	if err != nil {
 		return err
 	}
-	e := merkle.NewCopyContext(m.db, d)
+	e := merkle.PrepareCopyContext(m.db, d)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
 	ess := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)
