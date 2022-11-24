@@ -141,8 +141,8 @@ func (p *Peer) setID(id module.PeerID) {
 }
 
 func (p *Peer) ID() module.PeerID {
-	p.netAddressMtx.Lock()
-	defer p.netAddressMtx.Unlock()
+	p.idMtx.Lock()
+	defer p.idMtx.Unlock()
 	return p.id
 }
 
@@ -420,7 +420,6 @@ func (p *Peer) receiveRoutine() {
 		pkt.sender = p.ID()
 		p.pool.Put(pkt.hashOfPacket)
 		p.getMetric().OnRecv(pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
-		//TODO peer.packet_dump
 		if isLoggingPacket {
 			log.Println(p.ID(), "Peer", "receiveRoutine", p.ConnType(), p.ConnString(), pkt)
 		}
@@ -439,8 +438,6 @@ func (p *Peer) sendDirect(pkt *Packet) error {
 	if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTimeout)); err != nil {
 		return err
 	} else if err := p.writer.WritePacket(pkt); err != nil {
-		return err
-	} else if err := p.writer.Flush(); err != nil {
 		return err
 	}
 	return nil
@@ -470,7 +467,6 @@ Loop:
 					p.CloseByError(err)
 					return
 				}
-				//TODO peer.packet_dump
 				if isLoggingPacket {
 					log.Println(p.ID(), "Peer", "sendRoutine", p.ConnType(), p.ConnString(), pkt)
 				}
@@ -505,7 +501,6 @@ func (p *Peer) send(ctx context.Context) error {
 	c := ctx.Value(p2pContextKeyCounter).(*Counter)
 	c.peer++
 	pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-	//TODO dequeue 전에 peer.send가 호출되면 duplication check가 되지 않음.
 	if p.isDuplicatedToSend(pkt) {
 		c.duplicate++
 		return ErrDuplicatedPacket
@@ -621,7 +616,7 @@ func NewPeerRTT() *PeerRTT {
 	return &PeerRTT{}
 }
 
-func (r *PeerRTT) Start() time.Time {
+func (r *PeerRTT) Start() {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
@@ -631,10 +626,9 @@ func (r *PeerRTT) Start() time.Time {
 		r.t = nil
 	}
 	r.st = time.Now()
-	return r.st
 }
 
-func (r *PeerRTT) StartWithAfterFunc(to time.Duration, f func()) time.Time {
+func (r *PeerRTT) StartWithAfterFunc(to time.Duration, f func()) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
@@ -646,10 +640,9 @@ func (r *PeerRTT) StartWithAfterFunc(to time.Duration, f func()) time.Time {
 	r.t = time.AfterFunc(to, f)
 
 	r.st = time.Now()
-	return r.st
 }
 
-func (r *PeerRTT) Stop() time.Time {
+func (r *PeerRTT) Stop() time.Duration {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
@@ -669,7 +662,7 @@ func (r *PeerRTT) Stop() time.Time {
 	} else {
 		r.avg = r.last
 	}
-	return r.et
+	return r.last
 }
 
 func (r *PeerRTT) Last(d time.Duration) float64 {
@@ -686,6 +679,12 @@ func (r *PeerRTT) Avg(d time.Duration) float64 {
 
 	fv := float64(r.avg) / float64(d)
 	return fv
+}
+
+func (r *PeerRTT) Value() (time.Duration, time.Duration) {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+	return r.last, r.avg
 }
 
 func (r *PeerRTT) String() string {

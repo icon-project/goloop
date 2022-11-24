@@ -384,6 +384,9 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	if err != nil {
 		return err
 	}
+	if pw.Buffered() > 0 {
+		return pw.Flush()
+	}
 	return nil
 }
 
@@ -436,9 +439,6 @@ func (prw *PacketReadWriter) WritePacket(pkt *Packet) error {
 	defer prw.mtx.Unlock()
 	prw.mtx.Lock()
 	if err := prw.wr.WritePacket(pkt); err != nil {
-		return err
-	}
-	if err := prw.wr.Flush(); err != nil {
 		return err
 	}
 	prw.wpkt = pkt

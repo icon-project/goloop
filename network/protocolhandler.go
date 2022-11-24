@@ -174,8 +174,6 @@ func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
 	if !ph.IsRun() {
 		return
 	}
-	//TODO protocolHandler.message_dump
-	//ph.logger.Traceln("onPacket", pkt, p)
 
 	_, ok := ph.getSubProtocol(pkt.subProtocol)
 	if !ok {
@@ -235,7 +233,6 @@ Loop:
 						}
 						ph.getReactor().OnFailure(netErr, pi, pkt.payload)
 					} else {
-						//TODO retry relay
 						ph.logger.Infoln("receiveRoutine", "relay", err, c)
 						//netErr = newNetworkError(err, "relay", pkt)
 						//ph.reactor.OnFailure(netErr, pi, pkt.payload)

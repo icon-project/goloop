@@ -25,12 +25,16 @@ const (
 	testProtoPriority     = 1
 	testNumChild          = 4
 
-	//testLogLevel = log.TraceLevel
-	testLogLevel = log.DebugLevel
+	testValidator  = "TestValidator"
+	testSeed       = "TestSeed"
+	testCitizen    = "TestCitizen"
+	testAllowed    = "TestAllowed"
+	testNotAllowed = "TestNotAllowed"
+	testChild      = "TestChild"
 )
 
 var (
-	ProtoTestNetwork          = module.ProtocolInfo(0x0100)
+	ProtoTestNetwork          = module.ProtoReserved
 	ProtoTestNetworkBroadcast = module.ProtocolInfo(0x0100)
 	ProtoTestNetworkMulticast = module.ProtocolInfo(0x0200)
 	ProtoTestNetworkRequest   = module.ProtocolInfo(0x0300)
@@ -48,6 +52,16 @@ var (
 	}
 )
 
+var (
+	normalConnectionLimit    = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
+	validatorConnectionLimit = []int{0, 0, 0, 0, 0, testNumValidator - 1}
+	defaultConnectionLimit   = map[PeerRoleFlag][]int{
+		p2pRoleNone: normalConnectionLimit,
+		p2pRoleSeed: normalConnectionLimit,
+		p2pRoleRoot: validatorConnectionLimit,
+	}
+)
+
 type testReactor struct {
 	name         string
 	ph           module.ProtocolHandler
@@ -58,6 +72,7 @@ type testReactor struct {
 	p2p          *PeerToPeer
 	ch           chan<- context.Context
 	responseFunc func(r *testReactor, rm *testNetworkRequest, id module.PeerID) error
+	c            module.Chain
 }
 
 func newTestReactor(name string, nm module.NetworkManager, pi module.ProtocolInfo, t *testing.T) *testReactor {
@@ -68,7 +83,7 @@ func newTestReactor(name string, nm module.NetworkManager, pi module.ProtocolInf
 	r.ph = ph
 	r.p2p = nm.(*manager).p2p
 	r.p2p.setEventCbFunc(p2pEventNotAllowed, r.ph.(*protocolHandler).protocol.Uint16(), r.onEvent)
-	r.t.Log(time.Now(), r.name, "newTestReactor", r.p2p.ID())
+	r.t.Log(time.Now(), r.name, "newTestReactor", r.p2p.ID(), r.p2p.NetAddress())
 	return r
 }
 
@@ -279,38 +294,63 @@ type dummyChain struct {
 	nid       int
 	metricCtx context.Context
 	logger    log.Logger
+	nm        module.NetworkManager
 }
 
-func (c *dummyChain) NID() int                       { return c.nid }
-func (c *dummyChain) CID() int                       { return c.nid }
-func (c *dummyChain) NetID() int                     { return c.nid }
-func (c *dummyChain) Logger() log.Logger             { return c.logger }
-func (c *dummyChain) MetricContext() context.Context { return c.metricCtx }
-func (c *dummyChain) ChildrenLimit() int             { return -1 }
-func (c *dummyChain) NephewsLimit() int              { return -1 }
+func (c *dummyChain) NID() int                              { return c.nid }
+func (c *dummyChain) CID() int                              { return c.nid }
+func (c *dummyChain) NetID() int                            { return c.nid }
+func (c *dummyChain) Logger() log.Logger                    { return c.logger }
+func (c *dummyChain) MetricContext() context.Context        { return c.metricCtx }
+func (c *dummyChain) ChildrenLimit() int                    { return -1 }
+func (c *dummyChain) NephewsLimit() int                     { return -1 }
+func (c *dummyChain) NetworkManager() module.NetworkManager { return c.nm }
 
-func generateNetwork(name string, port int, n int, t *testing.T, roles ...module.Role) ([]*testReactor, int) {
+type dummyReactor struct{}
+
+func (d dummyReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
+	return false, nil
+}
+func (d dummyReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {}
+func (d dummyReactor) OnJoin(id module.PeerID)                               {}
+func (d dummyReactor) OnLeave(id module.PeerID)                              {}
+
+func failIfError(t *testing.T, err error, msgAndArgs ...interface{}) {
+	if err != nil {
+		assert.FailNow(t, err.Error(), msgAndArgs)
+	}
+}
+
+func generateNetwork(name string, n int, t *testing.T, roles ...module.Role) []*testReactor {
+	lv := log.GlobalLogger().GetLevel()
+	if testing.Verbose() {
+		lv = log.TraceLevel
+	}
 	arr := make([]*testReactor, n)
 	for i := 0; i < n; i++ {
 		w := walletFromGeneratedPrivateKey()
 		nodeLogger := log.New().WithFields(log.Fields{log.FieldKeyWallet: hex.EncodeToString(w.Address().ID())})
-		nodeLogger.SetLevel(testLogLevel)
-		nodeLogger.SetConsoleLevel(testLogLevel)
-		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), w, nodeLogger)
+		nodeLogger.SetLevel(lv)
+		nodeLogger.SetConsoleLevel(lv)
+		nt := NewTransport(getAvailableLocalhostAddress(t), w, nodeLogger)
 		chainLogger := nodeLogger.WithFields(log.Fields{log.FieldKeyCID: "1"})
 		c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
 		nm := NewManager(c, nt, "", roles...)
+		c.nm = nm
+		var emptyProtocols []module.ProtocolInfo
+		for j, p := range defaultProtocols {
+			_, err := nm.RegisterReactor(fmt.Sprintf("default_%d", j), p, dummyReactor{}, emptyProtocols, testProtoPriority, module.NotRegisteredProtocolPolicyClose)
+			assert.NoError(t, err)
+			failIfError(t, err, "fail to register defaultProtocols", p)
+		}
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, ProtoTestNetwork, t)
 		r.nt = nt
-		if err := r.nt.Listen(); err != nil {
-			t.Fatal(err)
-		}
-		if err := nm.Start(); err != nil {
-			t.Fatal(err)
-		}
+		r.c = c
+		failIfError(t, r.nt.Listen(), "fail to listen", r.name)
+		failIfError(t, nm.Start(), "fail to start", r.name)
 		arr[i] = r
 	}
-	return arr, port + n
+	return arr
 }
 
 func timeout(ch <-chan string, d time.Duration) (string, error) {
@@ -385,7 +425,7 @@ func wait(ch <-chan context.Context, pi module.ProtocolInfo, msg string, n int, 
 		}
 	}
 }
-func waitConnection(ch <-chan context.Context, limit [][]int, n int, d time.Duration) (map[string]time.Duration, time.Duration, error) {
+func waitConnection(ch <-chan context.Context, limit map[PeerRoleFlag][]int, n int, d time.Duration) (map[string]time.Duration, time.Duration, error) {
 	t := time.NewTimer(d)
 	m := make(map[string]time.Duration)
 	s := time.Now()
@@ -436,7 +476,7 @@ func waitConnection(ch <-chan context.Context, limit [][]int, n int, d time.Dura
 					maxD = md
 				}
 			}
-			return m, maxD, fmt.Errorf("timeout d:%v, limit:%v, n:%d, rn:%d", d, limit, n, len(m))
+			return m, maxD, fmt.Errorf("timeout d:%v, limit:%v, expect:%d, complete:%d", d, limit, n, len(m))
 		}
 	}
 }
@@ -490,8 +530,7 @@ func dailByMap(t *testing.T, m map[string][]*testReactor, na NetAddress, delay t
 func dailByList(t *testing.T, arr []*testReactor, na NetAddress, delay time.Duration) {
 	for _, r := range arr {
 		if r.p2p.NetAddress() != na {
-			err := r.p2p.dial(na)
-			assert.NoError(t, err, "dial", r.name, "->", na)
+			failIfError(t, r.p2p.dial(na), "dial", r.name, "->", na)
 			if delay > 0 {
 				time.Sleep(delay)
 			}
@@ -499,76 +538,96 @@ func dailByList(t *testing.T, arr []*testReactor, na NetAddress, delay time.Dura
 	}
 }
 
-func listenerClose(t *testing.T, m map[string][]*testReactor) {
+func setTrustSeed(m map[string][]*testReactor, na NetAddress) {
 	for _, arr := range m {
 		for _, r := range arr {
-			log.Println("Try stopping", r.name)
-			assert.NoError(t, r.nt.Close(), "Close", r.name)
-			r.nm.Term()
+			if r.p2p.NetAddress() != na {
+				r.nm.SetTrustSeeds(string(na))
+			}
 		}
 	}
 }
 
-func Test_network_basic(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
+func listenerClose(t *testing.T, m map[string][]*testReactor) {
+	var wg sync.WaitGroup
+	for _, arr := range m {
+		for _, r := range arr {
+			wg.Add(1)
+			go func(r *testReactor) {
+				log.Println("Try stopping", r.name)
+				failIfError(t, r.nt.Close(), "fail to close", r.name)
+				r.nm.Term()
+				wg.Done()
+			}(r)
+		}
 	}
-	m := make(map[string][]*testReactor)
-	p := 8080
-	m["TestValidator"], p = generateNetwork("TestValidator", p, testNumValidator, t, module.ROLE_VALIDATOR) //8080~8083
-	m["TestSeed"], p = generateNetwork("TestSeed", p, testNumSeed, t, module.ROLE_SEED)                     //8084~8087
-	m["TestCitizen"], p = generateNetwork("TestCitizen", p, testNumCitizen, t)                              //8088~8091
+	wg.Wait()
+}
 
-	ch := make(chan context.Context, 2*(testNumValidator+testNumSeed+testNumCitizen))
+func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Context) {
+	m = make(map[string][]*testReactor)
+	m[testValidator] = generateNetwork(testValidator, testNumValidator, t, module.ROLE_VALIDATOR)
+	m[testSeed] = generateNetwork(testSeed, testNumSeed, t, module.ROLE_SEED)
+	m[testCitizen] = generateNetwork(testCitizen, testNumCitizen, t)
+
+	n := testNumValidator + testNumSeed + testNumCitizen
+	na := m[testSeed][0].p2p.NetAddress()
+	ch = make(chan context.Context, 2*n)
 	for _, v := range m {
 		for _, r := range v {
 			r.ch = ch
+			if r.p2p.NetAddress() != na {
+				r.nm.SetTrustSeeds(string(na))
+			}
 		}
 	}
 
-	sr := m["TestSeed"][0]
-	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
-
-	limit := make([][]int, 3)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
-	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
-	n := testNumValidator + testNumSeed + testNumCitizen
-	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
+	connMap, maxD, err := waitConnection(ch, defaultConnectionLimit, n, 10*DefaultSeedPeriod)
 	t.Log(time.Now(), "max:", maxD, connMap)
-	assert.NoError(t, err, "waitConnection", connMap)
+	failIfError(t, err, "waitConnection", connMap)
+
+	for _, v := range m {
+		for _, r := range v {
+			t.Log("Inspect", r.name, Inspect(r.c, true))
+		}
+	}
+	return m, ch
+}
+
+func Test_network_basic(t *testing.T) {
+	m, ch := baseNetwork(t)
 
 	t.Log(time.Now(), "Messaging")
 
-	msg := m["TestValidator"][0].Broadcast("Test1")
-	n = testNumValidator - 1 + testNumSeed + testNumCitizen
-	err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
+	msg := m[testValidator][0].Broadcast("Test1")
+	n := testNumValidator - 1 + testNumSeed + testNumCitizen
+	err := wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1")
 
-	msg = m["TestValidator"][0].BroadcastNeighbor("Test2")
-	ci := m["TestValidator"][0].p2pConnInfo()
+	msg = m[testValidator][0].BroadcastNeighbor("Test2")
+	ci := m[testValidator][0].p2pConnInfo()
 	n = testNumValidator - 1 + ci.children + ci.nephews
 	err = wait(ch, ProtoTestNetworkNeighbor, msg, n, time.Second)
 	assert.NoError(t, err, "BroadcastNeighbor", "Test2")
 
-	msg = m["TestValidator"][0].Multicast("Test3")
+	msg = m[testValidator][0].Multicast("Test3")
 	n = testNumValidator - 1
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second)
 	assert.NoError(t, err, "Multicast", "Test3")
 
-	msg = m["TestSeed"][0].Multicast("Test4")
+	msg = m[testSeed][0].Multicast("Test4")
 	n = testNumValidator
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second)
 	assert.NoError(t, err, "Multicast", "Test4")
 
-	msg = m["TestCitizen"][0].Multicast("Test5")
+	msg = m[testCitizen][0].Multicast("Test5")
 	n = testNumValidator + 1 + DefaultUnclesLimit
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second+DefaultAlternateSendPeriod)
 	assert.NoError(t, err, "Multicast", "Test5")
 
-	tr := sr
-	for _, r := range m["TestSeed"] {
-		p := m["TestCitizen"][0].p2p.getPeer(r.nt.PeerID(), true)
+	tr := m[testSeed][0]
+	for _, r := range m[testSeed] {
+		p := m[testCitizen][0].p2p.getPeer(r.nt.PeerID(), true)
 		if p != nil {
 			tr = r
 			break
@@ -580,14 +639,14 @@ func Test_network_basic(t *testing.T) {
 		respCh <- m
 		return nil
 	}
-	msg = m["TestCitizen"][0].Request("Test6", tr.nt.PeerID())
+	msg = m[testCitizen][0].Request("Test6", tr.nt.PeerID())
 	err = wait(ch, ProtoTestNetworkRequest, msg, 1, time.Second, tr.name)
 	assert.NoError(t, err, "Request", "Test6")
 
 	msg, err = timeout(respCh, time.Second)
 	assert.NoError(t, err, "timeout", "responseFunc")
 
-	err = wait(ch, ProtoTestNetworkResponse, msg, 1, time.Second, m["TestCitizen"][0].name)
+	err = wait(ch, ProtoTestNetworkResponse, msg, 1, time.Second, m[testCitizen][0].name)
 	assert.NoError(t, err, "Response", "Test6")
 
 	time.Sleep(2 * DefaultAlternateSendPeriod)
@@ -601,19 +660,18 @@ func Test_network_allowedPeer(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 	m := make(map[string][]*testReactor)
-	p := 8080
-	m["TestAllowed"], p = generateNetwork("TestAllowed", p, testNumAllowedPeer, t, module.ROLE_VALIDATOR)
-	m["TestNotAllowed"], p = generateNetwork("TestNotAllowed", p, testNumNotAllowedPeer, t, module.ROLE_VALIDATOR)
+	m[testAllowed] = generateNetwork(testAllowed, testNumAllowedPeer, t, module.ROLE_VALIDATOR)
+	m[testNotAllowed] = generateNetwork(testNotAllowed, testNumNotAllowedPeer, t, module.ROLE_VALIDATOR)
 	allowed := make([]module.PeerID, 0)
 	notAllowed := make([]module.PeerID, 0)
 
-	for _, r := range m["TestAllowed"] {
+	for _, r := range m[testAllowed] {
 		allowed = append(allowed, r.nt.PeerID())
 	}
-	for _, r := range m["TestNotAllowed"] {
+	for _, r := range m[testNotAllowed] {
 		notAllowed = append(notAllowed, r.nt.PeerID())
 	}
-	for _, r := range m["TestAllowed"] {
+	for _, r := range m[testAllowed] {
 		r.nm.SetRole(1, module.ROLE_NORMAL, allowed...)
 	}
 
@@ -624,19 +682,19 @@ func Test_network_allowedPeer(t *testing.T) {
 		}
 	}
 
-	sr := m["TestAllowed"][0]
+	sr := m[testAllowed][0]
 	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
 
-	limit := make([][]int, 3)
-	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumAllowedPeer - 1}
 	n := testNumAllowedPeer
-	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
+	connMap, maxD, err := waitConnection(ch, map[PeerRoleFlag][]int{
+		p2pRoleRoot: []int{0, 0, 0, 0, 0, testNumAllowedPeer - 1},
+	}, n, 10*DefaultSeedPeriod)
 	t.Log(time.Now(), "max:", maxD, connMap)
-	assert.NoError(t, err, "waitConnection", connMap)
+	failIfError(t, err, "waitConnection", connMap)
 
 	go func() {
-		for _, r := range m["TestAllowed"] {
-			dailByList(t, m["TestNotAllowed"], r.p2p.NetAddress(), 0)
+		for _, r := range m[testAllowed] {
+			dailByList(t, m[testNotAllowed], r.p2p.NetAddress(), 0)
 		}
 	}()
 	evtMap, err := waitEvent(ch, n, 2*time.Second, p2pEventNotAllowed, notAllowed...)
@@ -644,14 +702,14 @@ func Test_network_allowedPeer(t *testing.T) {
 	assert.NoError(t, err, "waitEvent", evtMap)
 
 	t.Log(time.Now(), "Messaging")
-	msg := m["TestAllowed"][0].Broadcast("Test1")
+	msg := m[testAllowed][0].Broadcast("Test1")
 	n = testNumAllowedPeer - 1
 	err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1")
 
 	remove := allowed[testNumAllowedPeer-1]
 	go func() {
-		for _, r := range m["TestAllowed"] {
+		for _, r := range m[testAllowed] {
 			r.nm.RemoveRole(module.ROLE_NORMAL, remove)
 		}
 	}()
@@ -659,196 +717,10 @@ func Test_network_allowedPeer(t *testing.T) {
 	t.Log(time.Now(), "After", evtMap)
 	assert.NoError(t, err, "waitEvent2", evtMap)
 
-	msg = m["TestAllowed"][0].Broadcast("Test2")
+	msg = m[testAllowed][0].Broadcast("Test2")
 	n = testNumAllowedPeer - 2
 	err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test2")
-
-	listenerClose(t, m)
-	t.Log(time.Now(), "Finish")
-}
-
-var (
-	// TODO Need to update test code
-	// zeroQueue = &queue{
-	// 	buf:  make([]context.Context, 1),
-	// 	w:    0,
-	// 	r:    0,
-	// 	size: 0,
-	// 	len:  1,
-	// 	wait: make(map[chan bool]interface{}),
-	// }
-	zeroQueue = Queue(nil)
-)
-
-func replacePeerQueue(pq *PriorityQueue, priority int, q Queue) Queue {
-	// TODO Need to update test code
-	// pq.mtx.Lock()
-	// defer pq.mtx.Unlock()
-	// prev := pq.s[priority]
-	// pq.s[priority] = q
-	// return prev
-	panic("need to implement")
-}
-
-func getPeerQueue(pq *PriorityQueue, priority int) Queue {
-	// TODO Need to update test code
-	// pq.mtx.RLock()
-	// defer pq.mtx.RUnlock()
-	// return pq.s[priority]
-	panic("need to implement")
-	return nil
-}
-
-type testQueue struct {
-	Queue
-	ch  chan bool
-	mtx sync.RWMutex
-}
-
-func newTestQueue(size int) *testQueue {
-	// TODO Need to update test code
-	// q := &queue{
-	// 	buf:  make([]context.Context, size+1),
-	// 	w:    0,
-	// 	r:    0,
-	// 	size: size,
-	// 	len:  size + 1,
-	// 	wait: make(map[chan bool]interface{}),
-	// }
-	// return &testQueue{Queue: q}
-	panic("need to implement")
-	return nil
-}
-
-func (q *testQueue) _ch() <-chan bool {
-	defer q.mtx.RUnlock()
-	q.mtx.RLock()
-	return q.ch
-}
-
-func (q *testQueue) Pop() context.Context {
-	ch := q._ch()
-	if ch != nil {
-		<-ch
-	}
-	return q.Queue.Pop()
-}
-func (q *testQueue) pending() {
-	defer q.mtx.Unlock()
-	q.mtx.Lock()
-	if q.ch == nil {
-		q.ch = make(chan bool)
-	}
-}
-func (q *testQueue) resume() {
-	defer q.mtx.Unlock()
-	q.mtx.Lock()
-	if q.ch != nil {
-		close(q.ch)
-		q.ch = nil
-	}
-}
-
-func Test_network_failure(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-	m := make(map[string][]*testReactor)
-	p := 8080
-	m["TestValidator"], p = generateNetwork("TestValidator", p, testNumValidator, t, module.ROLE_VALIDATOR) //8080~8083
-	m["TestSeed"], p = generateNetwork("TestSeed", p, testNumSeed, t, module.ROLE_SEED)                     //8084~8087
-	m["TestCitizen"], p = generateNetwork("TestCitizen", p, testNumCitizen, t)                              //8088~8091
-
-	ch := make(chan context.Context, testNumValidator+testNumSeed+testNumCitizen)
-	for _, v := range m {
-		for _, r := range v {
-			r.ch = ch
-		}
-	}
-
-	sr := m["TestSeed"][0]
-	dailByMap(t, m, sr.p2p.NetAddress(), 100*time.Millisecond)
-
-	limit := make([][]int, 3)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
-	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
-	n := testNumValidator + testNumSeed + testNumCitizen
-	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
-	t.Log(time.Now(), "max:", maxD, connMap)
-	assert.NoError(t, err, "waitConnection", connMap)
-
-	t.Log(time.Now(), "Messaging")
-
-	msg := m["TestValidator"][0].Broadcast("Test1")
-	n = testNumValidator - 1 + testNumSeed + testNumCitizen
-	err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
-	assert.NoError(t, err, "Broadcast", "Test1")
-
-	qm := make(map[string]Queue)
-	pArr := make([]*Peer, 0)
-	pArr = append(pArr, m["TestValidator"][0].p2p.friends.Array()...)
-	pArr = append(pArr, m["TestValidator"][0].p2p.children.Array()...)
-	pArr = append(pArr, m["TestValidator"][0].p2p.nephews.Array()...)
-	//peer.send ErrQueueOverflow
-	for _, p := range pArr {
-		qm[p.ID().String()] = replacePeerQueue(p.q, testProtoPriority, zeroQueue)
-	}
-
-	msg = m["TestValidator"][0].Broadcast("Test2")
-	ctx, err := timeoutCtx(ch, 2*DefaultAlternateSendPeriod, "error")
-	assert.NoError(t, err, "Broadcast", "Test2")
-	if ctx != nil {
-		err = ctx.Value("error").(error)
-		rname := ctx.Value("name").(string)
-		assert.Equal(t, m["TestValidator"][0].name, rname, "")
-		assert.EqualError(t, ErrQueueOverflow, err.Error(), "")
-	}
-
-	//peer.send ErrNotAvailable
-	tqm := make(map[string]Queue)
-	for _, p := range pArr {
-		tq := newTestQueue(DefaultPeerSendQueueSize)
-		tqm[p.ID().String()] = tq
-		tq.pending()
-		replacePeerQueue(p.q, testProtoPriority, tq)
-	}
-
-	msg = m["TestValidator"][0].Broadcast("Test3")
-	go func() {
-		for i, p := range pArr {
-			log.Println("Close by testErrNotAvailable", i, len(pArr), p.ID())
-			tq := tqm[p.ID().String()].(*testQueue)
-			go func(tq *testQueue) {
-				tq.resume()
-			}(tq)
-			p.Close("testErrNotAvailable")
-		}
-	}()
-
-	ctx, err = timeoutCtx(ch, 5*DefaultAlternateSendPeriod, "error")
-	assert.NoError(t, err, "Broadcast", "Test3")
-	if ctx != nil {
-		errStr := ""
-		if terr, ok := ctx.Value("error").(error); ok {
-			errStr = terr.Error()
-		}
-		rname := ctx.Value("name").(string)
-		assert.Equal(t, m["TestValidator"][0].name, rname, "")
-		assert.EqualError(t, ErrNotAvailable, errStr, "")
-	}
-
-	for _, p := range pArr {
-		replacePeerQueue(p.q, testProtoPriority, qm[p.ID().String()])
-	}
-
-	//msg = m["TestValidator"][0].Broadcast("Test4")
-	//n = testNumValidator - 1 + testNumSeed + testNumCitizen
-	//err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
-	//assert.NoError(t, err, "Broadcast", "Test4")
-
-	time.Sleep(5 * time.Second)
 
 	listenerClose(t, m)
 	t.Log(time.Now(), "Finish")
@@ -858,70 +730,47 @@ func Test_network_trustSeeds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	m := make(map[string][]*testReactor)
-	p := 8080
-	m["TestValidator"], p = generateNetwork("TestValidator", p, testNumValidator, t, module.ROLE_VALIDATOR, module.ROLE_SEED) //8080~8083
-	m["TestCitizen"], p = generateNetwork("TestCitizen", p, testNumCitizen, t)                                                //8084~8087
-
-	ch := make(chan context.Context, testNumValidator+testNumCitizen)
-	for _, v := range m {
-		for _, r := range v {
-			r.ch = ch
-		}
-	}
-	sr := m["TestValidator"][0]
-	dailByList(t, m["TestValidator"], sr.p2p.NetAddress(), 100*time.Millisecond)
-	dailByList(t, m["TestCitizen"], sr.p2p.NetAddress(), 100*time.Millisecond)
-
-	limit := make([][]int, 4)
-	limit[p2pRoleNone] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
-	limit[p2pRoleSeed] = []int{0, 1, 0, DefaultUnclesLimit, 0, 0}
-	limit[p2pRoleRoot] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
-	limit[p2pRoleRootSeed] = []int{0, 0, 0, 0, 0, testNumValidator - 1}
-	n := testNumValidator + testNumCitizen
-	connMap, maxD, err := waitConnection(ch, limit, n, 10*DefaultSeedPeriod)
-	t.Log(time.Now(), "max:", maxD, connMap)
-	assert.NoError(t, err, "waitConnection", connMap)
+	m, ch := baseNetwork(t)
 
 	trustSeeds := make([]string, 0)
-	for _, r := range m["TestCitizen"] {
+	for _, r := range m[testCitizen] {
 		trustSeeds = append(trustSeeds, string(r.p2p.NetAddress()))
 	}
 	strTrustSeeds := strings.Join(trustSeeds, ",")
 	fmt.Println("strTrustSeeds: ", strTrustSeeds)
 
-	m["TestChild"], p = generateNetwork("TestChild", p, testNumChild, t) //8088~8091
+	m[testChild] = generateNetwork(testChild, testNumChild, t)
 	ch1 := make(chan context.Context, testNumChild)
-	for _, r := range m["TestChild"] {
+	for _, r := range m[testChild] {
 		r.ch = ch1
 		r.nm.SetTrustSeeds(strTrustSeeds)
 	}
 
-	connMap, maxD, err = waitConnection(ch1, limit, testNumChild, 10*DefaultSeedPeriod)
+	connMap, maxD, err := waitConnection(ch1, defaultConnectionLimit, testNumChild, 10*DefaultSeedPeriod)
 	t.Log(time.Now(), "max:", maxD, connMap)
-	assert.NoError(t, err, "waitConnection", connMap)
+	failIfError(t, err, "waitConnection", connMap)
 
 	t.Log(time.Now(), "Messaging")
 
-	msg := m["TestValidator"][0].Broadcast("Test1")
-	err = wait(ch, ProtoTestNetworkBroadcast, msg,
-		testNumValidator-1+testNumCitizen, time.Second)
+	msg := m[testValidator][0].Broadcast("Test1")
+	n := testNumValidator - 1 + testNumSeed + testNumCitizen
+	err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1")
 	err = wait(ch1, ProtoTestNetworkBroadcast, msg, testNumChild, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1 child")
 
-	msg = m["TestValidator"][0].Multicast("Test2")
+	msg = m[testValidator][0].Multicast("Test2")
 	err = wait(ch, ProtoTestNetworkMulticast, msg,
 		testNumValidator-1, time.Second)
 	assert.NoError(t, err, "Multicast", "Test2")
 
-	msg = m["TestCitizen"][0].Multicast("Test3")
-	n = testNumValidator
+	msg = m[testCitizen][0].Multicast("Test3")
+	n = testNumValidator + 1 + DefaultUnclesLimit
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second)
 	assert.NoError(t, err, "Multicast", "Test3")
 
-	msg = m["TestChild"][0].Multicast("Test4")
-	n = testNumValidator + 1 + DefaultUnclesLimit
+	msg = m[testChild][0].Multicast("Test4")
+	n = testNumValidator + 2 + DefaultUnclesLimit
 	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second+DefaultAlternateSendPeriod)
 	assert.NoError(t, err, "Multicast", "Test4")
 
@@ -929,4 +778,5 @@ func Test_network_trustSeeds(t *testing.T) {
 
 	listenerClose(t, m)
 	t.Log(time.Now(), "Finish")
+
 }

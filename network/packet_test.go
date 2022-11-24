@@ -17,21 +17,6 @@ const (
 	packetTestProtocolInfo = module.ProtocolInfo(0x0000)
 )
 
-func generatePacket(b []byte, len int) *Packet {
-	if b == nil {
-		if len < 0 {
-			b = make([]byte, 1)
-		} else {
-			b = make([]byte, len)
-		}
-	} else {
-		if len > 0 {
-			b = b[:len]
-		}
-	}
-	return newPacket(packetTestProtocolInfo, packetTestProtocolInfo, b, nil)
-}
-
 func Test_packet_PacketReader(t *testing.T) {
 	b := bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
 	b.Reset()
@@ -74,8 +59,6 @@ func Test_packet_PacketReadWriter(t *testing.T) {
 	prw.Reset(prw.b, prw.b)
 	rpkt, err = prw.ReadPacket()
 	assert.Error(t, err, "ReadPacket must fail(io.EOF) after Reset")
-
-	//prw.rd.WriteTo()
 }
 
 func FuzzPacketReadFrom(f *testing.F) {
