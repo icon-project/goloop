@@ -1530,18 +1530,11 @@ func (m *manager) ExportBlocks(from, to int64, dst db.Database, cb module.Progre
 }
 
 func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int, cb module.ProgressCallback) error {
-	al := common.Lock(&m.syncer)
-	defer al.Unlock()
-
-	if !m.running {
-		return errors.New("not running")
-	}
-
 	ctx := merkle.NewCopyContext(m.db(), dst)
 	ctx.SetProgressCallback(cb)
 	if hasBits(flag, exportValidator) && from > 0 {
 		// export the block for validators
-		blk, err := m.getBlockByHeight(from - 1)
+		blk, err := m.GetBlockByHeight(from - 1)
 		if err != nil {
 			return errors.Wrapf(err, "fail to get previous block height=%d", from-1)
 		}
@@ -1550,7 +1543,7 @@ func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int
 		}
 		// export the block for voters
 		if pid := blk.PrevID(); len(pid) > 0 {
-			pblk, err := m.getBlockByHeight(from - 2)
+			pblk, err := m.GetBlockByHeight(from - 2)
 			if err != nil {
 				return errors.Wrapf(err, "fail to get p-previous block height=%d", from-2)
 			}
@@ -1559,24 +1552,15 @@ func (m *manager) ExportBlocksWithFlag(from, to int64, dst db.Database, flag int
 			}
 		}
 	}
-	al.Unlock()
 
 	for h := from; h <= to; h++ {
-		m.syncer.begin()
-		if !m.running {
-			return errors.New("not running")
-		}
-
-		blk, err := m.getBlockByHeight(h)
+		blk, err := m.GetBlockByHeight(h)
 		if err != nil {
-			m.syncer.end()
 			return errors.Wrapf(err, "fail to get a block height=%d", h)
 		}
 		if err := m._export(blk, ctx, flag); err != nil {
-			m.syncer.end()
 			return errors.Wrapf(err, "fail to export block height=%d", blk.Height())
 		}
-		m.syncer.end()
 	}
 	return nil
 }
