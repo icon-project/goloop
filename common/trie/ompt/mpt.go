@@ -572,10 +572,7 @@ func newMPTStatics(s *mptStatics) *mptStatics {
 }
 
 func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
-	bk, err := d.GetBucket(db.MerkleTrie)
-	if err != nil {
-		log.Panicln("NewImmutable fail to get bucket")
-	}
+	bk := db.BucketOf(d, db.MerkleTrie)
 	return &mpt{
 		mptBase: mptBase{
 			db:         d,

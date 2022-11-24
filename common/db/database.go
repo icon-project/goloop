@@ -66,3 +66,21 @@ func GetSupportedTypes() []string {
 	}
 	return types
 }
+
+type errorBucket struct {
+	error
+}
+
+func (e *errorBucket) Get(key []byte) ([]byte, error)     { return nil, e.error }
+func (e *errorBucket) Has(key []byte) (bool, error)       { return false, e.error }
+func (e *errorBucket) Set(key []byte, value []byte) error { return e.error }
+func (e *errorBucket) Delete(key []byte) error            { return e.error }
+
+// BucketOf returns valid bucket always, but it
+func BucketOf(database Database, id BucketID) Bucket {
+	if bk, err := database.GetBucket(id); err != nil {
+		return &errorBucket{err}
+	} else {
+		return bk
+	}
+}
