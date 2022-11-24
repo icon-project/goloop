@@ -367,7 +367,8 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, e error) {
 
 type PacketWriter struct {
 	*bufio.Writer
-	wr io.Writer
+	wr  io.Writer
+	mtx sync.Mutex
 }
 
 func NewPacketWriter(w io.Writer) *PacketWriter {
@@ -375,6 +376,9 @@ func NewPacketWriter(w io.Writer) *PacketWriter {
 }
 
 func (pw *PacketWriter) Reset(wr io.Writer) {
+	pw.mtx.Lock()
+	defer pw.mtx.Unlock()
+
 	pw.wr = wr
 	pw.Writer.Reset(pw.wr)
 }
@@ -407,6 +411,9 @@ func (pw *PacketWriter) Write(b []byte) (int, error) {
 }
 
 func (pw *PacketWriter) Flush() error {
+	pw.mtx.Lock()
+	defer pw.mtx.Unlock()
+
 	re := 0
 	for {
 		err := pw.Writer.Flush()
