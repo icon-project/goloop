@@ -1,6 +1,14 @@
-<h1 id="icon-chainscore-api">ICON Chain SCORE API</h1>
+# ICON Chain SCORE API
 
-[TOC]
+* [IISS](#iiss)
+* [BTP 2.0](#btp-20)
+  * [getBTPNetworkTypeID](#getbtpnetworktypeid)
+  * [openBTPNetwork](#openbtpnetwork)
+  * [closeBTPNetwork](#closebtpnetwork)
+  * [sendBTPMessage](#sendbtpmessage)
+  * [registerPRepNodePublicKey](#registerprepnodepublickey)
+  * [setPRepNodePublicKey](#setprepnodepublickey)
+  * [getPRepNodePublicKey](#getprepnodepublickey)
 
 # IISS
 
