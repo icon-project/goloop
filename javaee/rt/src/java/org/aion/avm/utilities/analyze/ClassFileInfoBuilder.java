@@ -1,5 +1,7 @@
 package org.aion.avm.utilities.analyze;
 
+import org.aion.avm.core.rejection.RejectedClassException;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -81,7 +83,7 @@ public class ClassFileInfoBuilder {
                         break;
                 }
             } catch (Exception e) {
-                throw new AssertionError("Could not find constant pool tag " + tag);
+                throw new RejectedClassException("Could not find constant pool tag " + tag, e);
             }
             constantTypeCount.put(constantType.name, constantTypeCount.getOrDefault(constantType.name, 0) + 1);
         }
