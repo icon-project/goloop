@@ -54,7 +54,7 @@ def getStake(address: Address) -> dict:
 
 *Returns:*
 
-| Name     | Type                        | Description                 |
+| Key      | Value Type                  | Description                 |
 |:---------|:----------------------------|:----------------------------|
 | stake    | int                         | ICX amount of stake in loop |
 | unstakes | \[\][T_UNSTAKE](#t_unstake) | List of Unstake information |
@@ -97,7 +97,7 @@ def getBond(address: Address) -> dict:
 
 *Returns:*
 
-| Name        | Type                      | Description                                                                  |
+| Key         | Value Type                | Description                                                                  |
 |:------------|:--------------------------|:-----------------------------------------------------------------------------|
 | totalBonded | int                       | The sum of bond amount                                                       |
 | votingPower | int                       | Remaining amount of stake that ICONist can delegate and bond to other P-Reps |
@@ -120,11 +120,11 @@ def queryIScore(address: Address) -> dict:
 
 *Returns:*
 
-| Name         | Type | Description                                      |
-|:-------------|:-----|:-------------------------------------------------|
-| blockHeight  | int  | Block height when I-Score is estimated           |
-| iscore       | int  | Amount of I-Score                                |
-| estimatedICX | int  | Estimated amount in loop. 1000 I-Score == 1 loop |
+| Key          | Value Type | Description                                      |
+|:-------------|:-----------|:-------------------------------------------------|
+| blockHeight  | int        | Block height when I-Score is estimated           |
+| iscore       | int        | Amount of I-Score                                |
+| estimatedICX | int        | Estimated amount in loop. 1000 I-Score == 1 loop |
 
 ### getPRep
 
@@ -161,7 +161,7 @@ def getPReps(address: Address) -> dict:
 
 *Returns:*
 
-| Name           | Type                  | Description                                             |
+| Key            | Value Type            | Description                                             |
 |:---------------|:----------------------|:--------------------------------------------------------|
 | blockHeight    | int                   | The latest block height when this request was processed |
 | preps          | \[\][T_PREP](#t_prep) | P-Rep list                                              |
@@ -185,7 +185,7 @@ def getBonderList(address: Address) -> dict:
 
 *Returns:*
 
-| Name       | Type        | Description      |
+| Key        | Value Type  | Description      |
 |:-----------|:------------|:-----------------|
 | bonderList | \[\]Address | List of address  |
 
@@ -504,49 +504,49 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## T_UNSTAKE
 
-| Name               | Type | Description                              |
-|:-------------------|:-----|:-----------------------------------------|
-| unstake            | int  | ICX amount of unstake in loop            |
-| unstakeBlockHeight | int  | BlockHeight when unstake will be done    |
-| remainingBlocks    | int  | Remaining blocks to `unstakeBlockHeight` |
+| Key                | Value Type | Description                              |
+|:-------------------|:-----------|:-----------------------------------------|
+| unstake            | int        | ICX amount of unstake in loop            |
+| unstakeBlockHeight | int        | BlockHeight when unstake will be done    |
+| remainingBlocks    | int        | Remaining blocks to `unstakeBlockHeight` |
 
 ## T_VOTE
 
-| Name    | Type    | Description              |
-|:--------|:--------|:-------------------------|
-| address | Address | Address of P-Rep to vote |
-| value   | int     | Vote amount in loop      |
+| Key     | Value Type | Description              |
+|:--------|:-----------|:-------------------------|
+| address | Address    | Address of P-Rep to vote |
+| value   | int        | Vote amount in loop      |
 
 ## T_UNBOND
 
-| Name               | Type    | Description                          |
-|:-------------------|:--------|:-------------------------------------|
-| address            | Address | Address of P-Rep to bond             |
-| value              | int     | Bond amount in loop                  |
-| expireBlockHeight  | int     | BlockHeight when unbond will be done |
+| Key               | Value Type | Description                          |
+|:------------------|:-----------|:-------------------------------------|
+| address           | Address    | Address of P-Rep to bond             |
+| value             | int        | Bond amount in loop                  |
+| expireBlockHeight | int        | BlockHeight when unbond will be done |
 
 ## T_PREP
 
-| Name                   | Type    | Description                                                                                 |
-|:-----------------------|:--------|:--------------------------------------------------------------------------------------------|
-| address                | Address | P-Rep address                                                                               |
-| bonded                 | int     | Bond amount that a P-Rep receives from ICONist                                              |
-| city                   | str     | "Seoul", "New York", "Paris"                                                                |
-| country                | str     | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                      |
-| delegated              | int     | Delegation amount that a P-Rep receives from ICONist                                        |
-| details                | str     | Url including P-Rep detail informatio                                                       |
-| email                  | str     | P-Rep email                                                                                 |
-| grade                  | int     | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                             |
-| hasPubKey              | bool    | (Optional) P-Rep has valid public keys for all active BTP Network type                      |
-| irep                   | int     | Incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value |
-| irepUpdatedBlockHeight | int     | Block height when a P-Rep changed I-Rep value                                               |
-| lastHeight             | int     | The latest block height at which the P-Rep's voting status changed                          |
-| name                   | str     | P-Rep name                                                                                  |
-| nodeAddress            | str     | Node Key for only consensus                                                                 |
-| p2pEndpoint            | str     | Network info used for connecting among P-Rep nodes                                          |
-| penalty                | int     | 0: None, 1: Disqualification, 2: Low Productivity, 3: Block Validation, 4: NonVote          |
-| power                  | int     | Amount power that a P-Rep receives from ICONist. (= max(`bonded`+`delegated`, bonded * 20)  |
-| status                 | int     | 0: active, 1: unregistered                                                                  |
-| totalBlocks            | int     | The number of blocks that a P-Rep received when running as a Main P-Rep                     |
-| validatedBlocks        | int     | The number of blocks that a P-Rep validated when running as a Main P-Rep                    |
-| website                | str     | P-Rep homepage url                                                                          |
+| Key                    | Value Type | Description                                                                                 |
+|:-----------------------|:-----------|:--------------------------------------------------------------------------------------------|
+| address                | Address    | P-Rep address                                                                               |
+| bonded                 | int        | Bond amount that a P-Rep receives from ICONist                                              |
+| city                   | str        | "Seoul", "New York", "Paris"                                                                |
+| country                | str        | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                      |
+| delegated              | int        | Delegation amount that a P-Rep receives from ICONist                                        |
+| details                | str        | Url including P-Rep detail informatio                                                       |
+| email                  | str        | P-Rep email                                                                                 |
+| grade                  | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                             |
+| hasPubKey              | bool       | (Optional) P-Rep has valid public keys for all active BTP Network type                      |
+| irep                   | int        | Incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value |
+| irepUpdatedBlockHeight | int        | Block height when a P-Rep changed I-Rep value                                               |
+| lastHeight             | int        | The latest block height at which the P-Rep's voting status changed                          |
+| name                   | str        | P-Rep name                                                                                  |
+| nodeAddress            | str        | Node Key for only consensus                                                                 |
+| p2pEndpoint            | str        | Network info used for connecting among P-Rep nodes                                          |
+| penalty                | int        | 0: None, 1: Disqualification, 2: Low Productivity, 3: Block Validation, 4: NonVote          |
+| power                  | int        | Amount power that a P-Rep receives from ICONist. (= max(`bonded`+`delegated`, bonded * 20)  |
+| status                 | int        | 0: active, 1: unregistered                                                                  |
+| totalBlocks            | int        | The number of blocks that a P-Rep received when running as a Main P-Rep                     |
+| validatedBlocks        | int        | The number of blocks that a P-Rep validated when running as a Main P-Rep                    |
+| website                | str        | P-Rep homepage url                                                                          |
