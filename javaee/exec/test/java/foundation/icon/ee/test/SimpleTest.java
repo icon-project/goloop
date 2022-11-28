@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class SimpleTest {
     protected ServiceManager sm;
@@ -81,5 +83,11 @@ public class SimpleTest {
                 preopt, true)
                 .withUnreachableMethodRemover()
                 .withRenamer().withLog(System.out).getOptimizedBytes();
+    }
+
+    public Path getResourcePath(String name) {
+        String cls = this.getClass().getName().replace('.', '/');
+        String pkg = cls.substring(0, cls.lastIndexOf('/')+1);
+        return Paths.get("test", "resources", pkg, name);
     }
 }

@@ -19,12 +19,16 @@ package foundation.icon.ee;
 import foundation.icon.ee.test.ServiceManager;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.test.TransactionException;
+import foundation.icon.ee.types.Status;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import score.Address;
 import score.Context;
 import score.RevertedException;
 import score.annotation.External;
+
+import java.io.IOException;
+import java.nio.file.Files;
 
 public class DeployTest2 extends SimpleTest {
     public static class ValueHolder {
@@ -214,5 +218,13 @@ public class DeployTest2 extends SimpleTest {
         var res = deployer.invoke("updateAndCall",
                 dapp1.getAddress(), valueHolderCode, "value", "getValue");
         Assertions.assertEquals("value", res.getRet());
+    }
+
+    @Test
+    void constantDynamic() throws IOException {
+        var p = getResourcePath("constant-dynamic.jar");
+        var jar = Files.readAllBytes(p);
+        var res = sm.tryDeploy(jar);
+        Assertions.assertEquals(Status.IllegalFormat, res.getStatus());
     }
 }
