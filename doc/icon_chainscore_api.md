@@ -159,14 +159,13 @@ def getPRep(address: Address) -> dict:
 Returns the status of all registered P-Rep candidates in descending order by power amount.
 
 ```python
-def getPReps(address: Address, startRanking: int, endRanking: int) -> dict:
+def getPReps(startRanking: int, endRanking: int) -> dict:
 ```
 
 *Parameters:*
 
 | Name         | Type    | Description                                                          |
 |:-------------|:--------|:---------------------------------------------------------------------|
-| address      | Address | (Optional) address to query                                          |
 | startRanking | int     | (Optional) default: 1<br/>P-Rep list which starts from start ranking |
 | endRanking   | int     | (Optional) default: the last ranking                                 |
 
