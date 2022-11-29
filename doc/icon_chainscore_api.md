@@ -230,7 +230,7 @@ Delegate some amount of stake to P-Reps.
 - This transaction overwrites the previous delegate information
 
 ```python
-def setDelegation(delegations: list) -> None:
+def setDelegation(delegations: List[Vote]) -> None:
 ```
 
 *Parameters:*
@@ -250,7 +250,7 @@ Bond some amount of stake to P-Reps.
 - This transaction overwrites the previous bond information
 
 ```python
-def setBond(bonds: list) -> None:
+def setBond(bonds: List[Vote]) -> None:
 ```
 
 *Parameters:*
@@ -379,13 +379,13 @@ Set allowed bonder list of P-Rep.
 - This transaction overwrites the previous bonder list information
 
 ```python
-def setBonderList(bonderList: list) -> None:
+def setBonderList(bonderList: List[Address]) -> None:
 ```
 *Parameters:*
 
-| Name       | Type        | Description                                    |
-|:-----------|:------------|:-----------------------------------------------|
-| bonderList | \[\]Address | addresses of ICONist who can bond to the P-Rep |
+| Name       | Type            | Description                                    |
+|:-----------|:----------------|:-----------------------------------------------|
+| bonderList | List\[Address\] | addresses of ICONist who can bond to the P-Rep |
 
 *Revision:* 13 ~
 
