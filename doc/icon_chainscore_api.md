@@ -29,10 +29,10 @@
     + [registerPRepNodePublicKey](#registerprepnodepublickey)
     + [setPRepNodePublicKey](#setprepnodepublickey)
 - [Types](#types)
-  * [T_UNSTAKE](#t-unstake)
-  * [T_VOTE](#t-vote)
-  * [T_UNBOND](#t-unbond)
-  * [T_PREP](#t-prep)
+  * [Unstake](#unstake)
+  * [Vote](#vote)
+  * [Unbond](#unbond)
+  * [PRep](#prep)
 
 # IISS
 
@@ -48,16 +48,18 @@ def getStake(address: Address) -> dict:
 
 *Parameters:*
 
-| Name    | Type      | Description           |
-|:--------|:----------|:----------------------|
-| address | Address   | the address to query  |
+| Name    | Type    | Description      |
+|:--------|:--------|:-----------------|
+| address | Address | address to query |
 
 *Returns:*
 
 | Key      | Value Type                  | Description                 |
 |:---------|:----------------------------|:----------------------------|
 | stake    | int                         | ICX amount of stake in loop |
-| unstakes | \[\][T_UNSTAKE](#t_unstake) | List of Unstake information |
+| unstakes | List\[[Unstake](#unstake)\] | List of Unstake information |
+
+*Revision:* 5 ~ 
 
 ### getDelegation
 
@@ -69,9 +71,9 @@ def getDelegation(address: Address) -> dict:
 
 *Parameters:*
 
-| Name    | Type      | Description           |
-|:--------|:----------|:----------------------|
-| address | Address   | the address to query  |
+| Name    | Type    | Description      |
+|:--------|:--------|:-----------------|
+| address | Address | address to query |
 
 *Returns:*
 
@@ -79,7 +81,9 @@ def getDelegation(address: Address) -> dict:
 |:---------------|:----------------------|:-----------------------------------------------------------------------------|
 | totalDelegated | int                   | The sum of delegation amount                                                 |
 | votingPower    | int                   | Remaining amount of stake that ICONist can delegate and bond to other P-Reps |
-| delegations    | \[\][T_VOTE](#t_vote) | List of delegation information (MAX: 100 entries)                            |
+| delegations    | List\[[Vote](#vote)\] | List of delegation information (MAX: 100 entries)                            |
+
+*Revision:* 5 ~ 
 
 ### getBond
 
@@ -91,9 +95,9 @@ def getBond(address: Address) -> dict:
 
 *Parameters:*
 
-| Name    | Type      | Description           |
-|:--------|:----------|:----------------------|
-| address | Address   | the address to query  |
+| Name    | Type    | Description      |
+|:--------|:--------|:-----------------|
+| address | Address | address to query |
 
 *Returns:*
 
@@ -101,8 +105,10 @@ def getBond(address: Address) -> dict:
 |:------------|:--------------------------|:-----------------------------------------------------------------------------|
 | totalBonded | int                       | The sum of bond amount                                                       |
 | votingPower | int                       | Remaining amount of stake that ICONist can delegate and bond to other P-Reps |
-| bonds       | \[\][T_VOTE](#t_vote)     | List of bond information (MAX: 100 entries)                                  |
-| unbonds     | \[\][T_UNBOND](#t_unbond) | List of unbond information (MAX: 100 entries)                                |
+| bonds       | List\[[Vote](#vote)\]     | List of bond information (MAX: 100 entries)                                  |
+| unbonds     | List\[[Unbond](#unbond)\] | List of unbond information (MAX: 100 entries)                                |
+
+*Revision:* 13 ~ 
 
 ### queryIScore
 
@@ -114,17 +120,19 @@ def queryIScore(address: Address) -> dict:
 
 *Parameters:*
 
-| Name    | Type      | Description           |
-|:--------|:----------|:----------------------|
-| address | Address   | the address to query  |
+| Name    | Type    | Description      |
+|:--------|:--------|:-----------------|
+| address | Address | address to query |
 
 *Returns:*
 
 | Key          | Value Type | Description                                      |
 |:-------------|:-----------|:-------------------------------------------------|
-| blockHeight  | int        | Block height when I-Score is estimated           |
-| iscore       | int        | Amount of I-Score                                |
-| estimatedICX | int        | Estimated amount in loop. 1000 I-Score == 1 loop |
+| blockHeight  | int        | block height when I-Score is estimated           |
+| iscore       | int        | amount of I-Score                                |
+| estimatedICX | int        | estimated amount in loop. 1000 I-Score == 1 loop |
+
+*Revision:* 5 ~
 
 ### getPRep
 
@@ -136,38 +144,43 @@ def getPRep(address: Address) -> dict:
 
 *Parameters:*
 
-| Name    | Type      | Description           |
-|:--------|:----------|:----------------------|
-| address | Address   | the address to query  |
+| Name    | Type    | Description      |
+|:--------|:--------|:-----------------|
+| address | Address | address to query |
 
 *Returns:*
 
-* [T_PREP](#t_prep)
+* [PRep](#prep)
+
+*Revision:* 5 ~
 
 ### getPReps
 
 Returns the status of all registered P-Rep candidates in descending order by power amount.
 
 ```python
-def getPReps(address: Address) -> dict:
+def getPReps(address: Address, startRanking: int, endRanking: int) -> dict:
 ```
 
 *Parameters:*
 
-| Name         | Type | Description                                               |
-|:-------------|:-----|:----------------------------------------------------------|
-| startRanking | int  | Default: 1<br/>P-Rep list which starts from start ranking |
-| endRanking   | int  | Default: the last ranking                                 |
+| Name         | Type    | Description                                                          |
+|:-------------|:--------|:---------------------------------------------------------------------|
+| address      | Address | (Optional) address to query                                          |
+| startRanking | int     | (Optional) default: 1<br/>P-Rep list which starts from start ranking |
+| endRanking   | int     | (Optional) default: the last ranking                                 |
 
 *Returns:*
 
-| Key            | Value Type            | Description                                             |
-|:---------------|:----------------------|:--------------------------------------------------------|
-| blockHeight    | int                   | The latest block height when this request was processed |
-| preps          | \[\][T_PREP](#t_prep) | P-Rep list                                              |
-| startRanking   | int                   | Start ranking of P-Rep list                             |
-| totalDelegated | int                   | Total delegation amount that all P-Reps receive         |
-| totalStake     | int                   | The sum of ICX that all ICONist stake                   |
+| Key            | Value Type            | Description                                         |
+|:---------------|:----------------------|:----------------------------------------------------|
+| blockHeight    | int                   | latest block height when this request was processed |
+| preps          | List\[[PRep](#prep)\] | P-Rep list                                          |
+| startRanking   | int                   | start ranking of P-Rep list                         |
+| totalDelegated | int                   | total delegation amount that all P-Reps receive     |
+| totalStake     | int                   | sum of ICX that all ICONist stake                   |
+
+*Revision:* 5 ~
 
 ### getBonderList
 
@@ -179,15 +192,17 @@ def getBonderList(address: Address) -> dict:
 
 *Parameters:*
 
-| Name    | Type      | Description           |
-|:--------|:----------|:----------------------|
-| address | Address   | the address to query  |
+| Name    | Type    | Description      |
+|:--------|:--------|:-----------------|
+| address | Address | address to query |
 
 *Returns:*
 
-| Key        | Value Type  | Description      |
-|:-----------|:------------|:-----------------|
-| bonderList | \[\]Address | List of address  |
+| Key        | Value Type  | Description                                        |
+|:-----------|:------------|:---------------------------------------------------|
+| bonderList | \[\]Address | addresses of ICONist who can bond to the `address` |
+
+*Revision:* 13 ~
 
 ## Writable APIs
 
@@ -201,9 +216,11 @@ def setStake(value: int) -> None:
 
 *Parameters:*
 
-| Name  | Type  | Description                     |
-|:------|:------|:--------------------------------|
-| value | int   | the ICX amount of stake in loop |
+| Name  | Type | Description             |
+|:------|:-----|:------------------------|
+| value | int  | amount of stake in loop |
+
+*Revision:* 5 ~
 
 ### setDelegation
 
@@ -221,7 +238,9 @@ def setDelegation(delegations: list) -> None:
 
 | Name        | Type                  | Description                    |
 |:------------|:----------------------|:-------------------------------|
-| delegations | \[\][T_VOTE](#t_vote) | List of delegation information |
+| delegations | List\[[Vote](#vote)\] | list of delegation information |
+
+*Revision:* 5 ~
 
 ### setBond
 
@@ -239,7 +258,9 @@ def setBond(bonds: list) -> None:
 
 | Name  | Type                  | Description              |
 |:------|:----------------------|:-------------------------|
-| bonds | \[\][T_VOTE](#t_vote) | List of bond information |
+| bonds | List\[[Vote](#vote)\] | list of bond information |
+
+*Revision:* 5 ~
 
 ### claimIScore
 
@@ -252,9 +273,16 @@ def claimIScore() -> None:
 *Event Log:*
 
 ```python
-@EventLog(indexed=1)
+@eventlog(indexed=1)
 def IScoreClaimedV2(address: Address, iscore: int, icx: int) -> None: pass
 ```
+| Name    | Type    | Description                                |
+|:--------|:--------|:-------------------------------------------|
+| address | Address | address of the ICONist who claimed I-Score |
+| iscore  | int     | amount of claimed I-Score                  |
+| icx     | int     | amount of claimed I-Score in loop          |
+
+*Revision:* 5 ~
 
 ### registerPRep
 
@@ -263,64 +291,66 @@ Register an ICONist as a P-Rep.
 - 2000 ICX are required as a registration fee
 
 ```python
-def registerPRep(name: string, email: string, website: string, country: string, city: string, details: string,
-                 p2pEndpoint: string, nodeAddress: Address) -> None:
+def registerPRep(name: str, email: str, website: str, country: str, city: str, details: str, p2pEndpoint: str, nodeAddress: Address) -> None:
 ```
 
 *Parameters:*
 
-| Name        | Type    | Description                                                                                         |
-|:------------|:--------|:----------------------------------------------------------------------------------------------------|
-| name        | str     | P-Rep name                                                                                          |
-| email       | str     | P-Rep email                                                                                         | 
-| website     | str     | P-Rep homepage url                                                                                  |
-| country     | str     | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                              |
-| city        | str     | "Seoul", "New York", "Paris"                                                                        |
-| details     | str     | Url including P-Rep detail information                                                              |
-| p2pEndpoint | str     | Network info used for connecting among P-Rep nodes<br/>"123.45.67.89:7100", "node.example.com:7100" |
-| nodeAddress | str     | (Optional) Node Key for only consensus                                                              |
-
-*details :
-See [JSON Standard for P-Rep Detailed Information](https://www.icondev.io/docs/json-standard-for-p-rep-detailed-information)
+| Name        | Type | Description                                                                                                                                                                                               |
+|:------------|:-----|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name        | str  | P-Rep name                                                                                                                                                                                                |
+| email       | str  | P-Rep email                                                                                                                                                                                               | 
+| website     | str  | P-Rep homepage url                                                                                                                                                                                        |
+| country     | str  | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                                                                                                                                    |
+| city        | str  | "Seoul", "New York", "Paris"                                                                                                                                                                              |
+| details     | str  | url including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
+| p2pEndpoint | str  | network info used for connecting among P-Rep nodes<br/>"123.45.67.89:7100", "node.example.com:7100"                                                                                                       |
+| nodeAddress | str  | (Optional) node Key for only consensus                                                                                                                                                                    |
 
 *Event Log:*
 
 ```python
-@EventLog(indexed=0)
+@eventlog(indexed=0)
 def PRepRegistered(address: Address) -> None: pass
 ```
+| Name    | Type    | Description                 |
+|:--------|:--------|:----------------------------|
+| address | Address | address of registered P-Rep |
+
+*Revision:* 5 ~
 
 ### setPRep
 
 Update P-Rep register information.
 
 ```python
-def setPRep(name: string, email: string, website: string, country: string, city: string, details: string,
-            p2pEndpoint: string, nodeAddress: Address) -> None:
+def setPRep(name: str, email: str, website: str, country: str, city: str, details: str, p2pEndpoint: str, nodeAddress: Address) -> None:
 ```
 
 *Parameters:*
 
-| Name        | Type  | Description                                                                                                    |
-|:------------|:------|:---------------------------------------------------------------------------------------------------------------|
-| name        | str   | (Optional) P-Rep name                                                                                          |
-| email       | str   | (Optional) P-Rep email                                                                                         | 
-| website     | str   | (Optional) P-Rep homepage url                                                                                  |
-| country     | str   | (Optional) [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                              |
-| city        | str   | (Optional) "Seoul", "New York", "Paris"                                                                        |
-| details     | str   | (Optional) Url including P-Rep detail information                                                              |
-| p2pEndpoint | str   | (Optional) Network info used for connecting among P-Rep nodes<br/>"123.45.67.89:7100", "node.example.com:7100" |
-| nodeAddress | str   | (Optional) Node Key for only consensus                                                                         |
-
-*details :
-See [JSON Standard for P-Rep Detailed Information](https://www.icondev.io/docs/json-standard-for-p-rep-detailed-information)
+| Name        | Type | Description                                                                                                                                                                                                          |
+|:------------|:-----|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name        | str  | (Optional) P-Rep name                                                                                                                                                                                                |
+| email       | str  | (Optional) P-Rep email                                                                                                                                                                                               | 
+| website     | str  | (Optional) P-Rep homepage url                                                                                                                                                                                        |
+| country     | str  | (Optional) [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                                                                                                                                    |
+| city        | str  | (Optional) "Seoul", "New York", "Paris"                                                                                                                                                                              |
+| details     | str  | (Optional) url including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
+| p2pEndpoint | str  | (Optional) network information used for connecting among P-Rep nodes<br/>"123.45.67.89:7100", "node.example.com:7100"                                                                                                |
+| nodeAddress | str  | (Optional) node key for only consensus                                                                                                                                                                               |
 
 *Event Log:*
 
 ```python
-@EventLog(indexed=0)
+@eventlog(indexed=0)
 def PRepSet(address: Address) -> None: pass
 ```
+| Name    | Type    | Description                   |
+|:--------|:--------|:------------------------------|
+| address | Address | address of the modified P-Rep |
+
+*Revision:* 5 ~
 
 ### unregisterPRep
 
@@ -333,9 +363,14 @@ def unregisterPRep() -> None:
 *Event Log:*
 
 ```python
-@EventLog(indexed=0)
+@eventlog(indexed=0)
 def PRepUnregistered(address: Address) -> None: pass
 ```
+| Name    | Type    | Description                       |
+|:--------|:--------|:----------------------------------|
+| address | Address | address of the unregistered P-Rep |
+
+*Revision:* 5 ~
 
 ### setBonderList
 
@@ -349,9 +384,11 @@ def setBonderList(bonderList: list) -> None:
 ```
 *Parameters:*
 
-| Name       | Type        | Description                       |
-|:-----------|:------------|:----------------------------------|
-| bonderList | \[\]Address | List of address (MAX: 10 entries) |
+| Name       | Type        | Description                                    |
+|:-----------|:------------|:-----------------------------------------------|
+| bonderList | \[\]Address | addresses of ICONist who can bond to the P-Rep |
+
+*Revision:* 13 ~
 
 # BTP
 
@@ -367,15 +404,17 @@ def getBTPNetworkTypeID(name: str) -> int:
 
 *Parameters:*
 
-| Name | Type  | Description                   |
-|:-----|:------|:------------------------------|
-| name | str   | the name of BTP Network Type  |
+| Name | Type | Description                  |
+|:-----|:-----|:-----------------------------|
+| name | str  | name of the BTP Network Type |
 
 *Returns:*
 
 * an int value greater than 0 if BTP Network Type is active.
 * an int value 0 if BTP Network Type is not active.
 * an int value -1 if BTP Network Type is not supported.
+
+*Revision:* 21 ~
 
 ### getPRepNodePublicKey
 
@@ -389,11 +428,13 @@ def getPRepNodePublicKey(address: Address) -> bytes:
 
 | Name    | Type    | Description          |
 |:--------|:--------|:---------------------|
-| address | Address | the address of P-Rep |
+| address | Address | address of the P-Rep |
 
 *Returns:*
 
 * the public key or 'null' if the P-Rep does not have a public key
+
+*Revision:* 21 ~
 
 ## Writable APIs
 
@@ -407,11 +448,11 @@ def openBTPNetwork(networkTypeName: str, name: str, owner: Address) -> int:
 
 *Parameters:*
 
-| Name            | Type    | Description                  |
-|:----------------|:--------|:-----------------------------|
-| networkTypeName | str     | the name of BTP Network Type |
-| name            | str     | the name of BTP Network      |
-| owner           | Address | the owner of BTP Network     |
+| Name            | Type    | Description                                                    |
+|:----------------|:--------|:---------------------------------------------------------------|
+| networkTypeName | str     | name of the BTP Network Type                                   |
+| name            | str     | name of the BTP Network                                        |
+| owner           | Address | owner of the BTP Network. Only the owner can send BTP messages |
 
 *Returns:*
 
@@ -420,13 +461,25 @@ def openBTPNetwork(networkTypeName: str, name: str, owner: Address) -> int:
 *Event Log:*
 
 ```python
-@EventLog(indexed=2)
+@eventlog(indexed=2)
 def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None: pass
+```
+| Name            | Type | Description                            |
+|:----------------|:-----|:---------------------------------------|
+| networkTypeName | str  | name of the activated BTP Network Type |
+| networkTypeId   | int  | ID of the activated BTP Network Type   |
 
 
-@EventLog(indexed=2)
+```python
+@eventlog(indexed=2)
 def BTPNetworkOpened(networkTypeId: int, networkId: int) -> None: pass
 ```
+| Name          | Type | Description                  |
+|:--------------|:-----|:-----------------------------|
+| networkTypeId | int  | ID of the BTP Network Type   |
+| networkId     | int  | ID of the opened BTP Network |
+
+*Revision:* 21 ~
 
 ### closeBTPNetwork
 
@@ -438,16 +491,22 @@ def closeBTPNetwork(id: int) -> None:
 
 *Parameters:*
 
-| Name | Type | Description        |
-|:-----|:-----|:-------------------|
-| id   | int  | the BTP Network ID |
+| Name | Type | Description    |
+|:-----|:-----|:---------------|
+| id   | int  | BTP Network ID |
 
 *Event Log:*
 
 ```python
-@EventLog(indexed=2)
+@eventlog(indexed=2)
 def BTPNetworkClosed(networkTypeId: int, networkId: int) -> None: pass
 ```
+| Name          | Type | Description                  |
+|:--------------|:-----|:-----------------------------|
+| networkTypeId | int  | ID of the BTP Network Type   |
+| networkId     | int  | ID of the closed BTP Network |
+
+*Revision:* 21 ~
 
 ### sendBTPMessage
 
@@ -459,17 +518,23 @@ def sendBTPMessage(networkId: int, message: bytes) -> None:
 
 *Parameters:*
 
-| Name      | Type  | Description        |
-|:----------|:------|:-------------------|
-| networkId | str   | the BTP Network ID |
-| message   | bytes | BTP message        |
+| Name      | Type  | Description    |
+|:----------|:------|:---------------|
+| networkId | str   | BTP Network ID |
+| message   | bytes | BTP message    |
 
 *Event Log:*
 
 ```python
-@EventLog(indexed=2)
+@eventlog(indexed=2)
 def BTPMessage(networkId: int, messageSN: int) -> None: pass
 ```
+| Name      | Type | Description                            |
+|:----------|:-----|:---------------------------------------|
+| networkId | int  | ID of the BTP Network                  |
+| messageSN | int  | message sequence number in BTP Network |
+
+*Revision:* 21 ~
 
 ### registerPRepNodePublicKey
 
@@ -481,10 +546,12 @@ def registerPRepNodePublicKey(address: Address, pubKey: bytes) -> None:
 
 *Parameters:*
 
-| Name    | Type    | Description          |
-|:--------|:--------|:---------------------|
-| address | Address | the address of P-Rep |
-| pubKey  | bytes   | the public key       |
+| Name    | Type    | Description      |
+|:--------|:--------|:-----------------|
+| address | Address | address of P-Rep |
+| pubKey  | bytes   | public key       |
+
+*Revision:* 21 ~
 
 ### setPRepNodePublicKey
 
@@ -496,57 +563,59 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 *Parameters:*
 
-| Name   | Type  | Description    |
-|:-------|:------|:---------------|
-| pubKey | bytes | the public key |
+| Name   | Type  | Description |
+|:-------|:------|:------------|
+| pubKey | bytes | public key  |
+
+*Revision:* 21 ~
 
 # Types
 
-## T_UNSTAKE
+## Unstake
 
 | Key                | Value Type | Description                              |
 |:-------------------|:-----------|:-----------------------------------------|
-| unstake            | int        | ICX amount of unstake in loop            |
-| unstakeBlockHeight | int        | BlockHeight when unstake will be done    |
-| remainingBlocks    | int        | Remaining blocks to `unstakeBlockHeight` |
+| unstake            | int        | amount of unstake in loop                |
+| unstakeBlockHeight | int        | block height when unstake will be done   |
+| remainingBlocks    | int        | remaining blocks to `unstakeBlockHeight` |
 
-## T_VOTE
+## Vote
 
 | Key     | Value Type | Description              |
 |:--------|:-----------|:-------------------------|
-| address | Address    | Address of P-Rep to vote |
-| value   | int        | Vote amount in loop      |
+| address | Address    | address of P-Rep to vote |
+| value   | int        | vote amount in loop      |
 
-## T_UNBOND
+## Unbond
 
-| Key               | Value Type | Description                          |
-|:------------------|:-----------|:-------------------------------------|
-| address           | Address    | Address of P-Rep to bond             |
-| value             | int        | Bond amount in loop                  |
-| expireBlockHeight | int        | BlockHeight when unbond will be done |
+| Key               | Value Type | Description                           |
+|:------------------|:-----------|:--------------------------------------|
+| address           | Address    | address of P-Rep to bond              |
+| value             | int        | bond amount in loop                   |
+| expireBlockHeight | int        | block height when unbond will be done |
 
-## T_PREP
+## PRep
 
-| Key                    | Value Type | Description                                                                                 |
-|:-----------------------|:-----------|:--------------------------------------------------------------------------------------------|
-| address                | Address    | P-Rep address                                                                               |
-| bonded                 | int        | Bond amount that a P-Rep receives from ICONist                                              |
-| city                   | str        | "Seoul", "New York", "Paris"                                                                |
-| country                | str        | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                      |
-| delegated              | int        | Delegation amount that a P-Rep receives from ICONist                                        |
-| details                | str        | Url including P-Rep detail informatio                                                       |
-| email                  | str        | P-Rep email                                                                                 |
-| grade                  | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                             |
-| hasPubKey              | bool       | (Optional) P-Rep has valid public keys for all active BTP Network type                      |
-| irep                   | int        | Incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value |
-| irepUpdatedBlockHeight | int        | Block height when a P-Rep changed I-Rep value                                               |
-| lastHeight             | int        | The latest block height at which the P-Rep's voting status changed                          |
-| name                   | str        | P-Rep name                                                                                  |
-| nodeAddress            | str        | Node Key for only consensus                                                                 |
-| p2pEndpoint            | str        | Network info used for connecting among P-Rep nodes                                          |
-| penalty                | int        | 0: None, 1: Disqualification, 2: Low Productivity, 3: Block Validation, 4: NonVote          |
-| power                  | int        | Amount power that a P-Rep receives from ICONist. (= max(`bonded`+`delegated`, bonded * 20)  |
-| status                 | int        | 0: active, 1: unregistered                                                                  |
-| totalBlocks            | int        | The number of blocks that a P-Rep received when running as a Main P-Rep                     |
-| validatedBlocks        | int        | The number of blocks that a P-Rep validated when running as a Main P-Rep                    |
-| website                | str        | P-Rep homepage url                                                                          |
+| Key                    | Value Type | Description                                                                                                                                                                                               |
+|:-----------------------|:-----------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| address                | Address    | P-Rep address                                                                                                                                                                                             |
+| bonded                 | int        | bond amount that a P-Rep receives from ICONist                                                                                                                                                            |
+| city                   | str        | "Seoul", "New York", "Paris"                                                                                                                                                                              |
+| country                | str        | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                                                                                                                                    |
+| delegated              | int        | delegation amount that a P-Rep receives from ICONist                                                                                                                                                      |
+| details                | str        | url including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
+| email                  | str        | P-Rep email                                                                                                                                                                                               |
+| grade                  | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                                                                                                                                           |
+| hasPubKey              | bool       | (Optional) P-Rep has valid public keys for all active BTP Network type                                                                                                                                    |
+| irep                   | int        | incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value                                                                                                               |
+| irepUpdatedBlockHeight | int        | block height when a P-Rep changed I-Rep value                                                                                                                                                             |
+| lastHeight             | int        | latest block height at which the P-Rep's voting status changed                                                                                                                                            |
+| name                   | str        | P-Rep name                                                                                                                                                                                                |
+| nodeAddress            | str        | node Key for only consensus                                                                                                                                                                               |
+| p2pEndpoint            | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
+| penalty                | int        | 0: None, 1: Disqualification, 2: Low Productivity, 3: Block Validation, 4: NonVote                                                                                                                        |
+| power                  | int        | amount of power that a P-Rep receives from ICONist. (= max(`bonded`+`delegated`, bonded * 20)                                                                                                             |
+| status                 | int        | 0: active, 1: unregistered                                                                                                                                                                                |
+| totalBlocks            | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
+| validatedBlocks        | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
+| website                | str        | P-Rep homepage url                                                                                                                                                                                        |
