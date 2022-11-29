@@ -113,7 +113,6 @@ func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 	ph := front.Value.(PeerHandler)
 	p.setMetric(pd.mtr)
 	p.setPacketCbFunc(ph.onPacket)
-	p.setErrorCbFunc(ph.onError)
 	p.setCloseCbFunc(ph.onClose)
 	ph.onPeer(p)
 }
@@ -124,17 +123,12 @@ func (pd *PeerDispatcher) onPeer(p *Peer) {
 	if p2p := pd.getPeerToPeer(p.Channel()); p2p != nil {
 		p.setMetric(p2p.mtr)
 		p.setPacketCbFunc(p2p.onPacket)
-		p.setErrorCbFunc(p2p.onError)
 		p.setCloseCbFunc(p2p.onClose)
 		p2p.onPeer(p)
 	} else {
 		err := fmt.Errorf("not exists PeerToPeer[%s]", p.Channel())
 		p.CloseByError(err)
 	}
-}
-
-func (pd *PeerDispatcher) onError(err error, p *Peer, pkt *Packet) {
-	pd.peerHandler.onError(err, p, pkt)
 }
 
 //callback from Peer.receiveRoutine

@@ -17,8 +17,6 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 )
 
-const isLoggingPacket = false
-
 type Peer struct {
 	//
 	conn         net.Conn
@@ -26,7 +24,6 @@ type Peer struct {
 	writer       *PacketWriter
 	q            *PriorityQueue
 	onPacket     packetCbFunc
-	onError      errorCbFunc
 	onClose      closeCbFunc
 	cbMtx        sync.RWMutex
 	timestamp    time.Time
@@ -74,7 +71,6 @@ type Peer struct {
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
-type errorCbFunc func(err error, p *Peer, pkt *Packet)
 type closeCbFunc func(p *Peer)
 
 func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, dial NetAddress, l log.Logger) *Peer {
@@ -89,7 +85,6 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, dial NetAddress, l log
 		close:       make(chan error),
 		closeReason: make([]string, 0),
 		closeErr:    make([]error, 0),
-		onError:     defaultOnError,
 		onClose:     defaultOnClose,
 		children:    NewNetAddressSet(),
 		nephews:     NewNetAddressSet(),
@@ -188,20 +183,6 @@ func (p *Peer) getPacketCbFunc() packetCbFunc {
 	defer p.cbMtx.RUnlock()
 
 	return p.onPacket
-}
-
-func (p *Peer) setErrorCbFunc(cbFunc errorCbFunc) {
-	p.cbMtx.Lock()
-	defer p.cbMtx.Unlock()
-
-	p.onError = cbFunc
-}
-
-func (p *Peer) getErrorCbFunc() errorCbFunc {
-	p.cbMtx.RLock()
-	defer p.cbMtx.RUnlock()
-
-	return p.onError
 }
 
 func (p *Peer) setCloseCbFunc(cbFunc closeCbFunc) {
@@ -404,15 +385,11 @@ func (p *Peer) receiveRoutine() {
 		pkt, err := p.reader.ReadPacket()
 		if err != nil {
 			r := p.isTemporaryError(err)
-			p.logger.Tracef("Peer.receiveRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+			p.logger.Tracef("Peer.receiveRoutine Error isTemporary:{%v} error:{%+v} peer:%s pkt:%s",
+				r, err, p, pkt)
 			if !r {
 				p.CloseByError(err)
 				return
-			}
-			if cbFunc := p.getErrorCbFunc(); cbFunc != nil {
-				cbFunc(err, p, pkt)
-			} else {
-				defaultOnError(err, p, pkt)
 			}
 			continue
 		}
@@ -420,9 +397,6 @@ func (p *Peer) receiveRoutine() {
 		pkt.sender = p.ID()
 		p.pool.Put(pkt.hashOfPacket)
 		p.getMetric().OnRecv(pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
-		if isLoggingPacket {
-			log.Println(p.ID(), "Peer", "receiveRoutine", p.ConnType(), p.ConnString(), pkt)
-		}
 		if cbFunc := p.getPacketCbFunc(); cbFunc != nil {
 			cbFunc(pkt, p)
 		} else {
@@ -444,9 +418,6 @@ func (p *Peer) sendDirect(pkt *Packet) error {
 }
 
 func (p *Peer) sendRoutine() {
-	// defer func() {
-	// 	log.Println("Peer.sendRoutine end", p.String())
-	// }()
 	secondTick := time.NewTicker(time.Second)
 	defer secondTick.Stop()
 Loop:
@@ -463,12 +434,10 @@ Loop:
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				if err := p.sendDirect(pkt); err != nil {
 					r := p.isTemporaryError(err)
-					p.logger.Tracef("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+					p.logger.Tracef("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s pkt:%s",
+						r, err, p, pkt)
 					p.CloseByError(err)
 					return
-				}
-				if isLoggingPacket {
-					log.Println(p.ID(), "Peer", "sendRoutine", p.ConnType(), p.ConnString(), pkt)
 				}
 				p.pool.Put(pkt.hashOfPacket)
 				p.getMetric().OnSend(pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
@@ -744,7 +713,6 @@ var (
 		"Friend",
 		"Other",
 	}
-	defaultOnError = func(err error, p *Peer, pkt *Packet) { p.CloseByError(err) }
 	defaultOnClose = func(p *Peer) {}
 )
 

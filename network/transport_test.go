@@ -96,12 +96,6 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 	}
 }
 
-func (ph *testPeerHandler) onError(err error, p *Peer, pkt *Packet) {
-	ph.logger.Println("onError", err, p, pkt)
-	ph.peerHandler.onError(err, p, pkt)
-	assert.Fail(ph.t, "TestPeerHandler.onError", err.Error(), p, pkt)
-}
-
 func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	ph.logger.Println("onPacket", pkt, p)
 	switch pkt.protocol {

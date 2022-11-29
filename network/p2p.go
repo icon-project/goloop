@@ -29,7 +29,6 @@ const (
 	DefaultPacketPoolBucketLen  = 500
 	DefaultDiscoveryPeriod      = 2 * time.Second
 	DefaultSeedPeriod           = 3 * time.Second
-	DefaultMinSeed              = 1
 	DefaultAlternateSendPeriod  = 1 * time.Second
 	DefaultSendTimeout          = 5 * time.Second
 	DefaultSendQueueMaxPriority = 7
@@ -82,7 +81,6 @@ type PeerToPeer struct {
 	onFailureCbFuncs map[uint16]failureCbFunc
 	onEventCbFuncs   map[string]map[uint16]eventCbFunc
 	packetPool       *PacketPool
-	packetRw         *PacketReadWriter
 	dialer           *Dialer
 
 	//Topology with Connected Peers
@@ -144,7 +142,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		onFailureCbFuncs: make(map[uint16]failureCbFunc),
 		onEventCbFuncs:   make(map[string]map[uint16]eventCbFunc),
 		packetPool:       NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
-		packetRw:         NewPacketReadWriter(),
 		dialer:           d,
 		//
 		self:       self,
@@ -316,7 +313,7 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		diff := p.timestamp.Sub(dp.timestamp)
 
 		if diff < DefaultDuplicatedPeerTime && dp.In() != p.In() && higher == p.In() {
-			//close new which is lower's outgoing
+			//close new which is lower outgoing
 			p.CloseByError(ErrDuplicatedPeer)
 			p2p.logger.Infoln("Already exists connected Peer, close new", p, diff)
 			return
@@ -329,23 +326,6 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 	if !p.In() {
 		p2p.sendQuery(p)
 	}
-}
-
-//callback from Peer.sendRoutine or Peer.receiveRoutine
-func (p2p *PeerToPeer) onError(err error, p *Peer, pkt *Packet) {
-	p2p.logger.Infoln("onError", err, p, pkt)
-
-	//Peer.receiveRoutine
-	//// bufio.Reader.Read error except {net.OpError, io.EOF, io.ErrUnexpectedEOF}
-	//Peer.sendRoutine
-	//// net.Conn.SetWriteDeadline error
-	//// bufio.Writer.Write error
-	//// bufio.Writer.Flush error
-
-	//if p.isTemporaryError(err) {p.onError(err)}
-	//else {p.CloseByError(err)}
-
-	//if pkt == nil //readError
 }
 
 func (p2p *PeerToPeer) onClose(p *Peer) {
@@ -931,7 +911,6 @@ func (p2p *PeerToPeer) sendToFriends(ctx context.Context) {
 		pkt.footerToBytes(true)
 		pkt.ext = ext[:]
 		for _, p := range ps {
-			//p2p.packetRw.WriteTo(p.writer)
 			if err := p.send(ctx); err != nil && err != ErrDuplicatedPacket {
 				p2p.logger.Infoln("sendToFriends", err, pkt.protocol, pkt.subProtocol, p.ID())
 			}

@@ -10,7 +10,6 @@ import (
 type PeerHandler interface {
 	onPeer(p *Peer)
 	onPacket(pkt *Packet, p *Peer)
-	onError(err error, p *Peer, pkt *Packet)
 	onClose(p *Peer)
 	setNext(ph PeerHandler)
 	setSelfPeerID(id module.PeerID)
@@ -40,15 +39,9 @@ func (ph *peerHandler) nextOnPeer(p *Peer) {
 	p.RemoveAttr("waitSubProtocolInfo")
 	if ph.next != nil {
 		p.setPacketCbFunc(ph.next.onPacket)
-		p.setErrorCbFunc(ph.next.onError)
 		p.setCloseCbFunc(ph.next.onClose)
 		ph.next.onPeer(p)
 	}
-}
-
-func (ph *peerHandler) onError(err error, p *Peer, pkt *Packet) {
-	ph.logger.Traceln("onError", err, p)
-	p.CloseByError(err)
 }
 
 func (ph *peerHandler) onClose(p *Peer) {

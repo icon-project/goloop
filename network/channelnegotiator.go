@@ -41,11 +41,6 @@ func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	}
 }
 
-func (cn *ChannelNegotiator) onError(err error, p *Peer, pkt *Packet) {
-	cn.logger.Infoln("onError", err, p, pkt)
-	cn.peerHandler.onError(err, p, pkt)
-}
-
 func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 	switch pkt.protocol {
 	case p2pProtoChan:

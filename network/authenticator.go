@@ -71,11 +71,6 @@ func (a *Authenticator) onPeer(p *Peer) {
 	}
 }
 
-func (a *Authenticator) onError(err error, p *Peer, pkt *Packet) {
-	a.logger.Infoln("onError", err, p, pkt)
-	a.peerHandler.onError(err, p, pkt)
-}
-
 //callback from Peer.receiveRoutine
 func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 	switch pkt.protocol {
