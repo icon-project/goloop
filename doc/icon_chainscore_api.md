@@ -432,7 +432,7 @@ def getPRepNodePublicKey(address: Address) -> bytes:
 
 *Returns:*
 
-* the public key or 'null' if the P-Rep does not have a public key
+* the public key or `null` if the P-Rep does not have a public key
 
 *Revision:* 21 ~
 
