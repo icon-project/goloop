@@ -304,7 +304,7 @@ def registerPRep(name: str, email: str, website: str, country: str, city: str, d
 | city        | str  | "Seoul", "New York", "Paris"                                                                                                                                                                              |
 | details     | str  | URL including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
 | p2pEndpoint | str  | network info used for connecting among P-Rep nodes<br/>"123.45.67.89:7100", "node.example.com:7100"                                                                                                       |
-| nodeAddress | str  | (Optional) node Key for only consensus                                                                                                                                                                    |
+| nodeAddress | str  | (Optional) address of the node key if it's different from the address of P-Rep                                                                                                                            |
 
 *Event Log:*
 
@@ -337,7 +337,7 @@ def setPRep(name: str, email: str, website: str, country: str, city: str, detail
 | city        | str  | (Optional) "Seoul", "New York", "Paris"                                                                                                                                                                              |
 | details     | str  | (Optional) URL including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
 | p2pEndpoint | str  | (Optional) network information used for connecting among P-Rep nodes<br/>Example: "123.45.67.89:7100", "node.example.com:7100"                                                                                       |
-| nodeAddress | str  | (Optional) node key for only consensus                                                                                                                                                                               |
+| nodeAddress | str  | (Optional) address of the node key if it's different from the address of P-Rep                                                                                                                                       |
 
 *Event Log:*
 
