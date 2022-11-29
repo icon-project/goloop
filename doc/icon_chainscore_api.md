@@ -274,7 +274,7 @@ def claimIScore() -> None:
 
 ```python
 @eventlog(indexed=1)
-def IScoreClaimedV2(address: Address, iscore: int, icx: int) -> None: pass
+def IScoreClaimedV2(address: Address, iscore: int, icx: int) -> None:
 ```
 | Name    | Type    | Description                                |
 |:--------|:--------|:-------------------------------------------|
@@ -311,7 +311,7 @@ def registerPRep(name: str, email: str, website: str, country: str, city: str, d
 
 ```python
 @eventlog(indexed=0)
-def PRepRegistered(address: Address) -> None: pass
+def PRepRegistered(address: Address) -> None:
 ```
 | Name    | Type    | Description                 |
 |:--------|:--------|:----------------------------|
@@ -344,7 +344,7 @@ def setPRep(name: str, email: str, website: str, country: str, city: str, detail
 
 ```python
 @eventlog(indexed=0)
-def PRepSet(address: Address) -> None: pass
+def PRepSet(address: Address) -> None:
 ```
 | Name    | Type    | Description                   |
 |:--------|:--------|:------------------------------|
@@ -364,7 +364,7 @@ def unregisterPRep() -> None:
 
 ```python
 @eventlog(indexed=0)
-def PRepUnregistered(address: Address) -> None: pass
+def PRepUnregistered(address: Address) -> None:
 ```
 | Name    | Type    | Description                       |
 |:--------|:--------|:----------------------------------|
@@ -462,7 +462,7 @@ def openBTPNetwork(networkTypeName: str, name: str, owner: Address) -> int:
 
 ```python
 @eventlog(indexed=2)
-def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None: pass
+def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None:
 ```
 | Name            | Type | Description                            |
 |:----------------|:-----|:---------------------------------------|
@@ -472,7 +472,7 @@ def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None: p
 
 ```python
 @eventlog(indexed=2)
-def BTPNetworkOpened(networkTypeId: int, networkId: int) -> None: pass
+def BTPNetworkOpened(networkTypeId: int, networkId: int) -> None:
 ```
 | Name          | Type | Description                  |
 |:--------------|:-----|:-----------------------------|
@@ -499,7 +499,7 @@ def closeBTPNetwork(id: int) -> None:
 
 ```python
 @eventlog(indexed=2)
-def BTPNetworkClosed(networkTypeId: int, networkId: int) -> None: pass
+def BTPNetworkClosed(networkTypeId: int, networkId: int) -> None:
 ```
 | Name          | Type | Description                  |
 |:--------------|:-----|:-----------------------------|
@@ -527,7 +527,7 @@ def sendBTPMessage(networkId: int, message: bytes) -> None:
 
 ```python
 @eventlog(indexed=2)
-def BTPMessage(networkId: int, messageSN: int) -> None: pass
+def BTPMessage(networkId: int, messageSN: int) -> None:
 ```
 | Name      | Type | Description                            |
 |:----------|:-----|:---------------------------------------|
