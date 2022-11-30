@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/btp/ntm"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/consensus/fastsync"
@@ -732,4 +733,74 @@ func TestConsensus_Sync(t *testing.T) {
 	assert.NoError(err)
 	blk = nd.WaitForBlock(10)
 	assert.EqualValues(10, blk.Height())
+}
+
+func newSignedNilVote(w module.Wallet, vt consensus.VoteType, h int64, r int32, nid []byte, ts int64) *consensus.VoteMessage {
+	return consensus.NewVoteMessage(
+		w, vt, h, r, nid, nil, ts,
+		nil, nil, 0,
+	)
+}
+
+func testWALMessageList(t *testing.T, walID string) {
+	assert := assert.New(t)
+	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer f.Close()
+
+	v1 := newSignedNilVote(f.Nodes[0].Chain.Wallet(), consensus.VoteTypePrevote, 1, 3, codec.MustMarshalToBytes(f.Chain.NID()), 10)
+	v2 := newSignedNilVote(f.Nodes[1].Chain.Wallet(), consensus.VoteTypePrevote, 1, 3, codec.MustMarshalToBytes(f.Chain.NID()), 10)
+	v3 := newSignedNilVote(f.Nodes[2].Chain.Wallet(), consensus.VoteTypePrevote, 1, 3, codec.MustMarshalToBytes(f.Chain.NID()), 10)
+
+	vl := consensus.NewVoteList()
+	vl.AddVote(v1)
+	vl.AddVote(v2)
+	vl.AddVote(v3)
+	vlm := &consensus.VoteListMessage{
+		VoteList: vl,
+	}
+
+	wal := consensus.NewTestWAL()
+	ww, err := wal.OpenForWrite(walID, &consensus.WALConfig{})
+	assert.NoError(err)
+	mww := consensus.WalMessageWriter{WALWriter: ww}
+	err = mww.WriteMessage(vlm)
+	assert.NoError(err)
+	err = mww.Close()
+	assert.NoError(err)
+
+	nd := f.AddNode(test.UseGenesis(string(f.Chain.Genesis())), test.UseWAL(wal))
+
+	err = nd.CS.Start()
+	assert.NoError(err)
+	status := nd.CS.GetStatus()
+	assert.EqualValues(3, status.Round)
+}
+
+func TestConsensus_WALMessageList(t *testing.T) {
+	testWALMessageList(t, "round")
+	testWALMessageList(t, "lock")
+	testWALMessageList(t, "commit")
+}
+
+func TestConsensus_RoundWALMyVote(t *testing.T) {
+	assert := assert.New(t)
+	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	defer f.Close()
+
+	v1 := newSignedNilVote(f.Nodes[0].Chain.Wallet(), consensus.VoteTypePrevote, 1, 3, codec.MustMarshalToBytes(f.Chain.NID()), 10)
+	wal := consensus.NewTestWAL()
+	ww, err := wal.OpenForWrite("round", &consensus.WALConfig{})
+	assert.NoError(err)
+	mww := consensus.WalMessageWriter{WALWriter: ww}
+	err = mww.WriteMessage(v1)
+	assert.NoError(err)
+	err = mww.Close()
+	assert.NoError(err)
+
+	nd := f.AddNode(test.UseGenesis(string(f.Chain.Genesis())), test.UseWAL(wal), test.UseWallet(f.Nodes[0].Chain.Wallet()))
+
+	err = nd.CS.Start()
+	assert.NoError(err)
+	status := nd.CS.GetStatus()
+	assert.EqualValues(3, status.Round)
 }
