@@ -1328,7 +1328,7 @@ func (cs *consensus) applyRoundWAL() error {
 				continue
 			}
 			cs.log.Tracef("WAL: my proposal %v\n", m)
-			if m.round() < round || (m.round() == round && rstep <= stepPropose) {
+			if round < m.round() || (round == m.round() && rstep <= stepPropose) {
 				round = m.round()
 				rstep = stepPropose
 			}
@@ -1351,7 +1351,7 @@ func (cs *consensus) applyRoundWAL() error {
 			} else {
 				mstep = stepPrecommit
 			}
-			if m.round() < round || (m.round() == round && rstep <= mstep) {
+			if round < m.round() || (round == m.round() && rstep <= mstep) {
 				round = m.round()
 				rstep = mstep
 			}
