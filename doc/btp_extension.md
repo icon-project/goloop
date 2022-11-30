@@ -652,9 +652,9 @@ SHA3Sum256([VoteMessage](#votemessage)).
 | Data    | B_LIST of B_BYTES(N) | Remaining data.                |
 
 
-### Merkle Patricia Trie
+### Merkle Patricia Tree
 
-It's similar to [Merkle Patricia Trie](https://github.com/ethereum/wiki/wiki/Patricia-Tree)
+It's similar to [Merkle Patricia Tree](https://github.com/ethereum/wiki/wiki/Patricia-Tree)
 except that it uses SHA3-256 instead of KECCAK-256.
 
 
