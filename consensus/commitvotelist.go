@@ -168,7 +168,7 @@ func (vl *CommitVoteList) toVoteListWithBlock(
 	blk module.BlockData,
 	prevBlk module.Block,
 	dbase db.Database,
-) (*voteList, error) {
+) (*VoteList, error) {
 	ntsHashEntries, err := blk.NTSHashEntryList()
 	if err != nil {
 		return nil, err
@@ -183,14 +183,14 @@ func (vl *CommitVoteList) toVoteListWithBlock(
 	)
 }
 
-// toVoteList converts CommitVoteList to voteList. result is the result in
+// toVoteList converts CommitVoteList to VoteList. result is the result in
 // height-1 block. Note that there should be no NTS votes if prevResult is nil.
 // validators is the nextValidators in height-1 block.
 func (vl *CommitVoteList) toVoteList(
 	height int64, bid []byte, prevResult []byte,
 	validators module.ValidatorList,
 	ntsHashEntries module.NTSHashEntryList, dbase db.Database,
-) (*voteList, error) {
+) (*VoteList, error) {
 	bCtx, err := service.NewBTPContext(dbase, prevResult)
 	if err != nil {
 		return nil, err
@@ -233,7 +233,7 @@ func (vl *CommitVoteList) toVoteList(
 		ntsVoteBases = append(ntsVoteBases, ntsVoteBase(ntsHashEntry))
 		ntsdProofIndex++
 	}
-	rvl := newVoteList()
+	rvl := NewVoteList()
 	msg := newVoteMessage()
 	msg.Height = height
 	msg.Round = vl.Round
@@ -274,7 +274,7 @@ func newCommitVoteList(
 		}
 		if !bytes.Equal(rdd, msgs[i].RoundDecisionDigest()) {
 			return nil, errors.Errorf(
-				"newVoteList: bad RDD in messages msgs[0].BlockID=%s msgs[i].BlockID=%s i=%d",
+				"NewVoteList: bad RDD in messages msgs[0].BlockID=%s msgs[i].BlockID=%s i=%d",
 				common.HexPre(msgs[0].BlockID),
 				common.HexPre(msgs[i].BlockID),
 				i,
