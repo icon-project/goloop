@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ICON Foundation
+ * Copyright 2022 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package test
+package consensus
 
 import (
 	"io"
@@ -22,7 +22,6 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/consensus"
 )
 
 type record struct {
@@ -30,17 +29,17 @@ type record struct {
 	err   error
 }
 
-type WAL struct {
+type testWAL struct {
 	round  []*record
 	lock   []*record
 	commit []*record
 }
 
-func NewWAL() *WAL {
-	return &WAL{}
+func NewTestWAL() *testWAL {
+	return &testWAL{}
 }
 
-func (w *WAL) data(id string) *[]*record {
+func (w *testWAL) data(id string) *[]*record {
 	id = path.Base(id)
 	switch id {
 	case "round":
@@ -55,24 +54,24 @@ func (w *WAL) data(id string) *[]*record {
 	}
 }
 
-func (w *WAL) OpenForRead(id string) (consensus.WALReader, error) {
-	return &WALReader{
+func (w *testWAL) OpenForRead(id string) (WALReader, error) {
+	return &testWALReader{
 		*w.data(id),
 	}, nil
 }
 
-func (w *WAL) OpenForWrite(id string, cfg *consensus.WALConfig) (consensus.WALWriter, error) {
-	return &WALWriter{
+func (w *testWAL) OpenForWrite(id string, cfg *WALConfig) (WALWriter, error) {
+	return &testWALWriter{
 		cf:     *cfg,
 		synced: w.data(id),
 	}, nil
 }
 
-type WALReader struct {
+type testWALReader struct {
 	data []*record
 }
 
-func (r *WALReader) Read(v interface{}) ([]byte, error) {
+func (r *testWALReader) Read(v interface{}) ([]byte, error) {
 	bs, err := r.ReadBytes()
 	if err != nil {
 		return nil, err
@@ -80,7 +79,7 @@ func (r *WALReader) Read(v interface{}) ([]byte, error) {
 	return codec.UnmarshalFromBytes(bs, v)
 }
 
-func (r *WALReader) ReadBytes() ([]byte, error) {
+func (r *testWALReader) ReadBytes() ([]byte, error) {
 	if len(r.data) == 0 {
 		return nil, io.EOF
 	}
@@ -89,30 +88,30 @@ func (r *WALReader) ReadBytes() ([]byte, error) {
 	return m.bytes, nil
 }
 
-func (r *WALReader) Close() error {
+func (r *testWALReader) Close() error {
 	return nil
 }
 
-func (r *WALReader) CloseAndRepair() error {
+func (r *testWALReader) CloseAndRepair() error {
 	return nil
 }
 
-type WALWriter struct {
-	cf       consensus.WALConfig
+type testWALWriter struct {
+	cf       WALConfig
 	synced   *[]*record
 	buffered []*record
 }
 
-func (w *WALWriter) WriteBytes(bytes []byte) (int, error) {
+func (w *testWALWriter) WriteBytes(bytes []byte) (int, error) {
 	w.buffered = append(w.buffered, &record{bytes, nil})
 	return len(bytes), nil
 }
 
-func (w *WALWriter) Sync() error {
+func (w *testWALWriter) Sync() error {
 	*w.synced = append(*w.synced, w.buffered...)
 	return nil
 }
 
-func (w *WALWriter) Close() error {
+func (w *testWALWriter) Close() error {
 	return w.Sync()
 }

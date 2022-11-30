@@ -70,7 +70,7 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 			return bm
 		},
 		NewCS: func(ctx *NodeContext) module.Consensus {
-			wm := NewWAL()
+			wm := consensus.NewTestWAL()
 			wal := path.Join(ctx.Base, "wal")
 			cs := consensus.New(
 				ctx.C, wal, wm, nil, nil, nil,
