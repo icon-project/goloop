@@ -18,6 +18,7 @@ package test
 
 import (
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -33,6 +34,14 @@ func UseDB(dbase db.Database) FixtureOption {
 	return UseConfig(&FixtureConfig{
 		Dbase: func() db.Database {
 			return dbase
+		},
+	})
+}
+
+func UseWAL(wal consensus.WALManager) FixtureOption {
+	return UseConfig(&FixtureConfig{
+		WAL: func() consensus.WALManager {
+			return wal
 		},
 	})
 }
