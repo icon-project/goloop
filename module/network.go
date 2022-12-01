@@ -26,7 +26,6 @@ type NetworkManager interface {
 type Reactor interface {
 	//case broadcast and multicast, if return (true,nil) then rebroadcast
 	OnReceive(pi ProtocolInfo, b []byte, id PeerID) (bool, error)
-	OnFailure(err error, pi ProtocolInfo, b []byte)
 	OnJoin(id PeerID)
 	OnLeave(id PeerID)
 }

@@ -34,7 +34,6 @@ const (
 	DefaultSendQueueMaxPriority = 7
 	DefaultSendQueueSize        = 1000
 	DefaultEventQueueSize       = 100
-	DefaultFailureQueueSize     = 100
 	DefaultPeerSendQueueSize    = 1000
 	DefaultPeerPoolExpireSecond = 5
 	DefaultParentsLimit         = 1
@@ -74,14 +73,13 @@ var (
 )
 
 type PeerToPeer struct {
-	channel          string
-	sendQueue        *WeightQueue
-	alternateQueue   Queue
-	onPacketCbFuncs  map[uint16]packetCbFunc
-	onFailureCbFuncs map[uint16]failureCbFunc
-	onEventCbFuncs   map[string]map[uint16]eventCbFunc
-	packetPool       *PacketPool
-	dialer           *Dialer
+	channel         string
+	sendQueue       *WeightQueue
+	alternateQueue  Queue
+	onPacketCbFuncs map[uint16]packetCbFunc
+	onEventCbFuncs  map[string]map[uint16]eventCbFunc
+	packetPool      *PacketPool
+	dialer          *Dialer
 
 	//Topology with Connected Peers
 	self       *Peer
@@ -121,8 +119,6 @@ type PeerToPeer struct {
 	mtx    sync.RWMutex
 }
 
-type failureCbFunc func(err error, pkt *Packet, c *Counter)
-
 type eventCbFunc func(evt string, p *Peer)
 
 const (
@@ -135,14 +131,13 @@ const (
 func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
 	p2pLogger := l.WithFields(log.Fields{LoggerFieldKeySubModule: "p2p"})
 	p2p := &PeerToPeer{
-		channel:          channel,
-		sendQueue:        NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
-		alternateQueue:   NewQueue(DefaultSendQueueSize),
-		onPacketCbFuncs:  make(map[uint16]packetCbFunc),
-		onFailureCbFuncs: make(map[uint16]failureCbFunc),
-		onEventCbFuncs:   make(map[string]map[uint16]eventCbFunc),
-		packetPool:       NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
-		dialer:           d,
+		channel:         channel,
+		sendQueue:       NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
+		alternateQueue:  NewQueue(DefaultSendQueueSize),
+		onPacketCbFuncs: make(map[uint16]packetCbFunc),
+		onEventCbFuncs:  make(map[string]map[uint16]eventCbFunc),
+		packetPool:      NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
+		dialer:          d,
 		//
 		self:       self,
 		parents:    NewPeerSet(),
@@ -256,13 +251,12 @@ func (p2p *PeerToPeer) dial(na NetAddress) error {
 }
 
 func (p2p *PeerToPeer) setCbFunc(pi module.ProtocolInfo, pktFunc packetCbFunc,
-	failFunc failureCbFunc, evtFunc eventCbFunc, evts ...string) {
+	evtFunc eventCbFunc, evts ...string) {
 	k := pi.Uint16()
 	if _, ok := p2p.onPacketCbFuncs[k]; ok {
 		p2p.logger.Infoln("overwrite packetCbFunc", pi)
 	}
 	p2p.onPacketCbFuncs[k] = pktFunc
-	p2p.onFailureCbFuncs[k] = failFunc
 	for _, evt := range evts {
 		p2p.setEventCbFunc(evt, k, evtFunc)
 	}
@@ -272,7 +266,6 @@ func (p2p *PeerToPeer) unsetCbFunc(pi module.ProtocolInfo) {
 	k := pi.Uint16()
 	if _, ok := p2p.onPacketCbFuncs[k]; ok {
 		p2p.unsetEventCbFunc(k)
-		delete(p2p.onFailureCbFuncs, k)
 		delete(p2p.onPacketCbFuncs, k)
 	}
 }
@@ -371,9 +364,6 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 	//	return
 	//}
 	p2p.logger.Debugln("onFailure", err, pkt, c)
-	if cbFunc, ok := p2p.onFailureCbFuncs[pkt.protocol.Uint16()]; ok {
-		cbFunc(err, pkt, c)
-	}
 }
 
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {

@@ -351,21 +351,6 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 	return true, nil
 }
 
-func (s *syncer) OnFailure(
-	err error,
-	pi module.ProtocolInfo,
-	b []byte,
-) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.log.Debugf("OnFailure: subprotocol:%v err:%+v\n", pi, err)
-
-	if !s.running {
-		return
-	}
-}
-
 func (s *syncer) OnJoin(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

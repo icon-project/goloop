@@ -74,10 +74,6 @@ func (m *Manager) OnReceive(pi module.ProtocolInfo, b []byte,
 	return false, nil
 }
 
-func (m *Manager) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	m.log.Tracef("Manager OnFailure err(%+v), pi(%s)\n", err, pi)
-}
-
 func (m *Manager) OnJoin(id module.PeerID) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

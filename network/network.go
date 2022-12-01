@@ -190,7 +190,7 @@ func (m *manager) RegisterReactor(
 		}
 
 		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, policy, m.logger)
-		m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
+		m.p2p.setCbFunc(pi, ph.onPacket, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 		m.protocolHandlers[k] = ph
 		m.cn.addProtocol(m.channel, pi)
 	}

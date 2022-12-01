@@ -252,10 +252,6 @@ func (r *ReactorV1) onResponseNodeData(msg []byte, id module.PeerID) {
 	}
 }
 
-func (r *ReactorV1) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	r.logger.Tracef("OnFailure() pi=%s, err=%+v", pi, err)
-}
-
 func (r *ReactorV1) RequestData(peer module.PeerID, reqID uint32, reqData []BucketIDAndBytes) error {
 	var keys [][]byte
 	for _, data := range reqData {

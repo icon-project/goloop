@@ -316,10 +316,6 @@ func (cs *consensus) OnReceive(
 	return true, nil
 }
 
-func (cs *consensus) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	cs.log.Debugf("OnFailure(subprotocol:%v,  err:%+v)\n", pi, err)
-}
-
 func (cs *consensus) OnJoin(id module.PeerID) {
 	cs.log.Debugf("OnJoin(peer:%v)\n", common.HexPre(id.Bytes()))
 }

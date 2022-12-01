@@ -18,7 +18,6 @@ type protocolHandler struct {
 	policy       module.NotRegisteredProtocolPolicy
 	receiveQueue Queue
 	eventQueue   Queue
-	failureQueue Queue
 	//log
 	logger log.Logger
 
@@ -46,7 +45,6 @@ func newProtocolHandler(
 		policy:       policy,
 		receiveQueue: NewQueue(DefaultReceiveQueueSize),
 		eventQueue:   NewQueue(DefaultEventQueueSize),
-		failureQueue: NewQueue(DefaultFailureQueueSize),
 		logger:       phLogger,
 	}
 	for _, sp := range spiList {
@@ -61,7 +59,6 @@ func newProtocolHandler(
 
 	go ph.receiveRoutine()
 	go ph.eventRoutine()
-	go ph.failureRoutine()
 	return ph
 }
 
@@ -154,14 +151,10 @@ Loop:
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				p := ctx.Value(p2pContextKeyPeer).(*Peer)
 				r := ph.getReactor()
-				isRelay, err := r.OnReceive(pkt.subProtocol, pkt.payload, p.ID())
-				if err != nil {
-					//ph.logger.Debugln("receiveRoutine", err)
-				}
-
+				isRelay, _ := r.OnReceive(pkt.subProtocol, pkt.payload, p.ID())
 				if isRelay && pkt.ttl == byte(module.BROADCAST_ALL) && pkt.dest != p2pDestPeer {
 					if err := ph.m.relay(pkt); err != nil {
-						ph.onFailure(err, pkt, nil)
+						ph.logger.Tracef("fail to relay error:{%+v} pkt:%s", err, pkt)
 					}
 				}
 			}
@@ -195,64 +188,6 @@ func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
 		if ok = ph.receiveQueue.Push(ctx); !ok {
 			ph.logger.Infoln("onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 		}
-	}
-}
-
-func (ph *protocolHandler) failureRoutine() {
-Loop:
-	for {
-		select {
-		case <-ph.run:
-			break Loop
-		case <-ph.failureQueue.Wait():
-			for {
-				ctx := ph.failureQueue.Pop()
-				if ctx == nil {
-					break
-				}
-				err := ctx.Value(p2pContextKeyError).(error)
-				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-				c := ctx.Value(p2pContextKeyCounter).(*Counter)
-
-				if pi, ok := ph.getSubProtocol(pkt.subProtocol); ok {
-					var netErr module.NetworkError
-					if pkt.sender == nil {
-						switch pkt.dest {
-						case p2pDestPeer:
-							netErr = NewUnicastError(err, pkt.destPeer)
-						case p2pDestAny:
-							if pkt.ttl == byte(module.BROADCAST_NEIGHBOR) {
-								netErr = NewBroadcastError(err, module.BROADCAST_NEIGHBOR)
-							} else if pkt.ttl == byte(module.BROADCAST_CHILDREN) {
-								netErr = NewBroadcastError(err, module.BROADCAST_CHILDREN)
-							} else {
-								netErr = NewBroadcastError(err, module.BROADCAST_ALL)
-							}
-						default: //p2pDestPeerGroup < dest < p2pDestPeer
-							netErr = NewMulticastError(err, ph.m.getRoleByDest(pkt.dest))
-						}
-						ph.getReactor().OnFailure(netErr, pi, pkt.payload)
-					} else {
-						ph.logger.Infoln("receiveRoutine", "relay", err, c)
-						//netErr = newNetworkError(err, "relay", pkt)
-						//ph.reactor.OnFailure(netErr, pi, pkt.payload)
-					}
-				}
-			}
-		}
-	}
-}
-
-func (ph *protocolHandler) onFailure(err error, pkt *Packet, c *Counter) {
-	if !ph.IsRun() {
-		return
-	}
-	ph.logger.Debugln("onFailure", err, pkt, c)
-	ctx := context.WithValue(context.Background(), p2pContextKeyError, err)
-	ctx = context.WithValue(ctx, p2pContextKeyPacket, pkt)
-	ctx = context.WithValue(ctx, p2pContextKeyCounter, c)
-	if ok := ph.failureQueue.Push(ctx); !ok {
-		ph.logger.Infoln("onFailure", "failureQueue Push failure", pkt)
 	}
 }
 

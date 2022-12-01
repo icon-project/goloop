@@ -55,10 +55,6 @@ func (m *manager) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 	return false, nil
 }
 
-func (m *manager) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	log.Warnf("OnFailure pi=%d: %+v", pi, err)
-}
-
 func (m *manager) OnJoin(id module.PeerID) {
 	m.server.onJoin(id)
 	m.client.onJoin(id)

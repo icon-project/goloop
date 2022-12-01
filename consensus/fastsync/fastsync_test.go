@@ -164,12 +164,6 @@ type tReceiveEvent struct {
 	id module.PeerID
 }
 
-type tFailureEvent struct {
-	err error
-	pi  module.ProtocolInfo
-	b   []byte
-}
-
 type tJoinEvent struct {
 	id module.PeerID
 }
@@ -185,10 +179,6 @@ func newTReactor() *tReactor {
 func (r *tReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
 	r.ch <- tReceiveEvent{pi, b, id}
 	return false, nil
-}
-
-func (r *tReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	r.ch <- tFailureEvent{err, pi, b}
 }
 
 func (r *tReactor) OnJoin(id module.PeerID) {

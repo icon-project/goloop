@@ -80,10 +80,6 @@ func (r *TransactionReactor) PropagateTransaction(tx transaction.Transaction) er
 	return nil
 }
 
-func (r *TransactionReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	// Nothing to do now.
-}
-
 func (r *TransactionReactor) OnJoin(id module.PeerID) {
 	r.ts.HandleJoin(id)
 }

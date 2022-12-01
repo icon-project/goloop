@@ -160,17 +160,6 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 	return
 }
 
-func (r *testReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	rm := &testNetworkMessage{}
-	r.decode(b, rm)
-	msg := rm.Message
-	ctx := context.WithValue(context.Background(), "op", "error")
-	ctx = context.WithValue(ctx, "pi", pi)
-	ctx = context.WithValue(ctx, "msg", msg)
-	ctx = context.WithValue(ctx, "name", r.name)
-	ctx = context.WithValue(ctx, "error", err)
-	r.ch <- ctx
-}
 func (r *testReactor) OnJoin(id module.PeerID) {
 	r.logger.Println("OnJoin", id)
 	ctx := context.WithValue(context.Background(), "op", "join")
@@ -311,9 +300,8 @@ type dummyReactor struct{}
 func (d dummyReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
 	return false, nil
 }
-func (d dummyReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {}
-func (d dummyReactor) OnJoin(id module.PeerID)                               {}
-func (d dummyReactor) OnLeave(id module.PeerID)                              {}
+func (d dummyReactor) OnJoin(id module.PeerID)  {}
+func (d dummyReactor) OnLeave(id module.PeerID) {}
 
 func failIfError(t *testing.T, err error, msgAndArgs ...interface{}) {
 	if err != nil {
