@@ -162,8 +162,12 @@ func (sig *Signature) Verify(msg []byte, pubKey *PublicKey) bool {
 	}
 	r := new(secp256k1.ModNScalar)
 	s := new(secp256k1.ModNScalar)
-	r.SetByteSlice(sig.bytes[1:33])
-	s.SetByteSlice(sig.bytes[33:])
+	var offset int
+	if len(sig.bytes) == SignatureLenRawWithV {
+		offset = 1
+	}
+	r.SetByteSlice(sig.bytes[offset : offset+32])
+	s.SetByteSlice(sig.bytes[offset+32:])
 	sigReal := ecdsa.NewSignature(r, s)
 	return sigReal.Verify(msg, pubKey.real)
 }
