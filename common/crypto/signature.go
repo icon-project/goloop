@@ -157,7 +157,7 @@ func (sig *Signature) RecoverPublicKey(hash []byte) (*PublicKey, error) {
 
 // Verify verifies the signature of hash using the public key.
 func (sig *Signature) Verify(msg []byte, pubKey *PublicKey) bool {
-	if len(msg) == 0 || len(msg) > HashLen || pubKey == nil {
+	if len(msg) == 0 || len(msg) > HashLen || pubKey == nil || len(sig.bytes) < SignatureLenRaw {
 		return false
 	}
 	r := new(secp256k1.ModNScalar)
