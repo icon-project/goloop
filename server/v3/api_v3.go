@@ -160,7 +160,7 @@ func (c *contextWithBM) GetBlockByHeight(height jsonrpc.HexInt) (module.Block, e
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 		}
-		if err := c.CheckBaseHeight(h); err != nil {
+		if err = c.CheckBaseHeight(h); err != nil {
 			return nil, err
 		}
 		blk, err := c.bm.GetBlockByHeight(h)
@@ -173,7 +173,7 @@ func (c *contextWithBM) GetBlockByID(id []byte) (module.Block, error) {
 	if err != nil {
 		return nil, c.AsRPCError(err)
 	}
-	if err := c.CheckBaseHeight(blk.Height()); err != nil {
+	if err = c.CheckBaseHeight(blk.Height()); err != nil {
 		return nil, err
 	}
 	return blk, nil
@@ -222,17 +222,17 @@ func getLastBlock(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.bm.GetLastBlock()
+	blk, err := c.bm.GetLastBlock()
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 
-	blockJson, err := block.ToJSON(module.JSONVersion3)
+	blockJson, err := blk.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 
-	if err := fillTransactions(blockJson, block, module.JSONVersion3); err != nil {
+	if err = fillTransactions(blockJson, blk, module.JSONVersion3); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 	return blockJson, nil
@@ -249,17 +249,17 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
 
-	blockJson, err := block.ToJSON(module.JSONVersion3)
+	blockJson, err := blk.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 
-	if err := fillTransactions(blockJson, block, module.JSONVersion3); err != nil {
+	if err = fillTransactions(blockJson, blk, module.JSONVersion3); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 	return blockJson, nil
@@ -276,17 +276,17 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByID(param.Hash.Bytes())
+	blk, err := c.GetBlockByID(param.Hash.Bytes())
 	if err != nil {
 		return nil, err
 	}
 
-	blockJson, err := block.ToJSON(module.JSONVersion3)
+	blockJson, err := blk.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 
-	if err := fillTransactions(blockJson, block, module.JSONVersion3); err != nil {
+	if err = fillTransactions(blockJson, blk, module.JSONVersion3); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 	return blockJson, nil
@@ -303,13 +303,13 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
 
-	bi := common.NewBlockInfo(block.Height(), block.Timestamp())
-	result, err := c.sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), bi)
+	bi := common.NewBlockInfo(blk.Height(), blk.Timestamp())
+	result, err := c.sm.Call(blk.Result(), blk.NextValidators(), params.RawMessage(), bi)
 	if err != nil {
 		if service.InvalidQueryError.Equals(err) {
 			return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
@@ -335,12 +335,12 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 	}
 
 	var balance common.HexInt
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := c.sm.GetBalance(block.Result(), param.Address.Address())
+	b, err := c.sm.GetBalance(blk.Result(), param.Address.Address())
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
@@ -428,7 +428,7 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	}
 
 	blk := txInfo.Block()
-	if err := c.CheckBaseHeight(blk.Height()); err != nil {
+	if err = c.CheckBaseHeight(blk.Height()); err != nil {
 		return nil, err
 	}
 	receipt, err := txInfo.GetReceipt()
@@ -444,7 +444,7 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 
 	result := res.(map[string]interface{})
 	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
-	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
+	result["blockHeight"] = "0x" + strconv.FormatInt(blk.Height(), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
 	result["txHash"] = "0x" + hex.EncodeToString(param.Hash.Bytes())
 
@@ -477,12 +477,12 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	}
 
 	blk := txInfo.Block()
-	if err := c.CheckBaseHeight(blk.Height()); err != nil {
+	if err = c.CheckBaseHeight(blk.Height()); err != nil {
 		return nil, err
 	}
 	result := res.(map[string]interface{})
 	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
-	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
+	result["blockHeight"] = "0x" + strconv.FormatInt(blk.Height(), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
 
 	return result, nil
@@ -502,12 +502,12 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 	var state []byte
 	var height int64
 	if c.chain.ValidateTxOnSend() {
-		block, err := c.bm.GetLastBlock()
+		blk, err := c.bm.GetLastBlock()
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeServer.Wrap(err, c.debug)
 		}
-		state = block.Result()
-		height = block.Height() + 1
+		state = blk.Result()
+		height = blk.Height() + 1
 	}
 
 	hash, err := c.sm.SendTransaction(state, height, params.RawMessage())
@@ -570,13 +570,13 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
 
 	buf := bytes.NewBuffer(nil)
-	if err := block.MarshalHeader(buf); err != nil {
+	if err = blk.MarshalHeader(buf); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 
@@ -601,7 +601,7 @@ func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
-	if err := c.CheckBaseHeight(height); err != nil {
+	if err = c.CheckBaseHeight(height); err != nil {
 		return nil, err
 	}
 
@@ -629,12 +629,12 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 		idx = int(v64)
 	}
 
-	block, err := c.GetBlockByID(param.BlockHash.Bytes())
+	blk, err := c.GetBlockByID(param.BlockHash.Bytes())
 	if err != nil {
 		return nil, err
 	}
 
-	receiptList, err := c.sm.ReceiptListFromResult(block.Result(), module.TransactionGroupNormal)
+	receiptList, err := c.sm.ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
@@ -662,12 +662,12 @@ func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	} else {
 		idx = int(v64)
 	}
-	block, err := c.GetBlockByID(param.BlockHash.Bytes())
+	blk, err := c.GetBlockByID(param.BlockHash.Bytes())
 	if err != nil {
 		return nil, err
 	}
 
-	receiptList, err := c.sm.ReceiptListFromResult(block.Result(), module.TransactionGroupNormal)
+	receiptList, err := c.sm.ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
@@ -678,7 +678,7 @@ func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 			"fail to get a receipt for index=%d", idx)
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, c.debug)
 	}
-	proofs := [][][]byte{}
+	var proofs [][][]byte
 	rProof, err := receiptList.GetProof(idx)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
@@ -743,12 +743,12 @@ func getBTPNetworkInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
 
-	blockResult := block.Result()
+	blockResult := blk.Result()
 	nw, err := c.sm.BTPNetworkFromResult(blockResult, nid)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
@@ -779,12 +779,12 @@ func getBTPNetworkTypeInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interf
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
 
-	blockResult := block.Result()
+	blockResult := blk.Result()
 	nt, err := c.sm.BTPNetworkTypeFromResult(blockResult, ntid)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
@@ -810,13 +810,13 @@ func getBTPMessages(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
 
 	res := make([]string, 0)
-	blockResult := block.Result()
+	blockResult := blk.Result()
 	bDigest, err := c.sm.BTPDigestFromResult(blockResult)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
@@ -872,13 +872,14 @@ func getBTPHeader(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
-	block, err := c.GetBlockByHeight(param.Height)
+	blk, err := c.GetBlockByHeight(param.Height)
 	if err != nil {
 		return nil, err
 	}
-	btpBlock, _, err := c.cs.GetBTPBlockHeaderAndProof(block, nid, module.FlagBTPBlockHeader)
+	btpBlock, _, err := c.cs.GetBTPBlockHeaderAndProof(blk, nid, module.FlagBTPBlockHeader)
 	if errors.NotFoundError.Equals(err) {
-		err = errors.NotFoundError.Wrapf(err, "fail to get a BTP block header for height=%d, nid=%d", block.Height(), nid)
+		err = errors.NotFoundError.Wrapf(
+			err, "fail to get a BTP block header for height=%d, nid=%d", blk.Height(), nid)
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, c.debug)
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
@@ -902,10 +903,11 @@ func getBTPProof(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, c.debug)
 	}
 
-	block, err := c.GetBlockByHeight(param.Height)
-	_, proof, err := c.cs.GetBTPBlockHeaderAndProof(block, nid, module.FlagBTPBlockProof)
+	blk, err := c.GetBlockByHeight(param.Height)
+	_, proof, err := c.cs.GetBTPBlockHeaderAndProof(blk, nid, module.FlagBTPBlockProof)
 	if errors.NotFoundError.Equals(err) {
-		err = errors.NotFoundError.Wrapf(err, "fail to get a BTP block proof for height=%d, nid=%d", block.Height(), nid)
+		err = errors.NotFoundError.Wrapf(
+			err, "fail to get a BTP block proof for height=%d, nid=%d", blk.Height(), nid)
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, c.debug)
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
@@ -919,23 +921,24 @@ func getBTPSourceInformation(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface
 		return nil, err
 	}
 
-	block, err := c.bm.GetLastBlock()
+	blk, err := c.bm.GetLastBlock()
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, c.debug)
 	}
-	ntids, err := c.sm.BTPNetworkTypeIDsFromResult(block.Result())
+	ntids, err := c.sm.BTPNetworkTypeIDsFromResult(blk.Result())
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, c.debug)
 	}
 
-	res := make(map[string]interface{})
-	res["srcNetworkUID"] = intconv.FormatInt(int64(c.chain.NID())) + ".icon"
 	ontids := make([]interface{}, len(ntids))
 	for i, ntid := range ntids {
 		ontids[i] = intconv.FormatInt(ntid)
 	}
-	res["networkTypeIDs"] = ontids
-	return res, nil
+
+	return map[string]interface{}{
+		"srcNetworkUID":  intconv.FormatInt(int64(c.chain.NID())) + ".icon",
+		"networkTypeIDs": ontids,
+	}, nil
 }
 
 // convert TransactionList to []Transaction
@@ -965,12 +968,12 @@ func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 
 	dt := c.chain.DefaultWaitTimeout()
 	if dt <= 0 {
-		return nil, jsonrpc.ErrorCodeMethodNotFound.New("NotEnabled")
+		return nil, jsonrpc.ErrorCodeMethodNotFound.Errorf("NotEnabled(waitTimeout=%d)", dt)
 	}
 
 	ut := ctx.GetTimeout(dt)
 	if ut <= 0 {
-		return nil, jsonrpc.ErrorCodeInvalidRequest.Errorf("InvalidTimeout(%dms)", ut/time.Millisecond)
+		return nil, jsonrpc.ErrorCodeInvalidRequest.Errorf("InvalidTimeout(%d)", ut)
 	}
 	mt := c.chain.MaxWaitTimeout()
 	timeout := ut
@@ -988,12 +991,12 @@ func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 	var state []byte
 	var height int64
 	if c.chain.ValidateTxOnSend() {
-		block, err := c.bm.GetLastBlock()
+		blk, err := c.bm.GetLastBlock()
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeServer.Wrap(err, c.debug)
 		}
-		state = block.Result()
-		height = block.Height() + 1
+		state = blk.Result()
+		height = blk.Height() + 1
 	}
 
 	hash, fc, err := c.bm.SendTransactionAndWait(state, height, params.RawMessage())
@@ -1086,7 +1089,7 @@ func waitTransactionResultOnChannel(c *contextWithBM, id []byte, timeout time.Du
 	}
 
 	blk := txInfo.Block()
-	if err := c.CheckBaseHeight(blk.Height()); err != nil {
+	if err = c.CheckBaseHeight(blk.Height()); err != nil {
 		return nil, err
 	}
 	res, err := receipt.ToJSON(module.JSONVersion3)
@@ -1095,7 +1098,7 @@ func waitTransactionResultOnChannel(c *contextWithBM, id []byte, timeout time.Du
 	}
 	result := res.(map[string]interface{})
 	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
-	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
+	result["blockHeight"] = "0x" + strconv.FormatInt(blk.Height(), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
 	result["txHash"] = "0x" + hex.EncodeToString(id)
 
@@ -1231,7 +1234,7 @@ func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 	}
 	if status := rct.Status(); status != module.StatusSuccess {
 		if rctex, ok := rct.(txresult.Receipt); ok {
-			if err := rctex.Reason(); err != nil {
+			if err = rctex.Reason(); err != nil {
 				return nil, jsonrpc.ErrScore(rctex.Reason(), c.debug)
 			}
 		}
@@ -1352,7 +1355,7 @@ func findBlockAndTxInfoByRosettaTraceParam(
 			return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 		}
 		blk = txInfo.Block()
-		if err := c.CheckBaseHeight(blk.Height()); err != nil {
+		if err = c.CheckBaseHeight(blk.Height()); err != nil {
 			return nil, nil, err
 		}
 	} else if len(param.Block) > 0 {
