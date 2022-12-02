@@ -49,7 +49,6 @@ const (
 	DefaultFailureNodeMin       = 2
 	DefaultSelectiveFloodingAdd = 1
 	DefaultSimplePeerIDSize     = 4
-	UsingSelectiveFlooding      = true
 	DefaultDuplicatedPeerTime   = 1 * time.Second
 	DefaultMaxRetryClose        = 10
 	AttrP2PConnectionRequest    = "P2PConnectionRequest"
@@ -326,12 +325,7 @@ func (p2p *PeerToPeer) onClose(p *Peer) {
 	if p2p.removePeer(p) {
 		p2p.onEvent(p2pEventLeave, p)
 		p.WaitClose()
-		ctx := p.q.Last()
-		if ctx == nil {
-			ctx = p.q.Pop()
-		}
-
-		for ; ctx != nil; ctx = p.q.Pop() {
+		for ctx := p.q.Pop(); ctx != nil; ctx = p.q.Pop() {
 			c := ctx.Value(p2pContextKeyCounter).(*Counter)
 			c.increaseClose()
 			if atomic.LoadInt32(&c.fixed) == 1 && c.Close() == c.enqueue {
@@ -835,53 +829,28 @@ func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte) {
 	lps := make([]*Peer, len(ps))
 	ti, li := 0, 0
 
-	var ext []byte
-	if DefaultSimplePeerIDSize >= peerIDSize {
-		rids, _ := NewPeerIDSetFromBytes(pkt.ext)
-		tids := NewPeerIDSet()
-		for _, p := range ps {
-			if src.Equal(p.ID()) {
-				continue
-			}
-			if !rids.Contains(p.ID()) {
-				tps[ti] = p
-				ti++
-				tids.Add(p.ID())
-			} else {
-				lps[li] = p
-				li++
-			}
-
-			if ti >= n {
-				break
-			}
+	rids, _ := NewBytesSetFromBytes(pkt.ext, DefaultSimplePeerIDSize)
+	tids := NewBytesSet(DefaultSimplePeerIDSize)
+	for _, p := range ps {
+		if src.Equal(p.ID()) {
+			continue
 		}
-		ext = tids.Bytes()
-		p2p.logger.Traceln("selectPeersFromFriends", "hash:", pkt.hashOfPacket, "src:", pkt.src, "ext:", pkt.extendInfo, "rids:", rids, "tids:", tids)
-	} else {
-		rids, _ := NewBytesSetFromBytes(pkt.ext, DefaultSimplePeerIDSize)
-		tids := NewBytesSet(DefaultSimplePeerIDSize)
-		for _, p := range ps {
-			if src.Equal(p.ID()) {
-				continue
-			}
-			tb := p.ID().Bytes()[:DefaultSimplePeerIDSize]
-			if !rids.Contains(tb) {
-				tps[ti] = p
-				ti++
-				tids.Add(tb)
-			} else {
-				lps[li] = p
-				li++
-			}
-
-			if ti >= n {
-				break
-			}
+		tb := p.ID().Bytes()[:DefaultSimplePeerIDSize]
+		if !rids.Contains(tb) {
+			tps[ti] = p
+			ti++
+			tids.Add(tb)
+		} else {
+			lps[li] = p
+			li++
 		}
-		ext = tids.Bytes()
-		p2p.logger.Traceln("selectPeersFromFriends", "hash:", pkt.hashOfPacket, "src:", pkt.src, "ext:", pkt.extendInfo, "rids:", rids, "tids:", tids)
+
+		if ti >= n {
+			break
+		}
 	}
+	p2p.logger.Traceln("selectPeersFromFriends", "hash:", pkt.hashOfPacket, "src:", pkt.src, "ext:", pkt.extendInfo, "rids:", rids, "tids:", tids)
+	ext := tids.Bytes()
 	n = n - ti
 	for i := 0; i < n && i < li; i++ {
 		tps[ti] = lps[i]
@@ -891,25 +860,19 @@ func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte) {
 }
 
 func (p2p *PeerToPeer) sendToFriends(ctx context.Context) {
-	if UsingSelectiveFlooding { //selective (F+1) flooding with node-list
-		pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-		ps, ext := p2p.selectPeersFromFriends(pkt)
-		pkt.extendInfo = newPacketExtendInfo(pkt.extendInfo.hint()+1, pkt.extendInfo.len()+len(ext))
-		if len(pkt.ext) > 0 {
-			ext = append(pkt.ext, ext...)
+	//selective (F+1) flooding with node-list
+	pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+	ps, ext := p2p.selectPeersFromFriends(pkt)
+	pkt.extendInfo = newPacketExtendInfo(pkt.extendInfo.hint()+1, pkt.extendInfo.len()+len(ext))
+	if len(pkt.ext) > 0 {
+		ext = append(pkt.ext, ext...)
+	}
+	pkt.footerToBytes(true)
+	pkt.ext = ext[:]
+	for _, p := range ps {
+		if err := p.send(ctx); err != nil && err != ErrDuplicatedPacket {
+			p2p.logger.Infoln("sendToFriends", err, pkt.protocol, pkt.subProtocol, p.ID())
 		}
-		pkt.footerToBytes(true)
-		pkt.ext = ext[:]
-		for _, p := range ps {
-			if err := p.send(ctx); err != nil && err != ErrDuplicatedPacket {
-				p2p.logger.Infoln("sendToFriends", err, pkt.protocol, pkt.subProtocol, p.ID())
-			}
-		}
-	} else {
-		pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-		pkt.extendInfo = newPacketExtendInfo(pkt.extendInfo.hint()+1, 0)
-		pkt.footerToBytes(true)
-		p2p.sendToPeers(ctx, p2p.friends)
 	}
 }
 
@@ -1119,8 +1082,6 @@ var (
 	p2pContextKeyPeer    = p2pContextKey("peer")
 	p2pContextKeyEvent   = p2pContextKey("event")
 	p2pContextKeyCounter = p2pContextKey("counter")
-	p2pContextKeyError   = p2pContextKey("error")
-	p2pContextKeyDone    = p2pContextKey("done")
 )
 
 type Counter struct {
@@ -1236,17 +1197,6 @@ func (p2p *PeerToPeer) hasNetAddress(na NetAddress) bool {
 		p2p.friends.HasNetAddress(na) ||
 		p2p.others.HasNetAddress(na) ||
 		p2p.orphanages.HasNetAddress(na)
-}
-
-func (p2p *PeerToPeer) hasNetAddressAndIn(na NetAddress, in bool) bool {
-	return p2p.NetAddress() == na ||
-		p2p.parents.HasNetAddressAndIn(na, in) ||
-		p2p.uncles.HasNetAddressAndIn(na, in) ||
-		p2p.children.HasNetAddressAndIn(na, in) ||
-		p2p.nephews.HasNetAddressAndIn(na, in) ||
-		p2p.friends.HasNetAddressAndIn(na, in) ||
-		p2p.others.HasNetAddressAndIn(na, in) ||
-		p2p.orphanages.HasNetAddressAndIn(na, in)
 }
 
 func (p2p *PeerToPeer) connectionsByProtocol(pi module.ProtocolInfo) map[PeerConnectionType]int {

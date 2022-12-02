@@ -156,25 +156,6 @@ func Test_set_PeerIDSet(t *testing.T) {
 	t.Log(s.Array())
 }
 
-func Test_set_RoleSet(t *testing.T) {
-	s := NewRoleSet()
-	assert.True(t, s.IsEmpty(), "true")
-	assert.True(t, s.Add(module.ROLE_SEED), "true")
-	assert.Equal(t, 1, s.Len(), "1")
-	assert.False(t, s.IsEmpty(), "false")
-	assert.True(t, s.Add(module.ROLE_VALIDATOR), "true")
-	assert.Equal(t, 2, s.Len(), "2")
-	assert.False(t, s.Add(module.ROLE_VALIDATOR), "false")
-	assert.Equal(t, 2, s.Len(), "2")
-	assert.True(t, s.Contains(module.ROLE_SEED), "true")
-	assert.False(t, s.Contains(module.Role("test")), "false")
-
-	s.Merge(module.ROLE_SEED, module.Role("test"))
-	assert.Equal(t, 3, s.Len(), "3")
-	assert.True(t, s.Contains(module.Role("test")), "true")
-	t.Log(s.Array())
-}
-
 type dummyPeerID struct {
 	s string
 	b []byte

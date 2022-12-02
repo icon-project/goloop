@@ -234,11 +234,6 @@ func (q *PriorityQueue) Close() {
 	q.term()
 }
 
-// DEPRECATED
-func (q *PriorityQueue) Last() context.Context {
-	return nil
-}
-
 func NewPriorityQueue(size int, maxPriority int) *PriorityQueue {
 	q := &PriorityQueue{}
 	q.init(size, maxPriority+1)

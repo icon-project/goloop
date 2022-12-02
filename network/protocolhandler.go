@@ -96,37 +96,23 @@ func (ph *protocolHandler) getReactor() module.Reactor {
 }
 
 func (ph *protocolHandler) getPriority() uint8 {
-	defer ph.mtx.RUnlock()
-	ph.mtx.RLock()
-
 	return ph.priority
 }
 
 func (ph *protocolHandler) getPolicy() module.NotRegisteredProtocolPolicy {
-	defer ph.mtx.RUnlock()
-	ph.mtx.RLock()
-
 	return ph.policy
 }
 
 func (ph *protocolHandler) getName() string {
-	defer ph.mtx.RUnlock()
-	ph.mtx.RLock()
-
 	return ph.name
 }
 
 func (ph *protocolHandler) getSubProtocol(spi module.ProtocolInfo) (module.ProtocolInfo, bool) {
-	defer ph.mtx.RUnlock()
-	ph.mtx.RLock()
-
 	p, ok := ph.subProtocols[spi.Uint16()]
 	return p, ok
 }
 
 func (ph *protocolHandler) getSubProtocols() []module.ProtocolInfo {
-	defer ph.mtx.RUnlock()
-	ph.mtx.RLock()
 	spis := make([]module.ProtocolInfo, len(ph.subProtocols))
 	i := 0
 	for _, spi := range ph.subProtocols {

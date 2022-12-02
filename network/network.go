@@ -75,13 +75,6 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 	return m
 }
 
-func (m *manager) Channel() string {
-	return m.channel
-}
-func (m *manager) PeerID() module.PeerID {
-	return m.p2p.ID()
-}
-
 func toPeerIDs(ps []*Peer) []module.PeerID {
 	l := make([]module.PeerID, len(ps))
 	for i, p := range ps {
@@ -225,13 +218,6 @@ func (m *manager) getProtocolHandler(pi module.ProtocolInfo) (*protocolHandler, 
 	return ph, ok
 }
 
-func (m *manager) SetWeight(pi module.ProtocolInfo, weight int) error {
-	if _, ok := m.getProtocolHandler(pi); !ok {
-		return ErrNotRegisteredReactor
-	}
-	return m.p2p.sendQueue.SetWeight(int(pi.ID()), weight)
-}
-
 func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, id module.PeerID) error {
 	ph, ok := m.getProtocolHandler(pi)
 	if !ok {
@@ -241,12 +227,11 @@ func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes
 		return ErrIllegalArgument
 	}
 	pkt := NewPacket(pi, spi, bytes)
-	pkt.protocol = pi
 	pkt.dest = p2pDestPeer
 	pkt.ttl = 1
 	pkt.destPeer = id
 	pkt.priority = ph.getPriority()
-	pkt.src = m.PeerID()
+	pkt.src = m.p2p.ID()
 	pkt.forceSend = true
 	p := m.p2p.getPeerByProtocol(id, pkt.protocol, true)
 	return p.sendPacket(pkt)

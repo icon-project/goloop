@@ -287,19 +287,6 @@ func (s *PeerSet) GetByRole(r PeerRoleFlag, has bool) []*Peer {
 	return l
 }
 
-func (s *PeerSet) GetByRecvRole(r PeerRoleFlag, has bool) []*Peer {
-	defer s.mtx.RUnlock()
-	s.mtx.RLock()
-
-	l := make([]*Peer, 0, len(s.arr))
-	for _, p := range s.arr {
-		if has == p.HasRecvRole(r) {
-			l = append(l, p)
-		}
-	}
-	return l
-}
-
 func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
@@ -332,18 +319,6 @@ func (s *PeerSet) NetAddresses() []NetAddress {
 
 func (s *PeerSet) HasNetAddress(a NetAddress) bool {
 	return s.addrs.Contains(a)
-}
-
-func (s *PeerSet) HasNetAddressAndIn(a NetAddress, in bool) bool {
-	defer s.mtx.RUnlock()
-	s.mtx.RLock()
-
-	for _, p := range s.arr {
-		if p.In() == in && p.NetAddress() == a {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *PeerSet) Find(f func(p *Peer) bool) []*Peer {
@@ -741,12 +716,4 @@ func (s *BytesSet) Bytes() []byte {
 		tb = tb[s.size:]
 	}
 	return arr[:]
-}
-
-type RoleSet struct {
-	*Set
-}
-
-func NewRoleSet() *RoleSet {
-	return &RoleSet{Set: NewSet()}
 }
