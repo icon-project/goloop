@@ -162,9 +162,9 @@ Get BTP network type information.
 {
   "id": 1001,
   "jsonrpc": "2.0",
-  "method": "icx_getNetworkTypeInfo",
+  "method": "btp_getNetworkTypeInfo",
   "params": {
-    "id" : "0x02"
+    "id" : "0x2"
   }
 }
 ```
@@ -432,7 +432,7 @@ None
   "id": 1001,
   "jsonrpc": "2.0",
   "result": {
-    "srcNetworkID" : "0x1.icon",
+    "srcNetworkUID" : "0x1.icon",
     "networkTypeIDs" : ["0x1","0x2"]
   }
 

@@ -36,10 +36,8 @@ const ConfigTransitionResultCacheEntrySize = 1024 * 1024
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
 	// Currently, it doesn't allow another branch, so add tx pool here.
-	tim          TXIDManager
-	tm           *TransactionManager
-	patchTxPool  *TransactionPool
-	normalTxPool *TransactionPool
+	tim TXIDManager
+	tm  *TransactionManager
 
 	patchMetric  *metric.TxMetric
 	normalMetric *metric.TxMetric
@@ -369,13 +367,13 @@ func newTransaction(txi interface{}) (transaction.Transaction, error) {
 		if err != nil {
 			return nil, errors.WithCode(err, InvalidTransactionError)
 		}
-		return ntx.(transaction.Transaction), nil
+		return ntx, nil
 	case string:
 		ntx, err := transaction.NewTransactionFromJSON([]byte(txo))
 		if err != nil {
 			return nil, errors.WithCode(err, InvalidTransactionError)
 		}
-		return ntx.(transaction.Transaction), nil
+		return ntx, nil
 	case transaction.Transaction:
 		return txo, nil
 	default:
@@ -611,14 +609,6 @@ func (c dummyDepositContext) BlockHeight() int64 {
 	return c.height
 }
 
-func boolToJSON(v bool) interface{} {
-	if v {
-		return "0x1"
-	} else {
-		return "0x0"
-	}
-}
-
 func (s *scoreStatus) ToJSON(height int64, version module.JSONVersion) (interface{}, error) {
 	ret := make(map[string]interface{})
 	if owner := s.ass.ContractOwner(); owner != nil {
@@ -818,7 +808,7 @@ func (m *manager) ExportResult(result []byte, vh []byte, d db.Database) error {
 	if err != nil {
 		return err
 	}
-	e := merkle.NewCopyContext(m.db, d)
+	e := merkle.PrepareCopyContext(m.db, d)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
 	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
 	ess := m.plt.NewExtensionWithBuilder(e.Builder(), r.ExtensionData)

@@ -86,6 +86,7 @@ const (
 	ProtoConsensus
 	ProtoFastSync
 	ProtoConsensusSync
+	ProtoReserved
 )
 
 type ProtocolInfo uint16
@@ -128,7 +129,6 @@ type NetworkTransport interface {
 	GetSecureAeads(channel string) string
 }
 
-//TODO remove interface and implement network.IsTemporaryError(error) bool
 type NetworkError interface {
 	error
 	Temporary() bool // Is the error temporary?

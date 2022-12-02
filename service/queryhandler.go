@@ -53,6 +53,9 @@ func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 		return nil, scoreresult.OutOfStepError.New("NotEnoughSteps(Default)")
 	}
 	cnt, err := transaction.MeasureBytesOfData(ctx.Revision(), qh.data)
+	if err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrap(err, "InvalidCallData")
+	}
 	if !cc.ApplySteps(state.StepTypeInput, cnt) {
 		return nil, scoreresult.OutOfStepError.New("NotEnoughSteps(Input)")
 	}

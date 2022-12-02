@@ -32,6 +32,7 @@ type syncer struct {
 	reactors   []SyncReactor
 	processors []SyncProcessor
 	noBuffer   bool
+	progressCB ProgressCallback
 
 	ah  []byte // account hash
 	vlh []byte // validator list hash
@@ -107,9 +108,12 @@ func (s *syncer) newSyncProcessorWithBuilders(
 		return errors.ErrInvalidState
 	}
 
+	progress := newProgressSum(len(stateBuilders)+len(btpBuilders), s.progressCB)
+
 	for _, builder := range stateBuilders {
 		// sync processor with v1,v2 protocol
 		sp := newSyncProcessor(builder, s.reactors, s.logger, false)
+		sp.SetProgressCallback(progress.callbackOf(len(s.processors)))
 		egrp.Go(sp.DoSync)
 		s.processors = append(s.processors, sp)
 	}
@@ -124,6 +128,7 @@ func (s *syncer) newSyncProcessorWithBuilders(
 	for _, builder := range btpBuilders {
 		// sync processor with v2 protocol
 		sp := newSyncProcessor(builder, reactorsV2, s.logger, false)
+		sp.SetProgressCallback(progress.callbackOf(len(s.processors)))
 		egrp.Go(sp.DoSync)
 		s.processors = append(s.processors, sp)
 	}
@@ -194,6 +199,10 @@ func (s *syncer) Finalize() error {
 
 	s.processors = nil
 	return nil
+}
+
+func (s *syncer) SetProgressCallback(on ProgressCallback) {
+	s.progressCB = on
 }
 
 func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platform,

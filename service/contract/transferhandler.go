@@ -61,7 +61,7 @@ func (h *TransferHandler) DoExecuteSync(cc CallContext) (err error, ro *codec.Ty
 	as2.SetBalance(new(big.Int).Add(bal2, h.Value))
 
 	if h.From.IsContract() && h.Value.Sign() > 0 {
-		indexed := make([][]byte, 4, 4)
+		indexed := make([][]byte, 4)
 		indexed[0] = []byte(txresult.EventLogICXTransfer)
 		indexed[1] = h.From.Bytes()
 		indexed[2] = h.To.Bytes()
@@ -71,9 +71,4 @@ func (h *TransferHandler) DoExecuteSync(cc CallContext) (err error, ro *codec.Ty
 
 	h.Log.OnBalanceChange(module.Transfer, h.From, h.To, h.Value)
 	return nil, nil, nil
-}
-
-type TransferAndMessageHandler struct {
-	*TransferHandler
-	data []byte
 }

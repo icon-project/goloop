@@ -96,10 +96,7 @@ func newHandlerWithNoCall(sync bool, cc *testCallContext) ContractHandler {
 func newHandler(sync bool, callSync bool, targetCall ContractHandler, cc *testCallContext) ContractHandler {
 	ch := &commonHandler{subcall: targetCall, callSync: callSync}
 	if sync {
-		var handler SyncContractHandler
-		handler = &syncHandler{commonHandler: ch, cc: cc}
-		return handler
-		// return &syncHandler{commonHandler: ch, cc: cc}
+		return &syncHandler{commonHandler: ch, cc: cc}
 	} else {
 		return &asyncHandler{commonHandler: ch, cc: cc}
 	}
@@ -220,7 +217,6 @@ func (h *asyncHandler) SendResult(status error, steps *big.Int, result *codec.Ty
 	if h.subcall != nil && !h.callSync {
 		h.cc.trail += "a"
 		h.cc.OnResult(status, 0, steps, result, nil)
-	} else {
 	}
 	return nil
 }

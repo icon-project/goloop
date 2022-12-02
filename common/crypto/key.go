@@ -1,11 +1,10 @@
 package crypto
 
 import (
-	"bytes"
 	"encoding/hex"
 	"errors"
 
-	"github.com/haltingstate/secp256k1-go"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 const (
@@ -17,29 +16,24 @@ const (
 // TODO private key always includes public key? or create KeyPair struct
 // for both private key and public key
 type PrivateKey struct {
-	bytes []byte // 32-byte
+	real *secp256k1.PrivateKey
 }
 
 // String returns the string representation.
 func (key *PrivateKey) String() string {
-	return "0x" + hex.EncodeToString(key.bytes)
+	return "0x" + hex.EncodeToString(key.Bytes())
 }
 
 // PublicKey generates a public key paired with itself.
 func (key *PrivateKey) PublicKey() *PublicKey {
-	pkBytes := secp256k1.PubkeyFromSeckey(key.bytes)
-	pk, err := ParsePublicKey(pkBytes)
-	if err != nil {
-		panic(err)
+	return &PublicKey{
+		real: key.real.PubKey(),
 	}
-	return pk
 }
 
 // Bytes returns bytes form of private key.
 func (key *PrivateKey) Bytes() []byte {
-	kb := make([]byte, PrivateKeyLen)
-	copy(kb, key.bytes)
-	return kb
+	return key.real.Serialize()
 }
 
 // TODO add 'func ToECDSA() ecdsa.PrivateKey' if needed
@@ -57,7 +51,7 @@ const (
 // PublicKey is a type representing a public key, which can be serialized to
 // or deserialized from compressed or uncompressed formats.
 type PublicKey struct {
-	bytes []byte // 33-byte compressed format to use halting state library efficiently
+	real *secp256k1.PublicKey
 }
 
 // ParsePublicKey parses the public key into a PublicKey instance. It supports
@@ -65,74 +59,55 @@ type PublicKey struct {
 // NOTE: For the efficiency, it may use the slice directly. So don't change any
 // internal value of the public key
 func ParsePublicKey(pubKey []byte) (*PublicKey, error) {
-	switch len(pubKey) {
-	case 0:
-		return nil, errors.New("public key bytes are empty")
-	case PublicKeyLenCompressed:
-		return &PublicKey{pubKey}, nil
-	case PublicKeyLenUncompressed:
-		return &PublicKey{uncompToCompPublicKey(pubKey)}, nil
-	default:
-		return nil, errors.New("wrong format")
+	pk, err := secp256k1.ParsePubKey(pubKey)
+	if err != nil {
+		return nil, err
 	}
-}
-
-// uncompToCompPublicKey changes the uncompressed formatted public key to
-// the compressed formatted. It assumes the uncompressed key is valid.
-func uncompToCompPublicKey(uncomp []byte) (comp []byte) {
-	comp = make([]byte, PublicKeyLenCompressed)
-	// skip to check the validity of uncompressed key
-	format := publicKeyCompressed
-	if uncomp[64]&0x1 == 0x1 {
-		format |= 0x1
-	}
-	comp[0] = format
-	copy(comp[1:], uncomp[1:33])
-	return
+	return &PublicKey{real: pk}, nil
 }
 
 // SerializeCompressed serializes the public key in a 33-byte compressed format.
 // For the efficiency, it returns the slice internally used, so don't change
 // any internal value in the returned slice.
 func (key *PublicKey) SerializeCompressed() []byte {
-	return key.bytes
+	return key.real.SerializeCompressed()
 }
 
 // SerializeUncompressed serializes the public key in a 65-byte uncompressed format.
 func (key *PublicKey) SerializeUncompressed() []byte {
-	return secp256k1.UncompressPubkey(key.bytes)
+	return key.real.SerializeUncompressed()
 }
 
 // Equal returns true if the given public key is same as this instance
 // semantically
 func (key *PublicKey) Equal(key2 *PublicKey) bool {
-	return bytes.Equal(key.bytes, key2.bytes)
+	return key.real.IsEqual(key2.real)
 }
 
 // String returns the string representation.
 func (key *PublicKey) String() string {
-	return "0x" + hex.EncodeToString(key.bytes)
+	return "0x" + hex.EncodeToString(key.SerializeCompressed())
 }
 
 // TODO add 'func ToECDSA() ecdsa.PublicKey' if needed
 
 // GenerateKeyPair generates a private and public key pair.
 func GenerateKeyPair() (privKey *PrivateKey, pubKey *PublicKey) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-
-	pub, priv := secp256k1.GenerateKeyPair()
-	privKey = &PrivateKey{priv}
-	pubKey, _ = ParsePublicKey(pub)
-	return
+	sk, err := secp256k1.GeneratePrivateKey()
+	if err != nil {
+		panic(err)
+	}
+	pk := sk.PubKey()
+	return &PrivateKey{real: sk}, &PublicKey{real: pk}
 }
 
-// ParsePublicKey parse private key and return private key object.
+// ParsePrivateKey parse private key and return private key object.
 func ParsePrivateKey(b []byte) (*PrivateKey, error) {
 	if len(b) != PrivateKeyLen {
 		return nil, errors.New("InvalidKeyLength")
 	}
-	b2 := make([]byte, len(b))
-	copy(b2, b)
-	return &PrivateKey{b2}, nil
+
+	return &PrivateKey{
+		real: secp256k1.PrivKeyFromBytes(b),
+	}, nil
 }

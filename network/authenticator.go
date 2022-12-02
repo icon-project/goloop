@@ -297,7 +297,7 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 		}
 	} else {
 		//in case of m.SecureSuite is SecureSuiteNone for legacy Authenticator which is not supported SecureAeadSuiteNone
-		m.SecureAeadSuite = a.resolveSecureAeadSuite(p.channel, rm.SecureAeadSuites)
+		m.SecureAeadSuite = a.resolveSecureAeadSuite(p.Channel(), rm.SecureAeadSuites)
 		a.logger.Traceln("handleSecureRequest", p.ConnString(), "SecureAeadSuite", m.SecureAeadSuite)
 	}
 
@@ -369,7 +369,7 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 		return
 	}
 	a.logger.Traceln("handleSecureResponse", rm, p)
-	p.rtt.Stop()
+	rttLast := p.rtt.Stop()
 
 	if rm.SecureError != SecureErrorNone {
 		err := fmt.Errorf("handleSecureResponse error[%v]", rm.SecureError)
@@ -388,7 +388,7 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 
 	rsas := rm.SecureAeadSuite
 	if rm.SecureSuite == SecureSuiteNone {
-		rsas = SecureSuiteNone
+		rsas = SecureAeadSuiteNone
 	} else if !a.isSupportedSecureAeadSuite(p.Channel(), rsas) {
 		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d SecureAeadSuite %d", rss, rsas)
 		a.logger.Infoln("handleSecureResponse", p.ConnString(), "SecureError", err)
@@ -444,7 +444,7 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 	m := &SignatureRequest{
 		PublicKey: a.wallet.PublicKey(),
 		Signature: a.Signature(p.secureKey.extra),
-		Rtt:       p.rtt.last,
+		Rtt:       rttLast,
 	}
 	a.setWaitInfo(p2pProtoAuthSignatureResponse, p)
 	a.sendMessage(p2pProtoAuth, p2pProtoAuthSignatureRequest, m, p)
@@ -461,8 +461,8 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	}
 	a.logger.Traceln("handleSignatureRequest", rm, p)
 
-	p.rtt.Stop()
-	df := rm.Rtt - p.rtt.last
+	rttLast := p.rtt.Stop()
+	df := rm.Rtt - rttLast
 	if df > DefaultRttAccuracy {
 		a.logger.Debugln("handleSignatureRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}
@@ -470,7 +470,7 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	m := &SignatureResponse{
 		PublicKey: a.wallet.PublicKey(),
 		Signature: a.Signature(p.secureKey.extra),
-		Rtt:       p.rtt.last,
+		Rtt:       rttLast,
 	}
 
 	id, err := a.VerifySignature(rm.PublicKey, rm.Signature, p.secureKey.extra)
@@ -502,7 +502,8 @@ func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
 	}
 	a.logger.Traceln("handleSignatureResponse", rm, p)
 
-	df := rm.Rtt - p.rtt.last
+	rttLast, _ := p.rtt.Value()
+	df := rm.Rtt - rttLast
 	if df > DefaultRttAccuracy {
 		a.logger.Debugln("handleSignatureResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}

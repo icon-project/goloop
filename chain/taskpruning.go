@@ -42,6 +42,9 @@ type taskPruning struct {
 	height  int64
 	blocks  int64
 	current int64
+
+	resolved   uint64
+	unresolved uint64
 }
 
 func (t *taskPruning) String() string {
@@ -51,8 +54,8 @@ func (t *taskPruning) String() string {
 func (t *taskPruning) DetailOf(s State) string {
 	switch s {
 	case Started:
-		i, a := t._progress()
-		return fmt.Sprintf("pruning %d/%d", i, a)
+		i, a, r, u := t._progress()
+		return fmt.Sprintf("pruning %d/%d resolved=%d unresolved=%d", i, a, r, u)
 	default:
 		if st, ok := pruningStates[s]; ok {
 			return st
@@ -87,21 +90,23 @@ func (t *taskPruning) doPruning() {
 	t.result.SetValue(err)
 }
 
-func (t *taskPruning) OnExport(height int64) error {
+func (t *taskPruning) OnExport(height int64, r, u int) error {
 	if atomic.LoadInt64(&t.blocks) == 0 {
 		return errors.ErrInterrupted
 	}
 	atomic.StoreInt64(&t.current, height-t.height+1)
+	atomic.StoreUint64(&t.resolved, uint64(r))
+	atomic.StoreUint64(&t.unresolved, uint64(u))
 	return nil
 }
 
-func (t *taskPruning) _progress() (int64, int64) {
+func (t *taskPruning) _progress() (int64, int64, uint64, uint64) {
 	blocks := atomic.LoadInt64(&t.blocks)
 	if blocks == 0 {
-		return 0, 0
+		return 0, 0, 0, 0
 	}
 	current := atomic.LoadInt64(&t.current)
-	return current, blocks
+	return current, blocks, atomic.LoadUint64(&t.resolved), atomic.LoadUint64(&t.unresolved)
 }
 
 func (t *taskPruning) _exportGenesis(blk module.Block, votes module.CommitVoteSet, gsfile string) (rerr error) {

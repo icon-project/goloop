@@ -20,6 +20,7 @@ type RequestIterator interface {
 type Builder interface {
 	OnData(bid db.BucketID, value []byte) error
 	UnresolvedCount() int
+	ResolvedCount() int
 	Requests() RequestIterator
 	RequestData(id db.BucketID, key []byte, requester DataRequester)
 	Database() db.Database
@@ -47,6 +48,7 @@ type merkleBuilder struct {
 	requests   *list.List
 	hasherMap  map[string]requestMap
 	onDataMark *list.Element
+	resolved   int
 }
 
 type requestIterator struct {
@@ -112,6 +114,7 @@ func (b *merkleBuilder) OnData(bid db.BucketID, value []byte) error {
 				return err
 			}
 		}
+		b.resolved += 1
 		b.requests.Remove(e)
 		delete(reqMap, reqID)
 		return nil
@@ -159,6 +162,10 @@ func (b *merkleBuilder) RequestData(bid db.BucketID, key []byte, requester DataR
 
 func (b *merkleBuilder) UnresolvedCount() int {
 	return b.requests.Len()
+}
+
+func (b *merkleBuilder) ResolvedCount() int {
+	return b.resolved
 }
 
 func (b *merkleBuilder) Flush(write bool) error {

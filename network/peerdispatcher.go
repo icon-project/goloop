@@ -139,7 +139,6 @@ func (pd *PeerDispatcher) onError(err error, p *Peer, pkt *Packet) {
 
 //callback from Peer.receiveRoutine
 func (pd *PeerDispatcher) onPacket(pkt *Packet, p *Peer) {
-	//TODO dispatcher.message_dump
 	pd.logger.Traceln("onPacket", pkt)
 }
 

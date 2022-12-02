@@ -4,11 +4,11 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/biter777/countries v1.3.4
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0
 	github.com/evalphobia/logrus_fluent v0.5.4
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gorilla/websocket v1.4.1
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282
-	github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6
 	github.com/jroimartin/gocui v0.4.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mitchellh/mapstructure v1.1.2

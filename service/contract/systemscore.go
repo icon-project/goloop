@@ -199,7 +199,6 @@ var (
 	ptrOfHexIntType  = reflect.TypeOf((*common.HexInt)(nil))
 	ptrOfBigIntType  = reflect.TypeOf((*big.Int)(nil))
 	sliceOfByteType  = reflect.TypeOf([]byte(nil))
-	addressType      = reflect.TypeOf((*module.Address)(nil)).Elem()
 	ptrOfAddressType = reflect.TypeOf((*common.Address)(nil))
 )
 

@@ -98,6 +98,10 @@ public class RejectedClassException extends PredefinedException {
         super(message);
     }
 
+    public RejectedClassException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
     public int getCode() {
         return Status.IllegalFormat;
     }

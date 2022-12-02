@@ -30,19 +30,12 @@ type tReactorItem struct {
 	priority uint8
 }
 
-type tPacket struct {
-	pi module.ProtocolInfo
-	b  []byte
-	id module.PeerID
-}
-
 type tNetworkManager struct {
 	module.NetworkManager
 	id           module.PeerID
 	reactorItems []*tReactorItem
 	peers        []*tNetworkManager
 	drop         bool
-	recvBuf      []*tPacket
 }
 
 type tProtocolHandler struct {
@@ -94,19 +87,6 @@ func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
 	for _, r := range nm2.reactorItems {
 		r.reactor.OnJoin(nm.id)
 	}
-}
-
-func (nm *tNetworkManager) onReceiveUnicast(pi module.ProtocolInfo, b []byte, from module.PeerID) {
-	nm.recvBuf = append(nm.recvBuf, &tPacket{pi, b, from})
-}
-
-func (nm *tNetworkManager) processRecvBuf() {
-	for _, p := range nm.recvBuf {
-		for _, r := range nm.reactorItems {
-			r.reactor.OnReceive(p.pi, p.b, p.id)
-		}
-	}
-	nm.recvBuf = nil
 }
 
 func (ph *tProtocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module.BroadcastType) error {
@@ -341,7 +321,7 @@ func TestSync_AccountSync(t *testing.T) {
 		if i == 0 {
 			prevHash = ss.StateHash()
 		} else {
-			if bytes.Compare(ss.StateHash(), prevHash) != 0 {
+			if !bytes.Equal(ss.StateHash(), prevHash) {
 				t.Fatalf("Wrong hash\n")
 			}
 		}
@@ -394,8 +374,9 @@ func testReceiptSyncByRev(t *testing.T, rev module.Revision) {
 				t.Errorf("Fail on ToJSON err=%+v", err)
 			}
 			jb, err := json.MarshalIndent(jso, "", "    ")
-
-			//fmt.Printf("JSON: %s\n", jb)
+			if err != nil {
+				t.Errorf("Fail on json.MarshalIndent() err=%+v", err)
+			}
 
 			r2, err := txresult.NewReceiptFromJSON(db1, rev, jb)
 			if err != nil {
@@ -427,7 +408,7 @@ func testReceiptSyncByRev(t *testing.T, rev module.Revision) {
 		}
 		log.Printf("i = %d, p(%v)\n", i, patchReceipts[i].Bytes())
 		log.Printf("v = %v\n", v)
-		if bytes.Compare(patchReceipts[i].Bytes(), v.Bytes()) != 0 {
+		if !bytes.Equal(patchReceipts[i].Bytes(), v.Bytes()) {
 			t.Errorf("Diff pr %v, v %v\n", patchReceipts[i].Bytes(), v.Bytes())
 		}
 		i++
@@ -437,7 +418,7 @@ func testReceiptSyncByRev(t *testing.T, rev module.Revision) {
 	i = 0
 	for it := normalReceiptsListByHash.Iterator(); it.Has(); it.Next() {
 		v, _ := it.Get()
-		if bytes.Compare(normalReceipts[i].Bytes(), v.Bytes()) != 0 {
+		if !bytes.Equal(normalReceipts[i].Bytes(), v.Bytes()) {
 			t.Errorf("Diff pr %v, v %v\n", normalReceipts[i].Bytes(), v.Bytes())
 		}
 		i++

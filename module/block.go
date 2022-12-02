@@ -99,6 +99,14 @@ type BlockDataFactory interface {
 	NewBlockDataFromReader(r io.Reader) (BlockData, error)
 }
 
+// ProgressCallback is used to report progress of sync task.
+// "height" is the height to the block to sync.
+// "resolved" is number of already synced items.
+// "unresolved" is number of known items to be synced.
+// More items can be added to "unresolved" after syncing known items.
+// Some of items may not be counted.
+type ProgressCallback func(height int64, resolved, unresolved int) error
+
 type BlockManager interface {
 	GetBlockByHeight(height int64) (Block, error)
 	GetLastBlock() (Block, error)
@@ -154,7 +162,7 @@ type BlockManager interface {
 	WaitTransactionResult(id []byte) (rc <-chan interface{}, err error)
 
 	// ExportBlocks exports blocks assuring specified block ranges.
-	ExportBlocks(from, to int64, dst db.Database, on func(height int64) error) error
+	ExportBlocks(from, to int64, dst db.Database, on ProgressCallback) error
 
 	// ExportGenesis exports genesis to the writer based on the block.
 	ExportGenesis(blk BlockData, votes CommitVoteSet, writer GenesisStorageWriter) error

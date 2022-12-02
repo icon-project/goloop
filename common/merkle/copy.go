@@ -3,23 +3,49 @@ package merkle
 import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
 	MaxNumberOfItemsToCopyInRow = 50
 )
 
+const (
+	DBFlagCopyContext = "copyContext"
+)
+
 type CopyContext struct {
 	builder Builder
 	src     db.Database
 	dst     db.Database
+
+	height     int64
+	progressCB module.ProgressCallback
 }
 
 func (e *CopyContext) Builder() Builder {
 	return e.builder
 }
 
+func (e *CopyContext) SetProgressCallback(cb module.ProgressCallback) {
+	e.progressCB = cb
+}
+
+func (e *CopyContext) SetHeight(height int64) {
+	e.height = height
+}
+
+func (e *CopyContext) reportProgress() error {
+	if e.progressCB != nil {
+		return e.progressCB(e.height, e.builder.ResolvedCount(), e.builder.UnresolvedCount())
+	}
+	return nil
+}
+
 func (e *CopyContext) Run() error {
+	if err := e.reportProgress(); err != nil {
+		return err
+	}
 	for e.builder.UnresolvedCount() > 0 {
 		itr := e.builder.Requests()
 		processed := 0
@@ -44,7 +70,8 @@ func (e *CopyContext) Run() error {
 				}
 			}
 			if !found {
-				return errors.NotFoundError.Errorf("FailToFindValue(key=%x", itr.Key())
+				_ = e.reportProgress()
+				return errors.NotFoundError.Errorf("FailToFindValue(key=%x)", itr.Key())
 			}
 
 			// Prevent massive memory usage by cumulated requests.
@@ -54,11 +81,14 @@ func (e *CopyContext) Run() error {
 			// It could be very big if we sync large tree structure.
 			// So, let's stop after process some items.
 			if processed += 1; processed >= MaxNumberOfItemsToCopyInRow {
+				if err := e.reportProgress(); err != nil {
+					return err
+				}
 				break
 			}
 		}
 	}
-	return nil
+	return e.reportProgress()
 }
 
 func (e *CopyContext) Copy(id db.BucketID, key []byte) error {
@@ -93,7 +123,9 @@ func (e *CopyContext) SourceDB() db.Database {
 }
 
 func (e *CopyContext) TargetDB() db.Database {
-	return e.dst
+	return db.WithFlags(e.dst, db.Flags{
+		DBFlagCopyContext: e,
+	})
 }
 
 func NewCopyContext(src db.Database, dst db.Database) *CopyContext {
@@ -102,4 +134,16 @@ func NewCopyContext(src db.Database, dst db.Database) *CopyContext {
 		src:     src,
 		dst:     dst,
 	}
+}
+
+// PrepareCopyContext prepares CopyContext for copying src to dst.
+// If dst comes from another CopyContext, then it returns the original one
+// for tracking progress properly.
+func PrepareCopyContext(src db.Database, dst db.Database) *CopyContext {
+	if ctx, ok := db.GetFlag(dst, DBFlagCopyContext).(*CopyContext); ok {
+		if ctx.src == src {
+			return ctx
+		}
+	}
+	return NewCopyContext(src, dst)
 }

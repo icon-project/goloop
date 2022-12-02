@@ -367,7 +367,8 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, e error) {
 
 type PacketWriter struct {
 	*bufio.Writer
-	wr io.Writer
+	wr  io.Writer
+	mtx sync.Mutex
 }
 
 func NewPacketWriter(w io.Writer) *PacketWriter {
@@ -375,6 +376,9 @@ func NewPacketWriter(w io.Writer) *PacketWriter {
 }
 
 func (pw *PacketWriter) Reset(wr io.Writer) {
+	pw.mtx.Lock()
+	defer pw.mtx.Unlock()
+
 	pw.wr = wr
 	pw.Writer.Reset(pw.wr)
 }
@@ -383,6 +387,9 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	_, err := pkt.WriteTo(pw)
 	if err != nil {
 		return err
+	}
+	if pw.Buffered() > 0 {
+		return pw.Flush()
 	}
 	return nil
 }
@@ -404,6 +411,9 @@ func (pw *PacketWriter) Write(b []byte) (int, error) {
 }
 
 func (pw *PacketWriter) Flush() error {
+	pw.mtx.Lock()
+	defer pw.mtx.Unlock()
+
 	re := 0
 	for {
 		err := pw.Writer.Flush()
@@ -436,9 +446,6 @@ func (prw *PacketReadWriter) WritePacket(pkt *Packet) error {
 	defer prw.mtx.Unlock()
 	prw.mtx.Lock()
 	if err := prw.wr.WritePacket(pkt); err != nil {
-		return err
-	}
-	if err := prw.wr.Flush(); err != nil {
 		return err
 	}
 	prw.wpkt = pkt

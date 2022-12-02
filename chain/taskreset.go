@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
+	"sync/atomic"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/chain/gs"
@@ -44,6 +46,10 @@ type taskReset struct {
 	height    int64
 	blockHash []byte
 	cancelCh  chan struct{}
+
+	reportHeight     int64
+	reportResolved   uint64
+	reportUnresolved uint64
 }
 
 var resetStates = map[State]string{
@@ -62,6 +68,14 @@ func (t *taskReset) String() string {
 }
 
 func (t *taskReset) DetailOf(s State) string {
+	if s == Started {
+		height := atomic.LoadInt64(&t.reportHeight)
+		resolved := atomic.LoadUint64(&t.reportResolved)
+		unresolved := atomic.LoadUint64(&t.reportUnresolved)
+		if height != 0 {
+			return fmt.Sprintf("reset started height=%d resolved=%d unresolved=%d", height, resolved, unresolved)
+		}
+	}
 	if name, ok := resetStates[s]; ok {
 		return name
 	} else {
@@ -133,6 +147,39 @@ func (t *taskReset) _fetchBlock(fsm fastsync.Manager, h int64, hash []byte) (mod
 	return blk, votes, nil
 }
 
+type progressSum struct {
+	lock     sync.Mutex
+	byHeight map[int64]*[2]int
+	sum      [2]int
+	callback module.ProgressCallback
+}
+
+func (p *progressSum) onProgress(h int64, r, u int) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.callback == nil {
+		return nil
+	}
+	s := p.byHeight[h]
+	if s == nil {
+		s = new([2]int)
+		p.byHeight[h] = s
+	}
+	p.sum[0] += r - s[0]
+	p.sum[1] += u - s[1]
+	s[0] = r
+	s[1] = u
+	return p.callback(h, p.sum[0], p.sum[1])
+}
+
+func newProgressSum(callback module.ProgressCallback) *progressSum {
+	return &progressSum{
+		byHeight: make(map[int64]*[2]int),
+		callback: callback,
+	}
+}
+
 func (t *taskReset) _prepareBlocks(height int64, blockHash []byte) (module.BlockData, module.CommitVoteSet, error) {
 	c := t.chain
 	defer c.releaseManagers()
@@ -176,13 +223,14 @@ func (t *taskReset) _prepareBlocks(height int64, blockHash []byte) (module.Block
 		return nil, nil, err
 	}
 
-	if err = block.UnsafeFinalize(c.sm, c, ppBlk, t.cancelCh); err != nil {
+	p := newProgressSum(t._reportProgress)
+	if err = block.UnsafeFinalize(c.sm, c, ppBlk, t.cancelCh, p.onProgress); err != nil {
 		return nil, nil, err
 	}
-	if err = block.UnsafeFinalize(c.sm, c, pBlk, t.cancelCh); err != nil {
+	if err = block.UnsafeFinalize(c.sm, c, pBlk, t.cancelCh, p.onProgress); err != nil {
 		return nil, nil, err
 	}
-	if err = block.UnsafeFinalize(c.sm, c, blk, t.cancelCh); err != nil {
+	if err = block.UnsafeFinalize(c.sm, c, blk, t.cancelCh, p.onProgress); err != nil {
 		return nil, nil, err
 	}
 
@@ -213,6 +261,16 @@ func (t *taskReset) _exportGenesis(blk module.BlockData, votes module.CommitVote
 	if err := t.chain.bm.ExportGenesis(blk, votes, gsw); err != nil {
 		return errors.Wrap(err, "fail on exporting genesis storage")
 	}
+	return nil
+}
+
+func (t *taskReset) _reportProgress(h int64, resolved, unresolved int) error {
+	if r, ok := t.result.GetValue(); ok && r != nil {
+		return r
+	}
+	atomic.StoreInt64(&t.reportHeight, h)
+	atomic.StoreUint64(&t.reportResolved, uint64(resolved))
+	atomic.StoreUint64(&t.reportUnresolved, uint64(unresolved))
 	return nil
 }
 
@@ -247,9 +305,7 @@ func (t *taskReset) _exportBlocks(dbDirNew string, dbTypeNew string, height int6
 	}
 
 	// copy blocks for new genesis
-	if err := t.chain.bm.ExportBlocks(height, height, newDB, func(height int64) error {
-		return nil
-	}); err != nil {
+	if err := t.chain.bm.ExportBlocks(height, height, newDB, t._reportProgress); err != nil {
 		return nil, nil, err
 	}
 

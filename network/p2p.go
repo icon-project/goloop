@@ -61,7 +61,7 @@ const (
 )
 
 var (
-	p2pProtoControl     = module.ProtocolInfo(0x0000)
+	p2pProtoControl     = module.ProtoP2P
 	p2pControlProtocols = []module.ProtocolInfo{p2pProtoControl}
 )
 
@@ -512,7 +512,6 @@ func (p2p *PeerToPeer) decodeMsgpack(b []byte, v interface{}) error {
 	return err
 }
 
-//TODO timestamp or sequencenumber for validation (query,result pair)
 type QueryMessage struct {
 	Role PeerRoleFlag
 }
@@ -634,11 +633,12 @@ func (p2p *PeerToPeer) startRtt(p *Peer) {
 	})
 }
 
-func (p2p *PeerToPeer) stopRtt(p *Peer) {
-	p.rtt.Stop()
-	if p.rtt.last >= DefaultRttLogThreshold {
+func (p2p *PeerToPeer) stopRtt(p *Peer) time.Duration {
+	rttLast := p.rtt.Stop()
+	if rttLast >= DefaultRttLogThreshold {
 		p2p.logger.Warnln("RTT Threshold", DefaultRttLogThreshold, p)
 	}
+	return rttLast
 }
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
@@ -785,7 +785,8 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	}
 	p2p.seeds.Merge(seeds...)
 
-	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
+	last, avg := p.rtt.Value()
+	m := &RttMessage{Last: last, Average: avg}
 	rpkt := newPacket(p2pProtoControl, p2pProtoRttReq, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
@@ -804,14 +805,14 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleRttRequest", rm, p)
-	p2p.stopRtt(p)
+	rttLast := p2p.stopRtt(p)
 
-	df := rm.Last - p.rtt.last
+	df := rm.Last - rttLast
 	if df > DefaultRttAccuracy {
 		p2p.logger.Debugln("handleRttRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
 	}
-
-	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
+	last, avg := p.rtt.Value()
+	m := &RttMessage{Last: last, Average: avg}
 	rpkt := newPacket(p2pProtoControl, p2pProtoRttResp, p2p.encodeMsgpack(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
@@ -831,7 +832,8 @@ func (p2p *PeerToPeer) handleRttResponse(pkt *Packet, p *Peer) {
 	}
 	p2p.logger.Traceln("handleRttResponse", rm, p)
 
-	df := rm.Last - p.rtt.last
+	rttLast, _ := p.rtt.Value()
+	df := rm.Last - rttLast
 	if df > DefaultRttAccuracy {
 		p2p.logger.Debugln("handleRttResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
 	}
@@ -940,8 +942,6 @@ func (p2p *PeerToPeer) sendToFriends(ctx context.Context) {
 		pkt.footerToBytes(true)
 		p2p.sendToPeers(ctx, p2p.friends)
 	}
-	//TODO 1-hop broadcast with previous received packet-footer
-	//TODO clustered, using gateway
 }
 
 func (p2p *PeerToPeer) sendRoutine() {
@@ -960,9 +960,6 @@ Loop:
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				c := ctx.Value(p2pContextKeyCounter).(*Counter)
 				_ = pkt.updateHash(false)
-				//TODO p2p.packet_dump
-				//p2p.logger.Traceln("sendRoutine", pkt)
-				// p2p.packetRw.WritePacket(pkt)
 				r := p2p.Role()
 				switch pkt.dest {
 				case p2pDestPeer:
@@ -1012,7 +1009,6 @@ Loop:
 						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					}
 				default: //p2pDestPeerGroup < dest < p2pDestPeer
-					//TODO multicast Routing or Flooding
 				}
 
 				if c.alternate < 1 {
@@ -1069,8 +1065,6 @@ Loop:
 			for _, ctx := range m {
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				c := ctx.Value(p2pContextKeyCounter).(*Counter)
-				//TODO p2p.packet_dump
-				//p2p.logger.Traceln("alternateSendRoutine", pkt)
 				switch pkt.dest {
 				case p2pDestPeer:
 				case p2pDestAny:
@@ -1098,7 +1092,6 @@ Loop:
 				if c.peer < 1 {
 					p2p.onFailure(ErrNotAvailable, pkt, c)
 				} else {
-					//TODO alternate onFailure
 					if c.enqueue < 1 {
 						if c.overflow > 0 {
 							p2p.onFailure(ErrQueueOverflow, pkt, c)
@@ -1161,7 +1154,6 @@ var (
 	p2pContextKeyDone    = p2pContextKey("done")
 )
 
-//TODO data-race mutex
 type Counter struct {
 	peer      int
 	alternate int
@@ -1351,7 +1343,6 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 		}
 	//case p2pRoleSeed:
 	default: //p2pDestPeerGroup < dest < p2pDestPeer
-		//TODO using route table
 		if j < 1 {
 			return false
 		}
@@ -1610,9 +1601,11 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 		return
 	}
 	sort.Slice(candidates, func(i, j int) bool {
-		if candidates[i].rtt.avg < candidates[j].rtt.avg {
+		avg1 := candidates[i].rtt.Avg(time.Millisecond)
+		avg2 := candidates[j].rtt.Avg(time.Millisecond)
+		if avg1 < avg2 {
 			return true
-		} else if candidates[i].rtt.avg == candidates[j].rtt.avg {
+		} else if avg1 == avg2 {
 			return candidates[i].children.Len() < candidates[j].children.Len()
 		}
 		return false
@@ -1674,9 +1667,11 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 		return
 	}
 	sort.Slice(candidates, func(i, j int) bool {
-		if candidates[i].rtt.avg < candidates[j].rtt.avg {
+		avg1 := candidates[i].rtt.Avg(time.Millisecond)
+		avg2 := candidates[j].rtt.Avg(time.Millisecond)
+		if avg1 < avg2 {
 			return true
-		} else if candidates[i].rtt.avg == candidates[j].rtt.avg {
+		} else if avg1 == avg2 {
 			return candidates[i].nephews.Len() < candidates[j].nephews.Len()
 		}
 		return false

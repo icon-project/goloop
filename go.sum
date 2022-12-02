@@ -20,6 +20,9 @@ github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/decred/dcrd/crypto/blake256 v1.0.0/go.mod h1:sQl2p6Y26YV+ZOcSTP6thNdn47hh8kt6rqSlvmrXFAc=
+github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 h1:HbphB4TFFXpv7MNrT52FGrrgVXF1owhMVTHFZIlnvd4=
+github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0/go.mod h1:DZGJHZMqrU4JJqFAWUS2UO1+lbSKsdiOoYi9Zzey7Fc=
 github.com/evalphobia/logrus_fluent v0.5.4 h1:G4BSBTm7+L+oanWfFtA/A5Y3pvL2OMxviczyZPYO5xc=
 github.com/evalphobia/logrus_fluent v0.5.4/go.mod h1:hasyj+CXm3BDP1YhFk/rnTcjlegyqvkokV9A25cQsaA=
 github.com/fluent/fluent-logger-golang v1.4.0 h1:uT1Lzz5yFV16YvDwWbjX6s3AYngnJz8byTCsMTIS0tU=
@@ -51,8 +54,6 @@ github.com/gorilla/websocket v1.4.1 h1:q7AeDBpnBk8AogcD4DSag/Ukw/KV+YhzLj2bP5HvK
 github.com/gorilla/websocket v1.4.1/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282 h1:KFqmdzEPbU7Uck2tn50t+HQXZNVkxe8M9qRb/ZoSHaE=
 github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282/go.mod h1:tKR86bXuXPZazfOTG1FIzvjIdXzd0mo4Vtn16vt0PJo=
-github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6 h1:HE4YDtvtpZgjRJ2tCOmaXlcpBTFG2e0jvfNntM5sXOs=
-github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6/go.mod h1:73mKQiY8bLnscfGakn57WAJZTzT0eSUAy3qgMQNR/DI=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
