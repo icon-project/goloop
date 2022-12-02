@@ -143,7 +143,7 @@ func UseCSForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 			header, lastVotes, err := iplt.GetBlockV1Proof()
 			assert.NoError(t, err)
 			wal := path.Join(ctx.Base, "wal")
-			wm := consensus.NewTestWAL()
+			wm := ctx.Config.WAL()
 			cs, err := icconsensus.New(
 				ctx.C,
 				wal,
