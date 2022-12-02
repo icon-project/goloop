@@ -163,7 +163,7 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 func (r *testReactor) OnJoin(id module.PeerID) {
 	r.logger.Println("OnJoin", id)
 	ctx := context.WithValue(context.Background(), "op", "join")
-	ctx = context.WithValue(ctx, "p2pConnInfo", newP2PConnInfo(r.p2p))
+	ctx = context.WithValue(ctx, "p2pConnInfo", r.p2pConnInfo())
 	ctx = context.WithValue(ctx, "name", r.name)
 	r.ch <- ctx
 }
@@ -197,7 +197,21 @@ func (r *testReactor) p2pConn() string {
 }
 
 func (r *testReactor) p2pConnInfo() *p2pConnInfo {
-	return newP2PConnInfo(r.p2p)
+	m := Inspect(r.c, true)["p2p"].(map[string]interface{})
+	role := m["self"].(map[string]interface{})["role"]
+	parent := 0
+	if len(m["parent"].(map[string]interface{})) > 0 {
+		parent = 1
+	}
+	return &p2pConnInfo{
+		role:     role.(PeerRoleFlag),
+		friends:  len(m["friends"].([]map[string]interface{})),
+		parent:   parent,
+		uncles:   len(m["uncles"].([]map[string]interface{})),
+		children: len(m["children"].([]map[string]interface{})),
+		nephews:  len(m["nephews"].([]map[string]interface{})),
+		others:   len(m["others"].([]map[string]interface{})),
+	}
 }
 
 type p2pConnInfo struct {
@@ -210,18 +224,6 @@ type p2pConnInfo struct {
 	others   int
 }
 
-func newP2PConnInfo(p2p *PeerToPeer) *p2pConnInfo { //p2p.connections()
-	connInfo := p2p.connections()
-	return &p2pConnInfo{
-		p2p.Role(),
-		connInfo[p2pConnTypeFriend],
-		connInfo[p2pConnTypeParent],
-		connInfo[p2pConnTypeUncle],
-		connInfo[p2pConnTypeChildren],
-		connInfo[p2pConnTypeNephew],
-		connInfo[p2pConnTypeOther],
-	}
-}
 func (ci *p2pConnInfo) String() string {
 	return fmt.Sprintf("role:%d, friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d, others:%d",
 		ci.role,
@@ -573,12 +575,6 @@ func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Con
 	connMap, maxD, err := waitConnection(ch, defaultConnectionLimit, n, 10*DefaultSeedPeriod)
 	t.Log(time.Now(), "max:", maxD, connMap)
 	failIfError(t, err, "waitConnection", connMap)
-
-	for _, v := range m {
-		for _, r := range v {
-			t.Log("Inspect", r.name, Inspect(r.c, true))
-		}
-	}
 	return m, ch
 }
 

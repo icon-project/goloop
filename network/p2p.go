@@ -1249,19 +1249,6 @@ func (p2p *PeerToPeer) hasNetAddressAndIn(na NetAddress, in bool) bool {
 		p2p.orphanages.HasNetAddressAndIn(na, in)
 }
 
-func (p2p *PeerToPeer) connections() map[PeerConnectionType]int {
-	m := make(map[PeerConnectionType]int)
-	m[p2pConnTypeParent] = p2p.parents.Len()
-	m[p2pConnTypeChildren] = p2p.children.Len()
-	m[p2pConnTypeUncle] = p2p.uncles.Len()
-	m[p2pConnTypeNephew] = p2p.nephews.Len()
-	m[p2pConnTypeFriend] = p2p.friends.Len()
-	m[p2pConnTypeOther] = p2p.others.Len()
-	m[p2pConnTypeNone] = p2p.orphanages.Len()
-
-	return m
-}
-
 func (p2p *PeerToPeer) connectionsByProtocol(pi module.ProtocolInfo) map[PeerConnectionType]int {
 	m := make(map[PeerConnectionType]int)
 	m[p2pConnTypeParent] = p2p.parents.LenByProtocol(pi)
