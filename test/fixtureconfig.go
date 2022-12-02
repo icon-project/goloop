@@ -47,6 +47,7 @@ type FixtureConfig struct {
 	GenesisStorage    module.GenesisStorage
 	Wallet            module.Wallet
 	AddDefaultNode    *bool
+	WAL               func() consensus.WALManager
 }
 
 func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
@@ -70,7 +71,7 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 			return bm
 		},
 		NewCS: func(ctx *NodeContext) module.Consensus {
-			wm := NewWAL()
+			wm := ctx.Config.WAL()
 			wal := path.Join(ctx.Base, "wal")
 			cs := consensus.New(
 				ctx.C, wal, wm, nil, nil, nil,
@@ -82,6 +83,9 @@ func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
 		Genesis:           defaultGenesis,
 		GenesisStorage:    nil,
 		AddDefaultNode:    &tru,
+		WAL: func() consensus.WALManager {
+			return consensus.NewTestWAL()
+		},
 	}
 	return cf.ApplyOption(o...)
 }
@@ -139,6 +143,9 @@ func (cf *FixtureConfig) Override(cf2 *FixtureConfig) *FixtureConfig {
 	}
 	if cf2.AddDefaultNode != nil {
 		res.AddDefaultNode = cf2.AddDefaultNode
+	}
+	if cf2.WAL != nil {
+		res.WAL = cf2.WAL
 	}
 	return &res
 }

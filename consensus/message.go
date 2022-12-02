@@ -431,25 +431,25 @@ func (msg *RoundStateMessage) subprotocol() uint16 {
 	return uint16(ProtoRoundState)
 }
 
-type voteListMessage struct {
-	VoteList *voteList
+type VoteListMessage struct {
+	VoteList *VoteList
 }
 
-func newVoteListMessage() *voteListMessage {
-	return &voteListMessage{}
+func newVoteListMessage() *VoteListMessage {
+	return &VoteListMessage{}
 }
 
-func (msg *voteListMessage) Verify() error {
+func (msg *VoteListMessage) Verify() error {
 	if msg.VoteList == nil {
 		return errors.Errorf("nil VoteList")
 	}
 	return nil
 }
 
-func (msg voteListMessage) String() string {
+func (msg VoteListMessage) String() string {
 	return fmt.Sprintf("VoteListMessage%+v", msg.VoteList)
 }
 
-func (msg *voteListMessage) subprotocol() uint16 {
+func (msg *VoteListMessage) subprotocol() uint16 {
 	return uint16(ProtoVoteList)
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type skipPatch struct {
-	VoteList voteList
+	VoteList VoteList
 }
 
 func (s *skipPatch) Type() string {
@@ -65,7 +65,7 @@ func (s *skipPatch) Verify(vl module.ValidatorList, roundLimit int64, nid int) e
 	return errors.Errorf("votes(%d) <= 1/3 of validators(%d)", l, vl.Len())
 }
 
-func newSkipPatch(vl *voteList) *skipPatch {
+func newSkipPatch(vl *VoteList) *skipPatch {
 	return &skipPatch{VoteList: *vl}
 }
 

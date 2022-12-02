@@ -128,12 +128,12 @@ func (vs *voteSet) commitVoteListForOverTwoThirds(pcm module.BTPProofContextMap)
 	return newCommitVoteList(pcm, msgs)
 }
 
-func (vs *voteSet) voteListForOverTwoThirds() *voteList {
+func (vs *voteSet) voteListForOverTwoThirds() *VoteList {
 	rdd, _, ok := vs.getOverTwoThirdsRoundDecisionDigest()
 	if !ok {
 		return nil
 	}
-	rvl := newVoteList()
+	rvl := NewVoteList()
 	for _, msg := range vs.msgs {
 		if msg != nil && bytes.Equal(rdd, msg.RoundDecisionDigest()) {
 			rvl.AddVote(msg)
@@ -156,8 +156,8 @@ func (vs *voteSet) voteSetForOverTwoThird() *voteSet {
 	return rvs
 }
 
-func (vs *voteSet) voteList() *voteList {
-	rvl := newVoteList()
+func (vs *voteSet) voteList() *VoteList {
+	rvl := NewVoteList()
 	for _, msg := range vs.msgs {
 		if msg != nil {
 			rvl.AddVote(msg)
@@ -166,8 +166,8 @@ func (vs *voteSet) voteList() *voteList {
 	return rvl
 }
 
-func (vs *voteSet) getRoundEvidences(minRound int32, nid []byte) *voteList {
-	rvl := newVoteList()
+func (vs *voteSet) getRoundEvidences(minRound int32, nid []byte) *VoteList {
+	rvl := NewVoteList()
 	l := len(vs.msgs)
 	f := l / 3
 	for _, msg := range vs.msgs {
@@ -240,8 +240,8 @@ func (hvs *heightVoteSet) reset(nValidators int) {
 	hvs._votes = make(map[int32][numberOfVoteTypes]*voteSet)
 }
 
-func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList {
-	rvl := newVoteList()
+func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray, precommitsMask *bitArray) *VoteList {
+	rvl := NewVoteList()
 	prevotes := hvs.votesFor(round, VoteTypePrevote)
 	for i, msg := range prevotes.msgs {
 		if !prevotesMask.Get(i) && msg != nil {
@@ -257,7 +257,7 @@ func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray
 	return rvl
 }
 
-func (hvs *heightVoteSet) getRoundEvidences(minRound int32, nid []byte) *voteList {
+func (hvs *heightVoteSet) getRoundEvidences(minRound int32, nid []byte) *VoteList {
 	for round := range hvs._votes {
 		if round >= minRound {
 			evidences := hvs.votesFor(round, VoteTypePrevote).getRoundEvidences(minRound, nid)

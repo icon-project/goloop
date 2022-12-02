@@ -9,7 +9,7 @@ import (
 type commit struct {
 	height       int64
 	commitVotes  module.CommitVoteSet
-	votes        *voteList
+	votes        *VoteList
 	blockPartSet PartSet
 }
 

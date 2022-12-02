@@ -141,9 +141,9 @@ type consensus struct {
 	syncer      Syncer
 	walDir      string
 	wm          WALManager
-	roundWAL    *walMessageWriter
-	lockWAL     *walMessageWriter
-	commitWAL   *walMessageWriter
+	roundWAL    *WalMessageWriter
+	lockWAL     *WalMessageWriter
+	commitWAL   *WalMessageWriter
 	timestamper module.Timestamper
 	nid         []byte
 	bpp         fastsync.BlockProofProvider
@@ -367,7 +367,7 @@ func (cs *consensus) OnReceive(
 		_, err = cs.ReceiveBlockPartMessage(m, false)
 	case *VoteMessage:
 		_, err = cs.ReceiveVoteMessage(m, false)
-	case *voteListMessage:
+	case *VoteListMessage:
 		err = cs.ReceiveVoteListMessage(m, false)
 	default:
 		err = errors.Errorf("unexpected broadcast message %v", m)
@@ -502,7 +502,7 @@ func (cs *consensus) ReceiveVoteMessage(msg *VoteMessage, unicast bool) (int, er
 	return index, nil
 }
 
-func (cs *consensus) ReceiveVoteListMessage(msg *voteListMessage, unicast bool) error {
+func (cs *consensus) ReceiveVoteListMessage(msg *VoteListMessage, unicast bool) error {
 	var err error
 	for i := 0; i < msg.VoteList.Len(); i++ {
 		vmsg := msg.VoteList.Get(i)
@@ -778,7 +778,7 @@ func (cs *consensus) enterPrevoteWait() {
 	prevotes := cs.hvs.votesFor(cs.round, VoteTypePrevote)
 	msg := newVoteListMessage()
 	msg.VoteList = prevotes.voteList()
-	if err := cs.roundWAL.writeMessage(msg); err != nil {
+	if err := cs.roundWAL.WriteMessage(msg); err != nil {
 		cs.log.Errorf("fail to write WAL: %+v\n", err)
 	}
 
@@ -825,7 +825,7 @@ func (cs *consensus) enterPrecommit() {
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
 		msg := newVoteListMessage()
 		msg.VoteList = prevotes.voteList()
-		if err := cs.lockWAL.writeMessage(msg); err != nil {
+		if err := cs.lockWAL.WriteMessage(msg); err != nil {
 			cs.log.Errorf("fail to write WAL: enterPrecommit: %+v\n", err)
 		}
 		for i := 0; i < cs.lockedBlockParts.Parts(); i++ {
@@ -833,7 +833,7 @@ func (cs *consensus) enterPrecommit() {
 			msg.Height = cs.height
 			msg.Index = uint16(i)
 			msg.BlockPart = cs.lockedBlockParts.GetPart(i).Bytes()
-			if err := cs.lockWAL.writeMessage(msg); err != nil {
+			if err := cs.lockWAL.WriteMessage(msg); err != nil {
 				cs.log.Errorf("fail to write WAL: enterPrecommit: %+v\n", err)
 			}
 		}
@@ -873,7 +873,7 @@ func (cs *consensus) enterPrecommitWait() {
 	precommits := cs.hvs.votesFor(cs.round, VoteTypePrecommit)
 	msg := newVoteListMessage()
 	msg.VoteList = precommits.voteList()
-	if err := cs.roundWAL.writeMessage(msg); err != nil {
+	if err := cs.roundWAL.WriteMessage(msg); err != nil {
 		cs.log.Errorf("fail to write WAL: enterPrecommitWait: %+v\n", err)
 	}
 
@@ -949,7 +949,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 
 	msg := newVoteListMessage()
 	msg.VoteList = precommits.voteList()
-	if err := cs.commitWAL.writeMessage(msg); err != nil {
+	if err := cs.commitWAL.WriteMessage(msg); err != nil {
 		cs.log.Errorf("fail to write WAL: enterCommit: %+v\n", err)
 	}
 	if err := cs.commitWAL.Sync(); err != nil {
@@ -1074,7 +1074,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 	if err != nil {
 		return err
 	}
-	if err := cs.roundWAL.writeMessageBytes(msg.subprotocol(), msgBS); err != nil {
+	if err := cs.roundWAL.WriteMessageBytes(msg.subprotocol(), msgBS); err != nil {
 		cs.log.Errorf("fail to write WAL: sendProposal: %+v\n", err)
 		return err
 	}
@@ -1223,7 +1223,7 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	if err != nil {
 		return err
 	}
-	if err := cs.roundWAL.writeMessageBytes(msg.subprotocol(), msgBS); err != nil {
+	if err := cs.roundWAL.WriteMessageBytes(msg.subprotocol(), msgBS); err != nil {
 		cs.log.Errorf("fail to write WAL: sendVote: %+v\n", err)
 	}
 	if err := cs.roundWAL.Sync(); err != nil {
@@ -1328,7 +1328,7 @@ func (cs *consensus) applyRoundWAL() error {
 				continue
 			}
 			cs.log.Tracef("WAL: my proposal %v\n", m)
-			if m.round() < round || (m.round() == round && rstep <= stepPropose) {
+			if round < m.round() || (round == m.round() && rstep <= stepPropose) {
 				round = m.round()
 				rstep = stepPropose
 			}
@@ -1351,11 +1351,11 @@ func (cs *consensus) applyRoundWAL() error {
 			} else {
 				mstep = stepPrecommit
 			}
-			if m.round() < round || (m.round() == round && rstep <= mstep) {
+			if round < m.round() || (round == m.round() && rstep <= mstep) {
 				round = m.round()
 				rstep = mstep
 			}
-		case *voteListMessage:
+		case *VoteListMessage:
 			for i := 0; i < m.VoteList.Len(); i++ {
 				vmsg := m.VoteList.Get(i)
 				if vmsg.height() != cs.height {
@@ -1430,7 +1430,7 @@ func (cs *consensus) applyLockWAL() error {
 			return err
 		}
 		switch m := msg.(type) {
-		case *voteListMessage:
+		case *VoteListMessage:
 			if m.VoteList.Len() == 0 {
 				continue
 			}
@@ -1537,7 +1537,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 			return err
 		}
 		switch m := msg.(type) {
-		case *voteListMessage:
+		case *VoteListMessage:
 			if m.VoteList.Len() == 0 {
 				continue
 			}
@@ -1634,7 +1634,7 @@ func (cs *consensus) applyLastVote(
 	}
 	var prevBlk module.Block
 	var err error
-	var vl *voteList
+	var vl *VoteList
 	if blk.Height() == 0 {
 		vl, err = cvl.toVoteListWithBlock(blk, nil, cs.c.Database())
 	} else {
@@ -1751,7 +1751,7 @@ func (cs *consensus) Start() error {
 	if err != nil {
 		return err
 	}
-	cs.roundWAL = &walMessageWriter{ww}
+	cs.roundWAL = &WalMessageWriter{ww}
 
 	ww, err = cs.wm.OpenForWrite(path.Join(cs.walDir, configLockWALID), &WALConfig{
 		FileLimit:  configLockWALDataSize,
@@ -1760,7 +1760,7 @@ func (cs *consensus) Start() error {
 	if err != nil {
 		return err
 	}
-	cs.lockWAL = &walMessageWriter{ww}
+	cs.lockWAL = &WalMessageWriter{ww}
 
 	ww, err = cs.wm.OpenForWrite(path.Join(cs.walDir, configCommitWALID), &WALConfig{
 		FileLimit:  configCommitWALDataSize,
@@ -1769,7 +1769,7 @@ func (cs *consensus) Start() error {
 	if err != nil {
 		return err
 	}
-	cs.commitWAL = &walMessageWriter{ww}
+	cs.commitWAL = &WalMessageWriter{ww}
 
 	cs.started = true
 	cs.log.Infof("Start consensus wallet:%v", common.HexPre(cs.c.Wallet().Address().ID()))
@@ -1923,7 +1923,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 			cvs = nb.Votes()
 		}
 		var bps PartSet
-		var vl *voteList
+		var vl *VoteList
 		if cvl, ok := cvs.(*CommitVoteList); ok {
 			if h == 0 {
 				vl, err = cvl.toVoteListWithBlock(b, nil, cs.c.Database())
@@ -1964,7 +1964,7 @@ func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
 	return c.blockPartSet
 }
 
-func (cs *consensus) GetCommitPrecommits(h int64) *voteList {
+func (cs *consensus) GetCommitPrecommits(h int64) *VoteList {
 	c, err := cs.getCommit(h)
 	if err != nil {
 		return nil
@@ -1972,11 +1972,11 @@ func (cs *consensus) GetCommitPrecommits(h int64) *voteList {
 	return c.votes
 }
 
-func (cs *consensus) GetPrecommits(r int32) *voteList {
+func (cs *consensus) GetPrecommits(r int32) *VoteList {
 	return cs.hvs.votesFor(r, VoteTypePrecommit).voteList()
 }
 
-func (cs *consensus) GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList {
+func (cs *consensus) GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *VoteList {
 	return cs.hvs.getVoteListForMask(r, prevotesMask, precommitsMask)
 }
 
@@ -2044,7 +2044,7 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		blk, cs.lastBlock, cs.c.Database(),
 	)
 	if err != nil {
-		cs.log.Warnf("fail to convert to voteList: %+v", err)
+		cs.log.Warnf("fail to convert to VoteList: %+v", err)
 	}
 	for i := 0; i < vl.Len(); i++ {
 		m := vl.Get(i)
@@ -2098,11 +2098,11 @@ func (cs *consensus) GetBlockProof(height int64, opt int32) ([]byte, error) {
 	return cvs.Bytes(), nil
 }
 
-type walMessageWriter struct {
+type WalMessageWriter struct {
 	WALWriter
 }
 
-func (w *walMessageWriter) writeMessage(msg Message) error {
+func (w *WalMessageWriter) WriteMessage(msg Message) error {
 	bs := make([]byte, 2, 32)
 	binary.BigEndian.PutUint16(bs, msg.subprotocol())
 	writer := bytes.NewBuffer(bs)
@@ -2114,7 +2114,7 @@ func (w *walMessageWriter) writeMessage(msg Message) error {
 	return err
 }
 
-func (w *walMessageWriter) writeMessageBytes(sp uint16, msg []byte) error {
+func (w *WalMessageWriter) WriteMessageBytes(sp uint16, msg []byte) error {
 	bs := make([]byte, 2+len(msg))
 	binary.BigEndian.PutUint16(bs, sp)
 	copy(bs[2:], msg)
