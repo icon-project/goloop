@@ -43,9 +43,6 @@ const (
 	PublicKeyLenCompressed = 33
 	// PublicKeyLenUncompressed is the byte length of an uncompressed public key
 	PublicKeyLenUncompressed = 65
-
-	publicKeyCompressed   byte = 0x2 // y_bit + x coord
-	publicKeyUncompressed byte = 0x4 // x coord + y coord
 )
 
 // PublicKey is a type representing a public key, which can be serialized to
