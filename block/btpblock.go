@@ -17,6 +17,7 @@
 package block
 
 import (
+	"github.com/icon-project/goloop/common/atomic"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 )
@@ -36,7 +37,7 @@ type btpBlockHeaderFormat struct {
 
 type btpBlockHeader struct {
 	format btpBlockHeaderFormat
-	bytes  []byte
+	bytes  atomic.Cache[[]byte]
 }
 
 func (bh *btpBlockHeader) MainHeight() int64 {
@@ -88,10 +89,9 @@ func (bh *btpBlockHeader) NextProofContext() []byte {
 }
 
 func (bh *btpBlockHeader) HeaderBytes() []byte {
-	if bh.bytes == nil {
-		bh.bytes = codec.MustMarshalToBytes(&bh.format)
-	}
-	return bh.bytes
+	return bh.bytes.Get(func() []byte {
+		return codec.MustMarshalToBytes(&bh.format)
+	})
 }
 
 // NewBTPBlockHeader returns a new BTPBlockHeader for the height and nid. If flag's
