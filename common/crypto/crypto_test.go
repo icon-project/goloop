@@ -64,6 +64,18 @@ func TestVerifySignature(t *testing.T) {
 	assert.NoError(t, err)
 	result := sig.Verify(testHash, pub)
 	assert.True(t, result, "Verify failed")
+
+	sk, err := ParsePrivateKey(testPrivateKey)
+	assert.NoError(t, err)
+
+	sig2, err := NewSignature(testHash, sk)
+	assert.NoError(t, err)
+	assert.True(t, sig2.Verify(testHash, pub), "Verify failed")
+
+	pub2, err := ParsePublicKey(testPublicKeyComp)
+	assert.NoError(t, err)
+	result = sig2.Verify(testHash, pub2)
+	assert.True(t, result, "Verify failed")
 }
 
 func TestRecoverPublicKey(t *testing.T) {
@@ -82,6 +94,7 @@ func TestRecoverPublicKey(t *testing.T) {
 	rs, err := sig.SerializeRS()
 	assert.NoError(t, err)
 	sig2, err := ParseSignature(rs)
+	assert.NoError(t, err)
 	pk4, err := sig2.RecoverPublicKey(testHash)
 	assert.Error(t, err)
 	assert.Nil(t, pk4)
@@ -161,6 +174,10 @@ func TestRace(t *testing.T) {
 		for i := 0; i < RepeatCount; i++ {
 			priv, pub := GenerateKeyPair()
 			sig, err := NewSignature(testHash, priv)
+			if err != nil {
+				t.Errorf("fail to sign signature err=%+v", err)
+				return
+			}
 
 			pub1, err := sig.RecoverPublicKey(testHash)
 			if err != nil {
