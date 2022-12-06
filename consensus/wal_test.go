@@ -17,6 +17,7 @@
 package consensus_test
 
 import (
+	"encoding/binary"
 	"os"
 	"testing"
 	"time"
@@ -31,8 +32,8 @@ func TestWAL(t *testing.T) {
 	assert.NoError(t, err)
 	id := base + "/testwal"
 	ww, err := consensus.OpenWALForWrite(id, &consensus.WALConfig{
-		FileLimit:            1024 * 400,
-		TotalLimit:           1024 * 400 * 10,
+		FileLimit:            12*97 + 1,
+		TotalLimit:           12 * 5000,
 		HousekeepingInterval: time.Millisecond * 50,
 	})
 	defer func() {
@@ -41,17 +42,14 @@ func TestWAL(t *testing.T) {
 	assert.NoError(t, err)
 	const iterations = 10000
 	for i := 0; i < iterations; i++ {
-		err = consensus.WALWriteObject(ww, i)
+		var buf [4]byte
+		binary.BigEndian.PutUint32(buf[:], uint32(i))
+		_, err = ww.WriteBytes(buf[:])
 		assert.NoError(t, err)
 		//t.Logf("Write %v", i)
-		/*
-			var k int
-			for j := 0; j < 100000; j++ {
-				k += j
-			}
-			t.Logf("k=%v\n", k)
-		*/
-		//time.Sleep(time.Microsecond * 1)
+		if i%150 == 0 {
+			time.Sleep(time.Millisecond * 50)
+		}
 		if i%100 == 0 {
 			err = ww.Sync()
 			assert.NoError(t, err)
@@ -62,12 +60,16 @@ func TestWAL(t *testing.T) {
 
 	wr, err := consensus.OpenWALForRead(id)
 	assert.NoError(t, err)
-	for i := 0; i < iterations; i++ {
-		var v int
-		_, err := consensus.WALReadObject(wr, &v)
+	bs, err := wr.ReadBytes()
+	assert.NoError(t, err)
+	v := binary.BigEndian.Uint32(bs)
+	t.Logf("Read from %v", v)
+	for i := v + 1; i < iterations; i++ {
+		bs, err := wr.ReadBytes()
 		assert.NoError(t, err)
+		v := binary.BigEndian.Uint32(bs)
 		//t.Logf("Read %v", v)
-		assert.EqualValues(t, i, v)
+		assert.EqualValues(t, int(i), int(v))
 	}
 	err = wr.Close()
 	assert.NoError(t, err)
