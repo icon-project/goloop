@@ -212,15 +212,6 @@ func (w *walWriter) WriteBytes(payload []byte) (int, error) {
 	return n, err
 }
 
-func WALWriteObject(w WALWriter, v interface{}) error {
-	bs, err := msgCodec.MarshalToBytes(v)
-	if err != nil {
-		return err
-	}
-	_, err = w.WriteBytes(bs)
-	return err
-}
-
 func (w *walWriter) Sync() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
@@ -414,14 +405,6 @@ func (w *walReader) ReadBytes() ([]byte, error) {
 
 	w.validOffset += int64(headerLen + payloadLen)
 	return payload, nil
-}
-
-func WALReadObject(w WALReader, v interface{}) ([]byte, error) {
-	bs, err := w.ReadBytes()
-	if err != nil {
-		return nil, err
-	}
-	return msgCodec.UnmarshalFromBytes(bs, v)
 }
 
 func (w *walReader) Close() error {
