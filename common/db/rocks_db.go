@@ -80,7 +80,7 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 		C.rocksdb_free(unsafe.Pointer(cErr))
 		log.Traceln("fail to rocksdb_list_column_families", errMsg)
 
-		//ignore and try open
+		// ignore and try open
 		cErr = nil
 		hdl = C.rocksdb_open(opts, cName, &cErr)
 		if cErr != nil {
@@ -197,6 +197,9 @@ func (db *RocksDB) getValue(cf *C.rocksdb_column_family_handle_t, k []byte) ([]b
 
 	if db.db == nil {
 		return nil, ErrAlreadyClosed
+	}
+	if k == nil {
+		return nil, nil
 	}
 	var (
 		cErr    *C.char

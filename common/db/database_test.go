@@ -79,6 +79,11 @@ func testDatabase_GetSetDelete(t *testing.T, creator dbCreator) {
 	assert.NoError(t, err)
 	assert.True(t, value != nil)
 	assert.Zero(t, len(value))
+
+	// GET returns error on nil key
+	value, err = bucket.Get(nil)
+	assert.NoError(t, err)
+	assert.Zero(t, value)
 }
 
 func TestDatabase_GetSetDelete(t *testing.T) {
