@@ -45,6 +45,35 @@ func minSize(sz1, sz2 int) int {
 	}
 }
 
+type limitReader struct {
+	reader io.Reader
+	offset int64
+	limit  int64
+}
+
+func (l *limitReader) Read(p []byte) (n int, err error) {
+	avail := l.limit - l.offset
+	if avail <= 0 {
+		return 0, io.EOF
+	}
+	if int64(len(p)) > avail {
+		p = p[:avail]
+	}
+	n, err = l.reader.Read(p)
+	if err == io.EOF {
+		err = ErrInvalidFormat
+	}
+	l.offset += int64(n)
+	return
+}
+
+func LimitReader(r io.Reader, n int64) io.Reader {
+	return &limitReader{
+		reader: r,
+		limit:  n,
+	}
+}
+
 func (r *rlpReader) skipN(sz int) error {
 	if _, err := io.CopyN(ioutil.Discard, r.reader, int64(sz)); err != nil {
 		if err == io.EOF {
@@ -125,7 +154,7 @@ func (r *rlpReader) readList() (Reader, error) {
 	case tag <= 0xF7:
 		size := tag - 0xC0
 		return &rlpReader{
-			reader: io.LimitReader(r.reader, int64(size)),
+			reader: LimitReader(r.reader, int64(size)),
 			maxSB:  minSize(r.maxSB, size),
 		}, nil
 	default:
@@ -138,7 +167,7 @@ func (r *rlpReader) readList() (Reader, error) {
 			return nil, ErrNilValue
 		}
 		return &rlpReader{
-			reader: io.LimitReader(r.reader, int64(sz2)),
+			reader: LimitReader(r.reader, int64(sz2)),
 			maxSB:  minSize(r.maxSB, sz2),
 		}, nil
 	}
