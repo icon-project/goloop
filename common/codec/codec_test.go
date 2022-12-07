@@ -25,6 +25,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var codecsToTest = []Codec{RLP, MP}
+
 type StructPublic struct {
 	IntValue    int64  `json:"int"`
 	StringValue string `json:"str"`
@@ -104,7 +106,7 @@ func TestDecoder_Struct1(t *testing.T) {
 		3,
 	}
 
-	for _, co := range []Codec{MP, RLP} {
+	for _, co := range codecsToTest {
 		t.Run(co.Name(), func(t *testing.T) {
 			bs0, err := co.MarshalToBytes(v0)
 			assert.NoError(t, err)
@@ -191,7 +193,7 @@ type nullableStruct2 struct {
 
 func TestNilValueEncoding(t *testing.T) {
 	testString := "TEST"
-	for _, co := range []Codec{MP, RLP} {
+	for _, co := range codecsToTest {
 		s1 := &nullableStruct1{
 			V1: nil,
 			V2: nil,
