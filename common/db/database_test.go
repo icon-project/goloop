@@ -80,6 +80,29 @@ func testDatabase_GetSetDelete(t *testing.T, creator dbCreator) {
 	assert.True(t, value != nil)
 	assert.Zero(t, len(value))
 
+	// DELETE for further test
+	err = bucket.Delete(key2)
+	assert.NoError(t, err)
+
+	// SET with nil (same as empty bytes)
+	err = bucket.Set(key2, nil)
+	assert.NoError(t, err)
+
+	// HAS returns true
+	has, err = bucket.Has(key2)
+	assert.NoError(t, err)
+	assert.True(t, has)
+
+	// GET returns non-nil(empty)
+	value, err = bucket.Get(key2)
+	assert.NoError(t, err)
+	assert.True(t, value != nil)
+	assert.Zero(t, len(value))
+
+	// DELETE for further test
+	err = bucket.Delete(key2)
+	assert.NoError(t, err)
+
 	var emptyKeys = [][]byte{nil, {}}
 	for _, k := range emptyKeys {
 		// HAS return false before store it
