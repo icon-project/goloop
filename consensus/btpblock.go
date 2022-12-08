@@ -17,7 +17,7 @@
 package consensus
 
 import (
-	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -47,7 +47,7 @@ func (cs *consensus) GetBTPBlockHeaderAndProof(
 		}
 	}
 	if flag&module.FlagBTPBlockHeader != 0 {
-		btpBlk, err = block.NewBTPBlockHeader(blk.Height(), cvs.VoteRound(), nts, nid, flag)
+		btpBlk, err = btp.NewBTPBlockHeader(blk.Height(), cvs.VoteRound(), nts, nid, flag)
 		if err != nil {
 			return nil, nil, err
 		}

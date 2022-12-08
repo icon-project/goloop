@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package block
+package btp
 
 import (
 	"github.com/icon-project/goloop/common/atomic"
