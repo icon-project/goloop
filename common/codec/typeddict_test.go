@@ -17,6 +17,8 @@
 package codec
 
 import (
+	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,7 +44,7 @@ func TestTypedDict_Encodings(t *testing.T) {
 		// d1 := &TypedDict {
 		// 	Map: data,
 		// }
-		for _, c := range []Codec{MP, RLP} {
+		for _, c := range codecsForTyped {
 			t.Run(c.Name(), func(t *testing.T) {
 				bs, err := c.MarshalToBytes(data)
 				assert.NoError(t, err)
@@ -56,6 +58,7 @@ func TestTypedDict_Encodings(t *testing.T) {
 				_, err = c.UnmarshalFromBytes(bs, &d2)
 				assert.NoError(t, err)
 				assert.Equal(t, data, d2.Map)
+				assert.True(t, sort.StringsAreSorted(d2.Keys))
 			})
 		}
 	})
@@ -64,7 +67,7 @@ func TestTypedDict_Encodings(t *testing.T) {
 			Keys: keys,
 			Map:  data,
 		}
-		for _, c := range []Codec{MP, RLP} {
+		for _, c := range codecsForTyped {
 			t.Run(c.Name(), func(t *testing.T) {
 				bs, err := c.MarshalToBytes(d1)
 				assert.NoError(t, err)
@@ -82,4 +85,47 @@ func TestTypedDict_Encodings(t *testing.T) {
 			})
 		}
 	})
+	t.Run("Reordering", func(t *testing.T) {
+		d1 := &TypedDict{
+			Map: data,
+		}
+		for _, c := range codecsForTyped {
+			t.Run(c.Name(), func(t *testing.T) {
+				bs, err := c.MarshalToBytes(d1)
+				assert.NoError(t, err)
+
+				var d2 *TypedDict
+				_, err = c.UnmarshalFromBytes(bs, &d2)
+				assert.NoError(t, err)
+				assert.Equal(t, data, d2.Map)
+				assert.True(t, sort.StringsAreSorted(d2.Keys))
+
+				var d3 map[string]*TypedObj
+				_, err = c.UnmarshalFromBytes(bs, &d3)
+				assert.NoError(t, err)
+				assert.Equal(t, data, d3)
+			})
+		}
+	})
+}
+
+func TestTypedDict_RLPReadSelfError(t *testing.T) {
+	dict := &TypedDict{
+		Map: map[string]*TypedObj{
+			"a": mustEncodeAny("value A"),
+			"b": mustEncodeAny("value B"),
+			"c": mustEncodeAny("value C"),
+		},
+		Keys: []string{"b", "c", "a"},
+	}
+	for _, c := range codecsForTyped {
+		bs, err := c.MarshalToBytes(dict)
+		assert.NoError(t, err)
+
+		for i := len(bs) - 1; i > 0; i-- {
+			var d *TypedDict
+			_, err := c.UnmarshalFromBytes(bs[:i], &d)
+			assert.Error(t, err, fmt.Sprintf("fail at len=%d all=%d", i, len(bs)))
+		}
+	}
 }
