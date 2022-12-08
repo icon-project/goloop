@@ -341,6 +341,24 @@ func TestConsensus_BTPBasic(t *testing.T) {
 	ntsd := pc.NewDecision(module.SourceNetworkUID(1), 1, 4, bbh.Round(), bd.NetworkTypeDigestFor(1).NetworkTypeSectionHash())
 	err = pc.Verify(ntsd.Hash(), pf)
 	assert.NoError(err)
+
+	// increase height so that early blocks are not in block cache
+	for i := 0; i < 10; i++ {
+		f.SendTXToAllAndWaitForResultBlock(f.NewTx())
+	}
+
+	blk, err = f.BM.GetBlockByHeight(2)
+	assert.NoError(err)
+	bb, _, err := f.CS.GetBTPBlockHeaderAndProof(blk, 1, module.FlagBTPBlockHeader)
+	assert.NoError(err)
+	assert.EqualValues(2, bb.MainHeight())
+
+	blk, err = f.BM.GetBlockByHeight(4)
+	assert.NoError(err)
+	bb, _, err = f.CS.GetBTPBlockHeaderAndProof(blk, 1, module.FlagBTPBlockHeader)
+	assert.NoError(err)
+	assert.EqualValues(4, bb.MainHeight())
+	assert.NotNil(bb.MessagesRoot())
 }
 
 func TestConsensus_BTPBlockBasic(t_ *testing.T) {
@@ -621,6 +639,25 @@ func TestConsensus_OpenCloseRevokeValidatorOpen(t_ *testing.T) {
 	log.Infof("NextProofContext=%s", test.DumpRLP("  ", bysl))
 
 	f.SendTXToAllAndWaitForResultBlock(f.NewTx())
+}
+
+func TestConsensus_GetBTPBlockHeaderAndProof_NotCached(t_ *testing.T) {
+	tst := newBTPTest(t_)
+	defer tst.Close()
+	f := tst.Fixture
+	assert := tst.Assertions
+	_ = f.WaitForBlock(2)
+
+	// increase height so that B(2) is not in block cache
+	for i := 0; i < 10; i++ {
+		f.SendTXToAllAndWaitForResultBlock(f.NewTx())
+	}
+
+	blk, err := f.BM.GetBlockByHeight(2)
+	assert.NoError(err)
+	bb, _, err := f.CS.GetBTPBlockHeaderAndProof(blk, 1, module.FlagBTPBlockHeader)
+	assert.NoError(err)
+	assert.EqualValues(2, bb.MainHeight())
 }
 
 func TestConsensus_OpenSetNilKey(t_ *testing.T) {
