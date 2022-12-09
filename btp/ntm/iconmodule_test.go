@@ -29,7 +29,7 @@ func TestIconModule_newAddressFromPubKey(t *testing.T) {
 	assert.NoError(err)
 	expAddr, err := hex.DecodeString("005e1e719a335af4f31e6f3f7bd29b6fda1db56a4d")
 	assert.NoError(err)
-	addr, err := newIconAddressFromPubKey(pk)
+	addr, err := NewIconAddressFromPubKey(pk)
 	assert.NoError(err)
 	assert.EqualValues(expAddr, addr)
 }

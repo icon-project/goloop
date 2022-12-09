@@ -39,7 +39,7 @@ const (
 	iconListByRoot  = "i" + db.ListByMerkleRootBase
 )
 
-func newIconAddressFromPubKey(pubKey []byte) ([]byte, error) {
+func NewIconAddressFromPubKey(pubKey []byte) ([]byte, error) {
 	if len(pubKey) == crypto.PublicKeyLenCompressed {
 		pk, err := crypto.ParsePublicKey(pubKey)
 		if err != nil {
@@ -78,7 +78,7 @@ func (m *iconModuleCore) NewProofContext(keys [][]byte) (proofContextCore, error
 }
 
 func (m *iconModuleCore) AddressFromPubKey(pubKey []byte) ([]byte, error) {
-	return newIconAddressFromPubKey(pubKey)
+	return NewIconAddressFromPubKey(pubKey)
 }
 
 func (m *iconModuleCore) BytesByHashBucket() db.BucketID {
