@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -239,6 +240,11 @@ func (c *Chain) SetWalletFor(keyType string, bw module.BaseWallet) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	pk := c.wallet.PublicKey()
+	iconAddr, _ := ntm.NewIconAddressFromPubKey(pk)
+	ethAddr, _ := ntm.ForUID("eth").AddressFromPubKey(bw.PublicKey())
+
+	log.Infof("setWalletFor oriPK=%x oriIconAddr=%x newPK=%x newEthAddr=%x", pk, iconAddr, bw.PublicKey(), ethAddr)
 	c.bwMap[keyType] = bw
 }
 

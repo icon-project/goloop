@@ -191,10 +191,12 @@ func (f *Fixture) SendTransactionToProposer(tx StringerTransaction) {
 }
 
 func (f *Fixture) WaitForBlock(h int64) module.Block {
+	log.Infof("WaitForBlock height=%d", h)
 	res := NodeWaitForBlock(f.Nodes, h)
 	if f.Height < h {
 		f.Height = h
 	}
+	log.Infof("WaitForBlock done height=%d", h)
 	return res
 }
 

@@ -256,7 +256,12 @@ func newBTPTest(t *testing.T) *btpTest {
 			"name":   dsa,
 			"pubKey": fmt.Sprintf("0x%x", v.Chain.WalletFor(dsa).PublicKey()),
 		})
-		t.Logf("register key index=%d %s=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey())
+		pk := v.Chain.WalletFor(dsa).PublicKey()
+		iconAddr, err := ntm.NewIconAddressFromPubKey(pk)
+		assert.NoError(err)
+		ethAddr, err := ntm.ForUID("eth").AddressFromPubKey(pk)
+		assert.NoError(err)
+		t.Logf("register key index=%d %s=%x icon=%x eth=%x", i, dsa, v.Chain.WalletFor(dsa).PublicKey(), iconAddr, ethAddr)
 	}
 	tx.Call("openBTPNetwork", map[string]string{
 		"networkTypeName": uid,
