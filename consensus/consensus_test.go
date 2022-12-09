@@ -429,7 +429,6 @@ func TestConsensus_BTPBlockBasic(t_ *testing.T) {
 
 func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	const dsa = "ecdsa/secp256k1"
-	const uid = "eth"
 	tst := newBTPTest(t_)
 	defer tst.Close()
 	f := tst.Fixture
@@ -446,7 +445,7 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 		"name":   dsa,
 		"pubKey": fmt.Sprintf("0x%x", wp.WalletFor(dsa).PublicKey()),
 	}).CallFrom(f.Nodes[1].CommonAddress(), "setBTPPublicKey", map[string]string{
-		"name":   uid,
+		"name":   dsa,
 		"pubKey": fmt.Sprintf("0x%x", wp2.WalletFor(dsa).PublicKey()),
 	}).SetTimestamp(blk.Timestamp())
 	blk = f.SendTXToAllAndWaitForBlock(tx)
@@ -458,6 +457,9 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
+	f.Nodes[0].Chain.SetWalletFor(dsa, wp.WalletFor(dsa))
+	f.Nodes[1].Chain.SetWalletFor(dsa, wp2.WalletFor(dsa))
+
 	testMsg := ([]byte)("test message")
 	tx = test.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
 		"networkId": "0x1",
@@ -467,8 +469,6 @@ func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	_, err = blk.NormalTransactions().Get(0)
 	assert.NoError(err)
 
-	f.Nodes[0].Chain.SetWalletFor(dsa, wp.WalletFor(dsa))
-	f.Nodes[1].Chain.SetWalletFor(dsa, wp2.WalletFor(dsa))
 	_ = f.WaitForNextBlock()
 }
 
@@ -503,6 +503,9 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, len(bd.NetworkTypeDigests()))
 
+	f.Nodes[0].Chain.SetWalletFor(dsa, wp.WalletFor(dsa))
+	f.Nodes[1].Chain.SetWalletFor(dsa, wp2.WalletFor(dsa))
+
 	testMsg := ([]byte)("test message")
 	blk = f.SendTXToAllAndWaitForBlock(
 		f.NewTx().CallFrom(f.CommonAddress(), "sendBTPMessage", map[string]string{
@@ -513,8 +516,6 @@ func TestConsensus_SetWrongBTPKey(t_ *testing.T) {
 	_, err = blk.NormalTransactions().Get(0)
 	assert.NoError(err)
 
-	f.Nodes[0].Chain.SetWalletFor(dsa, wp.WalletFor(dsa))
-	f.Nodes[1].Chain.SetWalletFor(dsa, wp2.WalletFor(dsa))
 	f.WaitForNextBlock()
 
 	// set wrong pub key

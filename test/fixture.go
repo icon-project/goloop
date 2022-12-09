@@ -230,7 +230,6 @@ func (f *Fixture) SendTXToAllAndWaitForBlock(tx StringerTransaction) module.Bloc
 	for {
 		blk := f.WaitForBlock(h)
 		if f.TXInBlock(tx, blk) {
-			f.Height = blk.Height()
 			return blk
 		}
 		h++
@@ -247,7 +246,6 @@ func (f *Fixture) SendTXToAllAndWaitForResultBlock(tx StringerTransaction) modul
 		blk := f.WaitForBlock(h)
 		if f.TXInBlock(tx, blk) {
 			blk = f.WaitForBlock(h + 1)
-			f.Height = blk.Height()
 			return blk
 		}
 		h++
