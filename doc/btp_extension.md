@@ -538,7 +538,7 @@ Suffixed `(N)` means a nullable value.
 
 ### Block Header
 
-> B_LIST of followings
+> B_LIST of followings. Note that this list can have zero or more extension fields after Result field.
 
 | Field                  | Type         | Description                                      |
 |:-----------------------|:-------------|:-------------------------------------------------|

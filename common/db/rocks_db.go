@@ -80,7 +80,7 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 		C.rocksdb_free(unsafe.Pointer(cErr))
 		log.Traceln("fail to rocksdb_list_column_families", errMsg)
 
-		//ignore and try open
+		// ignore and try open
 		cErr = nil
 		hdl = C.rocksdb_open(opts, cName, &cErr)
 		if cErr != nil {
@@ -191,6 +191,14 @@ func (db *RocksDB) GetBucket(id BucketID) (Bucket, error) {
 	return bk, nil
 }
 
+func unsafePointerOf(p []byte) unsafe.Pointer {
+	if len(p) == 0 {
+		return nil
+	} else {
+		return unsafe.Pointer(&p[0])
+	}
+}
+
 func (db *RocksDB) getValue(cf *C.rocksdb_column_family_handle_t, k []byte) ([]byte, error) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -201,7 +209,7 @@ func (db *RocksDB) getValue(cf *C.rocksdb_column_family_handle_t, k []byte) ([]b
 	var (
 		cErr    *C.char
 		cValLen C.size_t
-		cKey    = (*C.char)(unsafe.Pointer(&k[0]))
+		cKey    = (*C.char)(unsafePointerOf(k))
 	)
 	cValue := C.rocksdb_get_cf(db.db, db.ro, cf, cKey, C.size_t(len(k)), &cValLen, &cErr)
 	if cErr != nil {
@@ -230,7 +238,7 @@ func (db *RocksDB) hasValue(cf *C.rocksdb_column_family_handle_t, k []byte) (boo
 	var (
 		cErr    *C.char
 		cValLen C.size_t
-		cKey    = (*C.char)(unsafe.Pointer(&k[0]))
+		cKey    = (*C.char)(unsafePointerOf(k))
 	)
 	cValue := C.rocksdb_get_cf(db.db, db.ro, cf, cKey, C.size_t(len(k)), &cValLen, &cErr)
 	if cErr != nil {
@@ -250,12 +258,9 @@ func (db *RocksDB) setValue(cf *C.rocksdb_column_family_handle_t, k, v []byte) e
 	}
 	var (
 		cErr   *C.char
-		cKey   = (*C.char)(unsafe.Pointer(&k[0]))
-		cValue *C.char
+		cKey   = (*C.char)(unsafePointerOf(k))
+		cValue = (*C.char)(unsafePointerOf(v))
 	)
-	if len(v) > 0 {
-		cValue = (*C.char)(unsafe.Pointer(&v[0]))
-	}
 	C.rocksdb_put_cf(db.db, db.wo, cf, cKey, C.size_t(len(k)), cValue, C.size_t(len(v)), &cErr)
 	if cErr != nil {
 		defer C.rocksdb_free(unsafe.Pointer(cErr))
@@ -273,7 +278,7 @@ func (db *RocksDB) deleteValue(cf *C.rocksdb_column_family_handle_t, k []byte) e
 	}
 	var (
 		cErr *C.char
-		cKey = (*C.char)(unsafe.Pointer(&k[0]))
+		cKey = (*C.char)(unsafePointerOf(k))
 	)
 	C.rocksdb_delete_cf(db.db, db.wo, cf, cKey, C.size_t(len(k)), &cErr)
 	if cErr != nil {

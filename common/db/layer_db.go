@@ -2,8 +2,6 @@ package db
 
 import (
 	"sync"
-
-	"github.com/icon-project/goloop/common/errors"
 )
 
 type layerBucket struct {
@@ -37,10 +35,6 @@ func (bk *layerBucket) Has(key []byte) (bool, error) {
 }
 
 func (bk *layerBucket) Set(key []byte, value []byte) error {
-	if value == nil {
-		return errors.New("IllegalArgument")
-	}
-
 	bk.lock.Lock()
 	defer bk.lock.Unlock()
 

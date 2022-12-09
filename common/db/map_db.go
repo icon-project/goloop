@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 )
 
@@ -98,9 +97,6 @@ func (t *mapBucket) Has(k []byte) (bool, error) {
 }
 
 func (t *mapBucket) Set(k, v []byte) error {
-	if len(k) == 0 {
-		return errors.Errorf("Illegal Key:%x", k)
-	}
 	if configLogMapDB {
 		log.Printf("mapBucket[%s].Set(%x,%x)", t.id, k, v)
 	}

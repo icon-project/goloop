@@ -33,6 +33,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -231,6 +232,16 @@ func (t *taskReset) _prepareBlocks(height int64, blockHash []byte) (module.Block
 		return nil, nil, err
 	}
 	if err = block.UnsafeFinalize(c.sm, c, blk, t.cancelCh, p.onProgress); err != nil {
+		return nil, nil, err
+	}
+
+	vh := pBlk.NextValidatorsHash()
+	vl, err := state.ValidatorSnapshotFromHash(c.Database(), vh)
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = votes.VerifyBlock(blk, vl)
+	if err != nil {
 		return nil, nil, err
 	}
 
