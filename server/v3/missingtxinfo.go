@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package trace
+package v3
 
 var missingTxHashes = []string{
 	"\x3c\xf6\xc4\xde\x0e\x05\xd6\xcb\x95\x0d\x5c\x59\xd5\x1b\xad\xad\xa6\xa9\x67\x21\x94\x43\x72\xfa\x36\x8a\xe6\x6e\x91\xda\x2d\x8c",
@@ -53,14 +53,16 @@ var missingTxHashToSubTxHash = map[string]string{
 	missingTxHashes[4]: subTxHashes[4],
 }
 
-func GetMissingTxLocator(txHash []byte) (int64, int, bool) {
+type missingTransactions struct{}
+
+func (i missingTransactions) GetLocationOf(txHash []byte) (int64, int, bool) {
 	if loc, ok := missingTxLocators[string(txHash)]; ok {
 		return loc.height, loc.index, true
 	}
 	return -1, -1, false
 }
 
-func ReplaceMissingTxHash(height int64, txHash []byte) []byte {
+func (i missingTransactions) ReplaceID(height int64, txHash []byte) []byte {
 	if subTxHash, ok := missingTxHashToSubTxHash[string(txHash)]; ok {
 		if loc, ok := missingTxLocators[subTxHash]; ok {
 			if height == loc.height {
@@ -70,3 +72,6 @@ func ReplaceMissingTxHash(height int64, txHash []byte) []byte {
 	}
 	return txHash
 }
+
+// TransactionLocator object for accessing missed transaction information
+var iconMissedTransactions missingTransactions

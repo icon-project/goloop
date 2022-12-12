@@ -1245,7 +1245,18 @@ func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 	return steps, nil
 }
 
-const CIDForMainNet = 0x1
+type MissingTransactionInfo interface {
+	ReplaceID(height int64, id []byte) []byte
+	GetLocationOf(id []byte) (int64, int, bool)
+}
+
+func findMissingTransactionInfoOf(cid int) MissingTransactionInfo {
+	// for ICON Mainnet
+	if cid == 0x1 {
+		return iconMissedTransactions
+	}
+	return nil
+}
 
 func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	var c contextWithSM
@@ -1287,8 +1298,8 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 	}
 
 	var replacer trace.TxHashReplacer
-	if c.chain.CID() == CIDForMainNet {
-		replacer = trace.ReplaceMissingTxHash
+	if mt := findMissingTransactionInfoOf(c.chain.CID()); mt != nil {
+		replacer = mt.ReplaceID
 	}
 	cb := &traceCallback{
 		channel: make(chan interface{}, 10),
@@ -1423,8 +1434,8 @@ func (m *missingTransactionInfo) GetReceipt() (module.Receipt, error) {
 
 func getTransactionInfo(
 	txHash []byte, c *contextWithSM) (module.TransactionInfo, error) {
-	if c.chain.CID() == CIDForMainNet {
-		height, index, ok := trace.GetMissingTxLocator(txHash)
+	if mt := findMissingTransactionInfoOf(c.chain.CID()); mt != nil {
+		height, index, ok := mt.GetLocationOf(txHash)
 		if ok {
 			if blk, err := c.bm.GetBlockByHeight(height); err == nil {
 				nblk, _ := c.bm.GetBlockByHeight(height + 1)
