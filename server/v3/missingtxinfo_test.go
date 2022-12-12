@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package trace
+package v3
 
 import (
 	"testing"
@@ -24,14 +24,14 @@ import (
 
 func TestGetMissingTxLocator(t *testing.T) {
 	for _, txHash := range subTxHashes {
-		height, txIndex, ok := GetMissingTxLocator([]byte(txHash))
+		height, txIndex, ok := iconMissedTransactions.GetLocationOf([]byte(txHash))
 		assert.True(t, height > int64(0))
 		assert.True(t, txIndex >= 0)
 		assert.True(t, ok)
 	}
 
 	dummyTxHash := make([]byte, 32)
-	height, txIndex, ok := GetMissingTxLocator(dummyTxHash)
+	height, txIndex, ok := iconMissedTransactions.GetLocationOf(dummyTxHash)
 	assert.Equal(t, int64(-1), height)
 	assert.Equal(t, -1, txIndex)
 	assert.False(t, ok)
@@ -41,7 +41,7 @@ func TestReplaceMissingTxHash(t *testing.T) {
 	heights := []int64{43244423, 43271612, 43271612, 43292491, 43292491}
 
 	for i, txHash := range missingTxHashes {
-		subTxHash := string(ReplaceMissingTxHash(heights[i], []byte(txHash)))
+		subTxHash := string(iconMissedTransactions.ReplaceID(heights[i], []byte(txHash)))
 		assert.Equal(t, subTxHashes[i], subTxHash)
 		assert.Equal(t, subTxHash[31]+1, txHash[31])
 		assert.Equal(t, subTxHash[:31], txHash[:31])
@@ -50,13 +50,13 @@ func TestReplaceMissingTxHash(t *testing.T) {
 	// NoMissingTxHashes
 	height := int64(1234)
 	for _, noMissingTxHash := range subTxHashes {
-		txHash := string(ReplaceMissingTxHash(height, []byte(noMissingTxHash)))
+		txHash := string(iconMissedTransactions.ReplaceID(height, []byte(noMissingTxHash)))
 		assert.Equal(t, txHash, noMissingTxHash)
 	}
 
 	// MissingTxHash but height is different
 	for _, missingTxHash := range missingTxHashes {
-		txHash := string(ReplaceMissingTxHash(height, []byte(missingTxHash)))
+		txHash := string(iconMissedTransactions.ReplaceID(height, []byte(missingTxHash)))
 		assert.Equal(t, txHash, missingTxHash)
 	}
 }
