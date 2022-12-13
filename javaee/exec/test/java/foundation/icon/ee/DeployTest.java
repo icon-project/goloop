@@ -83,4 +83,20 @@ public class DeployTest extends SimpleTest {
                 sm.mustDeploy(new Class<?>[]{ArrayClassAccess.class, Inf.class})
         );
     }
+
+    public static class ExceptionInConstructor {
+        public ExceptionInConstructor() {
+            try {
+                throw new RuntimeException();
+            } catch (RuntimeException e) {
+                // ignore
+            }
+        }
+    }
+
+    @Test
+    void testExceptionInConstructor() {
+        var res = sm.tryDeploy(ExceptionInConstructor.class);
+        Assertions.assertEquals(Status.Success, res.getStatus());
+    }
 }
