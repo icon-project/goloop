@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -1348,7 +1349,7 @@ func findBlockAndTxInfoByRosettaTraceParam(
 	var err error
 
 	if len(param.Tx) > 0 {
-		if param.Tx[0:2] == "bx" {
+		if strings.HasPrefix(string(param.Tx), "bx") {
 			if blk, err = c.GetBlockByID(param.Tx.Bytes()); err != nil {
 				return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, c.debug)
 			}
