@@ -125,6 +125,9 @@ func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCa
 
 // SetValidatedBlock sets validatedBlock. Transfers ownership of bc to bps.
 func (bps *blockPartSet) SetValidatedBlock(bc module.BlockCandidate) {
+	if bps.validatedBlock == bc {
+		return
+	}
 	if bps.validatedBlock != nil {
 		bps.validatedBlock.Dispose()
 	}
