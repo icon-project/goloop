@@ -123,7 +123,7 @@ func TestVoteMessage_VerifyOK(t *testing.T) {
 	msg.NTSVoteBases = nil
 	msg.Timestamp = 10
 	msg.NTSDProofParts = nil
-	_ = msg.sign(wp.wallet)
+	_ = msg.Sign(wp.wallet)
 	assert.NoError(msg.Verify())
 }
 
@@ -148,7 +148,7 @@ func TestVoteMessage_VerifyMismatchBetweenAppDataAndNTSDProofPartsLen(t *testing
 	pc, _ := ntm.ForUID("eth").NewProofContext([][]byte{w.PublicKey()})
 	pp, _ := pc.NewProofPart([]byte("abc"), wp)
 	msg.NTSDProofParts[0] = pp.Bytes()
-	_ = msg.sign(w)
+	_ = msg.Sign(w)
 	assert.Error(msg.Verify())
 }
 
@@ -171,6 +171,6 @@ func TestVoteMessage_VerifyMismatchBetweenNTSVoteBasesAndNTSDProofParts(t *testi
 	pc, _ := ntm.ForUID("eth").NewProofContext([][]byte{w.PublicKey()})
 	pp, _ := pc.NewProofPart([]byte("abc"), wp)
 	msg.NTSDProofParts[0] = pp.Bytes()
-	_ = msg.sign(w)
+	_ = msg.Sign(w)
 	assert.Error(msg.Verify())
 }

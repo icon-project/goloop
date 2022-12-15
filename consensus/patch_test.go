@@ -40,7 +40,7 @@ func (t *skipPatchTest) newSignedVote(w module.Wallet, bid int32, round int32) *
 	vm := newVoteMessage()
 	vm.BlockID = codec.MustMarshalToBytes(bid)
 	vm.Round = round
-	err := vm.sign(w)
+	err := vm.Sign(w)
 	t.Assert.NoError(err)
 	return vm
 }
@@ -50,7 +50,7 @@ func (t *skipPatchTest) newSignedVote2(w module.Wallet, bid int32, height int64,
 	vm.BlockID = codec.MustMarshalToBytes(bid)
 	vm.Height = height
 	vm.Round = round
-	err := vm.sign(w)
+	err := vm.Sign(w)
 	t.Assert.NoError(err)
 	return vm
 }
@@ -145,7 +145,7 @@ func TestSkipPatch_Verify(t_ *testing.T) {
 		CountWord: 1,
 		Hash:      make([]byte, 32),
 	}
-	err = vm.sign(w[0])
+	err = vm.Sign(w[0])
 	t.Assert.NoError(err)
 	vs.add(0, vm)
 	vs.add(1, t.newSignedVote(w[1], nid, 10))

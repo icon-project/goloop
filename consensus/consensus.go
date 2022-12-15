@@ -1069,7 +1069,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 	msg.Round = cs.round
 	msg.BlockPartSetID = blockParts.ID()
 	msg.POLRound = polRound
-	err := msg.sign(cs.c.Wallet())
+	err := msg.Sign(cs.c.Wallet())
 	if err != nil {
 		return err
 	}
@@ -1218,7 +1218,7 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	}
 	msg.Timestamp = cs.voteTimestamp()
 
-	err := msg.sign(cs.c.Wallet())
+	err := msg.Sign(cs.c.Wallet())
 	if err != nil {
 		return err
 	}

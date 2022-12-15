@@ -199,7 +199,7 @@ func NewVoteMessageFromBlock(
 	vm.BlockID = blk.ID()
 	vm.BlockPartSetIDAndNTSVoteCount = bpsIDAndNTSVoteCount
 	vm.Timestamp = ts
-	_ = vm.sign(w)
+	_ = vm.Sign(w)
 	bd, err := blk.BTPDigest()
 	if err != nil {
 		return nil, err
@@ -251,7 +251,7 @@ func NewVoteMessage(
 	vm.BlockID = id
 	vm.BlockPartSetIDAndNTSVoteCount = partSetID.WithAppData(uint16(ntsVoteCount))
 	vm.Timestamp = ts
-	_ = vm.sign(w)
+	_ = vm.Sign(w)
 	for _, ntsHashEntry := range ntsHashEntries {
 		vm.NTSVoteBases = append(vm.NTSVoteBases, ntsVoteBase(ntsHashEntry))
 	}
