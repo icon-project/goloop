@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -1245,6 +1246,15 @@ func estimateStep(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 	return steps, nil
 }
 
+type MissingTransactionInfo interface {
+	ReplaceID(height int64, id []byte) []byte
+	GetLocationOf(id []byte) (int64, int, bool)
+}
+
+func findMissingTransactionInfoOf(cid int) MissingTransactionInfo {
+	return nil
+}
+
 func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	var c contextWithSM
 	if err := c.Init(ctx); err != nil {
@@ -1284,9 +1294,13 @@ func getTraceForRosetta(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 
+	var replacer trace.TxHashReplacer
+	if mt := findMissingTransactionInfoOf(c.chain.CID()); mt != nil {
+		replacer = mt.ReplaceID
+	}
 	cb := &traceCallback{
 		channel: make(chan interface{}, 10),
-		bt:      trace.NewBalanceTracer(10),
+		bt:      trace.NewBalanceTracer(10, replacer),
 	}
 	ti := module.TraceInfo{
 		TraceMode:  module.TraceModeBalanceChange,
@@ -1331,32 +1345,33 @@ func findBlockAndTxInfoByRosettaTraceParam(
 	var err error
 
 	if len(param.Tx) > 0 {
-		txBytes := param.Tx.Bytes()
-		if blk, err = c.GetBlockByID(txBytes); err == nil {
-			return blk, nil, nil
-		}
-
-		txInfo, err = c.bm.GetTransactionInfo(txBytes)
-		if errors.NotFoundError.Equals(err) {
-			if c.sm.HasTransaction(param.Tx.Bytes()) {
-				return nil, nil, jsonrpc.ErrorCodePending.New("Pending")
+		if strings.HasPrefix(string(param.Tx), "bx") {
+			if blk, err = c.GetBlockByID(param.Tx.Bytes()); err != nil {
+				return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, c.debug)
 			}
-			return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, c.debug)
-		} else if err != nil {
-			return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
-		}
-		if txInfo.Group() == module.TransactionGroupPatch {
-			return nil, nil, jsonrpc.ErrorCodeInvalidParams.New("Patch transaction can't be replayed")
-		}
-		_, err = txInfo.GetReceipt()
-		if block.ResultNotFinalizedError.Equals(err) {
-			return nil, nil, jsonrpc.ErrorCodeExecuting.New("Executing")
-		} else if err != nil {
-			return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
-		}
-		blk = txInfo.Block()
-		if err = c.CheckBaseHeight(blk.Height()); err != nil {
-			return nil, nil, err
+		} else {
+			txInfo, err = getTransactionInfo(param.Tx.Bytes(), c)
+			if errors.NotFoundError.Equals(err) {
+				if c.sm.HasTransaction(param.Tx.Bytes()) {
+					return nil, nil, jsonrpc.ErrorCodePending.New("Pending")
+				}
+				return nil, nil, jsonrpc.ErrorCodeNotFound.Wrap(err, c.debug)
+			} else if err != nil {
+				return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
+			}
+			if txInfo.Group() == module.TransactionGroupPatch {
+				return nil, nil, jsonrpc.ErrorCodeInvalidParams.New("Patch transaction can't be replayed")
+			}
+			_, err = txInfo.GetReceipt()
+			if block.ResultNotFinalizedError.Equals(err) {
+				return nil, nil, jsonrpc.ErrorCodeExecuting.New("Executing")
+			} else if err != nil {
+				return nil, nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
+			}
+			blk = txInfo.Block()
+			if err = c.CheckBaseHeight(blk.Height()); err != nil {
+				return nil, nil, err
+			}
 		}
 	} else if len(param.Block) > 0 {
 		blk, err = c.GetBlockByID(param.Block.Bytes())
@@ -1372,6 +1387,60 @@ func findBlockAndTxInfoByRosettaTraceParam(
 		err = c.AsRPCError(err)
 	}
 	return blk, txInfo, err
+}
+
+type missingTransactionInfo struct {
+	blk   module.Block
+	index int
+	sm    module.ServiceManager
+	nblk  module.Block
+}
+
+func (m *missingTransactionInfo) Block() module.Block {
+	return m.blk
+}
+
+func (m *missingTransactionInfo) Index() int {
+	return m.index
+}
+
+func (m *missingTransactionInfo) Group() module.TransactionGroup {
+	return module.TransactionGroupNormal
+}
+
+func (m *missingTransactionInfo) Transaction() (module.Transaction, error) {
+	return nil, errors.UnsupportedError.Errorf("Not implemented")
+}
+
+func (m *missingTransactionInfo) GetReceipt() (module.Receipt, error) {
+	if m.nblk != nil {
+		rl, err := m.sm.ReceiptListFromResult(
+			m.nblk.Result(), m.Group())
+		if err != nil {
+			return nil, err
+		}
+		rct, err := rl.Get(m.index)
+		if err != nil {
+			return nil, err
+		}
+		return rct, nil
+	} else {
+		return nil, block.ErrResultNotFinalized
+	}
+}
+
+func getTransactionInfo(
+	txHash []byte, c *contextWithSM) (module.TransactionInfo, error) {
+	if mt := findMissingTransactionInfoOf(c.chain.CID()); mt != nil {
+		height, index, ok := mt.GetLocationOf(txHash)
+		if ok {
+			if blk, err := c.bm.GetBlockByHeight(height); err == nil {
+				nblk, _ := c.bm.GetBlockByHeight(height + 1)
+				return &missingTransactionInfo{blk, index, c.sm, nblk}, nil
+			}
+		}
+	}
+	return c.bm.GetTransactionInfo(txHash)
 }
 
 func RosettaMethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {

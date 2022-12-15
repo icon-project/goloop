@@ -89,7 +89,7 @@ type ProofEventsParam struct {
 }
 
 type RosettaTraceParam struct {
-	Tx     jsonrpc.HexBytes `json:"tx,omitempty" validate:"optional,t_hash"`
+	Tx     jsonrpc.HexBytes `json:"tx,omitempty" validate:"optional,t_rhash"`
 	Block  jsonrpc.HexBytes `json:"block,omitempty" validate:"optional,t_hash"`
 	Height jsonrpc.HexInt   `json:"height,omitempty" validate:"optional,gte=0,t_int"`
 }
