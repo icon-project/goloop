@@ -2045,6 +2045,8 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	)
 	if err != nil {
 		cs.log.Warnf("fail to convert to VoteList: %+v", err)
+		br.Reject()
+		return
 	}
 	for i := 0; i < vl.Len(); i++ {
 		m := vl.Get(i)
