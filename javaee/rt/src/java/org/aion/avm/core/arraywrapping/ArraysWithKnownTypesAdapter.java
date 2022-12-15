@@ -6,7 +6,7 @@ import a.*;
 import i.PackageConstants;
 import i.RuntimeAssertionError;
 import org.objectweb.asm.*;
-import org.objectweb.asm.commons.AdviceAdapter;
+import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
 import java.util.Set;
@@ -43,7 +43,7 @@ import java.util.Set;
  *
  * are handled by {@link org.aion.avm.core.arraywrapping.ArraysRequiringAnalysisClassVisitor}
  */
-class ArraysWithKnownTypesAdapter extends AdviceAdapter {
+class ArraysWithKnownTypesAdapter extends GeneratorAdapter implements Opcodes {
     static private Pattern PRIMITIVE_ARRAY_FORMAT = Pattern.compile("[\\$\\[]+[IJZBSDFC]");
 
     private Type typeA = Type.getType(a.IArray.class);
