@@ -2010,6 +2010,13 @@ func (cs *consensus) Step() step {
 	return cs.step
 }
 
+func (cs *consensus) ReceiveBlockResult(br fastsync.BlockResult) {
+	cs.mutex.Lock()
+	defer cs.mutex.Unlock()
+
+	cs.ReceiveBlock(br)
+}
+
 func (cs *consensus) ReceiveBlock(br fastsync.BlockResult) {
 	blk := br.Block()
 	cs.log.Debugf("ReceiveBlock Height:%d\n", blk.Height())
