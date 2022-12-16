@@ -68,72 +68,6 @@ func (hrs hrs) String() string {
 	return fmt.Sprintf("{Height:%d Round:%d Step:%s}", hrs.height, hrs.round, hrs.step)
 }
 
-type blockPartSet struct {
-	PartSet
-
-	// nil if partset is incomplete
-	block          module.BlockData
-	validatedBlock module.BlockCandidate
-}
-
-func (bps *blockPartSet) Zerofy() {
-	bps.PartSet = nil
-	bps.block = nil
-	if bps.validatedBlock != nil {
-		bps.validatedBlock.Dispose()
-		bps.validatedBlock = nil
-	}
-}
-
-func (bps *blockPartSet) ID() *PartSetID {
-	if bps.PartSet == nil {
-		return nil
-	}
-	return bps.PartSet.ID()
-}
-
-func (bps *blockPartSet) IsZero() bool {
-	return bps.PartSet == nil && bps.block == nil
-}
-
-func (bps *blockPartSet) IsComplete() bool {
-	return bps.block != nil
-}
-
-func (bps *blockPartSet) Assign(oth *blockPartSet) {
-	bps.PartSet = oth.PartSet
-	bps.block = oth.block
-	if bps.validatedBlock == oth.validatedBlock {
-		return
-	}
-	if bps.validatedBlock != nil {
-		bps.validatedBlock.Dispose()
-	}
-	if oth.validatedBlock == nil {
-		bps.validatedBlock = nil
-	} else {
-		bps.validatedBlock = oth.validatedBlock.Dup()
-	}
-}
-
-// Set sets content of bps. Transfers ownership of bc to bps.
-func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCandidate) {
-	bps.PartSet = ps
-	bps.block = blk
-	bps.SetValidatedBlock(bc)
-}
-
-// SetValidatedBlock sets validatedBlock. Transfers ownership of bc to bps.
-func (bps *blockPartSet) SetValidatedBlock(bc module.BlockCandidate) {
-	if bps.validatedBlock == bc {
-		return
-	}
-	if bps.validatedBlock != nil {
-		bps.validatedBlock.Dispose()
-	}
-	bps.validatedBlock = bc
-}
-
 type consensus struct {
 	hrs
 
@@ -706,7 +640,7 @@ func (cs *consensus) enterPrevote() {
 		cs.sendVote(VoteTypePrevote, &cs.lockedBlockParts)
 	} else if cs.currentBlockParts.IsComplete() {
 		hrs := cs.hrs
-		if cs.currentBlockParts.validatedBlock != nil {
+		if cs.currentBlockParts.HasValidatedBlock() {
 			cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
 		} else if !cs.proposalHasValidProposer() {
 			cs.sendVote(VoteTypePrevote, nil)
@@ -903,7 +837,7 @@ func (cs *consensus) enterPrecommitWait() {
 }
 
 func (cs *consensus) commitAndEnterNewHeight() {
-	if cs.currentBlockParts.validatedBlock == nil {
+	if !cs.currentBlockParts.HasValidatedBlock() {
 		hrs := cs.hrs
 		if cs.cancelBlockRequest != nil {
 			cs.cancelBlockRequest.Cancel()
@@ -2075,11 +2009,12 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		return
 	}
 	bps := NewPartSetFromID(id)
-	var validatedBlock module.BlockCandidate
 	if cs.currentBlockParts.ID().Equal(id) {
-		validatedBlock = cs.currentBlockParts.validatedBlock
+		// keep PartSet and validatedBlock
+		cs.currentBlockParts.block = blk
+	} else {
+		cs.currentBlockParts.Set(bps, blk, nil)
 	}
-	cs.currentBlockParts.Set(bps, blk, validatedBlock)
 	cs.syncing = false
 	br.Consume()
 	if cs.step < stepCommit {
