@@ -100,7 +100,7 @@ func (h *SystemCallHandler) ExecuteAsync(cc contract.CallContext) (err error) {
 		as := cc.GetAccountState(state.SystemID)
 		apiInfo, _ := as.APIInfo()
 		m := apiInfo.GetMethod(h.GetMethodName())
-		if !cc.QueryMode() && m != nil && m.IsReadOnly() {
+		if !cc.ReadOnlyMode() && m != nil && m.IsReadOnly() {
 			h.log.TSystem("PATCH readonly methods cannot be called before rev9")
 			return scoreresult.UnknownFailureError.New("ReadOnlyMethod")
 		}
