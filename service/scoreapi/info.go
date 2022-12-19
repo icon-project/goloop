@@ -131,35 +131,6 @@ func (info *Info) Equal(info2 *Info) bool {
 	return bytes.Equal(bs1, bs2)
 }
 
-type MethodIterator interface {
-	Has() bool
-	Next()
-	Get() *Method
-}
-
-type methodIterator struct {
-	methods []*Method
-	index   int
-}
-
-func (m *methodIterator) Has() bool {
-	return m.index < len(m.methods)
-}
-
-func (m *methodIterator) Next() {
-	if m.index < len(m.methods) {
-		m.index += 1
-	}
-}
-
-func (m *methodIterator) Get() *Method {
-	return m.methods[m.index]
-}
-
-func (info *Info) MethodIterator() MethodIterator {
-	return &methodIterator{methods: info.methods, index: 0}
-}
-
 func NewInfo(methods []*Method) *Info {
 	info := &Info{
 		methods: methods,
