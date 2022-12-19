@@ -26,6 +26,7 @@ import (
 
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
@@ -311,6 +312,43 @@ func (t *Node) NewTx() *Transaction {
 	blk, err := t.BM.GetLastBlock()
 	assert.NoError(t.T, err)
 	return NewTx().SetTimestamp(blk.Timestamp())
+}
+
+func (t *Node) ProposalBytesFor(blk module.Block) (pmBS_ []byte, bpmBS_ []byte, bps_ consensus.PartSet) {
+	psb := consensus.NewPartSetBuffer(consensus.ConfigBlockPartSize)
+	assert.NoError(t, blk.MarshalHeader(psb))
+	assert.NoError(t, blk.MarshalBody(psb))
+	bps := psb.PartSet()
+	msg := consensus.NewProposalMessage()
+	msg.Height = blk.Height()
+	msg.Round = 0
+	msg.BlockPartSetID = bps.ID()
+	msg.POLRound = -1
+	assert.NoError(t, msg.Sign(t.Chain.Wallet()))
+	pmBS := codec.MustMarshalToBytes(msg)
+	bpm := consensus.BlockPartMessage{}
+	assert.Equal(t, 1, bps.Parts())
+	bpm.Height = blk.Height()
+	bpm.BlockPart = bps.GetPart(0).Bytes()
+	bpm.Index = uint16(0)
+	bpm.Nonce = 0
+	bpmBS := codec.MustMarshalToBytes(bpm)
+	return pmBS, bpmBS, bps
+}
+
+func (t *Node) VoteFor(vt consensus.VoteType, blk module.Block, bpsID *consensus.PartSetID) *consensus.VoteMessage {
+	return consensus.NewVoteMessage(
+		t.Chain.Wallet(),
+		vt,
+		blk.Height(),
+		0,
+		blk.ID(),
+		bpsID,
+		blk.Timestamp()+1,
+		nil,
+		nil,
+		0,
+	)
 }
 
 func NodeInterconnect(nodes []*Node) {

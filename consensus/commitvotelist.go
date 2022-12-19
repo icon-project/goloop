@@ -246,6 +246,9 @@ func (vl *CommitVoteList) toVoteList(
 		msg.Timestamp = item.Timestamp
 		msg.setSignature(item.Signature)
 		vIdx := validators.IndexOf(msg.address())
+		if vIdx < 0 {
+			return nil, errors.Errorf("not a validator address=%s", msg.address().String())
+		}
 		msg.NTSDProofParts = proofParts[vIdx]
 		rvl.AddVote(msg)
 	}

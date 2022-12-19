@@ -49,7 +49,7 @@ type CallHandler struct {
 	conn      eeproxy.Proxy
 	cs        ContractStore
 	isSysCall bool
-	isQuery   bool
+	readOnly  bool
 	allowEx   bool
 	codeID    []byte
 }
@@ -276,7 +276,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.ContractState) erro
 	h.lock.Lock()
 	if !h.disposed {
 		h.Log.Tracef("Execution INVOKE last=%d eid=%d", last, eid)
-		err = h.conn.Invoke(h.ch, path, cc.QueryMode(), h.From, h.To,
+		err = h.conn.Invoke(h.ch, path, cc.ReadOnlyMode(), h.From, h.To,
 			h.Value, cc.StepAvailable(), h.method.Name, h.paramObj,
 			h.codeID, eid, state)
 	}
@@ -337,9 +337,9 @@ func (h *CallHandler) ensureMethodAndParams(eeType state.EEType) error {
 					"InvalidAccessTo(%s)", h.name)
 			}
 		}
-		if method.IsReadOnly() != h.cc.QueryMode() {
+		if method.IsReadOnly() != h.cc.ReadOnlyMode() {
 			if method.IsReadOnly() {
-				h.cc.EnterQueryMode()
+				h.cc.EnterReadOnlyMode()
 			} else {
 				return scoreresult.AccessDeniedError.Errorf(
 					"AccessingWritableFromReadOnly(%s)", h.name)
@@ -348,7 +348,7 @@ func (h *CallHandler) ensureMethodAndParams(eeType state.EEType) error {
 	}
 
 	h.method = method
-	h.isQuery = method.IsReadOnly()
+	h.readOnly = method.IsReadOnly()
 	h.info = info
 	if h.paramObj != nil {
 		if params, err := method.EnsureParamsSequential(h.paramObj); err != nil {
@@ -437,7 +437,7 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 }
 
 func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
-	if h.isQuery {
+	if h.readOnly {
 		return nil, scoreresult.AccessDeniedError.New(
 			"DeleteValueInQuery")
 	}
@@ -460,7 +460,7 @@ func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 }
 
 func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
-	if h.isQuery {
+	if h.readOnly {
 		return nil, scoreresult.AccessDeniedError.New(
 			"DeleteValueInQuery")
 	}
@@ -532,13 +532,13 @@ func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error {
-	if h.isQuery {
+	if h.readOnly {
 		// It's not allowed to send event message if it's in query mode.
 		// It means that the execution environment is in invalid state.
 		// Proxy need to be closed.
-		h.Log.Warnf("DROP EventLog(%s,%+v,%+v) in QueryMode",
+		h.Log.Warnf("DROP EventLog(%s,%+v,%+v) in ReadOnlyMode",
 			addr, indexed, data)
-		return errors.InvalidStateError.New("EventInQueryMode")
+		return errors.InvalidStateError.New("EventInReadOnlyMode")
 	}
 	if err := h.info.CheckEventData(indexed, data); err != nil {
 		// Given data is incorrect. This may not be able to  checked
@@ -628,7 +628,7 @@ func (h *CallHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 }
 
 func (h *CallHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
-	if h.isQuery {
+	if h.readOnly {
 		return nil
 	}
 	return h.as.SetObjGraph(h.codeID, flags, nextHash, objGraph)

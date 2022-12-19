@@ -54,7 +54,7 @@ func (s *signedBase) verify() error {
 	return nil
 }
 
-func (s *signedBase) sign(wallet module.Wallet) error {
+func (s *signedBase) Sign(wallet module.Wallet) error {
 	s._hash = nil
 	s._publicKey = nil
 	sigBS, err := wallet.Sign(s.hash())

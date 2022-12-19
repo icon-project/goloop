@@ -78,7 +78,7 @@ type CallContext interface {
 }
 
 type Proxy interface {
-	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address,
+	Invoke(ctx CallContext, code string, readOnly bool, from, to module.Address,
 		value, limit *big.Int, method string, params *codec.TypedObj,
 		cid []byte, eid int, state *CodeState) error
 	SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj, eid int, last int) error
@@ -234,7 +234,7 @@ func traceLevelOf(lv log.Level) module.TraceLevel {
 }
 
 func (p *proxy) Invoke(
-	ctx CallContext, code string, isQuery bool,
+	ctx CallContext, code string, readOnly bool,
 	from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj,
 	cid []byte, eid int, state *CodeState,
 ) error {
@@ -243,7 +243,7 @@ func (p *proxy) Invoke(
 	var m invokeMessage
 	m.Code = code
 	m.Flag = 0
-	if isQuery {
+	if readOnly {
 		m.Flag |= InvokeFlagReadOnly
 	}
 	if logger.TraceMode() == module.TraceModeInvoke {
@@ -266,7 +266,7 @@ func (p *proxy) Invoke(
 		m.Info = eo
 	}
 
-	logger.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s eid=%d", p, code, isQuery, from, to, value, limit, method, eid)
+	logger.Tracef("Proxy[%p].Invoke code=%s readonly=%v from=%v to=%v value=%v limit=%v method=%s eid=%d", p, code, readOnly, from, to, value, limit, method, eid)
 
 	p.lock.Lock()
 	defer p.lock.Unlock()

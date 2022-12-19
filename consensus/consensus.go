@@ -125,6 +125,9 @@ func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCa
 
 // SetValidatedBlock sets validatedBlock. Transfers ownership of bc to bps.
 func (bps *blockPartSet) SetValidatedBlock(bc module.BlockCandidate) {
+	if bps.validatedBlock == bc {
+		return
+	}
 	if bps.validatedBlock != nil {
 		bps.validatedBlock.Dispose()
 	}
@@ -1066,7 +1069,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 	msg.Round = cs.round
 	msg.BlockPartSetID = blockParts.ID()
 	msg.POLRound = polRound
-	err := msg.sign(cs.c.Wallet())
+	err := msg.Sign(cs.c.Wallet())
 	if err != nil {
 		return err
 	}
@@ -1215,7 +1218,7 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	}
 	msg.Timestamp = cs.voteTimestamp()
 
-	err := msg.sign(cs.c.Wallet())
+	err := msg.Sign(cs.c.Wallet())
 	if err != nil {
 		return err
 	}
@@ -2007,6 +2010,13 @@ func (cs *consensus) Step() step {
 	return cs.step
 }
 
+func (cs *consensus) ReceiveBlockResult(br fastsync.BlockResult) {
+	cs.mutex.Lock()
+	defer cs.mutex.Unlock()
+
+	cs.ReceiveBlock(br)
+}
+
 func (cs *consensus) ReceiveBlock(br fastsync.BlockResult) {
 	blk := br.Block()
 	cs.log.Debugf("ReceiveBlock Height:%d\n", blk.Height())
@@ -2045,6 +2055,8 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	)
 	if err != nil {
 		cs.log.Warnf("fail to convert to VoteList: %+v", err)
+		br.Reject()
+		return
 	}
 	for i := 0; i < vl.Len(); i++ {
 		m := vl.Get(i)

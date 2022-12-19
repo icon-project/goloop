@@ -17,8 +17,11 @@
 package consensus_test
 
 import (
+	"bytes"
+	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -846,4 +849,181 @@ func TestConsensus_RoundWALMyVote(t *testing.T) {
 	assert.NoError(err)
 	status := nd.CS.GetStatus()
 	assert.EqualValues(3, status.Round)
+}
+
+type ConsensusInternal interface {
+	module.Consensus
+	OnReceive(sp module.ProtocolInfo, bs []byte, id module.PeerID) (bool, error)
+	ReceiveBlockResult(br fastsync.BlockResult)
+}
+
+type peerID []byte
+
+func (p peerID) Bytes() []byte {
+	return p
+}
+
+func (p peerID) Equal(id module.PeerID) bool {
+	return bytes.Equal(p.Bytes(), id.Bytes())
+}
+
+func (p peerID) String() string {
+	return hex.EncodeToString(p)
+}
+
+type blockResult struct {
+	blk      module.BlockData
+	votes    []byte
+	consume  func()
+	reject   func()
+	consumed bool
+}
+
+func (br *blockResult) Block() module.BlockData {
+	return br.blk
+}
+
+func (br *blockResult) Votes() []byte {
+	return br.votes
+}
+
+func (br *blockResult) Consume() {
+	if br.consume != nil {
+		br.consume()
+	}
+	br.consumed = true
+}
+
+func (br *blockResult) Reject() {
+	if br.reject != nil {
+		br.reject()
+	}
+}
+
+func TestConsensus_BlockCandidateDisposal(t *testing.T) {
+	// ImportBlock -> enterPrecommit -> ReceiveBlockResult -> ReceiveBlockResult
+
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	f.Nodes[1].ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	blk, err := f.Nodes[1].BM.GetBlockByHeight(1)
+	assert.NoError(err)
+
+	msgBS, bpmBS, bps := f.Nodes[1].ProposalBytesFor(blk)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	// runs ImportBlock
+	_, _ = cs.OnReceive(consensus.ProtoProposal, msgBS, peer)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBS, peer)
+	// TODO: wait for import
+	time.Sleep(time.Second)
+
+	// enterPrecommit
+	pv1 := f.Nodes[1].VoteFor(consensus.VoteTypePrevote, blk, bps.ID())
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pv1), peer)
+	pv2 := f.Nodes[2].VoteFor(consensus.VoteTypePrevote, blk, bps.ID())
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pv2), peer)
+	pv3 := f.Nodes[3].VoteFor(consensus.VoteTypePrevote, blk, bps.ID())
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pv3), peer)
+
+	vl := consensus.NewCommitVoteList(
+		nil,
+		f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+		f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+		f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+	)
+	br := blockResult{
+		blk:   blk,
+		votes: vl.Bytes(),
+		reject: func() {
+			assert.Fail("shall not reject")
+		},
+	}
+
+	// finalize, move to next height
+	cs.ReceiveBlockResult(&br)
+	assert.True(br.consumed)
+
+	// just skip commit wait time
+	cs.Term()
+	assert.NoError(cs.Start())
+
+	buf := bytes.NewBuffer(nil)
+	assert.NoError(blk.Marshal(buf))
+	f.Nodes[2].ImportFinalizeBlockByReader(buf)
+	f.Nodes[2].ProposeFinalizeBlock(vl)
+	blk, err = f.Nodes[2].BM.GetBlockByHeight(2)
+	assert.NoError(err)
+	_, _, bps = f.Nodes[2].ProposalBytesFor(blk)
+
+	vl = consensus.NewCommitVoteList(
+		nil,
+		f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+		f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+		f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+	)
+	br = blockResult{
+		blk:   blk,
+		votes: vl.Bytes(),
+		reject: func() {
+			assert.Fail("shall not reject")
+		},
+	}
+
+	// finalize another block
+	cs.ReceiveBlockResult(&br)
+	assert.True(br.consumed)
+}
+
+func TestConsensus_BlockCandidateDisposal2(t *testing.T) {
+	// ImportBlock -> ReceiveBlockResult
+
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	f.Nodes[1].ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+	blk, err := f.Nodes[1].BM.GetBlockByHeight(1)
+	assert.NoError(err)
+
+	msgBS, bpmBS, bps := f.Nodes[1].ProposalBytesFor(blk)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	// runs ImportBlock
+	_, _ = cs.OnReceive(consensus.ProtoProposal, msgBS, peer)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBS, peer)
+	// TODO: wait for import
+	time.Sleep(time.Second)
+
+	vl := consensus.NewCommitVoteList(
+		nil,
+		f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+		f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+		f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID()),
+	)
+	br := blockResult{
+		blk:   blk,
+		votes: vl.Bytes(),
+		reject: func() {
+			assert.Fail("shall not reject")
+		},
+	}
+
+	// finalize, move to next height
+	cs.ReceiveBlockResult(&br)
+	assert.True(br.consumed)
 }
