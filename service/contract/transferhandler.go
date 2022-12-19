@@ -34,7 +34,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Type
 }
 
 func (h *TransferHandler) DoExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, addr module.Address) {
-	if cc.QueryMode() {
+	if cc.ReadOnlyMode() {
 		return scoreresult.AccessDeniedError.New("TransferIsNotAllowed"), nil, nil
 	}
 	as1 := cc.GetAccountState(h.From.ID())

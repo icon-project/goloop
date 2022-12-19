@@ -32,7 +32,7 @@ const (
 type (
 	CallContext interface {
 		Context
-		QueryMode() bool
+		ReadOnlyMode() bool
 		Call(handler ContractHandler, limit *big.Int) (error, *big.Int, *codec.TypedObj, module.Address)
 		OnResult(status error, flags ResultFlag, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(handler ContractHandler, limit *big.Int)
@@ -51,7 +51,7 @@ type (
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
 		GetBTPMessages(r txresult.Receipt)
-		EnterQueryMode()
+		EnterReadOnlyMode()
 		SetFrameCodeID(id []byte)
 		GetLastEIDOf(id []byte) int
 		NewExecution() int
@@ -128,10 +128,10 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	}
 }
 
-func (cc *callContext) QueryMode() bool {
+func (cc *callContext) ReadOnlyMode() bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
-	return cc.frame.isQuery
+	return cc.frame.isReadOnly
 }
 
 func (cc *callContext) Logger() log.Logger {
@@ -144,7 +144,7 @@ func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callF
 	logger := cc.log.WithTPrefix(prefixForFrame(cc.nextFID))
 	handler.SetTraceLogger(logger)
 	frame := NewFrame(cc.frame, handler, limit, false, logger)
-	if !frame.isQuery {
+	if !frame.isReadOnly {
 		frame.snapshot = cc.GetSnapshot()
 	}
 	logger.OnFrameEnter(cc.frame.fid)
@@ -160,7 +160,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 
 	frame := cc.frame
 	cc.frame.log.OnFrameExit(success, &frame.stepUsed)
-	if !frame.isQuery {
+	if !frame.isReadOnly {
 		if success {
 			frame.parent.applyFrameLogsOf(frame)
 			frame.parent.applyBTPMessagesOf(frame)
@@ -365,7 +365,7 @@ func (cc *callContext) cleanUpFrames(target *callFrame, err error) {
 	}
 	l.Unlock()
 
-	if !target.isQuery {
+	if !target.isReadOnly {
 		cc.Reset(target.snapshot)
 	}
 	for _, h := range achs {
@@ -555,11 +555,11 @@ func (cc *callContext) GetBTPMessages(r txresult.Receipt) {
 	cc.frame.getBTPMessages(r)
 }
 
-func (cc *callContext) EnterQueryMode() {
+func (cc *callContext) EnterReadOnlyMode() {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	cc.frame.enterQueryMode(cc)
+	cc.frame.enterReadOnlyMode(cc)
 }
 
 func (cc *callContext) SetFrameCodeID(id []byte) {

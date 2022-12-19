@@ -91,7 +91,7 @@ func (h *DepositHandler) ExecuteSync(cc CallContext) (err error, ro *codec.Typed
 		return err2, nil, nil
 	}
 
-	if cc.QueryMode() {
+	if cc.ReadOnlyMode() {
 		return scoreresult.AccessDeniedError.New("DepositControlIsNotAllowed"), nil, nil
 	}
 

@@ -23,7 +23,7 @@ type callFrame struct {
 	fid         int
 	eid         int
 	code        string
-	isQuery     bool
+	isReadOnly  bool
 	snapshot    state.WorldSnapshot
 	handler     ContractHandler
 	log         *trace.Logger
@@ -36,16 +36,16 @@ type callFrame struct {
 	feePayers   FeePayerInfo
 }
 
-func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool, logger *trace.Logger) *callFrame {
+func NewFrame(p *callFrame, h ContractHandler, l *big.Int, ro bool, logger *trace.Logger) *callFrame {
 	frame := &callFrame{
-		parent:    p,
-		isQuery:   (p != nil && p.isQuery) || q,
-		handler:   h,
-		stepLimit: l,
-		code2EID:  make(map[string]int),
-		eid:       unknownEID,
-		fid:       baseFID,
-		log:       logger,
+		parent:     p,
+		isReadOnly: (p != nil && p.isReadOnly) || ro,
+		handler:    h,
+		stepLimit:  l,
+		code2EID:   make(map[string]int),
+		eid:        unknownEID,
+		fid:        baseFID,
+		log:        logger,
 	}
 	frame.eventLogs.Init()
 	frame.btpMessages.Init()
@@ -79,7 +79,7 @@ func (f *callFrame) getStepAvailable() *big.Int {
 }
 
 func (f *callFrame) addLog(addr module.Address, indexed, data [][]byte) {
-	if f.isQuery {
+	if f.isReadOnly {
 		return
 	}
 	e := new(eventLog)
@@ -106,7 +106,7 @@ func (f *callFrame) getEventLogs(r txresult.Receipt) {
 }
 
 func (f *callFrame) addBTPMessage(nid int64, message []byte) {
-	if f.isQuery {
+	if f.isReadOnly {
 		return
 	}
 	bm := state.NewBTPMsg(nid, message)
@@ -123,13 +123,13 @@ func (f *callFrame) getBTPMessages(r txresult.Receipt) {
 	r.AddBTPMessages(f.btpMessages)
 }
 
-func (f *callFrame) enterQueryMode(cc *callContext) {
-	if !f.isQuery {
+func (f *callFrame) enterReadOnlyMode(cc *callContext) {
+	if !f.isReadOnly {
 		cc.Reset(f.snapshot)
 		f.snapshot = nil
 		f.eventLogs.Init()
 		f.btpMessages.Init()
-		f.isQuery = true
+		f.isReadOnly = true
 	}
 }
 
