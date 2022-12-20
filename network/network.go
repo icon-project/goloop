@@ -15,9 +15,7 @@ type manager struct {
 	channel string
 	p2p     *PeerToPeer
 	//
-	roles      map[module.Role]*PeerIDSet
-	destByRole map[module.Role]byte
-	roleByDest map[byte]module.Role
+	roles map[module.Role]*PeerIDSet
 	//
 	protocolHandlers map[uint16]*protocolHandler
 
@@ -45,8 +43,6 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		channel:          channel,
 		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel), mtr, networkLogger),
 		roles:            make(map[module.Role]*PeerIDSet),
-		destByRole:       make(map[module.Role]byte),
-		roleByDest:       make(map[byte]module.Role),
 		protocolHandlers: make(map[uint16]*protocolHandler),
 		pd:               t.pd,
 		cn:               t.cn,
@@ -61,9 +57,6 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 	m.roles[module.ROLE_SEED] = m.p2p.allowedSeeds
 	m.roles[module.ROLE_VALIDATOR] = m.p2p.allowedRoots
 	m.roles[module.ROLE_NORMAL] = m.p2p.allowedPeers
-	m.destByRole[module.ROLE_SEED] = p2pRoleSeed
-	m.destByRole[module.ROLE_VALIDATOR] = p2pRoleRoot
-	m.destByRole[module.ROLE_NORMAL] = p2pRoleNone //same as broadcast
 
 	m.SetInitialRoles(roles...)
 	m.SetTrustSeeds(trustSeeds)
@@ -242,14 +235,14 @@ func (m *manager) multicast(pi module.ProtocolInfo, spi module.ProtocolInfo, byt
 	if !ok {
 		return ErrNotRegisteredReactor
 	}
-	if _, ok = m.roles[role]; !ok {
+	if role >= module.ROLE_RESERVED {
 		return ErrNotRegisteredRole
 	}
 	if DefaultPacketPayloadMax < len(bytes) {
 		return ErrIllegalArgument
 	}
 	pkt := NewPacket(pi, spi, bytes)
-	pkt.dest = m.destByRole[role]
+	pkt.dest = byte(role)
 	pkt.ttl = 0
 	pkt.priority = ph.getPriority()
 	return m.p2p.Send(pkt)
@@ -286,9 +279,8 @@ func (m *manager) relay(pkt *Packet) error {
 func (m *manager) _getPeerIDSetByRole(role module.Role) *PeerIDSet {
 	s, ok := m.roles[role]
 	if !ok {
-		s := NewPeerIDSet()
+		s = NewPeerIDSet()
 		m.roles[role] = s
-		m.destByRole[role] = byte(len(m.roles) + p2pDestPeerGroup)
 	}
 	return s
 }
@@ -335,10 +327,6 @@ func (m *manager) Roles(id module.PeerID) []module.Role {
 	return s[:i]
 }
 
-func (m *manager) getRoleByDest(dest byte) module.Role {
-	return m.roleByDest[dest]
-}
-
 func (m *manager) SetTrustSeeds(seeds string) {
 	m.p2p.trustSeeds.Clear()
 	ss := strings.Split(seeds, ",")
@@ -350,18 +338,7 @@ func (m *manager) SetTrustSeeds(seeds string) {
 }
 
 func (m *manager) SetInitialRoles(roles ...module.Role) {
-	role := PeerRoleFlag(p2pRoleNone)
-	for _, r := range roles {
-		switch r {
-		case module.ROLE_SEED:
-			role.SetFlag(p2pRoleSeed)
-		case module.ROLE_VALIDATOR:
-			role.SetFlag(p2pRoleRoot)
-		default:
-			m.logger.Infoln("SetRoles", "ignored role", r)
-		}
-	}
-	m.p2p.setRole(role)
+	m.p2p.setRole(NewPeerRoleFlag(roles...))
 }
 
 func ChannelOfNetID(id int) string {

@@ -46,22 +46,19 @@ func Test_PeerRTT(t *testing.T) {
 }
 
 func Test_PeerRoleFlag(t *testing.T) {
-	pr := PeerRoleFlag(p2pRoleNone)
+	pr := p2pRoleNone
 	assert.False(t, pr.Has(p2pRoleSeed))
 	assert.False(t, pr.Has(p2pRoleRoot))
-	assert.False(t, pr.Has(p2pRoleRootSeed))
+	assert.Equal(t, p2pRoleNone, pr)
 
 	pr.SetFlag(p2pRoleSeed)
 	assert.True(t, pr.Has(p2pRoleSeed))
 	assert.False(t, pr.Has(p2pRoleRoot))
-	assert.False(t, pr.Has(p2pRoleRootSeed))
-	assert.Equal(t, PeerRoleFlag(p2pRoleSeed), pr)
+	assert.Equal(t, p2pRoleSeed, pr)
 
 	pr.SetFlag(p2pRoleRoot)
 	assert.True(t, pr.Has(p2pRoleSeed))
 	assert.True(t, pr.Has(p2pRoleRoot))
-	assert.True(t, pr.Has(p2pRoleRootSeed))
-	assert.Equal(t, PeerRoleFlag(p2pRoleRootSeed), pr)
 
-	assert.Equal(t, PeerRoleFlag(p2pRoleRootSeed), pr)
+	assert.Equal(t, p2pRoleSeed|p2pRoleRoot, pr)
 }

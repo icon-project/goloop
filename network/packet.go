@@ -47,9 +47,10 @@ type Packet struct {
 type packetDestInfo uint16
 
 const (
-	p2pDestAny       = 0x00
-	p2pDestPeerGroup = 0x08
-	p2pDestPeer      = 0xFF
+	p2pDestAny  = 0x00
+	p2pDestSeed = byte(module.ROLE_SEED)
+	p2pDestRoot = byte(module.ROLE_VALIDATOR)
+	p2pDestPeer = 0xFF
 )
 
 func newPacketDestInfo(dest byte, ttl byte) packetDestInfo {

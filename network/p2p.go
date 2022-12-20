@@ -922,14 +922,14 @@ Loop:
 						p2p.sendToPeers(ctx, p2p.others)
 						c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					}
-				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
+				case p2pDestRoot:
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 					} else {
 						p2p.sendToPeers(ctx, p2p.parents)
 						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					}
-				case p2pRoleSeed:
+				case p2pDestSeed:
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 						if r == p2pRoleRoot {
@@ -940,7 +940,7 @@ Loop:
 						p2p.sendToPeers(ctx, p2p.parents)
 						c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					}
-				default: //p2pDestPeerGroup < dest < p2pDestPeer
+				default:
 				}
 
 				if c.alternate < 1 {
@@ -1003,11 +1003,11 @@ Loop:
 					p2p.sendToPeers(ctx, p2p.nephews)
 					c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					p2p.logger.Traceln("alternateSendRoutine", "nephews", c.alternate, pkt.protocol, pkt.subProtocol)
-				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
+				case p2pDestRoot:
 					p2p.sendToPeers(ctx, p2p.uncles)
 					c.alternate = p2p.uncles.LenByProtocol(pkt.protocol)
 					p2p.logger.Traceln("alternateSendRoutine", "uncles", c.alternate, pkt.protocol, pkt.subProtocol)
-				case p2pRoleSeed: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
+				case p2pDestSeed:
 					r := p2p.Role()
 					if !r.Has(p2pRoleRoot) {
 						p2p.sendToPeers(ctx, p2p.uncles)
@@ -1016,7 +1016,7 @@ Loop:
 						p2p.sendToPeers(ctx, p2p.nephews)
 						c.alternate = p2p.nephews.LenByProtocol(pkt.protocol)
 					}
-				default: //p2pDestPeerGroup < dest < p2pDestPeer
+				default:
 				}
 				delete(m, pkt.hashOfPacket)
 
@@ -1243,12 +1243,12 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 				return false
 			}
 		}
-	case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
+	case p2pDestRoot:
 		if u < 1 && f < 1 {
 			return false
 		}
-	//case p2pRoleSeed:
-	default: //p2pDestPeerGroup < dest < p2pDestPeer
+	//case p2pDestSeed:
+	default:
 		if j < 1 {
 			return false
 		}
@@ -1337,10 +1337,10 @@ Loop:
 			if r.Has(p2pRoleRoot) {
 				p2p.discoverFriends()
 			} else {
-				rr := PeerRoleFlag(p2pRoleSeed)
+				rr := p2pRoleSeed
 				s := p2p.seeds
 				if r == p2pRoleSeed {
-					rr = PeerRoleFlag(p2pRoleRoot)
+					rr = p2pRoleRoot
 					s = p2p.roots
 				}
 

@@ -664,10 +664,9 @@ func (r *PeerRTT) String() string {
 }
 
 const (
-	p2pRoleNone     = 0x00
-	p2pRoleSeed     = 0x01
-	p2pRoleRoot     = 0x02
-	p2pRoleRootSeed = 0x03
+	p2pRoleNone = PeerRoleFlag(module.ROLE_NORMAL)
+	p2pRoleSeed = PeerRoleFlag(module.ROLE_SEED)
+	p2pRoleRoot = PeerRoleFlag(module.ROLE_VALIDATOR)
 )
 
 //PeerRoleFlag as BitFlag MSB[_,_,_,_,_,_,Root,Seed]LSB
@@ -691,6 +690,16 @@ func (pr *PeerRoleFlag) ToRoles() []module.Role {
 		roles = append(roles, module.ROLE_VALIDATOR)
 	}
 	return roles
+}
+
+func NewPeerRoleFlag(roles ...module.Role) PeerRoleFlag {
+	var prf PeerRoleFlag
+	for _, role := range roles {
+		if role < module.ROLE_RESERVED {
+			prf.SetFlag(PeerRoleFlag(role))
+		}
+	}
+	return prf
 }
 
 const (

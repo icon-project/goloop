@@ -38,12 +38,13 @@ type ProtocolHandler interface {
 }
 
 type BroadcastType byte
-type Role string
+type Role byte
 
 const (
-	ROLE_VALIDATOR Role = "validator"
-	ROLE_SEED      Role = "seed"
-	ROLE_NORMAL    Role = "normal"
+	ROLE_NORMAL Role = iota
+	ROLE_SEED
+	ROLE_VALIDATOR
+	ROLE_RESERVED
 )
 
 const (
