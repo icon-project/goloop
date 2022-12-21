@@ -1178,3 +1178,48 @@ func TestConsensus_BlockCreationFail2(t *testing.T) {
 		_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
 	})
 }
+
+func TestConsensus_RejectInvalidBlockResult(t *testing.T) {
+	// precommit -> ReceiveBlockResult(byz)
+
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	byzBlk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	f.Nodes[1].ProposeFinalizeBlockWithTX(consensus.NewEmptyCommitVoteList(), f.NewTx().String())
+	blk, err := f.Nodes[1].BM.GetBlockByHeight(1)
+	assert.NoError(err)
+	assert.NotEqual(byzBlk.ID(), blk.ID())
+
+	_, _, bps := f.Nodes[1].ProposalBytesFor(blk, 0)
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	// make precommit
+	peer := peerID(make([]byte, 4))
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+
+	var rejected bool
+	br := blockResult{
+		blk:   byzBlk,
+		votes: nil,
+		consume: func() {
+			assert.Fail("shall not consume")
+		},
+		reject: func() {
+			rejected = true
+		},
+	}
+	cs.ReceiveBlockResult(&br)
+	assert.False(br.consumed)
+	assert.True(rejected)
+}
