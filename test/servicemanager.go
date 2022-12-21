@@ -148,6 +148,9 @@ func (sm *ServiceManager) CreateSyncTransition(transition module.Transition, res
 }
 
 func (sm *ServiceManager) Finalize(transition module.Transition, opt int) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
 	res := service.FinalizeTransition(transition, opt, false)
 	bk, err := sm.dbase.GetBucket(db.TransactionLocatorByHash)
 	if err != nil {
