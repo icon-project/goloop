@@ -635,13 +635,11 @@ func Test_network_basic(t *testing.T) {
 	}
 	respCh := make(chan string, 1)
 	tr.responseFunc = func(r *testReactor, rm *testNetworkRequest, id module.PeerID) error {
-		m := r.Response(rm.Message, id)
-		respCh <- m
+		resp := r.Response(rm.Message, id)
+		respCh <- resp
 		return nil
 	}
 	msg = m[testCitizen][0].Request("Test6", tr.nt.PeerID())
-	err = wait(ch, ProtoTestNetworkRequest, msg, 1, time.Second, tr.name)
-	assert.NoError(t, err, "Request", "Test6")
 
 	msg, err = timeout(respCh, time.Second)
 	assert.NoError(t, err, "timeout", "responseFunc")
