@@ -675,7 +675,12 @@ func (cs *consensus) enterPrevote() {
 					}
 
 					if err == nil {
-						cs.currentBlockParts.SetValidatedBlock(blk)
+						cur := cs.currentBlockParts.block
+						// do not set validated block if currentBlockParts
+						// has different ID from blk.ID
+						if cur != nil && bytes.Equal(cur.ID(), blk.ID()) {
+							cs.currentBlockParts.SetValidatedBlock(blk)
+						}
 						if cs.hrs.step <= stepPrevoteWait {
 							cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
 						}
