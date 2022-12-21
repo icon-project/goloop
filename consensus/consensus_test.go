@@ -1092,3 +1092,85 @@ func TestConsensus_BlockCandidateDisposal2(t *testing.T) {
 	assert.NoError(err)
 	assert.EqualValues(1, blk.Height())
 }
+
+func TestConsensus_BlockCreationFail(t *testing.T) {
+	// proposal(byz) -> block part (byz) -> 3 nil precommits
+	// -> new proposal -> block part -> 3 precommits -> commit
+
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4), useWrappedBM(t),
+	)
+	defer f.Close()
+	bm, ok := f.BM.(*blockManager)
+	assert.True(ok)
+	ch := bm.InstallImportWaiter(1)
+
+	blk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	byzPMBytes, byzBPMBytes, _ := f.Nodes[1].InvalidProposalBytesFor(blk)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	// give invalid block part set
+	_, _ = cs.OnReceive(consensus.ProtoProposal, byzPMBytes, peer)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, byzBPMBytes, peer)
+
+	// nil precommit, move next round
+	pc1 := f.Nodes[1].NilVoteFor(consensus.VoteTypePrecommit, blk, 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].NilVoteFor(consensus.VoteTypePrecommit, blk, 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].NilVoteFor(consensus.VoteTypePrecommit, blk, 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+
+	blk = f.Nodes[2].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	msgBS, bpmBS, bps := f.Nodes[2].ProposalBytesFor(blk, 1)
+
+	_, _ = cs.OnReceive(consensus.ProtoProposal, msgBS, peer)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBS, peer)
+
+	pc1 = f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 1)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 = f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 1)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 = f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 1)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+	<-ch
+
+	assert.EqualValues(2, cs.GetStatus().Height)
+}
+
+func TestConsensus_BlockCreationFail2(t *testing.T) {
+	// proposal(byz) -> block part (byz) -> 3 non-nil precommits
+
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	blk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	byzPMBytes, byzBPMBytes, bps := f.Nodes[1].InvalidProposalBytesFor(blk)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	// give invalid block part set
+	_, _ = cs.OnReceive(consensus.ProtoProposal, byzPMBytes, peer)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, byzBPMBytes, peer)
+
+	// non-nil precommit
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	assert.Panics(func() {
+		_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+	})
+}
