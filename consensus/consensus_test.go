@@ -1223,3 +1223,65 @@ func TestConsensus_RejectInvalidBlockResult(t *testing.T) {
 	assert.False(br.consumed)
 	assert.True(rejected)
 }
+
+func TestConsensus_InvalidProposal(t *testing.T) {
+	// proposal(b') -> start import(b') -> 3 prevotes(b) -> import done
+	// -> block part(b)
+
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4), useWrappedBM(t),
+	)
+	defer f.Close()
+	bm, ok := f.BM.(*blockManager)
+	assert.True(ok)
+	bCh := bm.InstallImportBlocker(1)
+	wCh := bm.InstallImportWaiter(1)
+
+	byzBlk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	f.Nodes[1].ProposeFinalizeBlockWithTX(consensus.NewEmptyCommitVoteList(), f.NewTx().String())
+	byzPMBytes, byzBPMBytes, _ := f.Nodes[1].ProposalBytesFor(byzBlk, 0)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	// proposal(B'), start import
+	_, _ = cs.OnReceive(consensus.ProtoProposal, byzPMBytes, peer)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, byzBPMBytes, peer)
+
+	// 3 prevotes(B)
+	blk, err := f.Nodes[1].BM.GetLastBlock()
+	assert.NoError(err)
+	assert.NotEqual(byzBlk.ID(), blk.ID())
+	_, bpmBS, bps := f.Nodes[1].ProposalBytesFor(blk, 0)
+	pv1 := f.Nodes[1].VoteFor(consensus.VoteTypePrevote, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pv1), peer)
+	pv2 := f.Nodes[2].VoteFor(consensus.VoteTypePrevote, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pv2), peer)
+	pv3 := f.Nodes[3].VoteFor(consensus.VoteTypePrevote, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pv3), peer)
+
+	// import cb
+	bCh <- struct{}{}
+	<-wCh
+
+	// 3 precommit(B)
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+
+	// block part(B)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBS, peer)
+	bCh <- struct{}{}
+	for cs.GetStatus().Height < 2 {
+		time.Sleep(200 * time.Millisecond)
+	}
+	cBlk, err := bm.GetLastBlock()
+	assert.NoError(err)
+	assert.Equal(blk.ID(), cBlk.ID())
+}
