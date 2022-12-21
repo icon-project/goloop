@@ -315,6 +315,9 @@ func (t DataType) ConvertJSONToTypedObj(bs []byte, fields []Field, nullable bool
 
 // ConvertBytesToJSO convert default bytes and event bytes into JSON value type.
 func (t DataType) ConvertBytesToJSO(bs []byte) (interface{}, error) {
+	if !t.UsableForEvent() {
+		return nil, errors.InvalidStateError.Errorf("UnsupportedType(type=%s)", t.String())
+	}
 	if bs == nil {
 		return nil, nil
 	}
@@ -388,11 +391,11 @@ func (t DataType) ConvertBytesToTypedObj(bs []byte) (*codec.TypedObj, error) {
 
 // ValidateEvent validate event bytes.
 func (t DataType) ValidateEvent(bs []byte) error {
+	if !t.UsableForEvent() {
+		return errors.InvalidStateError.Errorf("InvalidType(type=%s)", t.String())
+	}
 	if bs == nil {
 		return nil
-	}
-	if t.ListDepth() > 0 {
-		return errors.InvalidStateError.Errorf("InvalidType(type=%s)", t.String())
 	}
 	switch t.Tag() {
 	case TInteger:
@@ -414,8 +417,10 @@ func (t DataType) ValidateEvent(bs []byte) error {
 		if !utf8.Valid(bs) {
 			return errors.IllegalArgumentError.New("InvalidUTF8Chars")
 		}
-	case TStruct:
-		return errors.InvalidStateError.Errorf("InvalidType(type=%s)", t.String())
+	case TBytes:
+		// all data is allowed.
+	default:
+		panic("all types must be covered")
 	}
 	return nil
 }
@@ -449,7 +454,21 @@ func (t DataType) UsableForEvent() bool {
 	return ok
 }
 
+func (t DataType) UsableForInput() bool {
+	if t.Tag() == TUnknown {
+		return false
+	}
+	if t.Tag() == TStruct {
+		return true
+	}
+	_, ok := inputTypeTag[t.Tag()]
+	return ok
+}
+
 func (t DataType) ValidateInput(obj *codec.TypedObj, fields []Field, nullable bool) error {
+	if !t.UsableForInput() {
+		return errors.InvalidStateError.Errorf("InvalidType(%s)", t.Tag().String())
+	}
 	if obj == nil {
 		obj = codec.Nil
 	}
@@ -499,15 +518,14 @@ func (t DataType) ValidateInput(obj *codec.TypedObj, fields []Field, nullable bo
 		return nil
 	}
 	if typeTag, ok := inputTypeTag[t.Tag()]; !ok {
-		return errors.IllegalArgumentError.Errorf("InvalidType(%s)", t.Tag().String())
+		return errors.InvalidStateError.Errorf("InvalidType(%s)", t.Tag().String())
 	} else {
-		if typeTag == obj.Type {
-			return nil
+		if typeTag != obj.Type {
+			return errors.IllegalArgumentError.Errorf(
+				"InvalidType(exp=%d,type=%d)", typeTag, obj.Type)
 		}
-		return errors.IllegalArgumentError.Errorf(
-			"InvalidType(exp=%d,type=%d)", typeTag, obj.Type)
+		return nil
 	}
-	return nil
 }
 
 func (t DataType) ValidateOutput(obj *codec.TypedObj) error {

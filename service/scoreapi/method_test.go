@@ -292,6 +292,41 @@ func TestMethod(t *testing.T) {
 			},
 		},
 		{
+			"SimpleReader",
+			&Method{
+				Type:    Function,
+				Name:    "balanceOf",
+				Flags:   FlagExternal | FlagReadOnly | FlagIsolated,
+				Indexed: 1,
+				Inputs: []Parameter{
+					{
+						Name: "_addr",
+						Type: Address,
+					},
+				},
+				Outputs: []DataType{Integer},
+			},
+			"balanceOf(Address)",
+			false,
+			map[string]interface{}{
+				"type": "function",
+				"name": "balanceOf",
+				"inputs": []interface{}{
+					map[string]interface{}{
+						"name": "_addr",
+						"type": "Address",
+					},
+				},
+				"outputs": []interface{}{
+					map[string]interface{}{
+						"type": "int",
+					},
+				},
+				"readonly": "0x1",
+				"isolated": "0x1",
+			},
+		},
+		{
 			"BasicFunction",
 			&Method{
 				Type:    Function,
@@ -585,6 +620,16 @@ func TestDataTypeOf(t *testing.T) {
 			dtString: "bytes",
 			dtValue:  Bytes,
 		},
+		{
+			name:     "list",
+			dtString: "list",
+			dtValue:  List,
+		},
+		{
+			name:     "dict",
+			dtString: "dict",
+			dtValue:  Dict,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -599,7 +644,7 @@ func TestDataTypeOf(t *testing.T) {
 	}
 }
 
-func TestConvertBytesToTypedObj(t *testing.T) {
+func TestDataType_ConvertBytesToTypedObj(t *testing.T) {
 	var ErrExpectingError = errors.New("expected error")
 	var ListOfInteger = ListTypeOf(1, Integer)
 	var cases = []struct {
@@ -698,7 +743,7 @@ func TestConvertBytesToTypedObj(t *testing.T) {
 	}
 }
 
-func TestEnsureParamsSequential(t *testing.T) {
+func TestMethod_EnsureParamsSequential(t *testing.T) {
 	var method1 = &Method{
 		Type:    Function,
 		Name:    "transfer",
@@ -887,6 +932,399 @@ func TestEnsureParamsSequential(t *testing.T) {
 			}
 			expect := common.MustEncodeAny(tt.want)
 			assert.EqualValues(t, expect, out)
+		})
+	}
+}
+func TestDataType_ValidateSome(t *testing.T) {
+	type eventBytes struct {
+		bytes   []byte
+		wantErr bool
+	}
+	type outputObj struct {
+		obj     *codec.TypedObj
+		wantErr bool
+	}
+	type inputObj struct {
+		obj      *codec.TypedObj
+		nullable bool
+		wantErr  bool
+	}
+	var cases = []struct {
+		name    string
+		dt      DataType
+		fields  []Field
+		events  []eventBytes
+		outputs []outputObj
+		inputs  []inputObj
+	}{
+		{
+			name: "Integer",
+			dt:   Integer,
+			events: []eventBytes{
+				{[]byte{0x80}, false},
+				{nil, false},
+				{[]byte{}, true},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny(1234), false},
+				{common.MustEncodeAny("string"), true},
+				{common.MustEncodeAny(nil), true},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny(1234), false, false},
+				{common.MustEncodeAny("string"), false, true},
+				{common.MustEncodeAny(nil), false, true},
+				{nil, true, false},
+			},
+		},
+		{
+			name: "String",
+			dt:   String,
+			events: []eventBytes{
+				{[]byte("hello"), false},
+				{[]byte{0x00}, false},
+				{[]byte{0x89}, true},
+				{[]byte{}, false},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny("string"), false},
+				{common.MustEncodeAny(1234), true},
+				{nil, true},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny("string"), false, false},
+				{common.MustEncodeAny(1234), false, true},
+			},
+		},
+		{
+			name: "Bool",
+			dt:   Bool,
+			events: []eventBytes{
+				{[]byte{0x01}, false},
+				{[]byte{}, true},
+				{[]byte{0x80}, true},
+				{[]byte{0x00, 0x01}, true},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny(true), false},
+				{common.MustEncodeAny(1234), true},
+				{nil, true},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny(true), false, false},
+				{common.MustEncodeAny(1234), false, true},
+			},
+		},
+		{
+			name: "Address",
+			dt:   Address,
+			events: []eventBytes{
+				{[]byte("\x00\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12"), false},
+				{[]byte("hello"), true},
+				{[]byte{0x00}, true},
+				{[]byte{}, true},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny(common.MustNewAddressFromString("cx00")), false},
+				{common.MustEncodeAny(1234), true},
+				{nil, false},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny(common.MustNewAddressFromString("cx00")), false, false},
+				{common.MustEncodeAny(1234), false, true},
+				{nil, true, false},
+			},
+		},
+		{
+			name: "Bytes",
+			dt:   Bytes,
+			events: []eventBytes{
+				{[]byte("\x00\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12"), false},
+				{[]byte("hello"), false},
+				{[]byte{0x00}, false},
+				{[]byte{}, false},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny([]byte{0x12, 0x34}), false},
+				{common.MustEncodeAny(1234), true},
+				{nil, false},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny([]byte{0x12, 0x34}), false, false},
+				{common.MustEncodeAny(1234), false, true},
+				{nil, false, true},
+			},
+		},
+		{
+			name: "Struct",
+			dt:   Struct,
+			fields: []Field{
+				{
+					Name: "name",
+					Type: String,
+				},
+				{
+					Name: "address",
+					Type: Address,
+				},
+			},
+			events: []eventBytes{
+				{[]byte{0x12, 0x34}, true},
+				{[]byte{}, true},
+				{nil, true},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny([]byte{0x12, 0x34}), true},
+				{common.MustEncodeAny(1234), true},
+				{common.MustEncodeAny(map[string]interface{}{"key1": "value1"}), true},
+				{nil, true},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny(map[string]interface{}{
+					"name":    "MyName",
+					"address": common.MustNewAddressFromString("hx1234"),
+				}), false, false},
+				{common.MustEncodeAny(map[string]interface{}{
+					"name": "MyName",
+				}), false, true},
+				{common.MustEncodeAny(map[string]interface{}{
+					"name":    "MyName",
+					"address": common.MustNewAddressFromString("hx1234"),
+					"value":   1,
+				}), false, true},
+				{common.MustEncodeAny([]byte{0x12, 0x34}), false, true},
+				{common.MustEncodeAny(1234), false, true},
+				{common.MustEncodeAny(map[string]interface{}{"key1": "value1"}), false, true},
+				{nil, false, true},
+			},
+		},
+		{
+			name: "ListOfBytes",
+			dt:   ListTypeOf(1, Bytes),
+			events: []eventBytes{
+				{[]byte{0x12, 0x34}, true},
+				{[]byte{}, true},
+				{nil, true},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny([]byte{0x12, 0x34}), true},
+				{common.MustEncodeAny(1234), true},
+				{nil, true},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny([]interface{}{[]byte{0x12, 0x34}, []byte{0x56, 0x78}}), false, false},
+				{common.MustEncodeAny([]byte{0x12, 0x34}), false, true},
+				{common.MustEncodeAny(1234), false, true},
+				{nil, false, true},
+			},
+		},
+		{
+			name: "Dict",
+			dt:   Dict,
+			events: []eventBytes{
+				{[]byte{0x12, 0x34}, true},
+				{[]byte{}, true},
+				{nil, true},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny(map[string]interface{}{"key1": "value1"}), false},
+				{common.MustEncodeAny([]byte{0x12, 0x34}), true},
+				{common.MustEncodeAny(1234), true},
+				{nil, false},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny([]byte{0x12, 0x34}), false, true},
+				{nil, true, true},
+			},
+		},
+		{
+			name: "List",
+			dt:   List,
+			events: []eventBytes{
+				{[]byte{0x12, 0x34}, true},
+				{[]byte{}, true},
+				{nil, true},
+			},
+			outputs: []outputObj{
+				{common.MustEncodeAny([]interface{}{"key1", 123}), false},
+				{common.MustEncodeAny([]byte{0x12, 0x34}), true},
+				{common.MustEncodeAny(1234), true},
+				{nil, false},
+			},
+			inputs: []inputObj{
+				{common.MustEncodeAny([]interface{}{0x12, 0x34}), false, true},
+				{nil, true, true},
+			},
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, event := range tt.events {
+				err := tt.dt.ValidateEvent(event.bytes)
+				if event.wantErr {
+					assert.Errorf(t, err, "Unexpected success for value=%#x", event.bytes)
+				} else {
+					assert.NoErrorf(t, err, "Unexpected error for value=%#x err=%+v", event.bytes, err)
+					_, err = tt.dt.ConvertBytesToJSO(event.bytes)
+					assert.NoError(t, err)
+				}
+			}
+			for i, output := range tt.outputs {
+				err := tt.dt.ValidateOutput(output.obj)
+				if output.wantErr {
+					assert.Errorf(t, err, "Unexpected success for outputs[%d]", i)
+				} else {
+					assert.NoErrorf(t, err, "Unexpected error for outputs[%d] err=%+v", i, err)
+				}
+			}
+
+			for i, input := range tt.inputs {
+				err := tt.dt.ValidateInput(input.obj, tt.fields, input.nullable)
+				if input.wantErr {
+					assert.Errorf(t, err, "Unexpected success for inputs[%d]", i)
+				} else {
+					assert.NoErrorf(t, err, "Unexpected error for inputs[%d] err=%+v", i, err)
+				}
+			}
+		})
+	}
+}
+
+func TestDataType_ConvertJSONToTypedObj(t *testing.T) {
+	type jsonToObj struct {
+		json    string
+		wantErr bool
+		want    *codec.TypedObj
+	}
+	var cases = []struct {
+		name     string
+		dt       DataType
+		fields   []Field
+		nullable bool
+		jsons    []jsonToObj
+	}{
+		{
+			name: "Integer",
+			dt:   Integer,
+			jsons: []jsonToObj{
+				{`"0x123"`, false, common.MustEncodeAny(0x123)},
+				{`"abc"`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "String",
+			dt:   String,
+			jsons: []jsonToObj{
+				{`"0x123"`, false, common.MustEncodeAny("0x123")},
+				{`12`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "Bool",
+			dt:   Bool,
+			jsons: []jsonToObj{
+				{`"0x1"`, false, common.MustEncodeAny(true)},
+				{`"0x3"`, true, nil},
+				{`true`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "Address",
+			dt:   Address,
+			jsons: []jsonToObj{
+				{`"cx0000000000000000000000000000000000000000"`, false, common.MustEncodeAny(common.MustNewAddressFromString("cx00"))},
+				{`"cxb"`, true, nil},
+				{`12`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "Bytes",
+			dt:   Bytes,
+			jsons: []jsonToObj{
+				{`"0x12bc"`, false, common.MustEncodeAny([]byte{0x12, 0xbc})},
+				{`"0x2"`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "Struct",
+			dt:   Struct,
+			fields: []Field{
+				{
+					Name: "name",
+					Type: String,
+				},
+				{
+					Name: "address",
+					Type: Address,
+				},
+			},
+			jsons: []jsonToObj{
+				{`{ "name": "0x1234", "address": "hx12ff000000000000000000000000000000000000" }`, false,
+					common.MustEncodeAny(map[string]interface{}{
+						"name":    "0x1234",
+						"address": common.MustNewAddressFromString("hx12ff000000000000000000000000000000000000"),
+					})},
+				{`{ "name": "0x1234", "address": 1234 }`, true, nil},
+				{`{ "name": "0x1234", "addr2": 1234 }`, true, nil},
+				{`"0x2"`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "ListOfBytes",
+			dt:   ListTypeOf(1, Bytes),
+			jsons: []jsonToObj{
+				{`[ "0x12", "0x34" ]`, false, common.MustEncodeAny([]interface{}{[]byte{0x12}, []byte{0x34}})},
+				{`[ "0x12", 0x34 ]`, true, nil},
+				{`"0x2"`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "Dict",
+			dt:   Dict,
+			jsons: []jsonToObj{
+				{`{ "name": "0x1234", "address": "hx12ff000000000000000000000000000000000000" }`, true, nil},
+				{`"0x2"`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name: "List",
+			dt:   List,
+			jsons: []jsonToObj{
+				{`[ "0x12", "0x34" ]`, true, nil},
+				{`"0x2"`, true, nil},
+				{`null`, true, nil},
+			},
+		},
+		{
+			name:     "StringNullable",
+			dt:       String,
+			nullable: true,
+			jsons: []jsonToObj{
+				{`null`, false, common.MustEncodeAny(nil)},
+				{`123`, true, nil},
+			},
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, jso := range tt.jsons {
+				obj, err := tt.dt.ConvertJSONToTypedObj([]byte(jso.json), tt.fields, tt.nullable)
+				if jso.wantErr {
+					assert.Errorf(t, err, "Unexpected success for js=%s", jso.json)
+					assert.Nil(t, obj)
+				} else {
+					assert.NoErrorf(t, err, "Unexpected error for js=%s err=%+v", jso.json, err)
+					assert.EqualValues(t, jso.want, obj)
+				}
+			}
 		})
 	}
 }
