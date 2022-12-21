@@ -17,6 +17,7 @@
 package consensus
 
 import (
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -32,7 +33,7 @@ type blockPartSet struct {
 func (bps *blockPartSet) Zerofy() {
 	bps.PartSet = nil
 	bps.block = nil
-	bps.SetValidatedBlock(nil)
+	bps.setValidatedBlock(nil)
 }
 
 func (bps *blockPartSet) ID() *PartSetID {
@@ -58,9 +59,9 @@ func (bps *blockPartSet) Assign(oth *blockPartSet) {
 	bps.PartSet = oth.PartSet
 	bps.block = oth.block
 	if oth.HasValidatedBlock() {
-		bps.SetValidatedBlock(oth.validatedBlock.Dup())
+		bps.setValidatedBlock(oth.validatedBlock.Dup())
 	} else {
-		bps.SetValidatedBlock(nil)
+		bps.setValidatedBlock(nil)
 	}
 }
 
@@ -83,19 +84,38 @@ func (bps *blockPartSet) SetByPartSetAndBlock(ps PartSet, blk module.BlockData) 
 	bps.PartSet = ps
 	bps.block = blk
 	if !prevID.Equal(ps.ID()) {
-		bps.SetValidatedBlock(nil)
+		bps.setValidatedBlock(nil)
 	}
 }
 
-// Set sets content of bps. Transfers ownership of bc to bps.
-func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCandidate) {
+// SetByPartSetAndValidatedBlock sets content of bps. Transfers ownership of bc to bps.
+func (bps *blockPartSet) SetByPartSetAndValidatedBlock(ps PartSet, bc module.BlockCandidate) {
 	bps.PartSet = ps
-	bps.block = blk
-	bps.SetValidatedBlock(bc)
+	bps.block = bc
+	bps.setValidatedBlock(bc)
 }
 
-// SetValidatedBlock sets validatedBlock. Transfers ownership of bc to bps.
-func (bps *blockPartSet) SetValidatedBlock(bc module.BlockCandidate) {
+func (bps *blockPartSet) SetByPartSetID(psid *PartSetID) {
+	if bps.ID().Equal(psid) {
+		return
+	}
+	bps.PartSet = NewPartSetFromID(psid)
+	bps.block = nil
+	bps.setValidatedBlock(nil)
+}
+
+// SetByValidatedBlock sets validatedBlock. Transfers ownership of bc to bps.
+func (bps *blockPartSet) SetByValidatedBlock(bc module.BlockCandidate) {
+	psb := NewPartSetBuffer(ConfigBlockPartSize)
+	log.Must(bc.MarshalHeader(psb))
+	log.Must(bc.MarshalBody(psb))
+	ps := psb.PartSet()
+	bps.PartSet = ps
+	bps.block = bc
+	bps.setValidatedBlock(bc)
+}
+
+func (bps *blockPartSet) setValidatedBlock(bc module.BlockCandidate) {
 	if bps.validatedBlock == bc {
 		return
 	}

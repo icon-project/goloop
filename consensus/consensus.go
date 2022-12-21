@@ -346,7 +346,7 @@ func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) 
 		return nil
 	}
 	cs.proposalPOLRound = msg.proposal.POLRound
-	cs.currentBlockParts.Set(NewPartSetFromID(msg.proposal.BlockPartSetID), nil, nil)
+	cs.currentBlockParts.SetByPartSetID(msg.proposal.BlockPartSetID)
 
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
@@ -458,8 +458,8 @@ func (cs *consensus) handlePrevoteMessage(msg *VoteMessage, prevotes *voteSet) {
 			cs.lockedRound = -1
 			cs.lockedBlockParts.Zerofy()
 		}
-		if cs.round == msg.Round && partSetID != nil && !cs.currentBlockParts.ID().Equal(partSetID) {
-			cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
+		if cs.round == msg.Round && partSetID != nil {
+			cs.currentBlockParts.SetByPartSetID(partSetID)
 		}
 	}
 
@@ -594,7 +594,7 @@ func (cs *consensus) enterPropose() {
 					bps := psb.PartSet()
 
 					cs.sendProposal(bps, -1)
-					cs.currentBlockParts.Set(bps, blk, blk)
+					cs.currentBlockParts.SetByPartSetAndValidatedBlock(bps, blk)
 					cs.enterPrevote()
 				},
 			)
@@ -675,7 +675,7 @@ func (cs *consensus) enterPrevote() {
 						// do not set validated block if currentBlockParts
 						// has different ID from blk.ID
 						if cur != nil && bytes.Equal(cur.ID(), blk.ID()) {
-							cs.currentBlockParts.SetValidatedBlock(blk)
+							cs.currentBlockParts.SetByValidatedBlock(blk)
 						}
 						if cs.hrs.step <= stepPrevoteWait {
 							cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
@@ -786,10 +786,8 @@ func (cs *consensus) enterPrecommit() {
 	} else {
 		// polka for a block we don't have.
 		// send nil precommit because we cannot write locked block on the WAL.
-		cs.log.Traceln("enterPrecommit: polka for we don't have")
-		if !cs.currentBlockParts.ID().Equal(partSetID) {
-			cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
-		}
+		cs.log.Traceln("enterPrecommit: polka for the block we don't have")
+		cs.currentBlockParts.SetByPartSetID(partSetID)
 		cs.lockedRound = -1
 		cs.lockedBlockParts.Zerofy()
 		cs.sendVote(VoteTypePrecommit, nil)
@@ -865,7 +863,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				if err != nil {
 					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
-				cs.currentBlockParts.SetValidatedBlock(blk)
+				cs.currentBlockParts.SetByValidatedBlock(blk)
 				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.validatedBlock)
 				if err != nil {
 					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
@@ -905,9 +903,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 		}
 	}
 
-	if !cs.currentBlockParts.ID().Equal(partSetID) {
-		cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
-	}
+	cs.currentBlockParts.SetByPartSetID(partSetID)
 
 	cs.notifySyncer()
 
@@ -1438,7 +1434,7 @@ func (cs *consensus) applyLockWAL() error {
 		if err != nil {
 			return err
 		}
-		cs.currentBlockParts.Set(lastBPSet, blk, nil)
+		cs.currentBlockParts.SetByPartSetAndBlock(lastBPSet, blk)
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
 		cs.lockedRound = lastBPSetLockRound
 	}
