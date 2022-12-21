@@ -75,6 +75,9 @@ func (s *chainScore) Ex_registerPRepNodePublicKey(address module.Address, pubKey
 }
 
 func (s *chainScore) setPRepNodePublicKey(address module.Address, pubKey []byte) error {
+	if err := s.tryChargeCall(false); err != nil {
+		return err
+	}
 	if s.from.IsContract() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
