@@ -7,6 +7,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	AttrWaitSubProtocolInfo = "waitSubProtocolInfo"
+)
+
 type PeerHandler interface {
 	onPeer(p *Peer)
 	onPacket(pkt *Packet, p *Peer)
@@ -36,7 +40,7 @@ func (ph *peerHandler) onPacket(pkt *Packet, p *Peer) {
 }
 
 func (ph *peerHandler) nextOnPeer(p *Peer) {
-	p.RemoveAttr("waitSubProtocolInfo")
+	ph.clearWaitInfo(p)
 	if ph.next != nil {
 		p.setPacketCbFunc(ph.next.onPacket)
 		p.setCloseCbFunc(ph.next.onClose)
@@ -95,17 +99,36 @@ func (ph *peerHandler) decode(b []byte, v interface{}) error {
 	}
 }
 
+type waitInfo struct {
+	pi         module.ProtocolInfo
+	processing bool
+}
+
 func (ph *peerHandler) setWaitInfo(pi module.ProtocolInfo, p *Peer) {
-	p.PutAttr("waitSubProtocolInfo", pi)
+	p.PutAttr(AttrWaitSubProtocolInfo, &waitInfo{pi, false})
+}
+
+func (ph *peerHandler) clearWaitInfo(p *Peer) {
+	p.RemoveAttr(AttrWaitSubProtocolInfo)
 }
 
 func (ph *peerHandler) checkWaitInfo(pkt *Packet, p *Peer) bool {
-	if v, ok := p.GetAttr("waitSubProtocolInfo"); ok {
-		if pi, ok := v.(module.ProtocolInfo); ok && pi.Uint16() != pkt.subProtocol.Uint16() {
-			err := errors.Wrapf(ErrInvalidMessageSequence, "expected:%s received:%s", pi, pkt.subProtocol)
-			p.CloseByError(err)
-			return false
+	v, ok := p.GetAndHandleAttr(AttrWaitSubProtocolInfo, func(v interface{}, exists bool) bool {
+		if exists {
+			if wi, ok := v.(*waitInfo); ok {
+				if !wi.processing && wi.pi.Uint16() == pkt.subProtocol.Uint16() {
+					wi.processing = true
+				} else {
+					return false
+				}
+			}
 		}
+		return true
+	})
+	if !ok {
+		err := errors.Wrapf(ErrInvalidMessageSequence, "expected:%s received:%s", v.(*waitInfo).pi, pkt.subProtocol)
+		p.CloseByError(err)
+		return false
 	}
 	return true
 }

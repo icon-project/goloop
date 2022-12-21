@@ -557,6 +557,14 @@ func (p *Peer) EqualsAttr(k string, v interface{}) bool {
 	return ok && ov == v
 }
 
+func (p *Peer) GetAndHandleAttr(k string, h func(v interface{}, exists bool) bool) (interface{}, bool) {
+	p.attrMtx.Lock()
+	defer p.attrMtx.Unlock()
+	v, exists := p.attr[k]
+	r := h(v, exists)
+	return v, r
+}
+
 type NetAddress string
 
 func (na NetAddress) Validate() error {

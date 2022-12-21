@@ -427,7 +427,6 @@ func SecureAeadSuiteFromString(s string) SecureAeadSuite {
 type SecureError string
 
 const (
-	SecureErrorNone        = ""
-	SecureErrorInvalid     = "invalid"
-	SecureErrorEstablished = "established"
+	SecureErrorNone    = ""
+	SecureErrorInvalid = "invalid"
 )

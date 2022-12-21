@@ -296,17 +296,8 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 		a.logger.Traceln("handleSecureRequest", p.ConnString(), "SecureAeadSuite", m.SecureAeadSuite)
 	}
 
-	switch p.conn.(type) {
-	case *SecureConn:
-		m.SecureSuite = SecureSuiteEcdhe
-		m.SecureError = SecureErrorEstablished
-	case *tls.Conn:
-		m.SecureSuite = SecureSuiteTls
-		m.SecureError = SecureErrorEstablished
-	default:
-		p.secureKey = newSecureKey(DefaultSecureEllipticCurve, DefaultSecureKeyLogWriter)
-		m.SecureParam = p.secureKey.marshalPublicKey()
-	}
+	p.secureKey = newSecureKey(DefaultSecureEllipticCurve, DefaultSecureKeyLogWriter)
+	m.SecureParam = p.secureKey.marshalPublicKey()
 
 	if m.SecureError == SecureErrorNone {
 		p.rtt.Start()
@@ -386,20 +377,6 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 		rsas = SecureAeadSuiteNone
 	} else if !a.isSupportedSecureAeadSuite(p.Channel(), rsas) {
 		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d SecureAeadSuite %d", rss, rsas)
-		a.logger.Infoln("handleSecureResponse", p.ConnString(), "SecureError", err)
-		p.CloseByError(err)
-		return
-	}
-
-	var secured bool
-	switch p.conn.(type) {
-	case *SecureConn:
-		secured = true
-	case *tls.Conn:
-		secured = true
-	}
-	if secured {
-		err := fmt.Errorf("handleSecureResponse already established secure connection %T", p.conn)
 		a.logger.Infoln("handleSecureResponse", p.ConnString(), "SecureError", err)
 		p.CloseByError(err)
 		return
