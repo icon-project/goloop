@@ -57,6 +57,15 @@ func (bps *blockPartSet) Assign(oth *blockPartSet) {
 	}
 }
 
+func (bps *blockPartSet) SetByPartSetAndBlock(ps PartSet, blk module.BlockData) {
+	prevID := bps.ID()
+	bps.PartSet = ps
+	bps.block = blk
+	if !prevID.Equal(ps.ID()) {
+		bps.SetValidatedBlock(nil)
+	}
+}
+
 // Set sets content of bps. Transfers ownership of bc to bps.
 func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCandidate) {
 	bps.PartSet = ps

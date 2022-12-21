@@ -1996,6 +1996,7 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		m := vl.Get(i)
 		index := cs.validators.IndexOf(m.address())
 		if index < 0 {
+			cs.log.Warnf("processBlock: invalid signer in commit vote list signer=%x indexInVoteList=%d", m.address(), i)
 			br.Reject()
 			return
 		}
@@ -2005,16 +2006,20 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	precommits := cs.hvs.votesFor(votes.Round, VoteTypePrecommit)
 	id, ok := precommits.getOverTwoThirdsPartSetID()
 	if !ok {
+		cs.log.Warnf("processBlock: no +2/3 precommits made for block id=%x", blk.ID())
 		br.Reject()
 		return
 	}
-	bps := NewPartSetFromID(id)
-	if cs.currentBlockParts.ID().Equal(id) {
-		// keep PartSet and validatedBlock
-		cs.currentBlockParts.block = blk
-	} else {
-		cs.currentBlockParts.Set(bps, blk, nil)
+	psb := NewPartSetBuffer(ConfigBlockPartSize)
+	log.Must(blk.MarshalHeader(psb))
+	log.Must(blk.MarshalBody(psb))
+	ps := psb.PartSet()
+	if !ps.ID().Equal(id) {
+		cs.log.Warnf("processBlock: invalid blockBPSID blockBPSID=%s commitBPSID=%s blockID=%x", ps.ID(), id, blk.ID())
+		br.Reject()
+		return
 	}
+	cs.currentBlockParts.SetByPartSetAndBlock(ps, blk)
 	cs.syncing = false
 	br.Consume()
 	if cs.step < stepCommit {
