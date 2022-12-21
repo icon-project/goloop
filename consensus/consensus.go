@@ -369,16 +369,12 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool
 	if cs.currentBlockParts.GetPart(bp.Index()) != nil {
 		return -1, nil
 	}
-	if err := cs.currentBlockParts.AddPart(bp); err != nil {
+	added, err := cs.currentBlockParts.AddPart(bp, cs.c.BlockManager())
+	if !added && err != nil {
 		return -1, err
 	}
-	if cs.currentBlockParts.PartSet.IsComplete() {
-		block, err := cs.c.BlockManager().NewBlockDataFromReader(cs.currentBlockParts.NewReader())
-		if err != nil {
-			cs.log.Warnf("failed to create block. %+v\n", err)
-		} else {
-			cs.currentBlockParts.block = block
-		}
+	if added && err != nil {
+		cs.log.Warnf("fail to create block. %+v", err)
 	}
 
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
@@ -638,7 +634,7 @@ func (cs *consensus) enterPrevote() {
 
 	if !cs.lockedBlockParts.IsZero() {
 		cs.sendVote(VoteTypePrevote, &cs.lockedBlockParts)
-	} else if cs.currentBlockParts.IsComplete() {
+	} else if cs.currentBlockParts.HasBlockData() {
 		hrs := cs.hrs
 		if cs.currentBlockParts.HasValidatedBlock() {
 			cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
@@ -761,7 +757,7 @@ func (cs *consensus) enterPrecommit() {
 		cs.log.Traceln("enterPrecommit: update lock round")
 		cs.lockedRound = cs.round
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
-	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
+	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.HasBlockData() {
 		cs.log.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
@@ -783,6 +779,10 @@ func (cs *consensus) enterPrecommit() {
 			cs.log.Errorf("fail to sync WAL: enterPrecommit: %+v\n", err)
 		}
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
+	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
+		// polka for a block that we cannot create
+		// we cannot advance without upgrading the node
+		cs.log.Panicf("Cannot create block for polka block part set. Consider node upgrade. bpsID=%s", cs.currentBlockParts.ID())
 	} else {
 		// polka for a block we don't have.
 		// send nil precommit because we cannot write locked block on the WAL.
@@ -1074,7 +1074,7 @@ func (cs *consensus) voteTimestamp() int64 {
 	blockIota := int64(cs.c.Regulator().MinCommitTimeout() / time.Microsecond)
 	if !cs.lockedBlockParts.IsZero() {
 		timestamp = cs.lockedBlockParts.block.Timestamp() + blockIota
-	} else if cs.currentBlockParts.IsComplete() {
+	} else if cs.currentBlockParts.HasBlockData() {
 		timestamp = cs.currentBlockParts.block.Timestamp() + blockIota
 	}
 	now := common.UnixMicroFromTime(time.Now())
@@ -1820,7 +1820,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		return c, nil
 	}
 
-	if h == cs.height && !cs.currentBlockParts.PartSet.IsComplete() {
+	if h == cs.height && !cs.currentBlockParts.IsComplete() {
 		pcs := cs.hvs.votesFor(cs.commitRound, VoteTypePrecommit)
 		cvl, err := pcs.commitVoteListForOverTwoThirds(cs.nextPCM)
 		if err != nil {

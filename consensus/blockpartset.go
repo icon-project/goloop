@@ -16,12 +16,15 @@
 
 package consensus
 
-import "github.com/icon-project/goloop/module"
+import (
+	"github.com/icon-project/goloop/module"
+)
 
 type blockPartSet struct {
 	PartSet
 
-	// nil if partset is incomplete
+	// nil if PartSet is incomplete, or if we failed to convert complete PartSet
+	// into module.BlockData
 	block          module.BlockData
 	validatedBlock module.BlockCandidate
 }
@@ -44,6 +47,10 @@ func (bps *blockPartSet) IsZero() bool {
 }
 
 func (bps *blockPartSet) IsComplete() bool {
+	return bps.PartSet != nil && bps.PartSet.IsComplete()
+}
+
+func (bps *blockPartSet) HasBlockData() bool {
 	return bps.block != nil
 }
 
@@ -55,6 +62,20 @@ func (bps *blockPartSet) Assign(oth *blockPartSet) {
 	} else {
 		bps.SetValidatedBlock(nil)
 	}
+}
+
+func (bps *blockPartSet) AddPart(p Part, bm module.BlockManager) (added bool, err error) {
+	if err := bps.PartSet.AddPart(p); err != nil {
+		return false, err
+	}
+	if bps.PartSet.IsComplete() {
+		blk, err := bm.NewBlockDataFromReader(bps.PartSet.NewReader())
+		if err != nil {
+			return true, err
+		}
+		bps.block = blk
+	}
+	return true, nil
 }
 
 func (bps *blockPartSet) SetByPartSetAndBlock(ps PartSet, blk module.BlockData) {
