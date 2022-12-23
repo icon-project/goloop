@@ -431,7 +431,7 @@ func TestSyncSimpleStateSyncStop(t *testing.T) {
 	srcNM.join(dstNM)
 
 	// given init db for source sync manager
-	const dataSize = 100
+	const dataSize = 1_000_000
 	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
 	for i := range [dataSize]int{} {
 		v := []byte{byte(i)}
@@ -497,7 +497,7 @@ func TestSyncSimpleStateSyncJoinAndLeave(t *testing.T) {
 	srcNM.join(dstNM)
 
 	// given init db for source sync manager
-	const dataSize = 100
+	const dataSize = 1000
 	ws := state.NewWorldState(srcdb, nil, nil, nil, nil)
 	for i := range [dataSize]int{} {
 		v := []byte{byte(i)}
