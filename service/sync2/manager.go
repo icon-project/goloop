@@ -23,7 +23,6 @@ var (
 	c = codec.MP
 )
 
-type RequestCallback func(ver byte, dataLen int, id module.PeerID)
 type ProgressCallback func(r, u int) error
 
 type Syncer interface {
