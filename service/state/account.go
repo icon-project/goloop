@@ -37,32 +37,33 @@ const (
 
 var AccountType = reflect.TypeOf((*accountSnapshotImpl)(nil))
 
-// AccountSnapshot represents immutable account state
-// It can be get from AccountState or WorldSnapshot.
-type AccountSnapshot interface {
-	trie.Object
+type AccountData interface {
 	Version() int
 	GetBalance() *big.Int
 	IsContract() bool
 	IsEmpty() bool
-	GetValue(k []byte) ([]byte, error)
-	StorageChangedAfter(snapshot AccountSnapshot) bool
-
-	IsContractOwner(owner module.Address) bool
-	APIInfo() (*scoreapi.Info, error)
-	Contract() ContractSnapshot
-	ActiveContract() ContractSnapshot
-	NextContract() ContractSnapshot
 	IsDisabled() bool
 	IsBlocked() bool
 	UseSystemDeposit() bool
+	GetValue(k []byte) ([]byte, error)
+	IsContractOwner(owner module.Address) bool
 	ContractOwner() module.Address
-
-	GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error)
-
+	APIInfo() (*scoreapi.Info, error)
 	CanAcceptTx(pc PayContext) bool
 	CheckDeposit(pc PayContext) bool
+	GetObjGraph(hash []byte, flags bool) (int, []byte, []byte, error)
 	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
+}
+
+// AccountSnapshot represents immutable account state
+// It can be get from AccountState or WorldSnapshot.
+type AccountSnapshot interface {
+	AccountData
+	trie.Object
+	StorageChangedAfter(snapshot AccountSnapshot) bool
+	Contract() ContractSnapshot
+	ActiveContract() ContractSnapshot
+	NextContract() ContractSnapshot
 }
 
 // AccountState represents mutable account state.
@@ -70,11 +71,8 @@ type AccountSnapshot interface {
 // WorldState. Changes in this object will be retrieved by WorldState.
 // Of course, it also can be changed by WorldState.
 type AccountState interface {
-	Version() int
+	AccountData
 	MigrateForRevision(rev module.Revision) error
-	GetBalance() *big.Int
-	IsContract() bool
-	GetValue(k []byte) ([]byte, error)
 	SetBalance(v *big.Int)
 	SetValue(k, v []byte) ([]byte, error)
 	DeleteValue(k []byte) ([]byte, error)
@@ -82,11 +80,9 @@ type AccountState interface {
 	Reset(snapshot AccountSnapshot) error
 	Clear()
 
-	IsContractOwner(owner module.Address) bool
 	SetContractOwner(owner module.Address) error
 	InitContractAccount(address module.Address) bool
 	DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error)
-	APIInfo() (*scoreapi.Info, error)
 	SetAPIInfo(*scoreapi.Info)
 	ActivateNextContract() error
 	AcceptContract(txHash []byte, auditTxHash []byte) error
@@ -95,22 +91,13 @@ type AccountState interface {
 	ActiveContract() ContractState
 	NextContract() ContractState
 	SetDisable(b bool)
-	IsDisabled() bool
 	SetBlock(b bool)
-	IsBlocked() bool
-	UseSystemDeposit() bool
 	SetUseSystemDeposit(yn bool) error
-	ContractOwner() module.Address
-
-	GetObjGraph(id []byte, flags bool) (int, []byte, []byte, error)
 	SetObjGraph(id []byte, flags bool, nextHash int, objGraph []byte) error
 
 	AddDeposit(dc DepositContext, value *big.Int) error
 	WithdrawDeposit(dc DepositContext, id []byte, value *big.Int) (*big.Int, *big.Int, error)
 	PaySteps(pc PayContext, steps *big.Int) (*big.Int, *big.Int, error)
-	CanAcceptTx(pc PayContext) bool
-	CheckDeposit(pc PayContext) bool
-	GetDepositInfo(dc DepositContext, v module.JSONVersion) (map[string]interface{}, error)
 }
 
 const (
