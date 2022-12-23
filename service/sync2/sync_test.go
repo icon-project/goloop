@@ -35,12 +35,6 @@ type tReactorItem struct {
 	priority uint8
 }
 
-type tPacket struct {
-	pi module.ProtocolInfo
-	b  []byte
-	id module.PeerID
-}
-
 type tNetworkManager struct {
 	module.NetworkManager
 	mutex        sync.Mutex
@@ -49,7 +43,6 @@ type tNetworkManager struct {
 	joinReactors []*tReactorItem
 	peers        []*tNetworkManager
 	drop         bool
-	recvBuf      []*tPacket
 }
 
 type tProtocolHandler struct {
@@ -225,19 +218,6 @@ func (nm *tNetworkManager) callOnReceive(pi module.ProtocolInfo, b []byte, id mo
 		runtime.Gosched()
 		r.reactor.OnReceive(pi, b, id)
 	}
-}
-
-func (nm *tNetworkManager) onReceiveUnicast(pi module.ProtocolInfo, b []byte, from module.PeerID) {
-	nm.recvBuf = append(nm.recvBuf, &tPacket{pi, b, from})
-}
-
-func (nm *tNetworkManager) processRecvBuf() {
-	for _, p := range nm.recvBuf {
-		for _, r := range nm.reactorItems {
-			r.reactor.OnReceive(p.pi, p.b, p.id)
-		}
-	}
-	nm.recvBuf = nil
 }
 
 func (ph *tProtocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module.BroadcastType) error {
