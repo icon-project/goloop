@@ -26,9 +26,10 @@ func NewTransport(address string, w module.Wallet, l log.Logger) module.NetworkT
 		l.Panicf("invalid P2P Address err:%+v", err)
 	}
 	transportLogger := l.WithFields(log.Fields{log.FieldKeyModule: "TP"})
+	id := NewPeerIDFromAddress(w.Address())
 	a := newAuthenticator(w, transportLogger)
-	cn := newChannelNegotiator(na, transportLogger)
-	pd := newPeerDispatcher(NewPeerIDFromAddress(w.Address()), transportLogger, a, cn)
+	cn := newChannelNegotiator(na, id, transportLogger)
+	pd := newPeerDispatcher(id, transportLogger, a, cn)
 	listener := newListener(address, pd.onAccept, transportLogger)
 	t := &transport{
 		l:       listener,

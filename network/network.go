@@ -108,7 +108,7 @@ func (m *manager) Start() error {
 	if m.p2p.IsStarted() {
 		return nil
 	}
-	if !m.pd.registerPeerToPeer(m.p2p) {
+	if !m.pd.registerByChannel(m.channel, m.p2p, m.mtr) {
 		return errors.InvalidNetworkError.Errorf("P2PChannelConflict(channel=%s)", m.channel)
 	}
 	m.p2p.Start()
@@ -119,7 +119,7 @@ func (m *manager) _stop() error {
 	if !m.p2p.IsStarted() {
 		return nil
 	}
-	if !m.pd.unregisterPeerToPeer(m.p2p) {
+	if !m.pd.unregisterByChannel(m.channel) {
 		log.Panicf("already unregistered p2p %s", m.channel)
 	}
 	m.p2p.Stop()

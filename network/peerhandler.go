@@ -16,7 +16,6 @@ type PeerHandler interface {
 	onPacket(pkt *Packet, p *Peer)
 	onClose(p *Peer)
 	setNext(ph PeerHandler)
-	setSelfPeerID(id module.PeerID)
 }
 
 type peerHandler struct {
@@ -26,8 +25,8 @@ type peerHandler struct {
 	logger log.Logger
 }
 
-func newPeerHandler(l log.Logger) *peerHandler {
-	return &peerHandler{logger: l}
+func newPeerHandler(id module.PeerID, l log.Logger) *peerHandler {
+	return &peerHandler{self: id, logger: l}
 }
 
 func (ph *peerHandler) onPeer(p *Peer) {
@@ -54,10 +53,6 @@ func (ph *peerHandler) onClose(p *Peer) {
 
 func (ph *peerHandler) setNext(next PeerHandler) {
 	ph.next = next
-}
-
-func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
-	ph.self = id
 }
 
 func (ph *peerHandler) sendMessage(pi module.ProtocolInfo, spi module.ProtocolInfo, m interface{}, p *Peer) {

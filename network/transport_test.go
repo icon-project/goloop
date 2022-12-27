@@ -29,7 +29,7 @@ var (
 	ProtoTestTransportResponse = module.ProtocolInfo(0xF400)
 )
 
-type testPeerHandler struct {
+type testTransportPeerHandler struct {
 	*peerHandler
 	t  *testing.T
 	wg *sync.WaitGroup
@@ -39,9 +39,9 @@ type testPeerHandler struct {
 	onPeerDelay time.Duration
 }
 
-func newTestPeerHandler(name string, t *testing.T, l log.Logger) *testPeerHandler {
-	return &testPeerHandler{
-		peerHandler: newPeerHandler(l.WithFields(log.Fields{LoggerFieldKeySubModule: name})),
+func newTestTransportPeerHandler(name string, t *testing.T, id module.PeerID, l log.Logger) *testTransportPeerHandler {
+	return &testTransportPeerHandler{
+		peerHandler: newPeerHandler(id, l.WithFields(log.Fields{LoggerFieldKeySubModule: name})),
 		t:           t,
 	}
 }
@@ -54,7 +54,7 @@ type testTransportResponse struct {
 	Message string
 }
 
-func (ph *testPeerHandler) onPeer(p *Peer) {
+func (ph *testTransportPeerHandler) onPeer(p *Peer) {
 	ph.logger.Println("onPeer", p)
 	if ph.onPeerDelay > 0 {
 		time.Sleep(ph.onPeerDelay)
@@ -96,7 +96,7 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 	}
 }
 
-func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
+func (ph *testTransportPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	ph.logger.Println("onPacket", pkt, p)
 	switch pkt.protocol {
 	case ProtoTestTransport:
@@ -209,12 +209,12 @@ func Test_transport(t *testing.T) {
 	l2.SetLevel(lv)
 	nt2 := NewTransport(getAvailableLocalhostAddress(t), w2, l2)
 
-	dph := newTestPeerHandler("OnPeerDelayOnly", t, nt2.(*transport).logger)
+	dph := newTestTransportPeerHandler("OnPeerDelayOnly", t, nt2.PeerID(), nt2.(*transport).logger)
 	dph.onPeerDelay = 10 * time.Millisecond
 	nt2.(*transport).pd.registerPeerHandler(dph, false)
 
-	tph1 := newTestPeerHandler("TestPeerHandler1", t, nt1.(*transport).logger)
-	tph2 := newTestPeerHandler("TestPeerHandler2", t, nt2.(*transport).logger)
+	tph1 := newTestTransportPeerHandler("TestPeerHandler1", t, nt1.PeerID(), nt1.(*transport).logger)
+	tph2 := newTestTransportPeerHandler("TestPeerHandler2", t, nt2.PeerID(), nt2.(*transport).logger)
 	tph2.wg = &sync.WaitGroup{}
 
 	nt1.(*transport).pd.registerPeerHandler(tph1, true)

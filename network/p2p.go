@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
@@ -72,6 +71,7 @@ var (
 )
 
 type PeerToPeer struct {
+	*peerHandler
 	channel         string
 	sendQueue       *WeightQueue
 	alternateQueue  Queue
@@ -107,9 +107,6 @@ type PeerToPeer struct {
 	cLimit    map[PeerConnectionType]int
 	cLimitMtx sync.RWMutex
 
-	//log
-	logger log.Logger
-
 	//monitor
 	mtr *metric.NetworkMetric
 
@@ -128,8 +125,10 @@ const (
 )
 
 func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
-	p2pLogger := l.WithFields(log.Fields{LoggerFieldKeySubModule: "p2p"})
 	p2p := &PeerToPeer{
+		peerHandler: newPeerHandler(
+			self.ID(),
+			l.WithFields(log.Fields{LoggerFieldKeySubModule: "p2p"})),
 		channel:         channel,
 		sendQueue:       NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
 		alternateQueue:  NewQueue(DefaultSendQueueSize),
@@ -158,8 +157,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		allowedPeers: NewPeerIDSet(),
 		//
 		cLimit: make(map[PeerConnectionType]int),
-		//
-		logger: p2pLogger,
 		//
 		mtr: mtr,
 	}
@@ -462,20 +459,6 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 	}
 }
 
-func (p2p *PeerToPeer) encodeMsgpack(v interface{}) []byte {
-	b := make([]byte, DefaultPacketBufferSize)
-	enc := codec.MP.NewEncoderBytes(&b)
-	if err := enc.Encode(v); err != nil {
-		log.Panicf("Fail to encode err=%+v", err)
-	}
-	return b
-}
-
-func (p2p *PeerToPeer) decodeMsgpack(b []byte, v interface{}) error {
-	_, err := codec.MP.UnmarshalFromBytes(b, v)
-	return err
-}
-
 type QueryMessage struct {
 	Role PeerRoleFlag
 }
@@ -607,7 +590,7 @@ func (p2p *PeerToPeer) stopRtt(p *Peer) time.Duration {
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.Role()}
-	pkt := newPacket(p2pProtoControl, p2pProtoQueryReq, p2p.encodeMsgpack(m), p2p.ID())
+	pkt := newPacket(p2pProtoControl, p2pProtoQueryReq, p2p.encode(m), p2p.ID())
 	pkt.destPeer = p.ID()
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -620,7 +603,7 @@ func (p2p *PeerToPeer) sendQuery(p *Peer) {
 
 func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	qm := &QueryMessage{}
-	err := p2p.decodeMsgpack(pkt.payload, qm)
+	err := p2p.decode(pkt.payload, qm)
 	if err != nil {
 		p2p.logger.Infoln("handleQuery", err, p)
 		return
@@ -673,7 +656,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		m.Seeds = m.Seeds[:DefaultQueryElementLength]
 	}
 
-	rpkt := newPacket(p2pProtoControl, p2pProtoQueryResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoQueryResp, p2p.encode(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -686,7 +669,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 
 func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	qrm := &QueryResultMessage{}
-	err := p2p.decodeMsgpack(pkt.payload, qrm)
+	err := p2p.decode(pkt.payload, qrm)
 	if err != nil {
 		p2p.logger.Infoln("handleQueryResult", err, p)
 		return
@@ -751,7 +734,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 
 	last, avg := p.rtt.Value()
 	m := &RttMessage{Last: last, Average: avg}
-	rpkt := newPacket(p2pProtoControl, p2pProtoRttReq, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoRttReq, p2p.encode(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -763,7 +746,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 
 func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 	rm := &RttMessage{}
-	err := p2p.decodeMsgpack(pkt.payload, rm)
+	err := p2p.decode(pkt.payload, rm)
 	if err != nil {
 		p2p.logger.Infoln("handleRttRequest", err, p)
 		return
@@ -777,7 +760,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 	}
 	last, avg := p.rtt.Value()
 	m := &RttMessage{Last: last, Average: avg}
-	rpkt := newPacket(p2pProtoControl, p2pProtoRttResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoRttResp, p2p.encode(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -789,7 +772,7 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 
 func (p2p *PeerToPeer) handleRttResponse(pkt *Packet, p *Peer) {
 	rm := &RttMessage{}
-	err := p2p.decodeMsgpack(pkt.payload, rm)
+	err := p2p.decode(pkt.payload, rm)
 	if err != nil {
 		p2p.logger.Infoln("handleRttResponse", err, p)
 		return
@@ -1738,7 +1721,7 @@ type P2PConnectionResponse struct {
 
 func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
 	m := &P2PConnectionRequest{ConnType: connType}
-	pkt := newPacket(p2pProtoControl, p2pProtoConnReq, p2p.encodeMsgpack(m), p2p.ID())
+	pkt := newPacket(p2pProtoControl, p2pProtoConnReq, p2p.encode(m), p2p.ID())
 	pkt.destPeer = p.ID()
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -1749,7 +1732,7 @@ func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *
 }
 func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	req := &P2PConnectionRequest{}
-	err := p2p.decodeMsgpack(pkt.payload, req)
+	err := p2p.decode(pkt.payload, req)
 	if err != nil {
 		p2p.logger.Infoln("handleP2PConnectionRequest", err, p)
 		return
@@ -1881,7 +1864,7 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 			}
 		}
 	}
-	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, p2p.encodeMsgpack(m), p2p.ID())
+	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, p2p.encode(m), p2p.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {
@@ -1893,7 +1876,7 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 
 func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	resp := &P2PConnectionResponse{}
-	err := p2p.decodeMsgpack(pkt.payload, resp)
+	err := p2p.decode(pkt.payload, resp)
 	if err != nil {
 		p2p.logger.Infoln("handleP2PConnectionResponse", err, p)
 		return

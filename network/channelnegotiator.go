@@ -22,10 +22,10 @@ type ChannelNegotiator struct {
 	mtx        sync.RWMutex
 }
 
-func newChannelNegotiator(netAddress NetAddress, l log.Logger) *ChannelNegotiator {
+func newChannelNegotiator(netAddress NetAddress, id module.PeerID, l log.Logger) *ChannelNegotiator {
 	cn := &ChannelNegotiator{
 		netAddress:  netAddress,
-		peerHandler: newPeerHandler(l.WithFields(log.Fields{LoggerFieldKeySubModule: "negotiator"})),
+		peerHandler: newPeerHandler(id, l.WithFields(log.Fields{LoggerFieldKeySubModule: "negotiator"})),
 		m:           make(map[string]*ProtocolInfos),
 	}
 	return cn

@@ -55,7 +55,9 @@ func newAuthenticator(w module.Wallet, l log.Logger) *Authenticator {
 		secureSuites: make(map[string][]SecureSuite),
 		secureAeads:  make(map[string][]SecureAeadSuite),
 		secureKeyNum: 2,
-		peerHandler:  newPeerHandler(l.WithFields(log.Fields{LoggerFieldKeySubModule: "authenticator"})),
+		peerHandler: newPeerHandler(
+			NewPeerIDFromAddress(w.Address()),
+			l.WithFields(log.Fields{LoggerFieldKeySubModule: "authenticator"})),
 	}
 	return a
 }
