@@ -105,10 +105,6 @@ func (a *Authenticator) VerifySignature(publicKey []byte, signature []byte, cont
 	if err != nil {
 		return nil, errors.Wrapf(ErrInvalidSignature, "fail to parse public key : %s", err.Error())
 	}
-	id := NewPeerIDFromPublicKey(pubKey)
-	if id == nil {
-		return nil, errors.Wrapf(ErrInvalidSignature, "fail to create peer id by public key : %s", pubKey.String())
-	}
 	s, err := crypto.ParseSignature(signature)
 	if err != nil {
 		return nil, errors.Wrapf(ErrInvalidSignature, "fail to parse signature : %s", err.Error())
@@ -117,7 +113,7 @@ func (a *Authenticator) VerifySignature(publicKey []byte, signature []byte, cont
 	if !s.Verify(h, pubKey) {
 		err = ErrInvalidSignature
 	}
-	return id, err
+	return NewPeerIDFromPublicKey(pubKey), err
 }
 
 func (a *Authenticator) SetSecureSuites(channel string, ss []SecureSuite) error {
@@ -216,6 +212,48 @@ func (a *Authenticator) resolveSecureAeadSuite(channel string, sass []SecureAead
 	return SecureAeadSuiteNone
 }
 
+func (a *Authenticator) applySecureConn(p *Peer, ss SecureSuite, sas SecureAeadSuite, param []byte, req bool) error {
+	if !a.isSupportedSecureSuite(p.Channel(), ss) {
+		return errors.Wrapf(ErrIllegalArgument, "invalid SecureSuite %d", ss)
+	}
+	//When SecureSuite is SecureSuiteNone, fix SecureAeadSuite as SecureAeadSuiteNone
+	if ss == SecureSuiteNone {
+		sas = SecureAeadSuiteNone
+	} else if !a.isSupportedSecureAeadSuite(p.Channel(), sas) {
+		return errors.Wrapf(ErrIllegalArgument, "invalid SecureAeadSuite %d", ss)
+	}
+	if err := p.secureKey.setup(sas, param, p.In(), a.secureKeyNum); err != nil {
+		return errors.Wrapf(err, "fail to secureKey.setup")
+	}
+	switch ss {
+	case SecureSuiteEcdhe:
+		if secureConn, err := NewSecureConn(p.conn, sas, p.secureKey); err != nil {
+			return err
+		} else {
+			p.ResetConn(secureConn)
+		}
+	case SecureSuiteTls:
+		if config, err := p.secureKey.tlsConfig(); err != nil {
+			return err
+		} else {
+			var tlsConn *tls.Conn
+			if req {
+				tlsConn = tls.Server(p.conn, config)
+			} else {
+				tlsConn = tls.Client(p.conn, config)
+				if err = tlsConn.Handshake(); err != nil {
+					return err
+				}
+			}
+			p.ResetConn(tlsConn)
+		}
+	default:
+		//SecureSuiteNone:
+		//Nothing to do
+	}
+	return nil
+}
+
 type SecureRequest struct {
 	Channel          string
 	SecureSuites     []SecureSuite
@@ -299,11 +337,7 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 	p.secureKey = newSecureKey(DefaultSecureEllipticCurve, DefaultSecureKeyLogWriter)
 	m.SecureParam = p.secureKey.marshalPublicKey()
 
-	if m.SecureError == SecureErrorNone {
-		p.rtt.Start()
-		a.setWaitInfo(p2pProtoAuthSignatureRequest, p)
-		a.sendMessage(p2pProtoAuth, p2pProtoAuthSecureResponse, m, p)
-	} else {
+	if m.SecureError != SecureErrorNone {
 		a.sendMessage(p2pProtoAuth, p2pProtoAuthSecureResponse, m, p)
 		err := fmt.Errorf("handleSecureRequest error[%v]", m.SecureError)
 		a.logger.Infoln("handleSecureRequest", p.ConnString(), "SecureError", err)
@@ -311,37 +345,14 @@ func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
 		return
 	}
 
-	//When SecureSuite is SecureSuiteNone, fix SecureAeadSuite as SecureAeadSuiteNone
-	rsas := m.SecureAeadSuite
-	if m.SecureSuite == SecureSuiteNone {
-		rsas = SecureAeadSuiteNone
-	}
-	if err := p.secureKey.setup(rsas, rm.SecureParam, p.In(), a.secureKeyNum); err != nil {
-		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
+	p.rtt.Start()
+	a.setWaitInfo(p2pProtoAuthSignatureRequest, p)
+	a.sendMessage(p2pProtoAuth, p2pProtoAuthSecureResponse, m, p)
+
+	if err := a.applySecureConn(p, m.SecureSuite, m.SecureAeadSuite, rm.SecureParam, true); err != nil {
+		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed SecureConn", err)
 		p.CloseByError(err)
 		return
-	}
-	switch m.SecureSuite {
-	case SecureSuiteEcdhe:
-		if secureConn, err := NewSecureConn(p.conn, m.SecureAeadSuite, p.secureKey); err != nil {
-			a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed NewSecureConn", err)
-			p.CloseByError(err)
-			return
-		} else {
-			p.ResetConn(secureConn)
-		}
-	case SecureSuiteTls:
-		if config, err := p.secureKey.tlsConfig(); err != nil {
-			a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed tlsConfig", err)
-			p.CloseByError(err)
-			return
-		} else {
-			tlsConn := tls.Server(p.conn, config)
-			p.ResetConn(tlsConn)
-		}
-	default:
-		//SecureSuiteNone:
-		//Nothing to do
 	}
 }
 
@@ -364,53 +375,10 @@ func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
 		return
 	}
 
-	rss := rm.SecureSuite
-	if !a.isSupportedSecureSuite(p.Channel(), rss) {
-		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d", rss)
-		a.logger.Infoln("handleSecureResponse", p.ConnString(), "SecureError", err)
+	if err := a.applySecureConn(p, rm.SecureSuite, rm.SecureAeadSuite, rm.SecureParam, false); err != nil {
+		a.logger.Infoln("handleSecureResponse", p.ConnString(), "failed SecureConn", err)
 		p.CloseByError(err)
 		return
-	}
-
-	rsas := rm.SecureAeadSuite
-	if rm.SecureSuite == SecureSuiteNone {
-		rsas = SecureAeadSuiteNone
-	} else if !a.isSupportedSecureAeadSuite(p.Channel(), rsas) {
-		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d SecureAeadSuite %d", rss, rsas)
-		a.logger.Infoln("handleSecureResponse", p.ConnString(), "SecureError", err)
-		p.CloseByError(err)
-		return
-	}
-
-	err := p.secureKey.setup(rsas, rm.SecureParam, p.In(), a.secureKeyNum)
-	if err != nil {
-		a.logger.Infoln("handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
-		p.CloseByError(err)
-		return
-	}
-	switch rss {
-	case SecureSuiteEcdhe:
-		secureConn, err := NewSecureConn(p.conn, rsas, p.secureKey)
-		if err != nil {
-			a.logger.Infoln("handleSecureResponse", p.ConnString(), "failed NewSecureConn", err)
-			p.CloseByError(err)
-			return
-		}
-		p.ResetConn(secureConn)
-	case SecureSuiteTls:
-		config, err := p.secureKey.tlsConfig()
-		if err != nil {
-			a.logger.Infoln("handleSecureResponse", p.ConnString(), "failed tlsConfig", err)
-			p.CloseByError(err)
-			return
-		}
-		tlsConn := tls.Client(p.conn, config)
-		if err := tlsConn.Handshake(); err != nil {
-			a.logger.Infoln("handleSecureResponse", p.ConnString(), "failed tls handshake", err)
-			p.CloseByError(err)
-			return
-		}
-		p.ResetConn(tlsConn)
 	}
 
 	m := &SignatureRequest{
