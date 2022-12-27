@@ -17,7 +17,7 @@ import (
 type EventRequest struct {
 	EventFilter
 	Height common.HexInt64 `json:"height"`
-	Logs   common.HexInt32 `json:"logs,omitempty""`
+	Logs   common.HexInt32 `json:"logs,omitempty"`
 
 	Filters EventFilters `json:"eventFilters,omitempty"`
 }
