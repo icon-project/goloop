@@ -157,9 +157,9 @@ func (m *manager) RegisterReactor(
 		if len(spis) != len(piList) {
 			return nil, errors.WithStack(ErrIllegalArgument)
 		}
-		for _, subProtocol := range piList {
+		for _, spi := range spis {
 			has := false
-			for _, spi := range spis {
+			for _, subProtocol := range piList {
 				if subProtocol.Uint16() == spi.Uint16() {
 					has = true
 					break
