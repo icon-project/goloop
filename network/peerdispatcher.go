@@ -98,15 +98,15 @@ func (pd *PeerDispatcher) registerPeerHandler(ph PeerHandler, pushBack bool) {
 //callback from Listener.acceptRoutine
 func (pd *PeerDispatcher) onAccept(conn net.Conn) {
 	pd.logger.Traceln("onAccept", conn.LocalAddr(), "<-", conn.RemoteAddr())
-	p := newPeer(conn, nil, true, "", pd.logger)
+	p := newPeer(conn, true, "", pd.logger)
 	pd.dispatchPeer(p)
 }
 
 //callback from Dialer.Connect
-func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
+func (pd *PeerDispatcher) onConnect(conn net.Conn, addr, channel string) {
 	pd.logger.Traceln("onConnect", conn.LocalAddr(), "->", conn.RemoteAddr())
-	p := newPeer(conn, nil, false, NetAddress(addr), pd.logger)
-	p.setChannel(d.channel)
+	p := newPeer(conn, false, NetAddress(addr), pd.logger)
+	p.setChannel(channel)
 	p.setNetAddress(NetAddress(addr))
 	pd.dispatchPeer(p)
 }

@@ -73,8 +73,8 @@ type Peer struct {
 type packetCbFunc func(pkt *Packet, p *Peer)
 type closeCbFunc func(p *Peer)
 
-func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, dial NetAddress, l log.Logger) *Peer {
-	p := &Peer{
+func newPeer(conn net.Conn, in bool, dial NetAddress, l log.Logger) *Peer {
+	return &Peer{
 		conn:        conn,
 		reader:      NewPacketReader(conn),
 		writer:      NewPacketWriter(conn),
@@ -85,16 +85,12 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, in bool, dial NetAddress, l log
 		close:       make(chan error),
 		closeReason: make([]string, 0),
 		closeErr:    make([]error, 0),
-		onClose:     defaultOnClose,
 		children:    NewNetAddressSet(),
 		nephews:     NewNetAddressSet(),
 		attr:        make(map[string]interface{}),
 		dial:        dial,
+		logger:      l,
 	}
-	p.logger = l.WithFields(log.Fields{"peer": p.ID()})
-	p.setPacketCbFunc(cbFunc)
-
-	return p
 }
 
 func (p *Peer) ResetConn(conn net.Conn) {
@@ -277,8 +273,6 @@ func (p *Peer) _close() (err error) {
 		close(p.close)
 		if cbFunc := p.getCloseCbFunc(); cbFunc != nil {
 			cbFunc(p)
-		} else {
-			defaultOnClose(p)
 		}
 	}
 	return
@@ -730,7 +724,6 @@ var (
 		"Friend",
 		"Other",
 	}
-	defaultOnClose = func(p *Peer) {}
 )
 
 type PeerConnectionType byte

@@ -518,6 +518,19 @@ func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
 	}
 }
 
+func (p2p *PeerToPeer) getAllowed(role module.Role) *PeerIDSet {
+	switch role {
+	case module.ROLE_VALIDATOR:
+		return p2p.allowedRoots
+	case module.ROLE_SEED:
+		return p2p.allowedSeeds
+	case module.ROLE_NORMAL:
+		return p2p.allowedPeers
+	default:
+		return nil
+	}
+}
+
 func (p2p *PeerToPeer) onAllowedPeerIDSetUpdate(s *PeerIDSet, r PeerRoleFlag) {
 	peers := p2p.getPeers(false)
 	switch r {
@@ -1451,6 +1464,16 @@ func (p2p *PeerToPeer) discoverFriends() {
 
 func (p2p *PeerToPeer) isTrustSeed(p *Peer) bool {
 	return p2p.trustSeeds.Contains(p.DialNetAddress())
+}
+
+func (p2p *PeerToPeer) setTrustSeeds(seeds []NetAddress) {
+	var ss []NetAddress
+	for _, s := range seeds {
+		if s != p2p.NetAddress() && s.Validate() == nil {
+			ss = append(ss, s)
+		}
+	}
+	p2p.trustSeeds.ClearAndAdd(ss...)
 }
 
 func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {

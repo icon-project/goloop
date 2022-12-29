@@ -11,18 +11,23 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 )
 
+type transportForManager interface {
+	GetDialer(channel string) *Dialer
+	addProtocol(channel string, pi module.ProtocolInfo)
+	removeProtocol(channel string, pi module.ProtocolInfo)
+	registerPeerHandler(channel string, ph PeerHandler, mtr *metric.NetworkMetric) bool
+	unregisterPeerHandler(channel string)
+}
+
 type manager struct {
 	channel string
 	p2p     *PeerToPeer
-	//
-	roles map[module.Role]*PeerIDSet
 	//
 	protocolHandlers map[uint16]*protocolHandler
 
 	mtx sync.RWMutex
 
-	pd *PeerDispatcher
-	cn *ChannelNegotiator
+	t transportForManager
 	//log
 	logger log.Logger
 
@@ -33,30 +38,19 @@ type manager struct {
 }
 
 func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, roles ...module.Role) module.NetworkManager {
-	t := nt.(*transport)
-	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
-	channel := ChannelOfNetID(c.NetID())
-	mtr := metric.NewNetworkMetric(c.MetricContext())
-	networkLogger := c.Logger().WithFields(log.Fields{log.FieldKeyModule: "NM"})
-	networkLogger.Infof("NetworkManager use channel=%s for cid=%#x nid=%#x", channel, c.CID(), c.NID())
 	m := &manager{
-		channel:          channel,
-		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel), mtr, networkLogger),
-		roles:            make(map[module.Role]*PeerIDSet),
+		channel:          ChannelOfNetID(c.NetID()),
 		protocolHandlers: make(map[uint16]*protocolHandler),
-		pd:               t.pd,
-		cn:               t.cn,
-		logger:           networkLogger,
-		mtr:              mtr,
+		t:                nt.(transportForManager),
+		logger:           c.Logger().WithFields(log.Fields{log.FieldKeyModule: "NM"}),
+		mtr:              metric.NewNetworkMetric(c.MetricContext()),
 	}
-	for _, pi := range m.p2p.supportedProtocols() {
-		m.cn.addProtocol(m.channel, pi)
-	}
-
-	//Create default protocolHandler for P2P topology management
-	m.roles[module.ROLE_SEED] = m.p2p.allowedSeeds
-	m.roles[module.ROLE_VALIDATOR] = m.p2p.allowedRoots
-	m.roles[module.ROLE_NORMAL] = m.p2p.allowedPeers
+	m.p2p = newPeerToPeer(
+		m.channel,
+		&Peer{id: nt.PeerID(), netAddress: NetAddress(nt.Address())},
+		m.t.GetDialer(m.channel),
+		m.mtr,
+		m.logger)
 
 	m.SetInitialRoles(roles...)
 	m.SetTrustSeeds(trustSeeds)
@@ -64,7 +58,8 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 	m.p2p.setConnectionLimit(p2pConnTypeChildren, c.ChildrenLimit())
 	m.p2p.setConnectionLimit(p2pConnTypeNephew, c.NephewsLimit())
 
-	m.logger.Debugln("NewManager", channel)
+	m.logger.Infof("NetworkManager use channel=%s for cid=%#x nid=%#x",
+		m.channel, c.CID(), c.NID())
 	return m
 }
 
@@ -88,16 +83,18 @@ func (m *manager) Term() {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
 
-	_ = m._stop()
-	m.logger.Debugln("Term protocolHandlers")
-	for _, ph := range m.protocolHandlers {
-		m.logger.Debugln("Term", ph.name)
-		ph.Term()
-		m.cn.removeProtocol(m.channel, ph.protocol)
+	if m.p2p.IsStarted() {
+		m.t.unregisterPeerHandler(m.channel)
+		for _, pi := range m.p2p.supportedProtocols() {
+			m.t.addProtocol(m.channel, pi)
+		}
+		m.p2p.Stop()
 	}
-
-	for _, pi := range m.p2p.supportedProtocols() {
-		m.cn.removeProtocol(m.channel, pi)
+	m.logger.Debugln("Term protocolHandlers")
+	for k, ph := range m.protocolHandlers {
+		m.logger.Debugln("Term", ph.getName())
+		ph.Term()
+		m.t.removeProtocol(m.channel, module.ProtocolInfo(k))
 	}
 }
 
@@ -108,29 +105,14 @@ func (m *manager) Start() error {
 	if m.p2p.IsStarted() {
 		return nil
 	}
-	if !m.pd.registerByChannel(m.channel, m.p2p, m.mtr) {
+	if !m.t.registerPeerHandler(m.channel, m.p2p, m.mtr) {
 		return errors.InvalidNetworkError.Errorf("P2PChannelConflict(channel=%s)", m.channel)
+	}
+	for _, pi := range m.p2p.supportedProtocols() {
+		m.t.addProtocol(m.channel, pi)
 	}
 	m.p2p.Start()
 	return nil
-}
-
-func (m *manager) _stop() error {
-	if !m.p2p.IsStarted() {
-		return nil
-	}
-	if !m.pd.unregisterByChannel(m.channel) {
-		log.Panicf("already unregistered p2p %s", m.channel)
-	}
-	m.p2p.Stop()
-	return nil
-}
-
-func (m *manager) Stop() error {
-	defer m.mtx.Unlock()
-	m.mtx.Lock()
-
-	return m._stop()
 }
 
 func (m *manager) RegisterReactor(
@@ -178,7 +160,7 @@ func (m *manager) RegisterReactor(
 		ph = newProtocolHandler(m, pi, piList, reactor, name, priority, policy, m.logger)
 		m.p2p.setCbFunc(pi, ph.onPacket, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 		m.protocolHandlers[k] = ph
-		m.cn.addProtocol(m.channel, pi)
+		m.t.addProtocol(m.channel, pi)
 	}
 	return ph, nil
 }
@@ -192,11 +174,11 @@ func (m *manager) UnregisterReactor(reactor module.Reactor) error {
 	}
 
 	for k, ph := range m.protocolHandlers {
-		if ph.reactor == reactor {
+		if ph.getReactor() == reactor {
 			ph.Term()
-			m.p2p.unsetCbFunc(ph.protocol)
+			m.p2p.unsetCbFunc(module.ProtocolInfo(k))
 			delete(m.protocolHandlers, k)
-			m.cn.removeProtocol(m.channel, module.ProtocolInfo(k))
+			m.t.removeProtocol(m.channel, module.ProtocolInfo(k))
 			return nil
 		}
 	}
@@ -211,63 +193,7 @@ func (m *manager) getProtocolHandler(pi module.ProtocolInfo) (*protocolHandler, 
 	return ph, ok
 }
 
-func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, id module.PeerID) error {
-	ph, ok := m.getProtocolHandler(pi)
-	if !ok {
-		return ErrNotRegisteredReactor
-	}
-	if DefaultPacketPayloadMax < len(bytes) {
-		return ErrIllegalArgument
-	}
-	pkt := NewPacket(pi, spi, bytes)
-	pkt.dest = p2pDestPeer
-	pkt.ttl = 1
-	pkt.destPeer = id
-	pkt.priority = ph.getPriority()
-	pkt.src = m.p2p.ID()
-	pkt.forceSend = true
-	p := m.p2p.getPeerByProtocol(id, pkt.protocol, true)
-	return p.sendPacket(pkt)
-}
-
-func (m *manager) multicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, role module.Role) error {
-	ph, ok := m.getProtocolHandler(pi)
-	if !ok {
-		return ErrNotRegisteredReactor
-	}
-	if role >= module.ROLE_RESERVED {
-		return ErrNotRegisteredRole
-	}
-	if DefaultPacketPayloadMax < len(bytes) {
-		return ErrIllegalArgument
-	}
-	pkt := NewPacket(pi, spi, bytes)
-	pkt.dest = byte(role)
-	pkt.ttl = 0
-	pkt.priority = ph.getPriority()
-	return m.p2p.Send(pkt)
-}
-
-func (m *manager) broadcast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, bt module.BroadcastType) error {
-	ph, ok := m.getProtocolHandler(pi)
-	if !ok {
-		return ErrNotRegisteredReactor
-	}
-	if DefaultPacketPayloadMax < len(bytes) {
-		return ErrIllegalArgument
-	}
-	pkt := NewPacket(pi, spi, bytes)
-	pkt.dest = p2pDestAny
-	pkt.ttl = bt.TTL()
-	pkt.priority = ph.getPriority()
-	pkt.forceSend = bt.ForceSend()
-	return m.p2p.Send(pkt)
-}
-
-func (m *manager) relay(pkt *Packet) error {
-	if pkt.ttl != 0 || pkt.dest == p2pDestPeer {
-		return errors.New("not allowed relay")
-	}
+func (m *manager) send(pkt *Packet) error {
 	ph, ok := m.getProtocolHandler(pkt.protocol)
 	if !ok {
 		return ErrNotRegisteredReactor
@@ -276,17 +202,8 @@ func (m *manager) relay(pkt *Packet) error {
 	return m.p2p.Send(pkt)
 }
 
-func (m *manager) _getPeerIDSetByRole(role module.Role) *PeerIDSet {
-	s, ok := m.roles[role]
-	if !ok {
-		s = NewPeerIDSet()
-		m.roles[role] = s
-	}
-	return s
-}
-
 func (m *manager) SetRole(version int64, role module.Role, peers ...module.PeerID) {
-	s := m._getPeerIDSetByRole(role)
+	s := m.p2p.getAllowed(role)
 	if s.version < version {
 		s.version = version
 		s.ClearAndAdd(peers...)
@@ -296,45 +213,37 @@ func (m *manager) SetRole(version int64, role module.Role, peers ...module.PeerI
 }
 
 func (m *manager) GetPeersByRole(role module.Role) []module.PeerID {
-	s := m._getPeerIDSetByRole(role)
-	return s.Array()
+	return m.p2p.getAllowed(role).Array()
 }
 
 func (m *manager) AddRole(role module.Role, peers ...module.PeerID) {
-	s := m._getPeerIDSetByRole(role)
-	s.Merge(peers...)
+	m.p2p.getAllowed(role).Merge(peers...)
 }
 
 func (m *manager) RemoveRole(role module.Role, peers ...module.PeerID) {
-	s := m._getPeerIDSetByRole(role)
-	s.Removes(peers...)
+	m.p2p.getAllowed(role).Removes(peers...)
 }
 
 func (m *manager) HasRole(role module.Role, id module.PeerID) bool {
-	s := m._getPeerIDSetByRole(role)
-	return s.Contains(id)
+	return m.p2p.getAllowed(role).Contains(id)
 }
 
 func (m *manager) Roles(id module.PeerID) []module.Role {
-	var i int
-	s := make([]module.Role, 0, len(m.roles))
-	for k, v := range m.roles {
-		if v.Contains(id) {
-			s = append(s, k)
-			i++
+	var roles []module.Role
+	for r := module.ROLE_NORMAL; r < module.ROLE_RESERVED; r++ {
+		if m.p2p.getAllowed(r).Contains(id) {
+			roles = append(roles, r)
 		}
 	}
-	return s[:i]
+	return roles
 }
 
 func (m *manager) SetTrustSeeds(seeds string) {
-	m.p2p.trustSeeds.Clear()
-	ss := strings.Split(seeds, ",")
-	for _, s := range ss {
-		if na := NetAddress(s); len(na) != 0 && na != m.p2p.NetAddress() {
-			m.p2p.trustSeeds.Add(NetAddress(s))
-		}
+	var ss []NetAddress
+	for _, s := range strings.Split(seeds, ",") {
+		ss = append(ss, NetAddress(s))
 	}
+	m.p2p.setTrustSeeds(ss)
 }
 
 func (m *manager) SetInitialRoles(roles ...module.Role) {
