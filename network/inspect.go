@@ -53,8 +53,9 @@ func inspectProtocol(mgr *manager) map[string]interface{} {
 }
 
 func peerSetToMapArray(s *PeerSet, informal bool) []map[string]interface{} {
-	rarr := make([]map[string]interface{}, s.Len())
-	for i, v := range s.Array() {
+	arr := s.Array()
+	rarr := make([]map[string]interface{}, len(arr))
+	for i, v := range arr {
 		rarr[i] = peerToMap(v, informal)
 	}
 	sort.Slice(rarr, func(i int, j int) bool {
