@@ -311,8 +311,7 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		dp.CloseByError(ErrDuplicatedPeer)
 		p2p.logger.Infoln("Already exists connected Peer, close old", dp, diff)
 	}
-	p2p.orphanages.AddWithPredicate(p, func(p *Peer) bool { return !p.IsClosed() })
-	if !p.In() {
+	if p2p.addPeer(p) && !p.In() {
 		p2p.sendQuery(p)
 	}
 }
@@ -358,6 +357,9 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 }
 
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
+	p2p.connMtx.Lock()
+	defer p2p.connMtx.Unlock()
+
 	isLeave = false
 	if p.HasRole(p2pRoleRoot) {
 		p2p.roots.RemoveData(p.NetAddress())
@@ -384,6 +386,7 @@ func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 		p2p.others.Remove(p)
 	}
 	p2p.transiting.Remove(p)
+	p2p.reject.Remove(p)
 	return
 }
 
@@ -1614,9 +1617,23 @@ func (p2p *PeerToPeer) getConnectionLimit(connType PeerConnectionType) int {
 	return v
 }
 
+func (p2p *PeerToPeer) addPeer(p *Peer) bool {
+	p2p.connMtx.Lock()
+	defer p2p.connMtx.Unlock()
+
+	if p.IsClosed() {
+		return false
+	}
+	return p2p.orphanages.Add(p)
+}
+
 func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnectionType) bool {
 	p2p.connMtx.Lock()
 	defer p2p.connMtx.Unlock()
+
+	if p.IsClosed() {
+		return false
+	}
 
 	from := p.ConnType()
 	if from == connType {
@@ -1690,6 +1707,31 @@ func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnection
 	return true
 }
 
+func (p2p *PeerToPeer) transitPeer(p *Peer, remove bool) bool {
+	p2p.connMtx.Lock()
+	defer p2p.connMtx.Unlock()
+	if p.IsClosed() {
+		return false
+	}
+	if remove {
+		return p2p.transiting.Remove(p)
+	} else {
+		if !p2p.reject.Contains(p) && !p2p.transiting.Contains(p) {
+			return p2p.transiting.Add(p)
+		}
+	}
+	return false
+}
+
+func (p2p *PeerToPeer) rejectPeer(p *Peer) bool {
+	p2p.connMtx.Lock()
+	defer p2p.connMtx.Unlock()
+	if p.IsClosed() {
+		return false
+	}
+	return p2p.reject.Add(p)
+}
+
 func (p2p *PeerToPeer) tryTransitPeerConnection(p *Peer, connType PeerConnectionType) bool {
 	switch connType {
 	case p2pConnTypeNone:
@@ -1700,9 +1742,8 @@ func (p2p *PeerToPeer) tryTransitPeerConnection(p *Peer, connType PeerConnection
 		if p.EqualsAttr(AttrSupportDefaultProtocols, false) {
 			return false
 		}
-		if !p2p.reject.Contains(p) && !p2p.transiting.Contains(p) {
+		if p2p.transitPeer(p, false) {
 			p.PutAttr(AttrP2PConnectionRequest, connType)
-			p2p.transiting.Add(p)
 			p2p.sendP2PConnectionRequest(connType, p)
 			return true
 		}
@@ -1886,7 +1927,7 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	if resp.ReqConnType == p2pConnTypeNone {
 		return
 	}
-	if !p2p.transiting.Remove(p) {
+	if !p2p.transitPeer(p, true) {
 		p2p.logger.Infoln("handleP2PConnectionResponse", "invalid peer", resp, p)
 		return
 	} else {
@@ -1985,7 +2026,7 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	}
 
 	if rejectResp {
-		p2p.reject.Add(p)
+		p2p.rejectPeer(p)
 		p2p.logger.Infoln("handleP2PConnectionResponse", "rejected",
 			strPeerConnectionType[resp.ReqConnType], "resp", strPeerConnectionType[resp.ConnType],
 			"from", p.ID(), p.ConnType())
