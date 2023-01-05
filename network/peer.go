@@ -712,6 +712,7 @@ const (
 	p2pConnTypeNephew
 	p2pConnTypeFriend
 	p2pConnTypeOther
+	p2pConnTypeReserved
 )
 
 var (
@@ -723,6 +724,12 @@ var (
 		"Nephew",
 		"Friend",
 		"Other",
+	}
+	joinPeerConnectionTypes = []PeerConnectionType{
+		p2pConnTypeNone,
+		p2pConnTypeParent, p2pConnTypeUncle,
+		p2pConnTypeChildren, p2pConnTypeNephew,
+		p2pConnTypeOther, p2pConnTypeFriend,
 	}
 )
 

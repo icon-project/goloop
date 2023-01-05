@@ -72,11 +72,11 @@ func toPeerIDs(ps []*Peer) []module.PeerID {
 }
 
 func (m *manager) GetPeers() []module.PeerID {
-	return toPeerIDs(m.p2p.getPeers(true))
+	return toPeerIDs(m.p2p.getPeers())
 }
 
 func (m *manager) getPeersByProtocol(pi module.ProtocolInfo) []module.PeerID {
-	return toPeerIDs(m.p2p.getPeersByProtocol(pi, true))
+	return toPeerIDs(m.p2p.getPeersByProtocol(pi))
 }
 
 func (m *manager) Term() {

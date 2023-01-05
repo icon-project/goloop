@@ -45,7 +45,9 @@ func (s *Set) _remove(v interface{}) bool {
 }
 
 func (s *Set) _clear() {
-	s.m = make(map[interface{}]interface{})
+	if len(s.m) > 0 {
+		s.m = make(map[interface{}]interface{})
+	}
 }
 
 func (s *Set) _merge(args ...interface{}) {
@@ -241,7 +243,9 @@ func (s *PeerSet) Clear() {
 	s.in.Clear()
 	s.out.Clear()
 	s.addrs.Clear()
-	s.arr = make([]*Peer, 0)
+	if len(s.arr) > 0 {
+		s.arr = make([]*Peer, 0)
+	}
 }
 
 func (s *PeerSet) Contains(p *Peer) bool {
@@ -332,6 +336,18 @@ func (s *PeerSet) Find(f func(p *Peer) bool) []*Peer {
 		}
 	}
 	return l
+}
+
+func (s *PeerSet) FindOne(f PeerPredicate) *Peer {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+
+	for _, p := range s.arr {
+		if f(p) {
+			return p
+		}
+	}
+	return nil
 }
 
 func (s *PeerSet) Len() int {

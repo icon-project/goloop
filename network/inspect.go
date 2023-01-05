@@ -29,13 +29,18 @@ func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 	m["self"] = peerToMap(mgr.p2p.self, informal)
 	m["seeds"] = mgr.p2p.seeds.Map()
 	m["roots"] = mgr.p2p.roots.Map()
-	m["friends"] = peerSetToMapArray(mgr.p2p.friends, informal)
-	m["parent"] = peerToMap(mgr.p2p.Parent(), informal)
-	m["children"] = peerSetToMapArray(mgr.p2p.children, informal)
-	m["uncles"] = peerSetToMapArray(mgr.p2p.uncles, informal)
-	m["nephews"] = peerSetToMapArray(mgr.p2p.nephews, informal)
-	m["others"] = peerSetToMapArray(mgr.p2p.others, informal)
-	m["orphanages"] = peerSetToMapArray(mgr.p2p.orphanages, informal)
+	m["friends"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeFriend), informal)
+	var parent *Peer
+	parents := mgr.p2p.findPeers(nil, p2pConnTypeParent)
+	if len(parents) > 0 {
+		parent = parents[0]
+	}
+	m["parent"] = peerToMap(parent, informal)
+	m["children"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeChildren), informal)
+	m["uncles"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeUncle), informal)
+	m["nephews"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeNephew), informal)
+	m["others"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeOther), informal)
+	m["orphanages"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeNone), informal)
 	if informal {
 		m["transiting"] = peerSetToMapArray(mgr.p2p.transiting, informal)
 		m["reject"] = peerSetToMapArray(mgr.p2p.reject, informal)
@@ -53,7 +58,10 @@ func inspectProtocol(mgr *manager) map[string]interface{} {
 }
 
 func peerSetToMapArray(s *PeerSet, informal bool) []map[string]interface{} {
-	arr := s.Array()
+	return peerArrayToMapArray(s.Array(), informal)
+}
+
+func peerArrayToMapArray(arr []*Peer, informal bool) []map[string]interface{} {
 	rarr := make([]map[string]interface{}, len(arr))
 	for i, v := range arr {
 		rarr[i] = peerToMap(v, informal)
@@ -63,6 +71,7 @@ func peerSetToMapArray(s *PeerSet, informal bool) []map[string]interface{} {
 	})
 	return rarr
 }
+
 func peerToMap(p *Peer, informal bool) map[string]interface{} {
 	m := make(map[string]interface{})
 	if p != nil {
