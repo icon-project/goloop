@@ -244,13 +244,14 @@ func (r *testReactor) Broadcast(msg string) string {
 	return m.Message
 }
 
-func (r *testReactor) BroadcastNeighbor(msg string) string {
+func (r *testReactor) BroadcastNeighbor(msg string) (string, int) {
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("BroadcastNeighbor.%s.%s", msg, r.name)}
-	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, r.p2pConn())
+	ci := r.p2pConnInfo()
+	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, ci.String())
 	err := r.ph.Broadcast(ProtoTestNetworkNeighbor, r.encode(m), module.BROADCAST_NEIGHBOR)
 	assert.NoError(r.t, err, m.Message)
 	r.logger.Println("BroadcastNeighbor", m)
-	return m.Message
+	return m.Message, ci.friends + ci.children + ci.nephews
 }
 
 func (r *testReactor) Multicast(msg string) string {
@@ -588,9 +589,7 @@ func Test_network_basic(t *testing.T) {
 	err := wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1")
 
-	msg = m[testValidator][0].BroadcastNeighbor("Test2")
-	ci := m[testValidator][0].p2pConnInfo()
-	n = testNumValidator - 1 + ci.children + ci.nephews
+	msg, n = m[testValidator][0].BroadcastNeighbor("Test2")
 	err = wait(ch, ProtoTestNetworkNeighbor, msg, n, time.Second)
 	assert.NoError(t, err, "BroadcastNeighbor", "Test2")
 
