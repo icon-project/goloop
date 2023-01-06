@@ -18,24 +18,24 @@ package foundation.icon.ee.io;
 
 import java.math.BigInteger;
 
-public class RLPNDataReader extends AbstractRLPDataReader implements DataReader {
-    public RLPNDataReader(byte[] data) {
+public class RLPDataReader extends AbstractRLPDataReader implements DataReader {
+    public RLPDataReader(byte[] data) {
         super(data);
     }
 
     @Override
     protected int peekNull(byte[] ba, int offset, int len, boolean forRead) {
-        if (len < 2) {
-            return 0;
-        }
-        if (ba[offset] == (byte) 0xf8 && (ba[offset + 1] == 0)) {
-            return 2;
+        if (forRead) {
+            throw new UnsupportedOperationException("Cannot read null or nullable in RLP codec");
         }
         return 0;
     }
 
     @Override
     protected BigInteger peekBigInteger(byte[] ba, int offset, int len) {
-        return new BigInteger(ba, offset, len);
+        if (len == 0) {
+            return BigInteger.ZERO;
+        }
+        return new BigInteger(1, ba, offset, len);
     }
 }

@@ -34,6 +34,9 @@ public abstract class AbstractRLPDataWriter implements DataWriter {
         frames.add(os);
     }
 
+    protected abstract byte[] toByteArray(BigInteger bi);
+    protected abstract void writeNullity(ByteArrayBuilder os, boolean nullity);
+
     private void writeRLPString(byte[] bs) {
         int l = bs.length;
         if (l == 1 && (bs[0] & 0Xff) < SHORT_BASE) {
@@ -67,23 +70,23 @@ public abstract class AbstractRLPDataWriter implements DataWriter {
     }
 
     public void write(boolean v) {
-        writeRLPString(BigInteger.valueOf(v ? 1 : 0).toByteArray());
+        writeRLPString(toByteArray(BigInteger.valueOf(v ? 1 : 0)));
     }
 
     public void write(byte v) {
-        writeRLPString(BigInteger.valueOf(v).toByteArray());
+        writeRLPString(toByteArray(BigInteger.valueOf(v)));
     }
 
     public void write(short v) {
-        writeRLPString(BigInteger.valueOf(v).toByteArray());
+        writeRLPString(toByteArray(BigInteger.valueOf(v)));
     }
 
     public void write(char v) {
-        writeRLPString(BigInteger.valueOf((int) v).toByteArray());
+        writeRLPString(toByteArray(BigInteger.valueOf((int)v)));
     }
 
     public void write(int v) {
-        writeRLPString(BigInteger.valueOf(v).toByteArray());
+        writeRLPString(toByteArray(BigInteger.valueOf(v)));
     }
 
     public void write(float v) {
@@ -96,7 +99,7 @@ public abstract class AbstractRLPDataWriter implements DataWriter {
     }
 
     public void write(long v) {
-        writeRLPString(BigInteger.valueOf(v).toByteArray());
+        writeRLPString(toByteArray(BigInteger.valueOf(v)));
     }
 
     public void write(double v) {
@@ -113,7 +116,7 @@ public abstract class AbstractRLPDataWriter implements DataWriter {
     }
 
     public void write(BigInteger v) {
-        writeRLPString(v.toByteArray());
+        writeRLPString(toByteArray(v));
     }
 
     public void write(String v) {
@@ -125,9 +128,7 @@ public abstract class AbstractRLPDataWriter implements DataWriter {
     }
 
     public void writeNullity(boolean nullity) {
-        if (nullity) {
-            writeNull();
-        }
+        writeNullity(os, nullity);
     }
 
     public void writeListHeader(int l) {
@@ -178,11 +179,6 @@ public abstract class AbstractRLPDataWriter implements DataWriter {
 
     public void writeFooter() {
         _writeRLPListFooter();
-    }
-
-    private void writeNull() {
-        os.write(0xf8);
-        os.write(0x00);
     }
 
     public void flush() {
