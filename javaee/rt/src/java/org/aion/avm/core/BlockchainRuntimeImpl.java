@@ -6,8 +6,8 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
-import foundation.icon.ee.io.RLPDataReader;
-import foundation.icon.ee.io.RLPDataWriter;
+import foundation.icon.ee.io.RLPNDataReader;
+import foundation.icon.ee.io.RLPNDataWriter;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.ManualRevertException;
@@ -446,7 +446,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             s.java.lang.String codec, ByteArray byteArray) {
         var c = codec==null ? null : codec.getUnderlying();
         if ("RLPn".equals(c)) {
-            return new ObjectReaderImpl(new RLPDataReader(byteArray.getUnderlying()));
+            return new ObjectReaderImpl(new RLPNDataReader(byteArray.getUnderlying()));
         }
         throw new IllegalArgumentException("bad codec");
     }
@@ -456,7 +456,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             s.java.lang.String codec) {
         var c = codec==null ? null : codec.getUnderlying();
         if ("RLPn".equals(c)) {
-            return new ObjectWriterImpl(new RLPDataWriter());
+            return new ObjectWriterImpl(new RLPNDataWriter());
         }
         throw new IllegalArgumentException("bad codec");
     }
