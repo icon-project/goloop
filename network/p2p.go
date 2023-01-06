@@ -1715,6 +1715,166 @@ func (p2p *PeerToPeer) tryTransitPeerConnection(p *Peer, connType PeerConnection
 	return false
 }
 
+func (p2p *PeerToPeer) resolveConnectionRequest(pr PeerRoleFlag, connType PeerConnectionType) (rc PeerConnectionType, notAllowed, invalidReq bool) {
+	r := p2p.Role()
+	rc = p2pConnTypeNone
+	if r.Has(p2pRoleRoot) {
+		switch connType {
+		case p2pConnTypeFriend:
+			if pr.Has(p2pRoleRoot) {
+				rc = p2pConnTypeFriend
+			} else if pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeOther
+			} else {
+				notAllowed = true
+			}
+		case p2pConnTypeParent:
+			if pr.Has(p2pRoleRoot) {
+				rc = p2pConnTypeOther
+			} else if pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeChildren
+			} else {
+				notAllowed = true
+			}
+		case p2pConnTypeUncle:
+			if pr.Has(p2pRoleRoot) {
+				rc = p2pConnTypeOther
+			} else if pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeNephew
+			} else {
+				notAllowed = true
+			}
+		case p2pConnTypeNone:
+			rc = connType
+		default:
+			invalidReq = true
+		}
+	} else if r.Has(p2pRoleSeed) {
+		switch connType {
+		case p2pConnTypeFriend:
+			if pr.Has(p2pRoleRoot) {
+				rc = p2pConnTypeParent
+			} else if pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeOther
+			} else {
+				invalidReq = true
+			}
+		case p2pConnTypeParent:
+			if pr.Has(p2pRoleRoot) || pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeNone
+			} else {
+				rc = p2pConnTypeChildren
+			}
+		case p2pConnTypeUncle:
+			if pr.Has(p2pRoleRoot) || pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeNone
+			} else {
+				rc = p2pConnTypeNephew
+			}
+		case p2pConnTypeNone:
+			rc = connType
+		default:
+			invalidReq = true
+		}
+	} else {
+		switch connType {
+		case p2pConnTypeParent:
+			if pr.Has(p2pRoleRoot) {
+				rc = p2pConnTypeNone
+			} else if pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeNone
+			} else {
+				rc = p2pConnTypeChildren
+			}
+		case p2pConnTypeUncle:
+			if pr.Has(p2pRoleRoot) {
+				rc = p2pConnTypeNone
+			} else if pr.Has(p2pRoleSeed) {
+				rc = p2pConnTypeNone
+			} else {
+				rc = p2pConnTypeNephew
+			}
+		case p2pConnTypeNone:
+			rc = connType
+		default:
+			invalidReq = true
+		}
+	}
+	return
+}
+
+func (p2p *PeerToPeer) resolveConnectionResponse(prr PeerRoleFlag, reqConnType, respConnType PeerConnectionType) (rc PeerConnectionType, rejectResp, invalidResp bool) {
+	r := p2p.Role()
+	rc = p2pConnTypeNone
+	if r.Has(p2pRoleRoot) {
+		switch reqConnType {
+		case p2pConnTypeFriend:
+			switch respConnType {
+			case p2pConnTypeFriend:
+				rc = p2pConnTypeFriend
+			case p2pConnTypeOther, p2pConnTypeNone:
+				//in case of p2pConnTypeNone
+				// for legacy which p2p.others managed by discovery only,
+				// legacy ignore request of p2pConnTypeFriend and response p2pConnTypeNone
+				if prr.Has(p2pRoleRoot) {
+					rc = p2pConnTypeFriend
+				} else {
+					rc = p2pConnTypeOther
+				}
+			case p2pConnTypeParent, p2pConnTypeUncle:
+				rc = p2pConnTypeOther
+			default:
+				invalidResp = true
+			}
+		default:
+			invalidResp = true
+		}
+	} else if r.Has(p2pRoleSeed) {
+		switch reqConnType {
+		case p2pConnTypeParent:
+			switch respConnType {
+			case p2pConnTypeChildren, p2pConnTypeOther:
+				rc = p2pConnTypeParent
+			default:
+				rejectResp = true
+			}
+		case p2pConnTypeUncle:
+			switch respConnType {
+			case p2pConnTypeNephew, p2pConnTypeOther:
+				rc = p2pConnTypeUncle
+			default:
+				rejectResp = true
+			}
+		default:
+			invalidResp = true
+		}
+	} else {
+		switch reqConnType {
+		case p2pConnTypeParent:
+			switch respConnType {
+			case p2pConnTypeChildren:
+				rc = p2pConnTypeParent
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
+			default:
+				rejectResp = true
+			}
+		case p2pConnTypeUncle:
+			switch respConnType {
+			case p2pConnTypeNephew:
+				rc = p2pConnTypeUncle
+			case p2pConnTypeOther:
+				rc = p2pConnTypeOther
+			default:
+				rejectResp = true
+			}
+		default:
+			invalidResp = true
+		}
+	}
+	return
+}
+
 type P2PConnectionRequest struct {
 	ConnType PeerConnectionType
 }
@@ -1735,6 +1895,7 @@ func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *
 		p2p.logger.Debugln("sendP2PConnectionRequest", m, p)
 	}
 }
+
 func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	req := &P2PConnectionRequest{}
 	err := p2p.decode(pkt.payload, req)
@@ -1744,93 +1905,7 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	}
 	p2p.logger.Debugln("handleP2PConnectionRequest", req, p)
 	p.setRecvConnType(req.ConnType)
-	rc := p2pConnTypeNone
-	r := p2p.Role()
-	notAllowed := false
-	invalidReq := false
-	if r.Has(p2pRoleRoot) {
-		switch req.ConnType {
-		case p2pConnTypeFriend:
-			if p.HasRole(p2pRoleRoot) {
-				rc = p2pConnTypeFriend
-			} else if p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeOther
-			} else {
-				notAllowed = true
-			}
-		case p2pConnTypeParent:
-			if p.HasRole(p2pRoleRoot) {
-				rc = p2pConnTypeOther
-			} else if p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeChildren
-			} else {
-				notAllowed = true
-			}
-		case p2pConnTypeUncle:
-			if p.HasRole(p2pRoleRoot) {
-				rc = p2pConnTypeOther
-			} else if p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeNephew
-			} else {
-				notAllowed = true
-			}
-		case p2pConnTypeNone:
-			rc = req.ConnType
-		default:
-			invalidReq = true
-		}
-	} else if r.Has(p2pRoleSeed) {
-		switch req.ConnType {
-		case p2pConnTypeFriend:
-			if p.HasRole(p2pRoleRoot) {
-				rc = p2pConnTypeParent
-			} else if p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeOther
-			} else {
-				invalidReq = true
-			}
-		case p2pConnTypeParent:
-			if p.HasRole(p2pRoleRoot) || p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeChildren
-			}
-		case p2pConnTypeUncle:
-			if p.HasRole(p2pRoleRoot) || p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeNephew
-			}
-		case p2pConnTypeNone:
-			rc = req.ConnType
-		default:
-			invalidReq = true
-		}
-	} else {
-		switch req.ConnType {
-		case p2pConnTypeParent:
-			if p.HasRole(p2pRoleRoot) {
-				rc = p2pConnTypeNone
-			} else if p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeChildren
-			}
-		case p2pConnTypeUncle:
-			if p.HasRole(p2pRoleRoot) {
-				rc = p2pConnTypeNone
-			} else if p.HasRole(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeNephew
-			}
-		case p2pConnTypeNone:
-			rc = req.ConnType
-		default:
-			invalidReq = true
-		}
-	}
-
+	rc, notAllowed, invalidReq := p2p.resolveConnectionRequest(p.Role(), req.ConnType)
 	if notAllowed {
 		p2p.logger.Infoln("handleP2PConnectionRequest", "not allowed reqConnType", req.ConnType, "from", p.ID(), p.ConnType())
 	} else if invalidReq {
@@ -1902,93 +1977,7 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 		p.RemoveAttr(AttrP2PConnectionRequest)
 	}
 
-	rc := p2pConnTypeNone
-	r := p2p.Role()
-	invalidResp := false
-	rejectResp := false
-	if r.Has(p2pRoleRoot) {
-		switch resp.ReqConnType {
-		case p2pConnTypeFriend:
-			switch resp.ConnType {
-			case p2pConnTypeFriend:
-				rc = p2pConnTypeFriend
-			case p2pConnTypeOther, p2pConnTypeNone:
-				//in case of p2pConnTypeNone
-				// for legacy which p2p.others managed by discovery only,
-				// legacy ignore request of p2pConnTypeFriend and response p2pConnTypeNone
-				if p.HasRecvRole(p2pRoleRoot) {
-					rc = p2pConnTypeFriend
-				} else {
-					rc = p2pConnTypeOther
-				}
-			case p2pConnTypeParent, p2pConnTypeUncle:
-				rc = p2pConnTypeOther
-			default:
-				invalidResp = true
-			}
-		default:
-			invalidResp = true
-		}
-	} else if r.Has(p2pRoleSeed) {
-		switch resp.ReqConnType {
-		case p2pConnTypeParent:
-			switch resp.ConnType {
-			case p2pConnTypeChildren, p2pConnTypeOther:
-				rc = p2pConnTypeParent
-			case p2pConnTypeNephew:
-				rejectResp = true
-			case p2pConnTypeNone:
-				rc = p2pConnTypeNone
-				rejectResp = true
-			default:
-				rejectResp = true
-			}
-		case p2pConnTypeUncle:
-			switch resp.ConnType {
-			case p2pConnTypeNephew, p2pConnTypeOther:
-				rc = p2pConnTypeUncle
-			case p2pConnTypeNone:
-				rc = p2pConnTypeNone
-				rejectResp = true
-			default:
-				rejectResp = true
-			}
-		default:
-			invalidResp = true
-		}
-	} else {
-		switch resp.ReqConnType {
-		case p2pConnTypeParent:
-			switch resp.ConnType {
-			case p2pConnTypeChildren:
-				rc = p2pConnTypeParent
-			case p2pConnTypeNephew:
-				rejectResp = true
-			case p2pConnTypeOther:
-				rc = p2pConnTypeOther
-			case p2pConnTypeNone:
-				rc = p2pConnTypeNone
-				rejectResp = true
-			default:
-				rejectResp = true
-			}
-		case p2pConnTypeUncle:
-			switch resp.ConnType {
-			case p2pConnTypeNephew:
-				rc = p2pConnTypeUncle
-			case p2pConnTypeOther:
-				rc = p2pConnTypeOther
-			case p2pConnTypeNone:
-				rc = p2pConnTypeNone
-				rejectResp = true
-			default:
-				rejectResp = true
-			}
-		default:
-			invalidResp = true
-		}
-	}
-
+	rc, rejectResp, invalidResp := p2p.resolveConnectionResponse(p.RecvRole(), resp.ReqConnType, resp.ConnType)
 	if rejectResp {
 		p2p.rejectPeer(p)
 		p2p.logger.Infoln("handleP2PConnectionResponse", "rejected",
