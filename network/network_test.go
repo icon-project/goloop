@@ -529,16 +529,6 @@ func dailByList(t *testing.T, arr []*testReactor, na NetAddress, delay time.Dura
 	}
 }
 
-func setTrustSeed(m map[string][]*testReactor, na NetAddress) {
-	for _, arr := range m {
-		for _, r := range arr {
-			if r.p2p.NetAddress() != na {
-				r.nm.SetTrustSeeds(string(na))
-			}
-		}
-	}
-}
-
 func listenerClose(t *testing.T, m map[string][]*testReactor) {
 	var wg sync.WaitGroup
 	for _, arr := range m {
@@ -577,6 +567,131 @@ func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Con
 	t.Log(time.Now(), "max:", maxD, connMap)
 	failIfError(t, err, "waitConnection", connMap)
 	return m, ch
+}
+
+func assertEqualProtocolHandler(t *testing.T, expected, actual *protocolHandler) {
+	assert.Equal(t, expected.protocol, actual.protocol)
+	assert.Equal(t, sortProtocols(expected.getSubProtocols()),
+		sortProtocols(actual.getSubProtocols()))
+	assert.Equal(t, expected.getReactor(), actual.getReactor())
+	assert.Equal(t, expected.getName(), actual.getName())
+	assert.Equal(t, expected.getPriority(), expected.getPriority())
+	assert.Equal(t, expected.getPolicy(), expected.getPolicy())
+}
+
+func Test_manager(t *testing.T) {
+	w := walletFromGeneratedPrivateKey()
+	logger := testLogger()
+	nt := NewTransport(getAvailableLocalhostAddress(t), w, logger)
+	chainLogger := logger.WithFields(log.Fields{log.FieldKeyCID: "1"})
+	c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
+	nm := NewManager(c, nt, "", module.ROLE_VALIDATOR).(*manager)
+	type registerReactorParam struct {
+		name     string
+		pi       module.ProtocolInfo
+		reactor  module.Reactor
+		piList   []module.ProtocolInfo
+		priority uint8
+		policy   module.NotRegisteredProtocolPolicy
+	}
+	arg := registerReactorParam{
+		name:     "dummyReactor",
+		pi:       ProtoTestNetwork,
+		reactor:  &dummyReactor{},
+		piList:   testSubProtocols,
+		priority: testProtoPriority,
+		policy:   module.NotRegisteredProtocolPolicyClose,
+	}
+	expected := newProtocolHandler(
+		nm,
+		arg.pi,
+		arg.piList,
+		arg.reactor,
+		arg.name,
+		arg.priority,
+		arg.policy,
+		nm.logger)
+
+	expectPanicFunc := func(priority uint8) assert.PanicTestFunc {
+		return func() {
+			_, _ = nm.RegisterReactor(
+				arg.name,
+				arg.pi,
+				arg.reactor,
+				arg.piList,
+				priority,
+				arg.policy)
+		}
+	}
+	assert.Panics(t, expectPanicFunc(0))
+	assert.Panics(t, expectPanicFunc(DefaultSendQueueMaxPriority+1))
+
+	actual, err := nm.RegisterReactor(
+		arg.name,
+		arg.pi,
+		arg.reactor,
+		arg.piList,
+		arg.priority,
+		arg.policy)
+	assert.NoError(t, err)
+	assertEqualProtocolHandler(t, expected, actual.(*protocolHandler))
+
+	assertRegistered := func(expected module.ProtocolHandler) {
+		ph, ok := nm.getProtocolHandler(ProtoTestNetwork)
+		assert.True(t, ok)
+		assert.Equal(t, expected, ph)
+	}
+	assertRegistered(actual)
+
+	r2 := &dummyReactor{}
+	actual, err = nm.RegisterReactor(
+		arg.name,
+		arg.pi,
+		r2,
+		arg.piList,
+		arg.priority,
+		arg.policy)
+	assert.NoError(t, err)
+	assertRegistered(actual)
+
+	argFuncs := []func(arg *registerReactorParam){
+		func(arg *registerReactorParam) {
+			arg.name = arg.name + "test"
+		},
+		func(arg *registerReactorParam) {
+			arg.priority = arg.priority + 1
+		},
+		func(arg *registerReactorParam) {
+			arg.policy = arg.policy + 1
+		},
+		func(arg *registerReactorParam) {
+			arg.piList = arg.piList[1:]
+		},
+		func(arg *registerReactorParam) {
+			arg.piList = append(arg.piList, arg.piList[1])[1:]
+		},
+	}
+	for _, argFunc := range argFuncs {
+		copiedArg := arg
+		argFunc(&copiedArg)
+		_, err = nm.RegisterReactor(
+			copiedArg.name,
+			copiedArg.pi,
+			copiedArg.reactor,
+			copiedArg.piList,
+			copiedArg.priority,
+			copiedArg.policy)
+		assert.Error(t, err)
+		assertRegistered(actual)
+	}
+
+	err = nm.UnregisterReactor(arg.reactor)
+	assert.NoError(t, err)
+	_, ok := nm.getProtocolHandler(ProtoTestNetwork)
+	assert.False(t, ok)
+
+	err = nm.UnregisterReactor(arg.reactor)
+	assert.Error(t, err)
 }
 
 func Test_network_basic(t *testing.T) {

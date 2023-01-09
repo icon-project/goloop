@@ -7,8 +7,9 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -59,21 +60,20 @@ func Test_set_PeerSet(t *testing.T) {
 	assert.False(t, s.HasNetAddress(v3.NetAddress()), "false")
 	t.Log(s.NetAddresses())
 
-
 	s.Remove(v2_2)
 	s.Add(v3)
 	l := s.Len()
 	arr := s.Array()
-	for i:=0;i<l;i++{
+	for i := 0; i < l; i++ {
 		v := arr[i]
-		t.Log(i,v.ID(),v.NetAddress())
+		t.Log(i, v.ID(), v.NetAddress())
 	}
 
-	for i:=0;i<100;i++ {
+	for i := 0; i < 100; i++ {
 		tarr := s.Array()
-		for ti := 0;ti<l;ti++{
-			if arr[ti].NetAddress() != tarr[ti].NetAddress(){
-				t.Log(i,ti,"Not equal",tarr[ti].NetAddress(), arr[ti].NetAddress())
+		for ti := 0; ti < l; ti++ {
+			if arr[ti].NetAddress() != tarr[ti].NetAddress() {
+				t.Log(i, ti, "Not equal", tarr[ti].NetAddress(), arr[ti].NetAddress())
 			}
 		}
 	}
@@ -104,7 +104,7 @@ func Test_set_NetAddressSet(t *testing.T) {
 	//Update NetAddress, NetAddressSet.PutByPeer returns old NetAddress
 	o, r = s.SetAndRemoveByData(v1_1.NetAddress(), v1_1.ID().String())
 	assert.EqualValues(t, []interface{}{"", v1.NetAddress()}, []interface{}{o, r}, "empty NetAddress")
-	assert.Equal(t, v1_1.ID().String(), s.Map()[v1_1.NetAddress()],"equal data")
+	assert.Equal(t, v1_1.ID().String(), s.Map()[v1_1.NetAddress()], "equal data")
 	assert.Equal(t, 1, s.Len(), "1")
 	t.Log(s.Map())
 
@@ -161,9 +161,9 @@ type dummyPeerID struct {
 	b []byte
 }
 
-func newDummyPeerID(s string) module.PeerID         { return &dummyPeerID{s: s, b: []byte(s)} }
-func (pi *dummyPeerID) String() string              { return pi.s }
-func (pi *dummyPeerID) Bytes() []byte               { return pi.b }
+func newDummyPeerID(s string) module.PeerID        { return &dummyPeerID{s: s, b: []byte(s)} }
+func (pi *dummyPeerID) String() string             { return pi.s }
+func (pi *dummyPeerID) Bytes() []byte              { return pi.b }
 func (pi *dummyPeerID) Equal(a module.PeerID) bool { return bytes.Equal(pi.b, a.Bytes()) }
 
 func generateDummyPeer(s string) *Peer {
@@ -194,8 +194,6 @@ func Benchmark_dummy_Peer(b *testing.B) {
 	}
 	//Benchmark_dummy_Peer-8   	20000000	        97.1 ns/op	      16 B/op	       2 allocs/op
 }
-
-
 
 func Benchmark_golang_slice(b *testing.B) {
 	b.StopTimer()
@@ -241,7 +239,7 @@ func Benchmark_golang_list(b *testing.B) {
 		l.PushBack(i)
 	}
 	e := l.Front()
-	for e != nil{
+	for e != nil {
 		n := e.Next()
 		l.Remove(e)
 		e = n
