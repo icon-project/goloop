@@ -230,7 +230,7 @@ func (m *manager) HasRole(role module.Role, id module.PeerID) bool {
 
 func (m *manager) Roles(id module.PeerID) []module.Role {
 	var roles []module.Role
-	for r := module.ROLE_NORMAL; r < module.ROLE_RESERVED; r++ {
+	for r := module.RoleNormal; r < module.RoleReserved; r++ {
 		if m.p2p.getAllowed(r).Contains(id) {
 			roles = append(roles, r)
 		}

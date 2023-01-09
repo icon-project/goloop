@@ -238,7 +238,7 @@ func (ci *p2pConnInfo) String() string {
 func (r *testReactor) Broadcast(msg string) string {
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("Broadcast.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Broadcast", m, r.p2pConn())
-	err := r.ph.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
+	err := r.ph.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BroadcastAll)
 	assert.NoError(r.t, err, m.Message)
 	r.logger.Println("Broadcast", m)
 	return m.Message
@@ -248,7 +248,7 @@ func (r *testReactor) BroadcastNeighbor(msg string) (string, int) {
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("BroadcastNeighbor.%s.%s", msg, r.name)}
 	ci := r.p2pConnInfo()
 	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, ci.String())
-	err := r.ph.Broadcast(ProtoTestNetworkNeighbor, r.encode(m), module.BROADCAST_NEIGHBOR)
+	err := r.ph.Broadcast(ProtoTestNetworkNeighbor, r.encode(m), module.BroadcastNeighbor)
 	assert.NoError(r.t, err, m.Message)
 	r.logger.Println("BroadcastNeighbor", m)
 	return m.Message, ci.friends + ci.children + ci.nephews
@@ -257,7 +257,7 @@ func (r *testReactor) BroadcastNeighbor(msg string) (string, int) {
 func (r *testReactor) Multicast(msg string) string {
 	m := &testNetworkMulticast{Message: fmt.Sprintf("Multicast.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Multicast", m, r.p2pConn())
-	err := r.ph.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
+	err := r.ph.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.RoleValidator)
 	assert.NoError(r.t, err, m.Message)
 	r.logger.Println("Multicast", m)
 	return m.Message
@@ -547,8 +547,8 @@ func listenerClose(t *testing.T, m map[string][]*testReactor) {
 
 func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Context) {
 	m = make(map[string][]*testReactor)
-	m[testValidator] = generateNetwork(testValidator, testNumValidator, t, module.ROLE_VALIDATOR)
-	m[testSeed] = generateNetwork(testSeed, testNumSeed, t, module.ROLE_SEED)
+	m[testValidator] = generateNetwork(testValidator, testNumValidator, t, module.RoleValidator)
+	m[testSeed] = generateNetwork(testSeed, testNumSeed, t, module.RoleSeed)
 	m[testCitizen] = generateNetwork(testCitizen, testNumCitizen, t)
 
 	n := testNumValidator + testNumSeed + testNumCitizen
@@ -585,7 +585,7 @@ func Test_manager(t *testing.T) {
 	nt := NewTransport(getAvailableLocalhostAddress(t), w, logger)
 	chainLogger := logger.WithFields(log.Fields{log.FieldKeyCID: "1"})
 	c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
-	nm := NewManager(c, nt, "", module.ROLE_VALIDATOR).(*manager)
+	nm := NewManager(c, nt, "", module.RoleValidator).(*manager)
 	type registerReactorParam struct {
 		name     string
 		pi       module.ProtocolInfo
@@ -756,8 +756,8 @@ func Test_network_allowedPeer(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 	m := make(map[string][]*testReactor)
-	m[testAllowed] = generateNetwork(testAllowed, testNumAllowedPeer, t, module.ROLE_VALIDATOR)
-	m[testNotAllowed] = generateNetwork(testNotAllowed, testNumNotAllowedPeer, t, module.ROLE_VALIDATOR)
+	m[testAllowed] = generateNetwork(testAllowed, testNumAllowedPeer, t, module.RoleValidator)
+	m[testNotAllowed] = generateNetwork(testNotAllowed, testNumNotAllowedPeer, t, module.RoleValidator)
 	allowed := make([]module.PeerID, 0)
 	notAllowed := make([]module.PeerID, 0)
 
@@ -768,7 +768,7 @@ func Test_network_allowedPeer(t *testing.T) {
 		notAllowed = append(notAllowed, r.nt.PeerID())
 	}
 	for _, r := range m[testAllowed] {
-		r.nm.SetRole(1, module.ROLE_NORMAL, allowed...)
+		r.nm.SetRole(1, module.RoleNormal, allowed...)
 	}
 
 	ch := make(chan context.Context, testNumAllowedPeer+testNumNotAllowedPeer)
@@ -806,7 +806,7 @@ func Test_network_allowedPeer(t *testing.T) {
 	remove := allowed[testNumAllowedPeer-1]
 	go func() {
 		for _, r := range m[testAllowed] {
-			r.nm.RemoveRole(module.ROLE_NORMAL, remove)
+			r.nm.RemoveRole(module.RoleNormal, remove)
 		}
 	}()
 	evtMap, err = waitEvent(ch, n-1, 2*time.Second, p2pEventNotAllowed, remove)

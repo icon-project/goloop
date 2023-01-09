@@ -138,7 +138,7 @@ Loop:
 				p := ctx.Value(p2pContextKeyPeer).(*Peer)
 				r := ph.getReactor()
 				isRelay, _ := r.OnReceive(pkt.subProtocol, pkt.payload, p.ID())
-				if isRelay && pkt.ttl == byte(module.BROADCAST_ALL) && pkt.dest != p2pDestPeer {
+				if isRelay && pkt.ttl == byte(module.BroadcastAll) && pkt.dest != p2pDestPeer {
 					if err := ph.m.send(pkt); err != nil {
 						ph.logger.Tracef("fail to relay error:{%+v} pkt:%s", err, pkt)
 					}
@@ -252,7 +252,7 @@ func (ph *protocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.P
 }
 
 func (ph *protocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role module.Role) error {
-	if role >= module.ROLE_RESERVED {
+	if role >= module.RoleReserved {
 		return newNetworkError(ErrNotRegisteredRole, "multicast", role)
 	}
 	if err := ph.send(pi, b, byte(role), 0, false, nil); err != nil {

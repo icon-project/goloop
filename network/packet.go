@@ -48,8 +48,8 @@ type packetDestInfo uint16
 
 const (
 	p2pDestAny  = 0x00
-	p2pDestSeed = byte(module.ROLE_SEED)
-	p2pDestRoot = byte(module.ROLE_VALIDATOR)
+	p2pDestSeed = byte(module.RoleSeed)
+	p2pDestRoot = byte(module.RoleValidator)
 	p2pDestPeer = 0xFF
 )
 

@@ -493,11 +493,11 @@ func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
 
 func (p2p *PeerToPeer) getAllowed(role module.Role) *PeerIDSet {
 	switch role {
-	case module.ROLE_VALIDATOR:
+	case module.RoleValidator:
 		return p2p.allowedRoots
-	case module.ROLE_SEED:
+	case module.RoleSeed:
 		return p2p.allowedSeeds
-	case module.ROLE_NORMAL:
+	case module.RoleNormal:
 		return p2p.allowedPeers
 	default:
 		return nil
@@ -871,14 +871,14 @@ Loop:
 						}
 					}
 				case p2pDestAny:
-					if pkt.ttl == byte(module.BROADCAST_NEIGHBOR) {
+					if pkt.ttl == byte(module.BroadcastNeighbor) {
 						if r.Has(p2pRoleRoot) {
 							p2p.sendToPeers(ctx, p2pConnTypeFriend)
 						}
 						p2p.sendToPeers(ctx,
 							p2pConnTypeParent, p2pConnTypeUncle,
 							p2pConnTypeChildren, p2pConnTypeNephew, p2pConnTypeOther)
-					} else if pkt.ttl == byte(module.BROADCAST_CHILDREN) {
+					} else if pkt.ttl == byte(module.BroadcastChildren) {
 						if r.Has(p2pRoleRoot) {
 							p2p.sendToFriends(ctx)
 						}
@@ -1017,7 +1017,7 @@ func (p2p *PeerToPeer) Send(pkt *Packet) error {
 	if pkt.dest == p2pDestAny && pkt.ttl == 0 &&
 		p2p.ID().Equal(pkt.src) &&
 		!p2p.HasRole(p2pRoleRoot) {
-		//BROADCAST_ALL && not relay && not has p2pRoleRoot
+		//BroadcastAll && not relay && not has p2pRoleRoot
 		return ErrNotAuthorized
 	}
 
@@ -1139,7 +1139,7 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 		if r.Has(p2pRoleRoot) {
 			connTypes = append(connTypes, p2pConnTypeFriend)
 		}
-		if pkt.ttl == byte(module.BROADCAST_NEIGHBOR) {
+		if pkt.ttl == byte(module.BroadcastNeighbor) {
 			connTypes = append(connTypes, p2pConnTypeParent, p2pConnTypeUncle)
 		}
 		if p2p.lenPeersByProtocol(pkt.protocol, connTypes...) < 1 {

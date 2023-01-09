@@ -426,7 +426,7 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 	if id == nil {
 		if len(s.peers) > 0 {
 			s.log.Debugf("neighborcastRoundState %v\n", msg)
-			err = s.ph.Broadcast(ProtoRoundState, bs, module.BROADCAST_NEIGHBOR)
+			err = s.ph.Broadcast(ProtoRoundState, bs, module.BroadcastNeighbor)
 		}
 	} else {
 		s.log.Debugf("sendRoundState %v To:%v\n", msg, common.HexPre(id.Bytes()))

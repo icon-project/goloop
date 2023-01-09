@@ -41,23 +41,23 @@ type BroadcastType byte
 type Role byte
 
 const (
-	ROLE_NORMAL Role = iota
-	ROLE_SEED
-	ROLE_VALIDATOR
-	ROLE_RESERVED
+	RoleNormal Role = iota
+	RoleSeed
+	RoleValidator
+	RoleReserved
 )
 
 const (
-	BROADCAST_ALL BroadcastType = iota
-	BROADCAST_NEIGHBOR
-	BROADCAST_CHILDREN
+	BroadcastAll BroadcastType = iota
+	BroadcastNeighbor
+	BroadcastChildren
 )
 
 func (b BroadcastType) TTL() byte {
 	switch b {
-	case BROADCAST_NEIGHBOR:
+	case BroadcastNeighbor:
 		return 1
-	case BROADCAST_CHILDREN:
+	case BroadcastChildren:
 		return 2
 	default:
 		return 0
@@ -66,7 +66,7 @@ func (b BroadcastType) TTL() byte {
 
 func (b BroadcastType) ForceSend() bool {
 	switch b {
-	case BROADCAST_CHILDREN, BROADCAST_NEIGHBOR:
+	case BroadcastChildren, BroadcastNeighbor:
 		return true
 	default:
 		return false
