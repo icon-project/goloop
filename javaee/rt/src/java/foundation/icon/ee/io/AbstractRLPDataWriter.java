@@ -105,7 +105,7 @@ public abstract class AbstractRLPDataWriter implements DataWriter {
     public void write(double v) {
         long i = Double.doubleToRawLongBits(v);
         os.write(SHORT_BASE + 8);
-        os.write(((int) (i >> 54)) & 0xff);
+        os.write(((int) (i >> 56)) & 0xff);
         os.write(((int) (i >> 48)) & 0xff);
         os.write(((int) (i >> 40)) & 0xff);
         os.write(((int) (i >> 32)) & 0xff);
