@@ -460,7 +460,7 @@ public class BTP2APITest extends TestBase {
         } else {
             checkNetworkType(height, ntid, true, nid);
         }
-        checkNetwork(nid, name, ntid, height);
+        checkNetwork(nid, name, ntid, height, owner);
         checkHeader(height.add(BigInteger.ONE), nid);
         return nid;
     }
@@ -531,13 +531,14 @@ public class BTP2APITest extends TestBase {
     }
 
     // for openBTPNetwork
-    private void checkNetwork(BigInteger nid, String name, BigInteger ntid, BigInteger startHeight) throws Exception {
+    private void checkNetwork(BigInteger nid, String name, BigInteger ntid, BigInteger startHeight, Address owner) throws Exception {
         BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
         assertEquals(nid, nInfo.getNetworkID());
         assertEquals(name, nInfo.getNetworkName());
         assertEquals(ntid, nInfo.getNetworkTypeID());
         assertEquals(startHeight, nInfo.getStartHeight());
-        assertEquals(BigInteger.ONE, nInfo.getOpen());
+        assertTrue(nInfo.getOpen());
+        assertEquals(owner, nInfo.getOwner());
         assertNull(nInfo.getPrevNSHash());
     }
 
@@ -545,11 +546,10 @@ public class BTP2APITest extends TestBase {
     private void checkNetwork(BigInteger height, BigInteger nid, boolean open) throws Exception {
         BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
         BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
+        assertEquals(open, nInfo.getOpen());
         if (open) {
-            assertEquals(BigInteger.ONE, nInfo.getOpen());
             assertEquals(oInfo.getLastNSHash(), nInfo.getPrevNSHash());
         } else {
-            assertEquals(BigInteger.ZERO, nInfo.getOpen());
             assertEquals(oInfo.getPrevNSHash(), nInfo.getPrevNSHash());
             assertEquals(oInfo.getLastNSHash(), nInfo.getLastNSHash());
         }
@@ -559,7 +559,7 @@ public class BTP2APITest extends TestBase {
     private void checkNetwork(BigInteger height, BigInteger nid, int msgCount) throws Exception {
         BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
         BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
-        assertEquals(BigInteger.ONE, nInfo.getOpen());
+        assertTrue(nInfo.getOpen());
         assertEquals(oInfo.getLastNSHash(), nInfo.getPrevNSHash());
         assertEquals(oInfo.getNextMessageSN().add(BigInteger.valueOf(msgCount)), nInfo.getNextMessageSN());
     }

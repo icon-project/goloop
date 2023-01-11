@@ -58,14 +58,24 @@ public class BTPNetworkInfo {
         return item != null ? item.asString() : null;
     }
 
-    public BigInteger getOpen() {
+    public Boolean getOpen() {
         RpcItem item = properties.getItem("open");
-        return item != null ? item.asInteger() : null;
+        return item != null ? item.asBoolean() : null;
+    }
+
+    public Address getOwner() {
+        RpcItem item = properties.getItem("owner");
+        return item != null ? item.asAddress() : null;
     }
 
     public BigInteger getNextMessageSN() {
         RpcItem item = properties.getItem("nextMessageSN");
         return item != null ? item.asInteger() : null;
+    }
+
+    public Boolean getNextProofContextChanged() {
+        RpcItem item = properties.getItem("nextProofContextChanged");
+        return item != null ? item.asBoolean() : null;
     }
 
     public Bytes getPrevNSHash() {
