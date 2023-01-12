@@ -305,7 +305,8 @@ public interface ObjectReader {
      *          {@link RuntimeException}.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
-     *          or longer byte array).
+     *          or longer byte array), or if this writer cannot write null or
+     *          nullable.
      * @see #read(Class)
      */
     <T> T readNullable(Class<T> c);
@@ -328,7 +329,8 @@ public interface ObjectReader {
      *          {@link RuntimeException}.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
-     *          or longer byte array).
+     *          or longer byte array), or if this writer cannot write null or
+     *          nullable.
      * @see #read(Class)
      * @see #hasNext
      */
@@ -369,7 +371,8 @@ public interface ObjectReader {
      *          reader.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
-     *          or longer byte array).
+     *          or longer byte array), or if this writer cannot write null or
+     *          nullable.
      * @see #beginList
      */
     boolean beginNullableList();
@@ -418,7 +421,8 @@ public interface ObjectReader {
      *          reader.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
-     *          or longer byte array).
+     *          or longer byte array), or if this writer cannot write null or
+     *          nullable.
      * @see #beginMap
      */
     boolean beginNullableMap();
