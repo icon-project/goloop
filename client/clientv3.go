@@ -139,6 +139,7 @@ type BTPNetworkInfo struct {
 	NetworkTypeID           jsonrpc.HexInt   `json:"networkTypeID"`
 	NetworkName             string           `json:"networkName"`
 	Open                    jsonrpc.HexInt   `json:"open"`
+	Owner                   jsonrpc.Address  `json:"owner"`
 	NextMessageSN           jsonrpc.HexInt   `json:"nextMessageSN"`
 	NextProofContextChanged jsonrpc.HexInt   `json:"nextProofContextChanged"`
 	PrevNSHash              jsonrpc.HexBytes `json:"prevNSHash"`
