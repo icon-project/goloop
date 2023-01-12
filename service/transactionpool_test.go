@@ -32,7 +32,7 @@ func (m *mockMonitor) OnCommit(id []byte, ts time.Time, d time.Duration) {
 func TestTransactionPool_Add(t *testing.T) {
 	dbase := db.NewMapDB()
 	tsc := NewTimestampChecker()
-	tim, _ := NewTXIDManager(dbase, tsc)
+	tim, _ := NewTXIDManager(dbase, tsc, nil)
 	pool := NewTransactionPool(module.TransactionGroupNormal, 5000, tim, &mockMonitor{}, log.New())
 
 	addr := common.MustNewAddressFromString("hx1111111111111111111111111111111111111111")

@@ -39,6 +39,7 @@ type TXIDManager interface {
 	HasLocator(id []byte) (bool, error)
 	HasRecent(id []byte) (bool, error)
 	CheckTXForAdd(tx transaction.Transaction) error
+	AddDroppedTX(id []byte, ts int64)
 	NewLogger(group module.TransactionGroup, height int64, ts int64) TXIDLogger
 }
 
@@ -157,12 +158,13 @@ func newTransactionBucket(bk db.Bucket) TXIDSet {
 }
 
 type txIDManager struct {
-	lock sync.Mutex
-	tbk  db.Bucket
-	last TXIDSet
-	tsc  *TxTimestampChecker
-	th   int64
-	ts   [2]int64
+	lock       sync.Mutex
+	tbk        db.Bucket
+	last       TXIDSet
+	tsc        *TxTimestampChecker
+	droppedTxs TXIDCache
+	th         int64
+	ts         [2]int64
 }
 
 func (mg *txIDManager) NewLogger(group module.TransactionGroup, height int64, ts int64) TXIDLogger {
@@ -206,6 +208,9 @@ func (mg *txIDManager) CommitSet(s *txIDMap) (txIDManagerProxy, error) {
 			}
 		}
 		mg.ts[s.group] = s.ts
+		if s.group == module.TransactionGroupNormal {
+			mg.droppedTxs.RemoveOldTXsByTS(s.ts - mg.tsc.Threshold())
+		}
 	}
 	if s.ts != 0 || !s.IsEmpty() {
 		s.SetPrevious(mg.last)
@@ -245,7 +250,13 @@ func (mg *txIDManager) CheckTXForAdd(tx transaction.Transaction) error {
 	if err := mg.tsc.CheckWithCurrent(minTS, tx); err != nil {
 		return err
 	}
-	ids := string(tx.ID())
+
+	id := tx.ID()
+	if mg.droppedTxs.Contains(id, tx.Timestamp()) {
+		return InvalidTransactionError.Errorf("AlreadyDropped(id=%#x)", id)
+	}
+
+	ids := string(id)
 	if height, err := mg.getHeightOfInLock(ids); err != nil {
 		return err
 	} else if height != InvalidHeight {
@@ -289,16 +300,26 @@ func (mg *txIDManager) LastTS(group module.TransactionGroup) int64 {
 	return mg.ts[group]
 }
 
-func NewTXIDManager(dbase db.Database, tsc *TxTimestampChecker) (TXIDManager, error) {
+func (mg *txIDManager) AddDroppedTX(id []byte, ts int64) {
+	mg.lock.Lock()
+	defer mg.lock.Unlock()
+	mg.droppedTxs.Add(id, ts)
+}
+
+func NewTXIDManager(dbase db.Database, tsc *TxTimestampChecker, tic TXIDCache) (TXIDManager, error) {
 	bk, err := dbase.GetBucket(db.TransactionLocatorByHash)
 	if err != nil {
 		return nil, err
 	}
+	if tic == nil {
+		tic = newEmptyTxIDCache()
+	}
 	return &txIDManager{
-		tbk:  bk,
-		last: newTransactionBucket(bk),
-		th:   tsc.Threshold(),
-		tsc:  tsc,
+		tbk:        bk,
+		last:       newTransactionBucket(bk),
+		th:         tsc.Threshold(),
+		tsc:        tsc,
+		droppedTxs: tic,
 	}, nil
 }
 
