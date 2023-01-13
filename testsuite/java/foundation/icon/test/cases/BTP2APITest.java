@@ -260,8 +260,8 @@ public class BTP2APITest extends TestBase {
         LOG.infoEntering("Open BTP Networks 'ethereum' and 'bsc' for test");
         BigInteger nidEth = openBTPNetwork(NT_ETH, "ethereum", wallet.getAddress());
         BigInteger nidBSC = openBTPNetwork(NT_ETH, "bsc", wallet.getAddress());
-        var ntidEth = iconService.btpGetNetworkInfo(nidEth).execute().getNetworkTypeID();
-        var ntidBSC = iconService.btpGetNetworkInfo(nidBSC).execute().getNetworkTypeID();
+        var ntidEth = iconService.getBTPNetworkInfo(nidEth).execute().getNetworkTypeID();
+        var ntidBSC = iconService.getBTPNetworkInfo(nidBSC).execute().getNetworkTypeID();
         BigInteger[] ntids = {ntidEth, ntidBSC};
         BigInteger[] nids = {nidEth, nidBSC};
         LOG.infoExiting();
@@ -339,7 +339,7 @@ public class BTP2APITest extends TestBase {
 
         LOG.infoEntering("Open BTP Networks for test");
         BigInteger nid = openBTPNetwork(NT_ETH, "send_msg_test", wallet.getAddress());
-        var ntid = iconService.btpGetNetworkInfo(nid).execute().getNetworkTypeID();
+        var ntid = iconService.getBTPNetworkInfo(nid).execute().getNetworkTypeID();
         LOG.infoExiting();
 
         var msgSN = 0;
@@ -470,7 +470,7 @@ public class BTP2APITest extends TestBase {
         result = govScore.closeBTPNetwork(id);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
-        BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(id).execute();
+        BTPNetworkInfo nInfo = iconService.getBTPNetworkInfo(id).execute();
         var ntid = nInfo.getNetworkTypeID();
         boolean matchEvent = false;
         for (TransactionResult.EventLog e : result.getEventLogs()) {
@@ -489,7 +489,7 @@ public class BTP2APITest extends TestBase {
 
     // for openBTPNetwork - network type was activated
     private void checkNetworkType(BigInteger ntid, String name, BigInteger nid) throws Exception {
-        BTPNetworkTypeInfo nInfo = iconService.btpGetNetworkTypeInfo(ntid).execute();
+        BTPNetworkTypeInfo nInfo = iconService.getBTPNetworkTypeInfo(ntid).execute();
         assertEquals(name, nInfo.getNetworkTypeName());
         List<BigInteger> nIds = nInfo.getOpenNetworkIDs();
         assertEquals(1, nIds.size());
@@ -498,8 +498,8 @@ public class BTP2APITest extends TestBase {
 
     // for open/closeBTPNetwork
     private void checkNetworkType(BigInteger height, BigInteger ntid, boolean open, BigInteger nid) throws Exception {
-        BTPNetworkTypeInfo oInfo = iconService.btpGetNetworkTypeInfo(height, ntid).execute();
-        BTPNetworkTypeInfo nInfo = iconService.btpGetNetworkTypeInfo(ntid).execute();
+        BTPNetworkTypeInfo oInfo = iconService.getBTPNetworkTypeInfo(ntid, height).execute();
+        BTPNetworkTypeInfo nInfo = iconService.getBTPNetworkTypeInfo(ntid).execute();
         List<BigInteger> oIds = oInfo.getOpenNetworkIDs();
         if (open) {
             oIds.add(nid);
@@ -518,21 +518,21 @@ public class BTP2APITest extends TestBase {
 
     // for public key modification
     private void checkNetworkType(BigInteger height, BigInteger ntid) throws Exception {
-        BTPNetworkTypeInfo oInfo = iconService.btpGetNetworkTypeInfo(height, ntid).execute();
-        BTPNetworkTypeInfo nInfo = iconService.btpGetNetworkTypeInfo(ntid).execute();
+        BTPNetworkTypeInfo oInfo = iconService.getBTPNetworkTypeInfo(ntid, height).execute();
+        BTPNetworkTypeInfo nInfo = iconService.getBTPNetworkTypeInfo(ntid).execute();
         assertEquals(oInfo.getOpenNetworkIDs(), nInfo.getOpenNetworkIDs());
         assertNotEquals(oInfo.getNextProofContext(), nInfo.getNextProofContext());
     }
 
     private void checkNetworkTypeNotChanged(BigInteger height, BigInteger ntid) throws Exception {
-        BTPNetworkTypeInfo oInfo = iconService.btpGetNetworkTypeInfo(height, ntid).execute();
-        BTPNetworkTypeInfo nInfo = iconService.btpGetNetworkTypeInfo(height.add(BigInteger.ONE), ntid).execute();
+        BTPNetworkTypeInfo oInfo = iconService.getBTPNetworkTypeInfo(ntid, height).execute();
+        BTPNetworkTypeInfo nInfo = iconService.getBTPNetworkTypeInfo(ntid, height.add(BigInteger.ONE)).execute();
         assertEquals(oInfo, nInfo);
     }
 
     // for openBTPNetwork
     private void checkNetwork(BigInteger nid, String name, BigInteger ntid, BigInteger startHeight, Address owner) throws Exception {
-        BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
+        BTPNetworkInfo nInfo = iconService.getBTPNetworkInfo(nid).execute();
         assertEquals(nid, nInfo.getNetworkID());
         assertEquals(name, nInfo.getNetworkName());
         assertEquals(ntid, nInfo.getNetworkTypeID());
@@ -544,8 +544,8 @@ public class BTP2APITest extends TestBase {
 
     // for closeBTPNetwork and public key modification
     private void checkNetwork(BigInteger height, BigInteger nid, boolean open) throws Exception {
-        BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
-        BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
+        BTPNetworkInfo oInfo = iconService.getBTPNetworkInfo(nid, height).execute();
+        BTPNetworkInfo nInfo = iconService.getBTPNetworkInfo(nid).execute();
         assertEquals(open, nInfo.getOpen());
         if (open) {
             assertEquals(oInfo.getLastNSHash(), nInfo.getPrevNSHash());
@@ -557,22 +557,22 @@ public class BTP2APITest extends TestBase {
 
     // for sendBTPMessage
     private void checkNetwork(BigInteger height, BigInteger nid, int msgCount) throws Exception {
-        BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
-        BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(nid).execute();
+        BTPNetworkInfo oInfo = iconService.getBTPNetworkInfo(nid, height).execute();
+        BTPNetworkInfo nInfo = iconService.getBTPNetworkInfo(nid).execute();
         assertTrue(nInfo.getOpen());
         assertEquals(oInfo.getLastNSHash(), nInfo.getPrevNSHash());
         assertEquals(oInfo.getNextMessageSN().add(BigInteger.valueOf(msgCount)), nInfo.getNextMessageSN());
     }
 
     private void checkNetworkNotChanged(BigInteger height, BigInteger nid) throws Exception {
-        BTPNetworkInfo oInfo = iconService.btpGetNetworkInfo(height, nid).execute();
-        BTPNetworkInfo nInfo = iconService.btpGetNetworkInfo(height.add(BigInteger.ONE), nid).execute();
+        BTPNetworkInfo oInfo = iconService.getBTPNetworkInfo(nid, height).execute();
+        BTPNetworkInfo nInfo = iconService.getBTPNetworkInfo(nid, height.add(BigInteger.ONE)).execute();
         assertEquals(oInfo, nInfo);
     }
 
     // for openBTPHeader and public key modification
     private void checkHeader(BigInteger height, BigInteger nid) throws Exception {
-        Base64 blkB64 = iconService.btpGetHeader(height, nid).execute();
+        Base64 blkB64 = iconService.getBTPHeader(nid, height).execute();
         var header = new BTPBlockHeader(blkB64.decode(), Codec.rlp);
         assertTrue(header.getNextProofContextChanged());
         assertNotNull(header.getNextProofContext());
@@ -581,7 +581,7 @@ public class BTP2APITest extends TestBase {
 
     // for sendBTPMessage
     private void checkHeader(BigInteger height, BigInteger nid, int firstMsgSN, int msgCount) throws Exception {
-        Base64 blkB64 = iconService.btpGetHeader(height, nid).execute();
+        Base64 blkB64 = iconService.getBTPHeader(nid, height).execute();
         var header = new BTPBlockHeader(blkB64.decode(), Codec.rlp);
         assertEquals(firstMsgSN, header.getFirstMessageSN());
         assertEquals(msgCount, header.getMessageCount());
@@ -590,7 +590,7 @@ public class BTP2APITest extends TestBase {
     }
 
     private void checkMessage(BigInteger height, BigInteger nid, byte[][] msgs) throws Exception {
-        Base64[] msgsB64 = iconService.btpGetMessages(height, nid).execute();
+        Base64[] msgsB64 = iconService.getBTPMessages(nid, height).execute();
         assertEquals(msgs.length, msgsB64.length);
         for (int i = 0; i < msgs.length; i++) {
             assertArrayEquals(msgs[i], msgsB64[i].decode());

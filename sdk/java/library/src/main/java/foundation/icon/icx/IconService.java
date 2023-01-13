@@ -473,18 +473,18 @@ public class IconService {
      * @param id BTP network ID
      * @return a {@code Request} object that can execute the request
      */
-    public Request<BTPNetworkInfo> btpGetNetworkInfo(BigInteger id) {
-        return btpGetNetworkInfo(null, id);
+    public Request<BTPNetworkInfo> getBTPNetworkInfo(BigInteger id) {
+        return getBTPNetworkInfo(id, null);
     }
 
     /**
      * Gets BTP network information
      *
-     * @param height Main block height
      * @param id BTP network ID
+     * @param height the block number
      * @return a {@code Request} object that can execute the request
      */
-    public Request<BTPNetworkInfo> btpGetNetworkInfo(BigInteger height, BigInteger id) {
+    public Request<BTPNetworkInfo> getBTPNetworkInfo(BigInteger id, BigInteger height) {
         long requestId = System.currentTimeMillis();
         RpcObject.Builder params = new RpcObject.Builder()
                 .put("id", new RpcValue(id));
@@ -502,22 +502,23 @@ public class IconService {
      * @param id BTP network type ID
      * @return a {@code Request} object that can execute the request
      */
-    public Request<BTPNetworkTypeInfo> btpGetNetworkTypeInfo(BigInteger id) {
-        return btpGetNetworkTypeInfo(null, id);
+    public Request<BTPNetworkTypeInfo> getBTPNetworkTypeInfo(BigInteger id) {
+        return getBTPNetworkTypeInfo(id, null);
     }
+
     /**
      * Gets BTP network type information
      *
-     * @param height the block number
      * @param id BTP network type ID
+     * @param height the block number
      * @return a {@code Request} object that can execute the request
      */
-    public Request<BTPNetworkTypeInfo> btpGetNetworkTypeInfo(BigInteger height, BigInteger id) {
+    public Request<BTPNetworkTypeInfo> getBTPNetworkTypeInfo(BigInteger id, BigInteger height) {
         long requestId = System.currentTimeMillis();
         RpcObject.Builder params = new RpcObject.Builder()
                 .put("id", new RpcValue(id));
         if (height != null) {
-                params.put("height", new RpcValue(height));
+            params.put("height", new RpcValue(height));
         }
         foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
                 requestId, "btp_getNetworkTypeInfo", params.build());
@@ -527,11 +528,11 @@ public class IconService {
     /**
      * Gets BTP messages
      *
-     * @param height the block number
      * @param networkID BTP network ID
+     * @param height the block number
      * @return a {@code Request} object that can execute the request
      */
-    public Request<Base64[]> btpGetMessages(BigInteger height, BigInteger networkID) {
+    public Request<Base64[]> getBTPMessages(BigInteger networkID, BigInteger height) {
         long requestId = System.currentTimeMillis();
         RpcObject params = new RpcObject.Builder()
                 .put("height", new RpcValue(height))
@@ -545,11 +546,11 @@ public class IconService {
     /**
      * Gets BTP block header
      *
-     * @param height the block number
      * @param networkID BTP network ID
+     * @param height the block number
      * @return a {@code Request} object that can execute the request
      */
-    public Request<Base64> btpGetHeader(BigInteger height, BigInteger networkID) {
+    public Request<Base64> getBTPHeader(BigInteger networkID, BigInteger height) {
         long requestId = System.currentTimeMillis();
         RpcObject params = new RpcObject.Builder()
                 .put("height", new RpcValue(height))
@@ -563,11 +564,11 @@ public class IconService {
     /**
      * Gets BTP block proof
      *
-     * @param height the block number
      * @param networkID BTP network ID
+     * @param height the block number
      * @return a {@code Request} object that can execute the request
      */
-    public Request<Base64> btpGetProof(BigInteger height, BigInteger networkID) {
+    public Request<Base64> getBTPProof(BigInteger networkID, BigInteger height) {
         long requestId = System.currentTimeMillis();
         RpcObject params = new RpcObject.Builder()
                 .put("height", new RpcValue(height))
@@ -579,11 +580,11 @@ public class IconService {
     }
 
     /**
-     * Gets the last block
+     * Gets source network information
      *
-     * @return a {@code Block} object
+     * @return a {@code Request} object that can execute the request
      */
-    public Request<BTPSourceInfo> btpGetSourceInformation() {
+    public Request<BTPSourceInfo> getBTPSourceInformation() {
         long requestId = System.currentTimeMillis();
         foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
                 requestId, "btp_getSourceInformation", null);
