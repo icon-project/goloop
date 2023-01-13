@@ -465,6 +465,47 @@ public class IconService {
         return provider.monitor(ms, findConverter(BlockNotification.class));
     }
 
+    /**
+     * Gets a monitor for block notification
+     *
+     * @param height the start height
+     * @param eventFilters array of eventFilter
+     * @return a {@code Monitor} object
+     */
+    public Monitor<BlockNotification> monitorBlocks(BigInteger height, EventMonitorSpec.EventFilter[] eventFilters) {
+        MonitorSpec ms = new BlockMonitorSpec(height, eventFilters);
+        return provider.monitor(ms, findConverter(BlockNotification.class));
+    }
+
+    /**
+     * Gets a monitor for event notification
+     *
+     * @param height the start height
+     * @param event the event signature
+     * @param addr the address of SCORE
+     * @param indexed the array of arguments to match with indexed parameters of event
+     * @param data the array of arguments to match with non-indexed parameters of event
+     * @return a {@code Monitor} object
+     */
+    public Monitor<EventNotification> monitorEvents(BigInteger height, String event, Address addr, String[] indexed, String[] data) {
+        MonitorSpec ms = new EventMonitorSpec(height, event, addr, indexed, data);
+        return provider.monitor(ms, findConverter(EventNotification.class));
+    }
+
+    /**
+     * Gets a monitor for BTP notification
+     *
+     * @param height the start height
+     * @param networkId the btp network id
+     * @param proofFlag Proof Included for BTP Header
+     * @return a {@code Monitor} object
+     *
+     */
+    public Monitor<BlockNotification> monitorBTP(BigInteger height, BigInteger networkId, BigInteger proofFlag) {
+        MonitorSpec ms = new BTPMonitorSpec(height, networkId, proofFlag);
+        return provider.monitor(ms, findConverter(BlockNotification.class));
+    }
+
     // Below APIs are additional features for BTP 2.0
 
     /**
@@ -591,33 +632,6 @@ public class IconService {
         return provider.request(request, findConverter(BTPSourceInfo.class));
     }
 
-    /**
-     * Gets a monitor for block notification
-     *
-     * @param height the start height
-     * @param eventFilters array of eventFilter
-     * @return a {@code Monitor} object
-     */
-    public Monitor<BlockNotification> monitorBlocks(BigInteger height, EventMonitorSpec.EventFilter[] eventFilters) {
-        MonitorSpec ms = new BlockMonitorSpec(height, eventFilters);
-        return provider.monitor(ms, findConverter(BlockNotification.class));
-    }
-
-    /**
-     * Gets a monitor for event notification
-     *
-     * @param height the start height
-     * @param event the event signature
-     * @param addr the address of SCORE
-     * @param indexed the array of arguments to match with indexed parameters of event
-     * @param data the array of arguments to match with non-indexed parameters of event
-     * @return a {@code Monitor} object
-     */
-    public Monitor<EventNotification> monitorEvents(BigInteger height, String event, Address addr, String[] indexed, String[] data) {
-        MonitorSpec ms = new EventMonitorSpec(height, event, addr, indexed, data);
-        return provider.monitor(ms, findConverter(EventNotification.class));
-    }
-
     @SuppressWarnings("unchecked")
     private <T> RpcConverter<T> findConverter(Class<T> type) {
         RpcConverter<T> converter = (RpcConverter<T>) converterMap.get(type);
@@ -638,20 +652,6 @@ public class IconService {
         }
 
         throw new IllegalArgumentException("Could not locate response converter for:'" + type + "'");
-    }
-
-    /**
-     * Gets a monitor for BTP notification
-     *
-     * @param height the start height
-     * @param networkId the btp network id
-     * @param proofFlag Proof Included for BTP Header
-     * @return a {@code Monitor} object
-     *
-     */
-    public Monitor<BlockNotification> monitorBTP(BigInteger height, BigInteger networkId, BigInteger proofFlag) {
-        MonitorSpec ms = new BTPMonitorSpec(height, networkId, proofFlag);
-        return provider.monitor(ms, findConverter(BlockNotification.class));
     }
 
     /**
