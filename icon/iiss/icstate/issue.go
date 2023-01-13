@@ -44,11 +44,12 @@ func newIssue(_ icobject.Tag) *Issue {
 }
 
 func NewIssue() *Issue {
+	bigIntZero := new(big.Int)
 	return &Issue{
-		totalReward:      new(big.Int),
-		prevTotalReward:  new(big.Int),
-		overIssuedIScore: new(big.Int),
-		prevBlockFee:     new(big.Int),
+		totalReward:      bigIntZero,
+		prevTotalReward:  bigIntZero,
+		overIssuedIScore: bigIntZero,
+		prevBlockFee:     bigIntZero,
 	}
 }
 
@@ -86,12 +87,12 @@ func (i *Issue) Equal(o icobject.Impl) bool {
 }
 
 func (i *Issue) Clone() *Issue {
-	ni := NewIssue()
-	ni.totalReward = i.totalReward
-	ni.prevTotalReward = i.prevTotalReward
-	ni.overIssuedIScore = i.overIssuedIScore
-	ni.prevBlockFee = i.prevBlockFee
-	return ni
+	return &Issue{
+		totalReward:      i.totalReward,
+		prevTotalReward:  i.prevTotalReward,
+		overIssuedIScore: i.overIssuedIScore,
+		prevBlockFee:     i.prevBlockFee,
+	}
 }
 
 func (i *Issue) TotalReward() *big.Int {
@@ -131,12 +132,15 @@ func (i *Issue) SetPrevBlockFee(v *big.Int) {
 }
 
 func (i *Issue) Update(totalReward *big.Int, byFee *big.Int, byOverIssued *big.Int) *Issue {
-	issue := i.Clone()
-	issue.totalReward = new(big.Int).Add(issue.totalReward, totalReward)
-	overIssued := new(big.Int).Add(issue.overIssuedIScore, icutils.ICXToIScore(issue.prevBlockFee))
-	overIssued.Sub(overIssued, icutils.ICXToIScore(new(big.Int).Add(byFee, byOverIssued)))
-	issue.overIssuedIScore = overIssued
-	return issue
+	overIssuedDelta := new(big.Int).Add(byFee, byOverIssued)
+	overIssuedDelta.Sub(overIssuedDelta, i.prevBlockFee)
+
+	return &Issue{
+		totalReward:      new(big.Int).Add(i.totalReward, totalReward),
+		prevTotalReward:  i.prevTotalReward,
+		overIssuedIScore: new(big.Int).Sub(i.overIssuedIScore, icutils.ICXToIScore(overIssuedDelta)),
+		prevBlockFee:     i.prevBlockFee,
+	}
 }
 
 func (i *Issue) ResetTotalReward() {
