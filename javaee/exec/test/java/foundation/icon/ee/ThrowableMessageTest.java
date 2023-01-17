@@ -18,14 +18,14 @@ package foundation.icon.ee;
 
 import foundation.icon.ee.test.ContractAddress;
 import foundation.icon.ee.test.Matcher;
-import foundation.icon.ee.test.SimpleTest;
+import foundation.icon.ee.test.NoDebugTest;
 import org.junit.jupiter.api.Test;
 import score.Context;
 import score.annotation.External;
 
 import java.util.Map;
 
-public class ThrowableMessageTest extends SimpleTest {
+public class ThrowableMessageTest extends NoDebugTest {
     public static class MyException extends RuntimeException {
         MyException(String msg) {
             super(msg);
