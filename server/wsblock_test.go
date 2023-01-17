@@ -35,7 +35,7 @@ func TestBlockRequest_Compile(t *testing.T) {
 	type fields struct {
 		Height       common.HexInt64
 		EventFilters []*EventFilter
-		Logs         common.HexInt32
+		Logs         common.HexBool
 	}
 	tests := []struct {
 		name    string

@@ -14,7 +14,7 @@ import (
 type BTPRequest struct {
 	Height    common.HexInt64 `json:"height"`
 	NetworkId common.HexInt64 `json:"networkID"`
-	ProofFlag bool            `json:"proofFlag"`
+	ProofFlag common.HexBool  `json:"proofFlag"`
 	bn        BTPNotification
 }
 
@@ -90,7 +90,7 @@ loop:
 				}
 
 				var flag uint
-				if br.ProofFlag == true && blk.Height() != nw.StartHeight()+1 {
+				if br.ProofFlag.Value && blk.Height() != nw.StartHeight()+1 {
 					flag = module.FlagBTPBlockHeader | module.FlagBTPBlockProof
 				} else {
 					flag = module.FlagBTPBlockHeader

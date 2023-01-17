@@ -13,7 +13,7 @@ import (
 type BlockRequest struct {
 	Height       common.HexInt64 `json:"height"`
 	EventFilters []*EventFilter  `json:"eventFilters,omitempty"`
-	Logs         common.HexInt32 `json:"logs,omitempty"`
+	Logs         common.HexBool  `json:"logs,omitempty"`
 	bn           BlockNotification
 }
 
@@ -94,7 +94,7 @@ loop:
 				for i := range events {
 					events[i] = events[i][:0]
 				}
-				if br.Logs.Value != 0 {
+				if br.Logs.Value {
 					br.bn.Logs = eventLogs[:0]
 					for i := range eventLogs {
 						eventLogs[i] = eventLogs[i][:0]
@@ -116,17 +116,17 @@ loop:
 						if err != nil {
 							break loop
 						}
-						if es, logs, err := f.MatchEvents(r, br.Logs.Value != 0); err == nil && len(es) > 0 {
+						if es, logs, err := f.MatchEvents(r, br.Logs.Value); err == nil && len(es) > 0 {
 							if len(br.bn.Indexes) < 1 {
 								br.bn.Indexes = indexes[:]
 								br.bn.Events = events[:]
-								if br.Logs.Value != 0 {
+								if br.Logs.Value {
 									br.bn.Logs = eventLogs[:]
 								}
 							}
 							br.bn.Indexes[i] = append(br.bn.Indexes[i], common.HexInt32{Value: index})
 							br.bn.Events[i] = append(br.bn.Events[i], es)
-							if br.Logs.Value != 0 {
+							if br.Logs.Value {
 								br.bn.Logs[i] = append(br.bn.Logs[i], logs)
 							}
 						}

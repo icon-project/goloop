@@ -12,7 +12,7 @@ This document specifies the genesis file format.
 | T_HASH       | "0x" + 64-digit HEX string  | `"0xc71303ef8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"` |
 | T_INT        | "0x" + lowercase HEX string | `"0xa"`                                                                |
 | T_ARRAY      | json arrays                 | ` [ “0x1234567890”, “0x2345678990” ] `                                 |
-| T_BOOLEAN    | "0x1" or "0x0"              | `"0x1"`                                                                |
+| T_BOOL       | "0x1" or "0x0"              | `"0x1"`                                                                |
 | T_STRING     | json string                 | `"test string"`                                                        |
 | T_BYTES      | "0x" + lowercase HEX string | `"0x112233445566..."`                                                  |
 | T_DICT       | json dictionary             | `{ "supply": "0x1" }`                                                  |
@@ -66,10 +66,10 @@ This document specifies the genesis file format.
   * `revision` (T_INT, default=`"0x8"`) <br>
     Initial revision.
 
-  * `auditEnabled` (T_BOOLEAN, default=`"0x0"`) <br>
+  * `auditEnabled` (T_BOOL, default=`"0x0"`) <br>
     Determines whether audit is required. Default is false.
 
-  * `deployerWhiteListEnabled` (T_BOOLEAN, default=`"0x0"`) <br>
+  * `deployerWhiteListEnabled` (T_BOOL, default=`"0x0"`) <br>
     Determines whether only white-listed deployers can deploy SCOREs. Default is false.
 
   * `fee` (T_DICT,default=`null`)

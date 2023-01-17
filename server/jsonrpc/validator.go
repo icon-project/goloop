@@ -32,6 +32,7 @@ func NewValidator() *Validator {
 	v.RegisterValidation("t_addr_eoa", isEoaAddress)
 	v.RegisterValidation("t_addr_score", isScoreAddress)
 	v.RegisterValidation("t_int", isHexInt)
+	v.RegisterValidation("t_bool", isHexBool)
 	v.RegisterValidation("t_hash", isHash)
 	v.RegisterValidation("t_rhash", isRosettaHash)
 
@@ -76,6 +77,11 @@ func isScoreAddress(fl validator.FieldLevel) bool {
 
 func isHexInt(fl validator.FieldLevel) bool {
 	return hexInt.MatchString(fl.Field().String())
+}
+
+func isHexBool(fl validator.FieldLevel) bool {
+	s := fl.Field().String()
+	return s == "0x1" || s == "0x0"
 }
 
 func isHash(fl validator.FieldLevel) bool {
