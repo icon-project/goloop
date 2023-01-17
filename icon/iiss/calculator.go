@@ -244,6 +244,10 @@ func (c *Calculator) prepare() error {
 }
 
 func (c *Calculator) processClaim() error {
+	var revision int
+	if c.global != nil {
+		revision = c.global.GetRevision()
+	}
 	for iter := c.back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
@@ -264,7 +268,7 @@ func (c *Calculator) processClaim() error {
 			if err != nil {
 				return nil
 			}
-			nIScore := iScore.Subtracted(claim.Value())
+			nIScore := iScore.Subtracted(revision, claim.Value())
 			if nIScore.Value().Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
 			}

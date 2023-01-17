@@ -66,7 +66,7 @@ const (
 	RevisionSetIRepViaNetworkProposal = Revision9
 	RevisionPreventDuplicatedEndpoint = Revision9
 
-	//RevisionLockAddress = Revision10
+	// RevisionLockAddress = Revision10
 
 	RevisionFixInvalidUnstake = Revision11
 
@@ -104,7 +104,8 @@ const (
 	// Unused
 	// RevisionJavaFixMapValues = Revision20
 
-	RevisionBTP2 = Revision21
+	RevisionBTP2                = Revision21
+	RevisionFixIScoreSubtracted = Revision21
 )
 
 var revisionFlags = []module.Revision{
