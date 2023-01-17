@@ -18,12 +18,13 @@ package foundation.icon.icx;
 
 import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.BTPNetworkInfo;
+import foundation.icon.icx.data.BTPNetworkTypeInfo;
+import foundation.icon.icx.data.BTPNotification;
+import foundation.icon.icx.data.BTPSourceInfo;
 import foundation.icon.icx.data.Base64;
 import foundation.icon.icx.data.Block;
 import foundation.icon.icx.data.BlockNotification;
-import foundation.icon.icx.data.BTPNetworkInfo;
-import foundation.icon.icx.data.BTPNetworkTypeInfo;
-import foundation.icon.icx.data.BTPSourceInfo;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.Converters;
@@ -86,10 +87,11 @@ public class IconService {
                 BlockNotification.class, Converters.BLOCK_NOTIFICATION));
         addConverterFactory(Converters.newFactory(
                 EventNotification.class, Converters.EVENT_NOTIFICATION));
+        addConverterFactory(Converters.newFactory(
+                BTPNotification.class, Converters.BTP_NOTIFICATION));
         addConverterFactory(Converters.newFactory(Base64[].class, Converters.BASE64_ARRAY));
         addConverterFactory(Converters.newFactory(Base64[][].class, Converters.BASE64_ARRAY_ARRAY));
-        addConverterFactory(Converters.newFactory(
-                Base64.class, Converters.BASE64));
+        addConverterFactory(Converters.newFactory(Base64.class, Converters.BASE64));
         addConverterFactory(Converters.newFactory(BTPNetworkInfo.class, Converters.BTP_NETWORK_INFO));
         addConverterFactory(Converters.newFactory(BTPNetworkTypeInfo.class, Converters.BTP_NETWORK_TYPE_INFO));
         addConverterFactory(Converters.newFactory(BTPSourceInfo.class, Converters.BTP_SOURCE_INFO));
@@ -501,9 +503,9 @@ public class IconService {
      * @return a {@code Monitor} object
      *
      */
-    public Monitor<BlockNotification> monitorBTP(BigInteger height, BigInteger networkId, BigInteger proofFlag) {
+    public Monitor<BTPNotification> monitorBTP(BigInteger height, BigInteger networkId, boolean proofFlag) {
         MonitorSpec ms = new BTPMonitorSpec(height, networkId, proofFlag);
-        return provider.monitor(ms, findConverter(BlockNotification.class));
+        return provider.monitor(ms, findConverter(BTPNotification.class));
     }
 
     // Below APIs are additional features for BTP 2.0

@@ -17,12 +17,28 @@
 package foundation.icon.icx.data;
 
 public class Base64 {
-    String data;
+    private final String data;
+
     public Base64(String data) {
         this.data = data;
     }
 
     public byte[] decode() {
         return java.util.Base64.getDecoder().decode(data);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (obj instanceof Base64) {
+            Base64 other = (Base64) obj;
+            return this.data.equals(other.data);
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return this.data;
     }
 }

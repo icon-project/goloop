@@ -21,11 +21,13 @@ import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.BTPNetworkInfo;
 import foundation.icon.icx.data.BTPNetworkTypeInfo;
+import foundation.icon.icx.data.BTPNotification;
 import foundation.icon.icx.data.Base64;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
+import foundation.icon.icx.transport.monitor.Monitor;
 import foundation.icon.test.common.BTPBlockHeader;
 import foundation.icon.test.common.Codec;
 import foundation.icon.test.common.Constants;
@@ -46,16 +48,17 @@ import org.junit.jupiter.api.TestMethodOrder;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -68,6 +71,7 @@ public class BTP2APITest extends TestBase {
     private static GovScore govScore;
     private static Env.Node node = Env.nodes[0];
     private static SecureRandom secureRandom;
+    private final Object condVar = new Object();
 
     private byte[] getRandomBytes(int size) {
         byte[] bytes = new byte[size];
@@ -421,6 +425,79 @@ public class BTP2APITest extends TestBase {
         result = govScore.grantValidator(wallet.getAddress());
         assertFailure(result);
         LOG.infoExiting();
+    }
+
+    @Tag(Constants.TAG_JAVA_GOV)
+    @Test
+    @Order(200)
+    public void wsBtpMonitorTest() throws Exception {
+        KeyWallet wallet = node.wallet;
+
+        LOG.infoEntering("openBTPNetwork for test");
+        BigInteger nid = openBTPNetwork(NT_ETH, "wsBtpMonitor", wallet.getAddress());
+        var ntid = iconService.getBTPNetworkInfo(nid).execute().getNetworkTypeID();
+        LOG.infoExiting();
+
+        LOG.infoEntering("start monitorBTP");
+        BigInteger lastHeight = iconService.getLastBlock().execute().getHeight().add(BigInteger.ONE);
+        LOG.info("height: 0x" + lastHeight.toString(16));
+        LOG.info("networkId: 0x" + nid.toString(16));
+        Monitor<BTPNotification> monitor = iconService.monitorBTP(lastHeight, nid, true);
+        List<BTPNotification> notiList = new ArrayList<>();
+        boolean started = monitor.start(new Monitor.Listener<BTPNotification>() {
+            boolean stop = false;
+
+            @Override
+            public void onStart() {
+                synchronized (condVar) {
+                    assertFalse(stop);
+                }
+            }
+
+            @Override
+            public void onEvent(BTPNotification msg) {
+                synchronized (condVar) {
+                    assertFalse(stop);
+                    LOG.info("header: " + msg.getHeader() + ", proof: " + msg.getProof());
+                    notiList.add(msg);
+                    condVar.notify();
+                }
+            }
+
+            @Override
+            public void onError(long code) {
+                throw new RuntimeException("code: " + code);
+            }
+
+            @Override
+            public void onClose() {
+                synchronized (condVar) {
+                    assertFalse(stop);
+                    stop = true;
+                }
+            }
+        });
+        if (!started) {
+            throw new IllegalStateException();
+        }
+
+        var msgSN = 0;
+        LOG.infoEntering("Send first BTP message to " + nid);
+        byte[] msg = getRandomBytes(10);
+        var result = chainScore.sendBTPMessage(wallet, nid, msg);
+        LOG.infoExiting();
+
+        synchronized (condVar) {
+            condVar.wait(3000);
+            assertEquals(1, notiList.size());
+        }
+        checkEventLog(result.getEventLogs(), nid, msgSN);
+        var height = result.getBlockHeight().add(BigInteger.ONE);
+        Base64 header = iconService.getBTPHeader(nid, height).execute();
+        assertEquals(header, notiList.get(0).getHeader());
+
+        monitor.stop();
+        LOG.infoExiting("close");
     }
 
     private void setNodePublicKeys() throws IOException, ResultTimeoutException {
