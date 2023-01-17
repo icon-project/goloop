@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -51,4 +52,93 @@ func TestIScore(t *testing.T) {
 	t2 := ToIScore(o2)
 	assert.Equal(t, true, t1.Equal(t2))
 	assert.Equal(t, 0, t1.Value().Cmp(t2.Value()))
+}
+
+func TestIScore_Equal(t *testing.T) {
+	value := big.NewInt(100)
+	is := NewIScore(value)
+	is2 := NewIScore(value)
+	assert.True(t, is.Equal(is2))
+	assert.True(t, is2.Equal(is))
+
+	is2 = NewIScore(big.NewInt(200))
+	assert.False(t, is.Equal(is2))
+	assert.False(t, is2.Equal(is))
+
+	assert.False(t, is.Equal(nil))
+}
+
+func TestIScore_Value(t *testing.T) {
+	value := big.NewInt(100)
+	iscore := NewIScore(value)
+	assert.Zero(t, iscore.Value().Cmp(value))
+}
+
+func TestIScore_IsEmpty(t *testing.T) {
+	amount := big.NewInt(0)
+	iscore := NewIScore(amount)
+	assert.True(t, iscore.IsEmpty())
+
+	iscore = newIScore(icobject.Tag(TypeIScore))
+	assert.True(t, iscore.IsEmpty())
+}
+
+func TestIScore_Clear(t *testing.T) {
+	value := int64(100)
+	amount := big.NewInt(value)
+	iscore := NewIScore(amount)
+	assert.Equal(t, value, iscore.Value().Int64())
+
+	iscore.Clear()
+	assert.Zero(t, iscore.Value().Sign())
+}
+
+func TestIScore_Added(t *testing.T) {
+	var is *IScore
+	value := int64(100)
+	amount := big.NewInt(value)
+	is2 := is.Added(amount)
+	assert.Equal(t, value, is2.Value().Int64())
+
+	is3 := is2.Added(amount)
+	assert.Equal(t, value*2, is3.Value().Int64())
+	assert.Equal(t, value, is2.Value().Int64())
+}
+
+func TestIScore_Subtracted(t *testing.T) {
+	var is *IScore
+	value := int64(100)
+	values := []int64{-value, 0, value}
+
+	for rev := 0; rev <= icmodule.MaxRevision; rev++ {
+		is = nil
+		for _, v := range values {
+			is2 := is.Subtracted(rev, big.NewInt(v))
+			if rev < icmodule.RevisionFixIScoreSubtracted {
+				assert.Equal(t, v, is2.Value().Int64())
+			} else {
+				assert.Equal(t, -v, is2.Value().Int64())
+			}
+		}
+	}
+
+	for rev := 0; rev <= icmodule.MaxRevision; rev++ {
+		for _, v := range values {
+			is = NewIScore(new(big.Int))
+			is2 := is.Subtracted(rev, big.NewInt(v))
+			assert.Equal(t, -v, is2.Value().Int64())
+		}
+	}
+}
+
+func TestIScore_Clone(t *testing.T) {
+	value := int64(100)
+	amount := big.NewInt(value)
+	is := NewIScore(amount)
+	is2 := is.Clone()
+	assert.True(t, is.Equal(is2))
+
+	is3 := is2.Added(amount)
+	assert.False(t, is.Equal(is3))
+	assert.False(t, is2.Equal(is3))
 }
