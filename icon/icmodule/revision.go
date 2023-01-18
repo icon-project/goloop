@@ -66,7 +66,7 @@ const (
 	RevisionSetIRepViaNetworkProposal = Revision9
 	RevisionPreventDuplicatedEndpoint = Revision9
 
-	//RevisionLockAddress = Revision10
+	// RevisionLockAddress = Revision10
 
 	RevisionFixInvalidUnstake = Revision11
 

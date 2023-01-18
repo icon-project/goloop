@@ -74,7 +74,7 @@ func (is *IScore) Added(amount *big.Int) *IScore {
 func (is *IScore) Subtracted(amount *big.Int) *IScore {
 	n := new(IScore)
 	if is == nil {
-		n.value = amount
+		n.value = new(big.Int).Neg(amount)
 	} else {
 		n.value = new(big.Int).Sub(is.value, amount)
 	}
