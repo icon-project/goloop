@@ -84,8 +84,8 @@ func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
 		return nil
 	}
 
-	ret := maps[0]
-	for i := 1; i < size; i++ {
+	ret := make(map[string]interface{})
+	for i := 0; i < size; i++ {
 		for k, v := range maps[i] {
 			ret[k] = v
 		}

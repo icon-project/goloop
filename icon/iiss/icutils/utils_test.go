@@ -1,10 +1,14 @@
 package icutils
 
 import (
+	"fmt"
 	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
 )
 
 func TestPow10(t *testing.T) {
@@ -242,6 +246,182 @@ func TestValidateEmail(t *testing.T) {
 		t.Run(x, func(t *testing.T) {
 			err := ValidateEmail(x, 9)
 			assert.Error(t, err)
+		})
+	}
+}
+
+func TestBigInt2HexInt(t *testing.T) {
+	values := []int64{-100, 0, 100}
+	for _, value := range values {
+		h := BigInt2HexInt(big.NewInt(value))
+		assert.IsType(t, &common.HexInt{}, h)
+		assert.Equal(t, value, h.Value().Int64())
+	}
+}
+
+func TestMin(t *testing.T) {
+	type arg struct {
+		v0  int
+		v1  int
+		min int
+	}
+
+	args := []arg{
+		{0, 0, 0},
+		{1, 1, 1},
+		{-1, 1, -1},
+		{1, -1, -1},
+		{1, 2, 1},
+		{2, 1, 1},
+	}
+
+	for i, a := range args {
+		name := fmt.Sprintf("test-%d", i)
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, a.min, Min(a.v0, a.v1))
+		})
+	}
+}
+
+func TestIsNil(t *testing.T) {
+	var addr *common.Address
+	var i interface{} = addr
+
+	assert.True(t, addr == nil)
+	assert.False(t, i == nil)
+	assert.True(t, IsNil(i))
+}
+
+func TestICXToIScore(t *testing.T) {
+	type arg struct {
+		icx    int64
+		iscore int64
+	}
+
+	args := []arg{
+		{0, 0},
+		{1, 1000},
+	}
+
+	for i, a := range args {
+		name := fmt.Sprintf("test-%d", i)
+		t.Run(name, func(t *testing.T) {
+			ret := ICXToIScore(big.NewInt(a.icx))
+			assert.Equal(t, a.iscore, ret.Int64())
+		})
+	}
+}
+
+func TestIScoreToICX(t *testing.T) {
+	type arg struct {
+		iscore int64
+		icx    int64
+	}
+
+	args := []arg{
+		{0, 0},
+		{1, 0},
+		{10, 0},
+		{100, 0},
+		{1000, 1},
+		{10000, 10},
+	}
+
+	for i, a := range args {
+		name := fmt.Sprintf("test-%d", i)
+		t.Run(name, func(t *testing.T) {
+			ret := IScoreToICX(big.NewInt(a.iscore))
+			assert.Equal(t, a.icx, ret.Int64())
+		})
+	}
+}
+
+func TestMergeMaps(t *testing.T) {
+	m0 := map[string]interface{}{
+		"a": 0,
+		"b": 1,
+	}
+
+	m1 := map[string]interface{}{
+		"b": 11,
+		"c": 12,
+	}
+
+	m2 := map[string]interface{}{
+		"d": 13,
+		"e": 14,
+	}
+
+	ret := MergeMaps()
+	assert.Nil(t, ret)
+
+	ret = MergeMaps(m0)
+	assert.True(t, reflect.DeepEqual(ret, m0))
+	ret["c"] = 100
+	_, ok := m0["c"]
+	assert.False(t, ok)
+	assert.False(t, reflect.DeepEqual(ret, m0))
+
+	ret = MergeMaps(m0, m1)
+	assert.Equal(t, 3, len(ret))
+	assert.Equal(t, 0, ret["a"].(int))
+	assert.Equal(t, 11, ret["b"].(int))
+	assert.Equal(t, 12, ret["c"].(int))
+
+	ret = MergeMaps(m0, m1, m2)
+	assert.Equal(t, 5, len(ret))
+	assert.Equal(t, 0, ret["a"].(int))
+	assert.Equal(t, 11, ret["b"].(int))
+	assert.Equal(t, 12, ret["c"].(int))
+	assert.Equal(t, 13, ret["d"].(int))
+	assert.Equal(t, 14, ret["e"].(int))
+
+	assert.Equal(t, 2, len(m0))
+	assert.Equal(t, 0, m0["a"].(int))
+	assert.Equal(t, 1, m0["b"].(int))
+
+	assert.Equal(t, 2, len(m1))
+	assert.Equal(t, 11, m1["b"].(int))
+	assert.Equal(t, 12, m1["c"].(int))
+
+	assert.Equal(t, 2, len(m2))
+	assert.Equal(t, 13, m2["d"].(int))
+	assert.Equal(t, 14, m2["e"].(int))
+}
+
+func TestValidateCountryAlpha3(t *testing.T) {
+	type arg struct {
+		alpha3 string
+		valid  bool
+	}
+
+	args := []arg{
+		{"KOR", true},
+		{"kor", true},
+		{"Kor", true},
+		{"kOr", true},
+		{"koR", true},
+		{"USA", true},
+		{"usa", true},
+		{"FRA", true},
+		{"fra", true},
+		{"JPN", true},
+		{"jpn", true},
+		{"CHN", true},
+		{"chn", true},
+		{"abc", false},
+		{"000", false},
+		{"k0r", false},
+	}
+
+	for _, a := range args {
+		t.Run("test-"+a.alpha3, func(t *testing.T) {
+			err := ValidateCountryAlpha3(a.alpha3)
+			if a.valid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
 		})
 	}
 }
