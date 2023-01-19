@@ -314,9 +314,34 @@ func (t *Node) NewTx() *Transaction {
 	return NewTx().SetTimestamp(blk.Timestamp())
 }
 
-func (t *Node) ProposalBytesFor(blk module.Block) (pmBS_ []byte, bpmBS_ []byte, bps_ consensus.PartSet) {
+func (t *Node) ProposalBytesFor(blk module.Block, round int32) (pmBS_ []byte, bpmBS_ []byte, bps_ consensus.PartSet) {
 	psb := consensus.NewPartSetBuffer(consensus.ConfigBlockPartSize)
 	assert.NoError(t, blk.MarshalHeader(psb))
+	assert.NoError(t, blk.MarshalBody(psb))
+	bps := psb.PartSet()
+	msg := consensus.NewProposalMessage()
+	msg.Height = blk.Height()
+	msg.Round = round
+	msg.BlockPartSetID = bps.ID()
+	msg.POLRound = -1
+	assert.NoError(t, msg.Sign(t.Chain.Wallet()))
+	pmBS := codec.MustMarshalToBytes(msg)
+	bpm := consensus.BlockPartMessage{}
+	assert.Equal(t, 1, bps.Parts())
+	bpm.Height = blk.Height()
+	bpm.BlockPart = bps.GetPart(0).Bytes()
+	bpm.Index = uint16(0)
+	bpm.Nonce = 0
+	bpmBS := codec.MustMarshalToBytes(bpm)
+	return pmBS, bpmBS, bps
+}
+
+func (t *Node) InvalidProposalBytesFor(blk module.Block) (pmBS_ []byte, bpmBS_ []byte, bps_ consensus.PartSet) {
+	psb := consensus.NewPartSetBuffer(consensus.ConfigBlockPartSize)
+	assert.NoError(t, blk.MarshalHeader(psb))
+	// write breaking one byte
+	_, err := psb.Write([]byte{0})
+	assert.NoError(t, err)
 	assert.NoError(t, blk.MarshalBody(psb))
 	bps := psb.PartSet()
 	msg := consensus.NewProposalMessage()
@@ -336,14 +361,29 @@ func (t *Node) ProposalBytesFor(blk module.Block) (pmBS_ []byte, bpmBS_ []byte, 
 	return pmBS, bpmBS, bps
 }
 
-func (t *Node) VoteFor(vt consensus.VoteType, blk module.Block, bpsID *consensus.PartSetID) *consensus.VoteMessage {
+func (t *Node) VoteFor(vt consensus.VoteType, blk module.Block, bpsID *consensus.PartSetID, round int32) *consensus.VoteMessage {
 	return consensus.NewVoteMessage(
 		t.Chain.Wallet(),
 		vt,
 		blk.Height(),
-		0,
+		round,
 		blk.ID(),
 		bpsID,
+		blk.Timestamp()+1,
+		nil,
+		nil,
+		0,
+	)
+}
+
+func (t *Node) NilVoteFor(vt consensus.VoteType, blk module.Block, r int32) *consensus.VoteMessage {
+	return consensus.NewVoteMessage(
+		t.Chain.Wallet(),
+		vt,
+		blk.Height(),
+		r,
+		codec.MustMarshalToBytes(t.Chain.NID()),
+		nil,
 		blk.Timestamp()+1,
 		nil,
 		nil,

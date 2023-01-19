@@ -58,7 +58,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 	tsc.SetThreshold(5 * time.Minute)
 
 	t.Run("dummy_logger", func(t *testing.T) {
-		mgr, err := NewTXIDManager(dbase, tsc)
+		mgr, err := NewTXIDManager(dbase, tsc, nil)
 		assert.NoError(t, err)
 
 		logger := mgr.NewLogger(module.TransactionGroupNormal, 0, 0)
@@ -131,7 +131,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 	})
 
 	t.Run("same height same tx", func(t *testing.T) {
-		mgr, err := NewTXIDManager(dbase, tsc)
+		mgr, err := NewTXIDManager(dbase, tsc, nil)
 		assert.NoError(t, err)
 
 		has, err := mgr.HasRecent(tid1)
@@ -206,7 +206,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 	})
 
 	t.Run("old_block_prunning", func(t *testing.T) {
-		mgr, err := NewTXIDManager(dbase, tsc)
+		mgr, err := NewTXIDManager(dbase, tsc, nil)
 		assert.NoError(t, err)
 
 		height := baseHeight
@@ -253,7 +253,7 @@ func TestTXIDManager_RecordedLocator(t *testing.T) {
 	})
 
 	t.Run("new height same tx", func(t *testing.T) {
-		history, err := NewTXIDManager(dbase, tsc)
+		history, err := NewTXIDManager(dbase, tsc, nil)
 		assert.NoError(t, err)
 		logger := history.NewLogger(module.TransactionGroupNormal, baseHeight+1, baseTS)
 		err = logger.Add(tid1, false)

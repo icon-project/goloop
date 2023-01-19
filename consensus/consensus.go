@@ -68,72 +68,6 @@ func (hrs hrs) String() string {
 	return fmt.Sprintf("{Height:%d Round:%d Step:%s}", hrs.height, hrs.round, hrs.step)
 }
 
-type blockPartSet struct {
-	PartSet
-
-	// nil if partset is incomplete
-	block          module.BlockData
-	validatedBlock module.BlockCandidate
-}
-
-func (bps *blockPartSet) Zerofy() {
-	bps.PartSet = nil
-	bps.block = nil
-	if bps.validatedBlock != nil {
-		bps.validatedBlock.Dispose()
-		bps.validatedBlock = nil
-	}
-}
-
-func (bps *blockPartSet) ID() *PartSetID {
-	if bps.PartSet == nil {
-		return nil
-	}
-	return bps.PartSet.ID()
-}
-
-func (bps *blockPartSet) IsZero() bool {
-	return bps.PartSet == nil && bps.block == nil
-}
-
-func (bps *blockPartSet) IsComplete() bool {
-	return bps.block != nil
-}
-
-func (bps *blockPartSet) Assign(oth *blockPartSet) {
-	bps.PartSet = oth.PartSet
-	bps.block = oth.block
-	if bps.validatedBlock == oth.validatedBlock {
-		return
-	}
-	if bps.validatedBlock != nil {
-		bps.validatedBlock.Dispose()
-	}
-	if oth.validatedBlock == nil {
-		bps.validatedBlock = nil
-	} else {
-		bps.validatedBlock = oth.validatedBlock.Dup()
-	}
-}
-
-// Set sets content of bps. Transfers ownership of bc to bps.
-func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCandidate) {
-	bps.PartSet = ps
-	bps.block = blk
-	bps.SetValidatedBlock(bc)
-}
-
-// SetValidatedBlock sets validatedBlock. Transfers ownership of bc to bps.
-func (bps *blockPartSet) SetValidatedBlock(bc module.BlockCandidate) {
-	if bps.validatedBlock == bc {
-		return
-	}
-	if bps.validatedBlock != nil {
-		bps.validatedBlock.Dispose()
-	}
-	bps.validatedBlock = bc
-}
-
 type consensus struct {
 	hrs
 
@@ -412,7 +346,7 @@ func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) 
 		return nil
 	}
 	cs.proposalPOLRound = msg.proposal.POLRound
-	cs.currentBlockParts.Set(NewPartSetFromID(msg.proposal.BlockPartSetID), nil, nil)
+	cs.currentBlockParts.SetByPartSetID(msg.proposal.BlockPartSetID)
 
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
@@ -435,16 +369,12 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool
 	if cs.currentBlockParts.GetPart(bp.Index()) != nil {
 		return -1, nil
 	}
-	if err := cs.currentBlockParts.AddPart(bp); err != nil {
+	added, err := cs.currentBlockParts.AddPart(bp, cs.c.BlockManager())
+	if !added && err != nil {
 		return -1, err
 	}
-	if cs.currentBlockParts.PartSet.IsComplete() {
-		block, err := cs.c.BlockManager().NewBlockDataFromReader(cs.currentBlockParts.NewReader())
-		if err != nil {
-			cs.log.Warnf("failed to create block. %+v\n", err)
-		} else {
-			cs.currentBlockParts.block = block
-		}
+	if added && err != nil {
+		cs.log.Warnf("fail to create block. %+v", err)
 	}
 
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
@@ -528,8 +458,8 @@ func (cs *consensus) handlePrevoteMessage(msg *VoteMessage, prevotes *voteSet) {
 			cs.lockedRound = -1
 			cs.lockedBlockParts.Zerofy()
 		}
-		if cs.round == msg.Round && partSetID != nil && !cs.currentBlockParts.ID().Equal(partSetID) {
-			cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
+		if cs.round == msg.Round && partSetID != nil {
+			cs.currentBlockParts.SetByPartSetID(partSetID)
 		}
 	}
 
@@ -664,7 +594,7 @@ func (cs *consensus) enterPropose() {
 					bps := psb.PartSet()
 
 					cs.sendProposal(bps, -1)
-					cs.currentBlockParts.Set(bps, blk, blk)
+					cs.currentBlockParts.SetByPartSetAndValidatedBlock(bps, blk)
 					cs.enterPrevote()
 				},
 			)
@@ -704,9 +634,9 @@ func (cs *consensus) enterPrevote() {
 
 	if !cs.lockedBlockParts.IsZero() {
 		cs.sendVote(VoteTypePrevote, &cs.lockedBlockParts)
-	} else if cs.currentBlockParts.IsComplete() {
+	} else if cs.currentBlockParts.HasBlockData() {
 		hrs := cs.hrs
-		if cs.currentBlockParts.validatedBlock != nil {
+		if cs.currentBlockParts.HasValidatedBlock() {
 			cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
 		} else if !cs.proposalHasValidProposer() {
 			cs.sendVote(VoteTypePrevote, nil)
@@ -741,7 +671,12 @@ func (cs *consensus) enterPrevote() {
 					}
 
 					if err == nil {
-						cs.currentBlockParts.SetValidatedBlock(blk)
+						cur := cs.currentBlockParts.block
+						// do not set validated block if currentBlockParts
+						// has different ID from blk.ID
+						if cur != nil && bytes.Equal(cur.ID(), blk.ID()) {
+							cs.currentBlockParts.SetByValidatedBlock(blk)
+						}
 						if cs.hrs.step <= stepPrevoteWait {
 							cs.sendVote(VoteTypePrevote, &cs.currentBlockParts)
 						}
@@ -822,7 +757,7 @@ func (cs *consensus) enterPrecommit() {
 		cs.log.Traceln("enterPrecommit: update lock round")
 		cs.lockedRound = cs.round
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
-	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
+	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.HasBlockData() {
 		cs.log.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
@@ -844,13 +779,15 @@ func (cs *consensus) enterPrecommit() {
 			cs.log.Errorf("fail to sync WAL: enterPrecommit: %+v\n", err)
 		}
 		cs.sendVote(VoteTypePrecommit, &cs.lockedBlockParts)
+	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
+		// polka for a block that we cannot create
+		// we cannot advance without upgrading the node
+		cs.log.Panicf("Cannot create block for polka block part set. Consider node upgrade. bpsID=%s", cs.currentBlockParts.ID())
 	} else {
 		// polka for a block we don't have.
 		// send nil precommit because we cannot write locked block on the WAL.
-		cs.log.Traceln("enterPrecommit: polka for we don't have")
-		if !cs.currentBlockParts.ID().Equal(partSetID) {
-			cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
-		}
+		cs.log.Traceln("enterPrecommit: polka for the block we don't have")
+		cs.currentBlockParts.SetByPartSetID(partSetID)
 		cs.lockedRound = -1
 		cs.lockedBlockParts.Zerofy()
 		cs.sendVote(VoteTypePrecommit, nil)
@@ -903,7 +840,7 @@ func (cs *consensus) enterPrecommitWait() {
 }
 
 func (cs *consensus) commitAndEnterNewHeight() {
-	if cs.currentBlockParts.validatedBlock == nil {
+	if !cs.currentBlockParts.HasValidatedBlock() {
 		hrs := cs.hrs
 		if cs.cancelBlockRequest != nil {
 			cs.cancelBlockRequest.Cancel()
@@ -926,7 +863,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				if err != nil {
 					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
-				cs.currentBlockParts.SetValidatedBlock(blk)
+				cs.currentBlockParts.SetByValidatedBlock(blk)
 				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.validatedBlock)
 				if err != nil {
 					cs.log.Panicf("commitAndEnterNewHeight: %+v\n", err)
@@ -966,9 +903,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 		}
 	}
 
-	if !cs.currentBlockParts.ID().Equal(partSetID) {
-		cs.currentBlockParts.Set(NewPartSetFromID(partSetID), nil, nil)
-	}
+	cs.currentBlockParts.SetByPartSetID(partSetID)
 
 	cs.notifySyncer()
 
@@ -1135,7 +1070,7 @@ func (cs *consensus) voteTimestamp() int64 {
 	blockIota := int64(cs.c.Regulator().MinCommitTimeout() / time.Microsecond)
 	if !cs.lockedBlockParts.IsZero() {
 		timestamp = cs.lockedBlockParts.block.Timestamp() + blockIota
-	} else if cs.currentBlockParts.IsComplete() {
+	} else if cs.currentBlockParts.HasBlockData() {
 		timestamp = cs.currentBlockParts.block.Timestamp() + blockIota
 	}
 	now := common.UnixMicroFromTime(time.Now())
@@ -1499,7 +1434,7 @@ func (cs *consensus) applyLockWAL() error {
 		if err != nil {
 			return err
 		}
-		cs.currentBlockParts.Set(lastBPSet, blk, nil)
+		cs.currentBlockParts.SetByPartSetAndBlock(lastBPSet, blk)
 		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
 		cs.lockedRound = lastBPSetLockRound
 	}
@@ -1881,7 +1816,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		return c, nil
 	}
 
-	if h == cs.height && !cs.currentBlockParts.PartSet.IsComplete() {
+	if h == cs.height && !cs.currentBlockParts.IsComplete() {
 		pcs := cs.hvs.votesFor(cs.commitRound, VoteTypePrecommit)
 		cvl, err := pcs.commitVoteListForOverTwoThirds(cs.nextPCM)
 		if err != nil {
@@ -2062,6 +1997,7 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		m := vl.Get(i)
 		index := cs.validators.IndexOf(m.address())
 		if index < 0 {
+			cs.log.Warnf("processBlock: invalid signer in commit vote list signer=%x indexInVoteList=%d", m.address(), i)
 			br.Reject()
 			return
 		}
@@ -2071,15 +2007,20 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	precommits := cs.hvs.votesFor(votes.Round, VoteTypePrecommit)
 	id, ok := precommits.getOverTwoThirdsPartSetID()
 	if !ok {
+		cs.log.Warnf("processBlock: no +2/3 precommits made for block id=%x", blk.ID())
 		br.Reject()
 		return
 	}
-	bps := NewPartSetFromID(id)
-	var validatedBlock module.BlockCandidate
-	if cs.currentBlockParts.ID().Equal(id) {
-		validatedBlock = cs.currentBlockParts.validatedBlock
+	psb := NewPartSetBuffer(ConfigBlockPartSize)
+	log.Must(blk.MarshalHeader(psb))
+	log.Must(blk.MarshalBody(psb))
+	ps := psb.PartSet()
+	if !ps.ID().Equal(id) {
+		cs.log.Warnf("processBlock: invalid blockBPSID blockBPSID=%s commitBPSID=%s blockID=%x", ps.ID(), id, blk.ID())
+		br.Reject()
+		return
 	}
-	cs.currentBlockParts.Set(bps, blk, validatedBlock)
+	cs.currentBlockParts.SetByPartSetAndBlock(ps, blk)
 	cs.syncing = false
 	br.Consume()
 	if cs.step < stepCommit {

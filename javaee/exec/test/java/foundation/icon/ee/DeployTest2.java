@@ -16,7 +16,7 @@
 
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.ServiceManager;
+import foundation.icon.ee.test.Jars;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.test.TransactionException;
 import foundation.icon.ee.types.Status;
@@ -122,14 +122,14 @@ public class DeployTest2 extends SimpleTest {
             }
             return 1;
         });
-        var caller1Code = ServiceManager.makeJar(Caller1.class);
+        var caller1Code = Jars.make(Caller1.class);
         var res = deployer.invoke("deploy", caller1Code, valueHolder.getAddress());
         Assertions.assertNotNull(res.getRet());
 
         res = valueHolder.query("getValue");
         Assertions.assertEquals("in Caller1 constructor", res.getRet());
 
-        var caller2Code = ServiceManager.makeJar(Caller2.class);
+        var caller2Code = Jars.make(Caller2.class);
         res = deployer.invoke("deploy", caller2Code, valueHolder.getAddress());
         Assertions.assertNull(res.getRet());
 
@@ -149,7 +149,7 @@ public class DeployTest2 extends SimpleTest {
             }
             return 1;
         });
-        var caller1Code = ServiceManager.makeJar(Caller1.class);
+        var caller1Code = Jars.make(Caller1.class);
         var res = deployer.invoke("deploy", caller1Code, valueHolder.getAddress());
         Assertions.assertNotNull(res.getRet());
         var childAddress = (foundation.icon.ee.types.Address) res.getRet();
@@ -157,14 +157,14 @@ public class DeployTest2 extends SimpleTest {
         res = valueHolder.query("getValue");
         Assertions.assertEquals("in Caller1 constructor", res.getRet());
 
-        var caller2Code = ServiceManager.makeJar(Caller2.class);
+        var caller2Code = Jars.make(Caller2.class);
         res = deployer.invoke("update", childAddress, caller2Code, valueHolder.getAddress());
         Assertions.assertNull(res.getRet());
 
         res = valueHolder.query("getValue");
         Assertions.assertEquals("in Caller1 constructor", res.getRet());
 
-        var caller3Code = ServiceManager.makeJar(Caller3.class);
+        var caller3Code = Jars.make(Caller3.class);
         res = deployer.invoke("update", childAddress, caller3Code, valueHolder.getAddress());
         Assertions.assertNotNull(res.getRet());
 
@@ -203,7 +203,7 @@ public class DeployTest2 extends SimpleTest {
     @Test
     public void deployAndCall() {
         var deployer = sm.mustDeploy(Deployer2.class);
-        var valueHolderCode = ServiceManager.makeJar(ValueHolder.class);
+        var valueHolderCode = Jars.make(ValueHolder.class);
         var res = deployer.invoke("deployAndCall",
                 valueHolderCode, "value", "getValue");
         Assertions.assertEquals("value", res.getRet());
@@ -214,7 +214,7 @@ public class DeployTest2 extends SimpleTest {
         var deployer = sm.mustDeploy(Deployer2.class);
         // deploy any contract
         var dapp1 = sm.mustDeploy(Deployer2.class);
-        var valueHolderCode = ServiceManager.makeJar(ValueHolder.class);
+        var valueHolderCode = Jars.make(ValueHolder.class);
         var res = deployer.invoke("updateAndCall",
                 dapp1.getAddress(), valueHolderCode, "value", "getValue");
         Assertions.assertEquals("value", res.getRet());

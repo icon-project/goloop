@@ -187,6 +187,19 @@ public final class Converters {
         }
     };
 
+    public static final RpcConverter<BTPNotification> BTP_NOTIFICATION
+            = new RpcConverter<BTPNotification>() {
+        @Override
+        public BTPNotification convertTo(RpcItem object) {
+            return new BTPNotification(object.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(BTPNotification object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
     public static final RpcConverter<Base64[][]> BASE64_ARRAY_ARRAY
             = new RpcConverter<Base64[][]>() {
         @Override

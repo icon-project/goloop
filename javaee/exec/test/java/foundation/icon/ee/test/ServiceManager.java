@@ -10,13 +10,11 @@ import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.Proxy;
 import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.score.FileIO;
-import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.StepCost;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Strings;
 import org.aion.avm.core.IExternalState;
-import org.aion.avm.utilities.JarBuilder;
 import org.msgpack.core.MessagePack;
 import org.msgpack.value.ArrayValue;
 
@@ -46,6 +44,7 @@ public class ServiceManager implements Agent {
 
     private boolean isClassMeteringEnabled = true;
     private boolean isFullLogEnabled = false;
+    private boolean strip = true;
 
     public ServiceManager(Connection conn) {
         proxy = new MyProxy(conn);
@@ -76,6 +75,11 @@ public class ServiceManager implements Agent {
         stepCost = new StepCost(stepCosts);
     }
 
+    public ServiceManager(Connection conn, boolean strip) {
+        this(conn);
+        this.strip = strip;
+    }
+
     public void setIndexer(Indexer indexer) {
         this.indexer = indexer;
     }
@@ -88,23 +92,12 @@ public class ServiceManager implements Agent {
         allProxies.add(new MyProxy(c));
     }
 
-    public static byte[] makeJar(Class<?> c) {
-        return makeJar(c.getName(), new Class<?>[]{c});
+    public byte[] makeJar(Class<?> c) {
+        return Jars.make(c.getName(), new Class<?>[]{c}, strip);
     }
 
-    public static byte[] makeJar(String name, Class<?>[] all) {
-        byte[] preopt = JarBuilder.buildJarForExplicitMainAndClasses(name, all);
-        return new OptimizedJarBuilder(true, preopt, true)
-                .withUnreachableMethodRemover()
-                .withRenamer().withLog(System.out).getOptimizedBytes();
-    }
-
-    public static byte[] makeJar(String name, byte[] bc) {
-        byte[] preopt = JarBuilder.buildJarForExplicitClassNamesAndBytecode(
-                name, bc, Map.of());
-        return new OptimizedJarBuilder(true, preopt, true)
-                .withUnreachableMethodRemover()
-                .withRenamer().withLog(System.out).getOptimizedBytes();
+    public byte[] makeJar(String name, Class<?>[] all) {
+        return Jars.make(name, all, strip);
     }
 
     public Address newScoreAddress() {
@@ -142,7 +135,7 @@ public class ServiceManager implements Agent {
     }
 
     public ContractAddress mustDeploy(String className, byte[] byteCode, Object ...params) {
-        byte[] jar = makeJar(className, byteCode);
+        byte[] jar = Jars.make(className, byteCode, strip);
         return doMustDeploy(jar, null, params);
     }
 
@@ -169,7 +162,7 @@ public class ServiceManager implements Agent {
 
     public ContractAddress mustDeploy(Class<?>[] all, InvokeHandler ih,
             Object ... params) {
-        byte[] jar = makeJar(all[0].getName(), all);
+        byte[] jar = Jars.make(all[0].getName(), all, strip);
         return doMustDeploy(jar, ih, params);
     }
 
@@ -493,6 +486,10 @@ public class ServiceManager implements Agent {
         boolean readOnlyMethod = false;
         if (!method.equals("<init>")) {
             var m = context.getMethod(method);
+            if (m==null) {
+                // FIXME: correct step used
+                return new Result(Status.MethodNotFound, BigInteger.ZERO, null);
+            }
             readOnlyMethod = (m.getFlags()&Method.Flags.READONLY) != 0;
         }
         var prevIsReadOnly = isReadOnly;

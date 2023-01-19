@@ -16,6 +16,7 @@
 
 package foundation.icon.ee;
 
+import foundation.icon.ee.test.NoDebugTest;
 import foundation.icon.ee.test.SimpleTest;
 import org.junit.jupiter.api.Test;
 import score.Address;
@@ -93,12 +94,14 @@ public class MapOrderTest extends SimpleTest {
         taker.invoke("take", maker.getAddress());
     }
 
-    @Test
-    void structReturnValue() {
-        var maker = sm.mustDeploy(new Class<?>[]{
-                StructMapMaker.class, Struct.class
-        });
-        var taker = sm.mustDeploy(MapTaker.class);
-        taker.invoke("takeSorted", maker.getAddress());
+    public static class StructReturnValueTest extends NoDebugTest {
+        @Test
+        void structReturnValue() {
+            var maker = sm.mustDeploy(new Class<?>[]{
+                    StructMapMaker.class, Struct.class
+            });
+            var taker = sm.mustDeploy(MapTaker.class);
+            taker.invoke("takeSorted", maker.getAddress());
+        }
     }
 }

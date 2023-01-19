@@ -46,6 +46,12 @@ func (i HexInt) BigInt() (*big.Int, error) {
 	}
 }
 
+type HexBool string
+
+func (b HexBool) Bool() (bool, error) {
+	return common.ParseHexBool(string(b))
+}
+
 type Address string
 
 func (addr Address) Address() module.Address {

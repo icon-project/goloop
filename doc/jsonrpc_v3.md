@@ -23,6 +23,7 @@ Below table shows the most common "VALUE types".
 | <a id="T_ADDR_SCORE">T_ADDR_SCORE</a> | "cx" + 40 digit HEX string                        | cxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32                                               |
 | <a id="T_HASH">T_HASH</a>             | "0x" + 64 digit HEX string                        | 0xc71303ef8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238                       |
 | <a id="T_INT">T_INT</a>               | "0x" + lowercase HEX string. No zero padding.     | 0xa                                                                                      |
+| <a id="T_BOOL">T_BOOL</a>             | "0x1" for 'true', "0x0" for 'false'               | 0x1                                                                                      |
 | <a id="T_BIN_DATA">T_BIN_DATA</a>     | "0x" + lowercase HEX string. Length must be even. | 0x34b2                                                                                   |
 | <a id="T_SIG">T_SIG</a>               | base64 encoded string                             | VAia7YZ2Ji6igKWzjR2YsGa2m53nKPrfK7uXYW78QLE+ATehAVZPC40szvAiA6NEU5gCYB4c4qaQzqDh2ugcHgA= |
 | <a id="T_DATA_TYPE">T_DATA_TYPE</a>   | Type of data                                      | call, deploy or message                                                                  |

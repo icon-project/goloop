@@ -18,7 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class GoldenTest extends SimpleTest {
+public class GoldenTest extends NoDebugTest {
     private ByteArrayOutputStream outContent;
     private PrintStream prevOut;
 

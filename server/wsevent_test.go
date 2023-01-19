@@ -623,7 +623,7 @@ func TestEventRequest_Compile(t *testing.T) {
 	type fields struct {
 		EventFilter EventFilter
 		Height      common.HexInt64
-		Logs        common.HexInt32
+		Logs        common.HexBool
 		Filters     EventFilters
 	}
 	tests := []struct {

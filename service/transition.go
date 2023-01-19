@@ -917,7 +917,7 @@ func NewInitTransition(
 	logger log.Logger, plt base.Platform,
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
-	tim, err := NewTXIDManager(db, tsc)
+	tim, err := NewTXIDManager(db, tsc, nil)
 	if err != nil {
 		return nil, err
 	}

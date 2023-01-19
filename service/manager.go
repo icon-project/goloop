@@ -30,8 +30,12 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-const ConfigTransitionResultCacheEntryCount = 10
-const ConfigTransitionResultCacheEntrySize = 1024 * 1024
+const (
+	ConfigTransitionResultCacheEntryCount = 10
+	ConfigTransitionResultCacheEntrySize  = 1024 * 1024
+	ConfigMaxDroppedTxSlotSize            = 10000
+	ConfigDroppedTxSlotDuration           = 1000 * time.Millisecond
+)
 
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
@@ -72,7 +76,12 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		return nil, err
 	}
 	tsc := NewTimestampChecker()
-	tim, err := NewTXIDManager(chain.Database(), tsc)
+	droppedTxSlotSize := chain.NormalTxPoolSize()
+	if droppedTxSlotSize > ConfigMaxDroppedTxSlotSize {
+		droppedTxSlotSize = ConfigMaxDroppedTxSlotSize
+	}
+	tic := NewTxIDCache(ConfigDroppedTxSlotDuration, droppedTxSlotSize, logger)
+	tim, err := NewTXIDManager(chain.Database(), tsc, tic)
 	if err != nil {
 		logger.Warnf("FAIL to create TXIDManager : %v\n", err)
 		return nil, err

@@ -17,23 +17,25 @@
 package foundation.icon.ee.io;
 
 import java.math.BigInteger;
-import java.util.Arrays;
 
-public class RLPDataWriter extends AbstractRLPDataWriter implements DataWriter {
-    @Override
-    protected byte[] toByteArray(BigInteger bi) {
-        if (bi.signum() < 0) {
-            throw new IllegalArgumentException("cannot encode negative BigInteger");
-        }
-        var ba = bi.toByteArray();
-        if (ba[0] == 0) {
-            return Arrays.copyOfRange(ba, 1, ba.length);
-        }
-        return ba;
+public class RLPNDataReader extends AbstractRLPDataReader implements DataReader {
+    public RLPNDataReader(byte[] data) {
+        super(data);
     }
 
     @Override
-    protected void writeNullity(ByteArrayBuilder os, boolean nullity) {
-        throw new UnsupportedOperationException("Cannot write null or nullable in RLP codec");
+    protected int peekNull(byte[] ba, int offset, int len, boolean forRead) {
+        if (len < 2) {
+            return 0;
+        }
+        if (ba[offset] == (byte) 0xf8 && (ba[offset + 1] == 0)) {
+            return 2;
+        }
+        return 0;
+    }
+
+    @Override
+    protected BigInteger peekBigInteger(byte[] ba, int offset, int len) {
+        return new BigInteger(ba, offset, len);
     }
 }

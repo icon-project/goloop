@@ -70,3 +70,7 @@ func UseWallet(w module.Wallet) FixtureOption {
 func AddDefaultNode(v bool) FixtureOption {
 	return UseConfig(&FixtureConfig{AddDefaultNode: &v})
 }
+
+func UseBMFactory(f func(ctx *NodeContext) module.BlockManager) FixtureOption {
+	return UseConfig(&FixtureConfig{NewBM: f})
+}

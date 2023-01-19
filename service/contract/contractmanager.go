@@ -90,8 +90,12 @@ func IsCallableDataType(dt *string) bool {
 func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to module.Address, param []byte, tid []byte) error {
 	cm := cc.ContractManager()
 	sas := cc.GetAccountState(to.ID())
-	sas.InitContractAccount(owner)
-	sas.DeployContract([]byte(contentID), state.SystemEE, state.CTAppSystem, nil, tid)
+	if ok := sas.InitContractAccount(owner); !ok {
+		return errors.Errorf("fail to initialize contract addr=%s", to.String())
+	}
+	if _, err := sas.DeployContract([]byte(contentID), state.SystemEE, state.CTAppSystem, nil, tid); err != nil {
+		return err
+	}
 	if err := sas.AcceptContract(tid, tid); err != nil {
 		return err
 	}
@@ -106,7 +110,9 @@ func DeployAndInstallSystemSCORE(cc CallContext, contentID string, owner, to mod
 	if err := CheckMethod(score, apiInfo); err != nil {
 		return err
 	}
-	sas.MigrateForRevision(cc.Revision())
+	if err := sas.MigrateForRevision(cc.Revision()); err != nil {
+		return err
+	}
 	sas.SetAPIInfo(apiInfo)
 	return nil
 }

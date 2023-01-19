@@ -14,13 +14,13 @@ import (
 type BTPRequest struct {
 	Height    common.HexInt64 `json:"height"`
 	NetworkId common.HexInt64 `json:"networkID"`
-	ProofFlag bool            `json:"proofFlag"`
+	ProofFlag common.HexBool  `json:"proofFlag"`
 	bn        BTPNotification
 }
 
 type BTPNotification struct {
-	Header common.HexBytes `json:"header"`
-	Proof  string          `json:"proof,omitempty"`
+	Header string `json:"header"`
+	Proof  string `json:"proof,omitempty"`
 }
 
 func (wm *wsSessionManager) RunBtpSession(ctx echo.Context) error {
@@ -90,7 +90,7 @@ loop:
 				}
 
 				var flag uint
-				if br.ProofFlag == true && blk.Height() != nw.StartHeight()+1 {
+				if br.ProofFlag.Value && blk.Height() != nw.StartHeight()+1 {
 					flag = module.FlagBTPBlockHeader | module.FlagBTPBlockProof
 				} else {
 					flag = module.FlagBTPBlockHeader
@@ -98,7 +98,7 @@ loop:
 
 				btpBlock, proof, err := cs.GetBTPBlockHeaderAndProof(blk, br.NetworkId.Value, flag)
 				if err == nil {
-					br.bn.Header = btpBlock.HeaderBytes()
+					br.bn.Header = base64.StdEncoding.EncodeToString(btpBlock.HeaderBytes())
 					if flag == module.FlagBTPBlockHeader|module.FlagBTPBlockProof {
 						br.bn.Proof = base64.StdEncoding.EncodeToString(proof)
 					}

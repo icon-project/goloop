@@ -17,7 +17,7 @@
 package foundation.icon.ee;
 
 import foundation.icon.ee.test.ContractAddress;
-import foundation.icon.ee.test.ServiceManager;
+import foundation.icon.ee.test.Jars;
 import foundation.icon.ee.test.SimpleTest;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
@@ -25,11 +25,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import score.Context;
 import score.annotation.External;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.SecureRandom;
 
 public class DeployInvalidJarTest extends SimpleTest {
     public static class Score {
@@ -41,7 +36,7 @@ public class DeployInvalidJarTest extends SimpleTest {
 
     @Test
     void packageError() {
-        var jar = ServiceManager.makeJar(Score.class);
+        var jar = Jars.make(Score.class);
         for (int i=0; i<jar.length/2; i++) {
             jar[jar.length-i-1] = (byte)~jar[jar.length-i-1];
         }
@@ -56,7 +51,7 @@ public class DeployInvalidJarTest extends SimpleTest {
 
     @Test
     void illegalFormat() {
-        var jar = ServiceManager.makeJar(Score.class);
+        var jar = Jars.make(Score.class);
         jar[2] = (byte)~jar[2];
         jar[3] = (byte)~jar[3];
         var res = sm.tryDeploy(jar);

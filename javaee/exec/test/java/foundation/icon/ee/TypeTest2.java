@@ -17,7 +17,7 @@
 package foundation.icon.ee;
 
 import foundation.icon.ee.test.ContractAddress;
-import foundation.icon.ee.test.SimpleTest;
+import foundation.icon.ee.test.NoDebugTest;
 import foundation.icon.ee.util.Strings;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 
 
-public class TypeTest2 extends SimpleTest {
+public class TypeTest2 extends NoDebugTest {
     public static class Person {
         private String name;
         private int age;

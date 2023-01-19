@@ -17,7 +17,7 @@ import (
 type EventRequest struct {
 	EventFilter
 	Height common.HexInt64 `json:"height"`
-	Logs   common.HexInt32 `json:"logs,omitempty""`
+	Logs   common.HexBool  `json:"logs,omitempty"`
 
 	Filters EventFilters `json:"eventFilters,omitempty"`
 }
@@ -161,7 +161,7 @@ loop:
 				if err != nil {
 					break loop
 				}
-				if es, el, err := filters2.MatchEvents(r, er.Logs.Value != 0); err == nil && len(es) > 0 {
+				if es, el, err := filters2.MatchEvents(r, er.Logs.Value); err == nil && len(es) > 0 {
 					var en EventNotification
 					en.Height.Value = h
 					en.Hash = blk.ID()

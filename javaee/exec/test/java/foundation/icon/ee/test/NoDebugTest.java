@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ICON Foundation
+ * Copyright 2023 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,22 @@
  * limitations under the License.
  */
 
-package foundation.icon.icx.data;
+package foundation.icon.ee.test;
 
-public class Base64 {
-    private final String data;
+import foundation.icon.ee.ipc.Connection;
+import org.aion.avm.core.AvmConfiguration;
 
-    public Base64(String data) {
-        this.data = data;
-    }
-
-    public byte[] decode() {
-        return java.util.Base64.getDecoder().decode(data);
+public class NoDebugTest extends SimpleTest {
+    @Override
+    public ServiceManager newServiceManager(Connection conn) {
+        return new ServiceManager(conn, true);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj instanceof Base64) {
-            Base64 other = (Base64) obj;
-            return this.data.equals(other.data);
-        }
-        return false;
-    }
-
-    @Override
-    public String toString() {
-        return this.data;
+    public AvmConfiguration newAvmConfiguration() {
+        var conf = new AvmConfiguration();
+        conf.testMode = true;
+        conf.preserveDebuggability = false;
+        return conf;
     }
 }

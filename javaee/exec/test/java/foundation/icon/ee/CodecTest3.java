@@ -23,6 +23,12 @@ import score.annotation.External;
 
 public class CodecTest3 extends SimpleTest {
     public static class Score {
+        private String codec;
+
+        public Score(String codec) {
+            this.codec = codec;
+        }
+
         @External
         public void readLess() {
             var w = Context.newByteArrayObjectWriter("RLPn");
@@ -76,14 +82,21 @@ public class CodecTest3 extends SimpleTest {
     }
 
     @Test
-    void readLess() {
-        var c = sm.mustDeploy(Score.class);
+    void test() {
+        var codecs = new String[]{"RLPn", "RLP"};
+        for (var codec : codecs) {
+            readLess(codec);
+            readIfHasNext(codec);
+        }
+    }
+
+    void readLess(String codec) {
+        var c = sm.mustDeploy(Score.class, codec);
         c.invoke("readLess");
     }
 
-    @Test
-    void readIfHasNext() {
-        var c = sm.mustDeploy(Score.class);
+    void readIfHasNext(String codec) {
+        var c = sm.mustDeploy(Score.class, codec);
         c.invoke("readIfHasNext");
     }
 }

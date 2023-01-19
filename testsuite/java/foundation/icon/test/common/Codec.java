@@ -20,12 +20,12 @@ public abstract class Codec {
     public static final Codec rlp = new Codec() {
         @Override
         public DataReader newReader(byte[] bytes) {
-            return new RLPDataReader(bytes);
+            return new RLPNDataReader(bytes);
         }
 
         @Override
         public DataWriter newWriter() {
-            return new RLPDataWriter();
+            return new RLPNDataWriter();
         }
     };
 }

@@ -133,6 +133,7 @@ public interface ObjectWriter {
      * Writes a boolean.
      *
      * @param v a boolean value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(boolean v);
@@ -141,6 +142,7 @@ public interface ObjectWriter {
      * Writes a byte.
      *
      * @param v a byte value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(byte v);
@@ -149,6 +151,7 @@ public interface ObjectWriter {
      * Writes a short.
      *
      * @param v a short value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(short v);
@@ -157,6 +160,7 @@ public interface ObjectWriter {
      * Writes a character.
      *
      * @param v a character value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(char v);
@@ -165,6 +169,7 @@ public interface ObjectWriter {
      * Writes a integer.
      *
      * @param v an integer value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(int v);
@@ -173,6 +178,7 @@ public interface ObjectWriter {
      * Writes a float.
      *
      * @param v a float value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(float v);
@@ -181,6 +187,7 @@ public interface ObjectWriter {
      * Writes a long.
      *
      * @param v a long value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(long v);
@@ -189,6 +196,7 @@ public interface ObjectWriter {
      * Writes a double.
      *
      * @param v a double value.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      */
     void write(double v);
@@ -197,6 +205,7 @@ public interface ObjectWriter {
      * Writes a big integer.
      *
      * @param v a big integer.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws NullPointerException If {@code v} is {@code null}.
      */
@@ -206,6 +215,7 @@ public interface ObjectWriter {
      * Writes a string.
      *
      * @param v a string.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws NullPointerException If {@code v} is {@code null}.
      */
@@ -215,6 +225,7 @@ public interface ObjectWriter {
      * Writes a byte array.
      *
      * @param v a byte array.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws NullPointerException If {@code v} is {@code null}.
      */
@@ -224,6 +235,7 @@ public interface ObjectWriter {
      * Writes an address.
      *
      * @param v an address.
+     * @throws IllegalArgumentException if the value is invalid for this writer.
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws NullPointerException If {@code v} is {@code null}.
      */
@@ -241,11 +253,12 @@ public interface ObjectWriter {
      * </pre></blockquote>
      *
      * @param v object to be written.
-     * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
      *          the method threw {@link Throwable} which is not an
-     *          {@link RuntimeException}.
+     *          {@link RuntimeException}, or if the value is invalid for this
+     *          writer.
+     * @throws IllegalStateException if this writer is invalidated one.
      * @throws NullPointerException If {@code v} is {@code null}.
      */
     void write(Object v);
@@ -254,11 +267,14 @@ public interface ObjectWriter {
      * Writes a nullable object.
      *
      * @param v object to be written.
-     * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
      *          the method threw {@link Throwable} which is not an
-     *          {@link RuntimeException}.
+     *          {@link RuntimeException}, or if the value is invalid for this
+     *          writer.
+     * @throws IllegalStateException if this writer is invalidated one.
+     * @throws UnsupportedOperationException if this writer cannot write null or
+     *          nullable.
      * @see #write(Object)
      */
     void writeNullable(Object v);
@@ -267,11 +283,12 @@ public interface ObjectWriter {
      * Writes objects.
      *
      * @param v objects to be written.
-     * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
      *          the method threw {@link Throwable} which is not an
-     *          {@link RuntimeException}.
+     *          {@link RuntimeException}, or if the value is invalid for this
+     *          writer.
+     * @throws IllegalStateException if this writer is invalidated one.
      * @throws NullPointerException If {@code v} is {@code null}.
      * @see #write(Object)
      */
@@ -281,11 +298,14 @@ public interface ObjectWriter {
      * Writes nullable objects.
      *
      * @param v objects to be written.
-     * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
      *          the method threw {@link Throwable} which is not an
-     *          {@link RuntimeException}.
+     *          {@link RuntimeException}, or if the value is invalid for this
+     *          writer.
+     * @throws IllegalStateException if this writer is invalidated one.
+     * @throws UnsupportedOperationException if this writer cannot write null or
+     *          nullable.
      * @see #write(Object)
      */
     void writeNullable(Object... v);
@@ -294,6 +314,8 @@ public interface ObjectWriter {
      * Writes a null.
      *
      * @throws IllegalStateException if this writer is invalidated one.
+     * @throws UnsupportedOperationException if this writer cannot write null or
+     *          nullable.
      */
     void writeNull();
 
@@ -317,6 +339,8 @@ public interface ObjectWriter {
      *
      * @param l number of elements.
      * @throws IllegalStateException if this writer is invalidated one.
+     * @throws UnsupportedOperationException if this writer cannot write null or
+     *          nullable.
      * @see ObjectWriter
      */
     void beginNullableList(int l);
@@ -330,7 +354,8 @@ public interface ObjectWriter {
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
      *          the method threw {@link Throwable} which is not an
-     *          {@link RuntimeException}.
+     *          {@link RuntimeException}, or if the value is invalid for this
+     *          writer.
      * @see ObjectWriter
      */
     void writeListOf(Object... v);
@@ -344,7 +369,10 @@ public interface ObjectWriter {
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
      *          the method threw {@link Throwable} which is not an
-     *          {@link RuntimeException}.
+     *          {@link RuntimeException}, or if the value is invalid for this
+     *          writer.
+     * @throws UnsupportedOperationException if this writer cannot write null or
+     *          nullable.
      * @see ObjectWriter
      */
     void writeListOfNullable(Object... v);
@@ -369,6 +397,8 @@ public interface ObjectWriter {
      *
      * @param l number of elements.
      * @throws IllegalStateException if this writer is invalidated one.
+     * @throws UnsupportedOperationException if this writer cannot write null or
+     *          nullable.
      * @see ObjectWriter
      */
     void beginNullableMap(int l);

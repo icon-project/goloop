@@ -1,6 +1,6 @@
 package foundation.icon.ee;
 
-import foundation.icon.ee.test.ServiceManager;
+import foundation.icon.ee.test.Jars;
 import foundation.icon.ee.test.SimpleTest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -58,7 +58,7 @@ public class UpdateTest extends SimpleTest {
 
     @Test
     public void selfSame() {
-        var jar = ServiceManager.makeJar(CodeSelf.class);
+        var jar = Jars.make(CodeSelf.class);
         var c = sm.mustDeploy(jar, "name1");
         var res = c.invoke("update", jar, "name2");
         Assertions.assertEquals("name1", res.getRet());
@@ -69,11 +69,11 @@ public class UpdateTest extends SimpleTest {
     @Test
     public void ab() {
         var parent = sm.mustDeploy(Parent.class);
-        var codeA = ServiceManager.makeJar(CodeA.class);
+        var codeA = Jars.make(CodeA.class);
         parent.invoke("updateChild", (Object) codeA);
         var res = parent.invoke("callChild");
         Assertions.assertEquals("CodeA", res.getRet());
-        var codeB = ServiceManager.makeJar(CodeB.class);
+        var codeB = Jars.make(CodeB.class);
         parent.invoke("updateChild", (Object) codeB);
         res = parent.invoke("callChild");
         Assertions.assertEquals("CodeB", res.getRet());
