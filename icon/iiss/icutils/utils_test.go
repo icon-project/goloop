@@ -289,7 +289,7 @@ func TestIsNil(t *testing.T) {
 
 	assert.True(t, addr == nil)
 	assert.False(t, i == nil)
-	assert.True(t, IsNil(addr))
+	assert.True(t, IsNil(i))
 }
 
 func TestICXToIScore(t *testing.T) {
