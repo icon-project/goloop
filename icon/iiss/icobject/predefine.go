@@ -16,65 +16,6 @@
 
 package icobject
 
-import (
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/trie"
-	"math/big"
-)
-
 const (
 	TypeBytes = TypeReserved + iota
 )
-
-type ObjectBigInt struct {
-	NoDatabase
-	Value *big.Int
-}
-
-func (obi *ObjectBigInt) Version() int {
-	return 0
-}
-
-func (obi *ObjectBigInt) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.Decode(&obi.Value)
-}
-
-func (obi *ObjectBigInt) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.Encode(obi.Value)
-}
-
-func (obi *ObjectBigInt) Equal(o Impl) bool {
-	if obi2, ok := o.(*ObjectBigInt); ok {
-		return obi.Value.Cmp(obi2.Value) == 0
-	} else {
-		return false
-	}
-}
-
-func (obi *ObjectBigInt) Clear() {
-	obi.Value = new(big.Int)
-}
-
-func (obi *ObjectBigInt) IsEmpty() bool {
-	return obi.Value == nil || obi.Value.Sign() == 0
-}
-
-func (obi *ObjectBigInt) Int64() int64 {
-	if obi == nil {
-		return 0
-	}
-	return obi.Value.Int64()
-}
-
-func ToBigInt(obj trie.Object) *ObjectBigInt {
-	if obj == nil {
-		return nil
-	}
-	return obj.(*Object).Real().(*ObjectBigInt)
-}
-
-func NewObjectBigInt(tag Tag) *ObjectBigInt {
-	return &ObjectBigInt{
-		Value: new(big.Int),
-	}
-}
