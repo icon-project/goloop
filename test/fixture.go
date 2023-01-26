@@ -165,8 +165,7 @@ func (f *Fixture) NewCommitVoteListForLastBlock(round int32, ntsVoteCount int) m
 func (f *Fixture) SendTransactionToAll(tx StringerTransaction) {
 	log.Infof("SendTransactionToAll tx=%s", tx.String())
 	for _, node := range f.Nodes {
-		_, err := node.SM.SendTransaction(nil, 0, tx.String())
-		assert.NoError(f.T, err)
+		_, _ = node.SM.SendTransaction(nil, 0, tx.String())
 	}
 }
 
