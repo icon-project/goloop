@@ -30,6 +30,10 @@ import (
 
 const TypeReserved int = 30
 
+const (
+	TypeBytes = TypeReserved + iota
+)
+
 type Tag int
 
 func (t Tag) Type() int {
