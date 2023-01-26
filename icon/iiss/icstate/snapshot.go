@@ -22,7 +22,6 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 type Snapshot struct {
@@ -52,22 +51,6 @@ func (ss *Snapshot) GetValue(key []byte) ([]byte, error) {
 	}
 
 	return value, nil
-}
-
-func (ss *Snapshot) GetRewardCalcInfo() (*RewardCalcInfo, error) {
-	obj, err := ss.store.Get(RewardCalcInfoKey)
-	if err != nil {
-		return nil, err
-	}
-	rc := ToRewardCalcInfo(obj)
-	if rc == nil {
-		rc = NewRewardCalcInfo()
-	}
-	return rc, nil
-}
-
-func (ss *Snapshot) NewState(readonly bool) *State {
-	return NewStateFromSnapshot(ss, readonly, icutils.NewIconLogger(nil))
 }
 
 func NewSnapshot(dbase db.Database, h []byte) *Snapshot {
