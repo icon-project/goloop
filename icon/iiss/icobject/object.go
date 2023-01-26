@@ -30,6 +30,10 @@ import (
 
 const TypeReserved int = 30
 
+const (
+	TypeBytes = TypeReserved + iota
+)
+
 type Tag int
 
 func (t Tag) Type() int {
@@ -56,9 +60,9 @@ type Impl interface {
 }
 
 type Object struct {
-	bytes   []byte
-	tag     Tag
-	real    Impl
+	bytes []byte
+	tag   Tag
+	real  Impl
 }
 
 var ObjectType = reflect.TypeOf((*Object)(nil))
@@ -220,9 +224,5 @@ func (o *NoDatabase) Resolve(bd merkle.Builder) error {
 }
 
 func GetFromMutableForObject(trie trie.MutableForObject, key []byte) (trie.Object, error) {
-	return trie.Get(key)
-}
-
-func GetFromImmutableForObject(trie trie.ImmutableForObject, key []byte) (trie.Object, error) {
 	return trie.Get(key)
 }
