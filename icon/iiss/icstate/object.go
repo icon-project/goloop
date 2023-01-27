@@ -35,24 +35,6 @@ const (
 	TypeIllegalDelegation
 )
 
-type StateAndSnapshot struct {
-	readonly bool
-}
-
-func (s *StateAndSnapshot) IsReadonly() bool {
-	return s.readonly
-}
-
-func (s *StateAndSnapshot) checkWritable() {
-	if s.readonly {
-		panic(errors.Errorf("Failed to clear readonly PRepBase: %v", s))
-	}
-}
-
-func (s *StateAndSnapshot) freeze() {
-	s.readonly = true
-}
-
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	switch tag.Type() {
 	case TypeAccount:
