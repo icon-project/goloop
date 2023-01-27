@@ -457,23 +457,28 @@ func TestSyncSimpleStateSyncStop(t *testing.T) {
 	// start forceSync
 	wg.Add(1)
 	go func() {
+		t.Logf("start ForceSync")
 		result, err := sSyncer.ForceSync()
 		t.Logf("ForceSync result=%v, err=%v", result, err)
 
 		// then result is nil, err is ErrInterrupted
 		assert.Nilf(t, result, "sync stop. result=%v", result)
-		assert.EqualErrorf(t, err, errors.ErrInterrupted.Error(), "sync stop. err=%v", err)
+		assert.EqualErrorf(t, err, errors.ErrInterrupted.Error(), "sync stop. err=%+v", err)
 
 		wg.Done()
 	}()
 
 	// when stop syncer
 	wg.Add(1)
-	time.AfterFunc(time.Millisecond, func() {
+	go func() {
 		t.Logf("call syncer Stop")
+		for !sSyncer.IsForceSyncing() {
+			runtime.Gosched()
+		}
+
 		sSyncer.Stop()
 		wg.Done()
-	})
+	}()
 
 	wg.Wait()
 }
