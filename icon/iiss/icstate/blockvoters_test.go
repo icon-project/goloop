@@ -12,10 +12,13 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func newDummyVoters(size int) []module.Address {
+func _newDummyVoters(size int, reverse bool) []module.Address {
 	voters := make([]module.Address, size)
 	for i := 0; i < size; i++ {
 		value := i
+		if reverse {
+			value = size - i
+		}
 		bs := make([]byte, common.AddressIDBytes)
 		for j := common.AddressIDBytes - 1; value > 0 || j >= 0; j-- {
 			bs[j] = byte(value & 0xff)
@@ -24,6 +27,13 @@ func newDummyVoters(size int) []module.Address {
 		voters[i] = common.MustNewAddress(bs)
 	}
 	return voters
+}
+func newDummyVoters(size int) []module.Address {
+	return _newDummyVoters(size, false)
+}
+
+func newDummyVotersReverse(size int) []module.Address {
+	return _newDummyVoters(size, true)
 }
 
 func TestBlockVotersData_init(t *testing.T) {
@@ -37,11 +47,13 @@ func TestBlockVotersData_equal(t *testing.T) {
 	voters0 := newDummyVoters(5)
 	voters1 := newDummyVoters(5)
 	voters2 := newDummyVoters(3)
+	voters2r := newDummyVotersReverse(3)
 	var voters3 []module.Address
 
 	bvd0 := newBlockVotersData(voters0)
 	bvd1 := newBlockVotersData(voters1)
 	bvd2 := newBlockVotersData(voters2)
+	bvd2r := newBlockVotersData(voters2r)
 	bvd3 := newBlockVotersData(voters3)
 
 	assert.True(t, bvd0.equal(bvd0))
@@ -55,6 +67,9 @@ func TestBlockVotersData_equal(t *testing.T) {
 	assert.False(t, bvd2.equal(bvd0))
 	assert.False(t, bvd1.equal(bvd2))
 	assert.False(t, bvd2.equal(bvd1))
+
+	assert.False(t, bvd2.equal(bvd2r))
+	assert.False(t, bvd2r.equal(bvd2))
 
 	assert.False(t, bvd3.equal(bvd0))
 	assert.False(t, bvd0.equal(bvd3))
