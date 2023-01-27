@@ -160,7 +160,7 @@ func TestIncreaseUnstake_multiple(t *testing.T) {
 
 	us := Unstakes{u1}
 
-	//u0 will place in 0 index(front of u1)
+	// u0 will place in 0 index(front of u1)
 	_, err := us.increaseUnstake(big.NewInt(a0), eh0, unstakeSlotMax, revision)
 	assert.NoError(t, err)
 	assert.True(t, u0.Equal(us[0]))
@@ -172,7 +172,7 @@ func TestIncreaseUnstake_multiple(t *testing.T) {
 	assert.True(t, u1.Equal(us[1]))
 	assert.True(t, u2.Equal(us[2]))
 
-	//unstake of last index will be updated
+	// unstake of last index will be updated
 	_, err = us.increaseUnstake(big.NewInt(a3-a2), eh3, unstakeSlotMax, revision)
 	assert.NoError(t, err)
 	assert.True(t, u0.Equal(us[0]))
@@ -203,7 +203,7 @@ func TestDecreaseUnstake_multiple(t *testing.T) {
 	us := Unstakes{u0, u1, u2, u3, u4}
 	assert.Equal(t, len(us), 5)
 
-	//remove last unstake
+	// remove last unstake
 	j, err := us.decreaseUnstake(u4.GetValue(), noMeaning, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(us))
@@ -211,7 +211,7 @@ func TestDecreaseUnstake_multiple(t *testing.T) {
 	assert.Equal(t, 1, len(j))
 	assert.Equal(t, eh4, j[0].Height)
 
-	//remove 2 unstakes
+	// remove 2 unstakes
 	j, err = us.decreaseUnstake(new(big.Int).Add(u2.GetValue(), u3.GetValue()), noMeaning, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(us))
@@ -221,12 +221,12 @@ func TestDecreaseUnstake_multiple(t *testing.T) {
 	assert.Equal(t, eh3, j[0].Height)
 	assert.Equal(t, eh2, j[1].Height)
 
-	//remove last unstake and decrease first unstake
+	// remove last unstake and decrease first unstake
 	v := big.NewInt(a1 + 1)
 	j, err = us.decreaseUnstake(v, noMeaning, revision)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(us))
-	expectedUnstake := NewUnstake(big.NewInt(a0 - 1), eh0)
+	expectedUnstake := NewUnstake(big.NewInt(a0-1), eh0)
 	assert.True(t, us[0].Equal(expectedUnstake))
 	assert.Equal(t, 1, len(j))
 	assert.Equal(t, eh1, j[0].Height)
@@ -283,4 +283,29 @@ func TestDecreaseUnstake_single(t *testing.T) {
 	// remove unstake
 	_, err = us.decreaseUnstake(u0.GetValue(), u0.GetExpire(), revision)
 	assert.Equal(t, 0, len(us))
+}
+
+func TestCalcUnstakeLockPeriod(t *testing.T) {
+	termPeriod := int64(icmodule.DayBlock)
+	lMin := big.NewInt(5 * termPeriod)
+	lMax := big.NewInt(20 * termPeriod)
+	totalSupply := big.NewInt(100)
+
+	prevPeriod := int64(0)
+	for i := 0; i <= 10; i++ {
+		totalStake := big.NewInt(int64(i * 10))
+		periodInBlock := CalcUnstakeLockPeriod(lMin, lMax, totalStake, totalSupply)
+		assert.True(t, periodInBlock <= lMax.Int64())
+		assert.True(t, periodInBlock >= lMin.Int64())
+
+		if i == 0 {
+			assert.True(t, periodInBlock == lMax.Int64())
+		} else if i < 8 {
+			assert.True(t, periodInBlock < prevPeriod)
+		} else {
+			assert.True(t, periodInBlock == lMin.Int64())
+		}
+
+		prevPeriod = periodInBlock
+	}
 }

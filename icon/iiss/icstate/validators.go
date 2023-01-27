@@ -43,7 +43,7 @@ type validatorsData struct {
 	// But it is exceptionally 0 if validatorList is updated at the end of the current term
 	lastHeight int64
 
-	nodeMap    map[string]int
+	nodeMap map[string]int
 }
 
 func (vd *validatorsData) init(prepSnapshots PRepSnapshots, ownerToNodeMapper OwnerToNodeMappable, size int) {
@@ -393,6 +393,10 @@ func (s *State) replaceMainPRepByOwner(owner module.Address, blockHeight int64) 
 // Do not modify PRepStatusState fields here
 func (s *State) replaceMainPRepByNode(node module.Address, blockHeight int64) (module.Address, error) {
 	vss := s.GetValidatorsSnapshot()
+	if vss == nil {
+		return nil, errors.InvalidStateError.Errorf("ValidatorsSnapshot not found: bh=%d", blockHeight)
+	}
+
 	i := vss.IndexOf(node)
 	if i < 0 {
 		return nil, errors.Errorf("Invalid validator: node=%s", node)
@@ -412,7 +416,7 @@ func (s *State) replaceMainPRepByNode(node module.Address, blockHeight int64) (m
 }
 
 func (s *State) logData(
-	blockHeight int64, node module.Address, vssIdx int, term *TermSnapshot, vss* ValidatorsSnapshot, startIdx int) {
+	blockHeight int64, node module.Address, vssIdx int, term *TermSnapshot, vss *ValidatorsSnapshot, startIdx int) {
 	s.logger.Errorf("Extra main prep error start =================================================")
 	s.logger.Errorf("bh=%d node=%s vssIdx=%d startIdx=%d", blockHeight, node, vssIdx, startIdx)
 	s.logger.Errorf("term=%s", term)

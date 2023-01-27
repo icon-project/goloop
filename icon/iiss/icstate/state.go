@@ -370,17 +370,6 @@ func (s *State) GetTotalBond() *big.Int {
 	return ret
 }
 
-func (s *State) ShiftVPenaltyMaskByNode(node module.Address) error {
-	owner := s.GetOwnerByNode(node)
-	ps := s.GetPRepStatusByOwner(owner, false)
-	if ps == nil {
-		return errors.Errorf("PRep not found: node=%v owner=%v", node, owner)
-	}
-
-	ps.shiftVPenaltyMask(s.GetConsistentValidationPenaltyMask())
-	return nil
-}
-
 func (s *State) GetOwnerByNode(node module.Address) module.Address {
 	return s.nodeOwnerCache.Get(node)
 }

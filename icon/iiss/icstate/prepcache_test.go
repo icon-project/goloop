@@ -8,13 +8,14 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 )
 
 func newDummyState(readonly bool) *State {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	return NewStateFromSnapshot(NewSnapshot(database, nil), readonly, nil)
+	return NewStateFromSnapshot(NewSnapshot(database, nil), readonly, log.GlobalLogger())
 }
 
 func flushAndNewState(s *State, readonly bool) *State {
@@ -31,13 +32,13 @@ func newDummyPRepInfo(i int) *PRepInfo {
 	website := fmt.Sprintf("https://%s.example.com/", name)
 	details := fmt.Sprintf("%sdetails/", website)
 	endpoint := fmt.Sprintf("%s.example.com:9080", name)
-	return &PRepInfo {
-		City: &city,
-		Country: &country,
-		Name: &name,
-		Email: &email,
-		WebSite: &website,
-		Details: &details,
+	return &PRepInfo{
+		City:        &city,
+		Country:     &country,
+		Name:        &name,
+		Email:       &email,
+		WebSite:     &website,
+		Details:     &details,
 		P2PEndpoint: &endpoint,
 	}
 }
