@@ -48,13 +48,12 @@ func TestBlockVotersData_equal(t *testing.T) {
 	voters1 := newDummyVoters(5)
 	voters2 := newDummyVoters(3)
 	voters2r := newDummyVotersReverse(3)
-	var voters3 []module.Address
 
 	bvd0 := newBlockVotersData(voters0)
 	bvd1 := newBlockVotersData(voters1)
 	bvd2 := newBlockVotersData(voters2)
 	bvd2r := newBlockVotersData(voters2r)
-	bvd3 := newBlockVotersData(voters3)
+	bvd3 := newBlockVotersData(nil)
 
 	assert.True(t, bvd0.equal(bvd0))
 	assert.True(t, bvd1.equal(bvd1))
@@ -136,6 +135,11 @@ func TestBlockVotersSnapshot_Equal(t *testing.T) {
 	bvs3 := NewBlockVotersSnapshot(nil)
 	assert.False(t, bvs3.Equal(bvs0))
 	assert.False(t, bvs0.Equal(bvs3))
+
+	voters0r := newDummyVotersReverse(size)
+	bvs0r := NewBlockVotersSnapshot(voters0r)
+	assert.False(t, bvs0.Equal(bvs0r))
+	assert.False(t, bvs0r.Equal(bvs0))
 }
 
 func TestBlockVotersSnapshot_RLPDecodeFields(t *testing.T) {
