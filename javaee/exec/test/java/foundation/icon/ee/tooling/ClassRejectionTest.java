@@ -17,9 +17,12 @@
 package foundation.icon.ee.tooling;
 
 import foundation.icon.ee.test.SimpleTest;
+import foundation.icon.ee.types.Status;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import score.Context;
+import score.UserRevertException;
+import score.annotation.Keep;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -110,5 +113,36 @@ public class ClassRejectionTest extends SimpleTest {
         Assertions.assertThrows(
                 UnsupportedOperationException.class,
                 () -> makeRelJar(LambdaPredicate.class));
+    }
+
+    public static class UseCustomExceptionForRevert {
+        public UseCustomExceptionForRevert() {
+            var e = new CustomException(100);
+            Context.println(e.getMessage());
+            throw e;
+        }
+
+        static class CustomException extends UserRevertException {
+            private final int code;
+
+            public CustomException(int code) {
+                this.code = code;
+            }
+
+            @Override
+            @Keep
+            public int getCode() {
+                return this.code;
+            }
+        }
+    }
+
+    @Test
+    public void testUserRevertException() {
+        Assertions.assertDoesNotThrow(() -> {
+            var jar = makeRelJar(UseCustomExceptionForRevert.class);
+            var res = sm.tryDeploy(jar);
+            Assertions.assertEquals(Status.UserReversionStart + 100, res.getStatus());
+        });
     }
 }
