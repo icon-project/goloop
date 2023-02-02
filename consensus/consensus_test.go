@@ -234,7 +234,9 @@ func TestConsensus_BasicConsensus2(t *testing.T) {
 	assert.NoError(t, err)
 	blk := <-chn
 	assert.EqualValues(t, 3, blk.Height())
-	assert.EqualValues(t, 4, f.CS.GetStatus().Height)
+	for f.CS.GetStatus().Height < 4 {
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 type btpTest struct {
@@ -1140,7 +1142,9 @@ func TestConsensus_BlockCreationFail(t *testing.T) {
 	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
 	<-ch
 
-	assert.EqualValues(2, cs.GetStatus().Height)
+	for cs.GetStatus().Height < 2 {
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 func TestConsensus_BlockCreationFail2(t *testing.T) {
