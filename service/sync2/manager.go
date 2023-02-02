@@ -30,6 +30,7 @@ type Syncer interface {
 	Stop()
 	Finalize() error
 	SetProgressCallback(cb ProgressCallback)
+	IsForceSyncing() bool
 }
 
 type PeerWatcher interface {

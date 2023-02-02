@@ -158,12 +158,6 @@ type tReceiveStreamMessageEvent struct {
 	SM streamMessage
 }
 
-type tFailureEvent struct {
-	Err error
-	PI  module.ProtocolInfo
-	B   []byte
-}
-
 type tJoinEvent struct {
 	ID module.PeerID
 }
@@ -190,10 +184,6 @@ func (r *tReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID)
 		r.ch <- tReceiveEvent{pi, b, id}
 	}
 	return false, nil
-}
-
-func (r *tReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	r.ch <- tFailureEvent{err, pi, b}
 }
 
 func (r *tReactor) OnJoin(id module.PeerID) {

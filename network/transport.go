@@ -8,10 +8,12 @@ import (
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/metric"
 )
 
 type transport struct {
 	l       *Listener
+	id      module.PeerID
 	address NetAddress
 	a       *Authenticator
 	cn      *ChannelNegotiator
@@ -26,12 +28,14 @@ func NewTransport(address string, w module.Wallet, l log.Logger) module.NetworkT
 		l.Panicf("invalid P2P Address err:%+v", err)
 	}
 	transportLogger := l.WithFields(log.Fields{log.FieldKeyModule: "TP"})
+	id := NewPeerIDFromAddress(w.Address())
 	a := newAuthenticator(w, transportLogger)
-	cn := newChannelNegotiator(na, transportLogger)
-	pd := newPeerDispatcher(NewPeerIDFromAddress(w.Address()), transportLogger, a, cn)
+	cn := newChannelNegotiator(na, id, transportLogger)
+	pd := newPeerDispatcher(id, transportLogger, a, cn)
 	listener := newListener(address, pd.onAccept, transportLogger)
 	t := &transport{
 		l:       listener,
+		id:      id,
 		address: na,
 		a:       a,
 		cn:      cn,
@@ -49,13 +53,14 @@ func (t *transport) Listen() error {
 func (t *transport) Close() error {
 	return t.l.Close()
 }
+
 func (t *transport) Dial(address string, channel string) error {
 	d := t.GetDialer(channel)
 	return d.Dial(address)
 }
 
 func (t *transport) PeerID() module.PeerID {
-	return t.pd.self
+	return t.id
 }
 
 func (t *transport) Address() string {
@@ -129,6 +134,22 @@ func (t *transport) GetSecureAeads(channel string) string {
 		s[i] = aead.String()
 	}
 	return strings.Join(s, ",")
+}
+
+func (t *transport) addProtocol(channel string, pi module.ProtocolInfo) {
+	t.cn.addProtocol(channel, pi)
+}
+
+func (t *transport) removeProtocol(channel string, pi module.ProtocolInfo) {
+	t.cn.removeProtocol(channel, pi)
+}
+
+func (t *transport) registerPeerHandler(channel string, ph PeerHandler, mtr *metric.NetworkMetric) bool {
+	return t.pd.registerByChannel(channel, ph, mtr)
+}
+
+func (t *transport) unregisterPeerHandler(channel string) {
+	t.pd.unregisterByChannel(channel)
 }
 
 type Listener struct {
@@ -224,7 +245,7 @@ type Dialer struct {
 	dialing   *Set
 }
 
-type connectCbFunc func(conn net.Conn, addr string, d *Dialer)
+type connectCbFunc func(conn net.Conn, addr, channel string)
 
 func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 	return &Dialer{
@@ -243,6 +264,6 @@ func (d *Dialer) Dial(addr string) error {
 	if err != nil {
 		return err
 	}
-	d.onConnect(conn, addr, d)
+	d.onConnect(conn, addr, d.channel)
 	return nil
 }

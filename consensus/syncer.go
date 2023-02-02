@@ -351,21 +351,6 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 	return true, nil
 }
 
-func (s *syncer) OnFailure(
-	err error,
-	pi module.ProtocolInfo,
-	b []byte,
-) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.log.Debugf("OnFailure: subprotocol:%v err:%+v\n", pi, err)
-
-	if !s.running {
-		return
-	}
-}
-
 func (s *syncer) OnJoin(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -441,7 +426,7 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 	if id == nil {
 		if len(s.peers) > 0 {
 			s.log.Debugf("neighborcastRoundState %v\n", msg)
-			err = s.ph.Broadcast(ProtoRoundState, bs, module.BROADCAST_NEIGHBOR)
+			err = s.ph.Broadcast(ProtoRoundState, bs, module.BroadcastNeighbor)
 		}
 	} else {
 		s.log.Debugf("sendRoundState %v To:%v\n", msg, common.HexPre(id.Bytes()))

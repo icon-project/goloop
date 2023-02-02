@@ -14,6 +14,7 @@ import (
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/goloop/server/metric"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -29,19 +30,18 @@ var (
 	ProtoTestTransportResponse = module.ProtocolInfo(0xF400)
 )
 
-type testPeerHandler struct {
+type testTransportPeerHandler struct {
 	*peerHandler
 	t  *testing.T
 	wg *sync.WaitGroup
-	ss SecureSuite
-	sa SecureAeadSuite
 
-	onPeerDelay time.Duration
+	expectedSecureSuite     SecureSuite
+	expectedSecureAeadSuite SecureAeadSuite
 }
 
-func newTestPeerHandler(name string, t *testing.T, l log.Logger) *testPeerHandler {
-	return &testPeerHandler{
-		peerHandler: newPeerHandler(l.WithFields(log.Fields{LoggerFieldKeySubModule: name})),
+func newTestTransportPeerHandler(name string, t *testing.T, id module.PeerID, l log.Logger) *testTransportPeerHandler {
+	return &testTransportPeerHandler{
+		peerHandler: newPeerHandler(id, l.WithFields(log.Fields{LoggerFieldKeySubModule: name})),
 		t:           t,
 	}
 }
@@ -54,26 +54,20 @@ type testTransportResponse struct {
 	Message string
 }
 
-func (ph *testPeerHandler) onPeer(p *Peer) {
+func (ph *testTransportPeerHandler) onPeer(p *Peer) {
 	ph.logger.Println("onPeer", p)
-	if ph.onPeerDelay > 0 {
-		time.Sleep(ph.onPeerDelay)
-		ph.nextOnPeer(p)
-		return
-	}
-
-	if ph.ss != SecureSuiteUnknown {
+	if ph.expectedSecureSuite != SecureSuiteUnknown {
 		//assert secure connection
 		switch c := p.conn.(type) {
 		case *SecureConn:
-			assert.Equal(ph.t, ph.ss, SecureSuite(SecureSuiteEcdhe))
-			assert.Equal(ph.t, ph.sa, p.secureKey.sa)
-			assert.Equal(ph.t, ph.sa, c.sa)
+			assert.Equal(ph.t, ph.expectedSecureSuite, SecureSuite(SecureSuiteEcdhe))
+			assert.Equal(ph.t, ph.expectedSecureAeadSuite, p.secureKey.sa)
+			assert.Equal(ph.t, ph.expectedSecureAeadSuite, c.sa)
 		case *tls.Conn:
-			assert.Equal(ph.t, ph.ss, SecureSuite(SecureSuiteTls))
-			assert.Equal(ph.t, ph.sa, p.secureKey.sa)
+			assert.Equal(ph.t, ph.expectedSecureSuite, SecureSuite(SecureSuiteTls))
+			assert.Equal(ph.t, ph.expectedSecureAeadSuite, p.secureKey.sa)
 			var cs uint16
-			switch ph.sa {
+			switch ph.expectedSecureAeadSuite {
 			case SecureAeadSuiteAes128Gcm:
 				cs = tls.TLS_AES_128_GCM_SHA256
 			case SecureAeadSuiteAes256Gcm:
@@ -84,7 +78,7 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 			}
 			assert.Equal(ph.t, cs, c.ConnectionState().CipherSuite)
 		default:
-			assert.Equal(ph.t, ph.ss, SecureSuite(SecureSuiteNone))
+			assert.Equal(ph.t, ph.expectedSecureSuite, SecureSuite(SecureSuiteNone))
 			assert.Equal(ph.t, SecureAeadSuite(SecureAeadSuiteNone), p.secureKey.sa)
 		}
 	}
@@ -96,13 +90,7 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 	}
 }
 
-func (ph *testPeerHandler) onError(err error, p *Peer, pkt *Packet) {
-	ph.logger.Println("onError", err, p, pkt)
-	ph.peerHandler.onError(err, p, pkt)
-	assert.Fail(ph.t, "TestPeerHandler.onError", err.Error(), p, pkt)
-}
-
-func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
+func (ph *testTransportPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	ph.logger.Println("onPacket", pkt, p)
 	switch pkt.protocol {
 	case ProtoTestTransport:
@@ -129,29 +117,10 @@ func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	}
 }
 
-//Using mutex for prevent panic d.nx != 0
-////crypto/sha256/sha256.go:253 (*digest).checkSum
-////crypto/sha256/sha256.go:229 (*digest).Sum
-////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:23 SumSHA256
-////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:50 (*EntropyPool).Mix256
-////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:71 (*EntropyPool).Mix
-////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:133 RandByte
-var walletMutex sync.Mutex
-
-type testWallet struct {
-	module.Wallet
-}
-
-func (w *testWallet) Sign(data []byte) ([]byte, error) {
-	defer walletMutex.Unlock()
-	walletMutex.Lock()
-	return w.Wallet.Sign(data)
-}
-
 func walletFromGeneratedPrivateKey() module.Wallet {
 	priK, _ := crypto.GenerateKeyPair()
 	w, _ := wallet.NewFromPrivateKey(priK)
-	return &testWallet{w}
+	return w
 }
 
 func getAvailableLocalhostAddress(t *testing.T) string {
@@ -206,28 +175,42 @@ func Test_transport(t *testing.T) {
 		log.FieldKeyWallet: hex.EncodeToString(w1.Address().ID()),
 	})
 	l1.SetLevel(lv)
-	nt1 := NewTransport(getAvailableLocalhostAddress(t), w1, l1)
+	na1 := getAvailableLocalhostAddress(t)
+	nt1 := NewTransport(na1, w1, l1).(*transport)
+	if err := nt1.SetListenAddress(na1); err != nil {
+		assert.FailNow(t, err.Error(), "Transport1.SetListenAddress fail")
+	}
+	assert.Equal(t, na1, nt1.GetListenAddress())
 
 	w2 := walletFromGeneratedPrivateKey()
 	l2 := log.WithFields(log.Fields{
 		log.FieldKeyWallet: hex.EncodeToString(w2.Address().ID()),
 	})
 	l2.SetLevel(lv)
-	nt2 := NewTransport(getAvailableLocalhostAddress(t), w2, l2)
+	na2 := getAvailableLocalhostAddress(t)
+	nt2 := NewTransport(na2, w2, l2).(*transport)
+	if err := nt2.SetListenAddress(na2); err != nil {
+		assert.FailNow(t, err.Error(), "Transport1.SetListenAddress fail")
+	}
+	assert.Equal(t, na2, nt2.GetListenAddress())
 
-	dph := newTestPeerHandler("OnPeerDelayOnly", t, nt2.(*transport).logger)
-	dph.onPeerDelay = 10 * time.Millisecond
-	nt2.(*transport).pd.registerPeerHandler(dph, false)
+	dph := newTestPeerHandler(nt2.PeerID(), nt2.logger)
+	dph.nextOnPeerFunc = func(p *Peer) {
+		time.Sleep(10 * time.Millisecond)
+		dph.peerHandler.nextOnPeer(p)
+	}
+	nt2.pd.registerPeerHandler(dph, false)
 
-	tph1 := newTestPeerHandler("TestPeerHandler1", t, nt1.(*transport).logger)
-	tph2 := newTestPeerHandler("TestPeerHandler2", t, nt2.(*transport).logger)
+	tph1 := newTestTransportPeerHandler("TestPeerHandler1", t, nt1.PeerID(), nt1.logger)
+	tph2 := newTestTransportPeerHandler("TestPeerHandler2", t, nt2.PeerID(), nt2.logger)
 	tph2.wg = &sync.WaitGroup{}
 
-	nt1.(*transport).pd.registerPeerHandler(tph1, true)
-	nt2.(*transport).pd.registerPeerHandler(tph2, true)
+	mtr := metric.NewNetworkMetric(metric.DefaultMetricContext())
+	nt1.registerPeerHandler(testChannel, tph1, mtr)
+	nt2.registerPeerHandler(testChannel, tph2, mtr)
 
-	nt1.(*transport).cn.addProtocol(testChannel, p2pProtoControl)
-	nt2.(*transport).cn.addProtocol(testChannel, p2pProtoControl)
+	nt1.addProtocol(testChannel, p2pProtoControl)
+	nt2.addProtocol(testChannel, p2pProtoControl)
 
 	if err := nt1.Listen(); err != nil {
 		assert.FailNow(t, err.Error(), "Transport1.Start fail")
@@ -236,7 +219,9 @@ func Test_transport(t *testing.T) {
 		assert.FailNow(t, err.Error(), "Transport2.Start fail")
 	}
 
+	//enable secureKeyLogWriter
 	DefaultSecureKeyLogWriter = &testKeyLogWriter{}
+	d := nt2.GetDialer(testChannel)
 	for _, ss := range sss {
 		for _, sa := range sas {
 			t.Log("SecureSuite:", ss, "SecureAeadSuite:", sa)
@@ -248,13 +233,13 @@ func Test_transport(t *testing.T) {
 			assert.NoError(t, nt1.SetSecureAeads(testChannel, strSA))
 			assert.Equal(t, strSA, nt1.GetSecureAeads(testChannel))
 
-			tph1.ss = ss
-			tph1.sa = sa
-			tph2.ss = ss
-			tph2.sa = sa
+			tph1.expectedSecureSuite = ss
+			tph1.expectedSecureAeadSuite = sa
+			tph2.expectedSecureSuite = ss
+			tph2.expectedSecureAeadSuite = sa
 			tph2.wg.Add(1)
 
-			if err := nt2.Dial(nt1.GetListenAddress(), testChannel); err != nil {
+			if err := d.Dial(nt1.Address()); err != nil {
 				assert.FailNow(t, err.Error(), "Transport.Dial fail")
 			}
 

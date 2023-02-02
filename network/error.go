@@ -55,15 +55,6 @@ func (e *Error) Temporary() bool { return e.IsTemporary }
 
 func (e *Error) Unwrap() error { return e.error }
 
-func NewBroadcastError(err error, bt module.BroadcastType) module.NetworkError {
-	return newNetworkError(err, "broadcast", bt)
-}
-func NewMulticastError(err error, role module.Role) module.NetworkError {
-	return newNetworkError(err, "multicast", role)
-}
-func NewUnicastError(err error, id module.PeerID) module.NetworkError {
-	return newNetworkError(err, "unicast", id)
-}
 func newNetworkError(err error, op string, opArg interface{}) module.NetworkError {
 	if err != nil {
 		isTemporary := false

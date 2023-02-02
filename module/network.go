@@ -26,7 +26,6 @@ type NetworkManager interface {
 type Reactor interface {
 	//case broadcast and multicast, if return (true,nil) then rebroadcast
 	OnReceive(pi ProtocolInfo, b []byte, id PeerID) (bool, error)
-	OnFailure(err error, pi ProtocolInfo, b []byte)
 	OnJoin(id PeerID)
 	OnLeave(id PeerID)
 }
@@ -39,25 +38,26 @@ type ProtocolHandler interface {
 }
 
 type BroadcastType byte
-type Role string
+type Role byte
 
 const (
-	ROLE_VALIDATOR Role = "validator"
-	ROLE_SEED      Role = "seed"
-	ROLE_NORMAL    Role = "normal"
+	RoleNormal Role = iota
+	RoleSeed
+	RoleValidator
+	RoleReserved
 )
 
 const (
-	BROADCAST_ALL BroadcastType = iota
-	BROADCAST_NEIGHBOR
-	BROADCAST_CHILDREN
+	BroadcastAll BroadcastType = iota
+	BroadcastNeighbor
+	BroadcastChildren
 )
 
 func (b BroadcastType) TTL() byte {
 	switch b {
-	case BROADCAST_NEIGHBOR:
+	case BroadcastNeighbor:
 		return 1
-	case BROADCAST_CHILDREN:
+	case BroadcastChildren:
 		return 2
 	default:
 		return 0
@@ -66,7 +66,7 @@ func (b BroadcastType) TTL() byte {
 
 func (b BroadcastType) ForceSend() bool {
 	switch b {
-	case BROADCAST_CHILDREN, BROADCAST_NEIGHBOR:
+	case BroadcastChildren, BroadcastNeighbor:
 		return true
 	default:
 		return false

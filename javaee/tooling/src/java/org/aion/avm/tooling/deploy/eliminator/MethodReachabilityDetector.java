@@ -131,7 +131,7 @@ public class MethodReachabilityDetector {
         // Enqueue the declaration of this method
         MethodInfo methodInfo = classInfo.getDeclaration(methodId);
         if (null == methodInfo) {
-            throw new IllegalArgumentException("No declaration found for " + methodId + ", corrupt jar suspected");
+            throw new UnsupportedOperationException("No declaration found for " + methodId + ", corrupt jar suspected");
         } else {
             enqueue(methodInfo);
         }

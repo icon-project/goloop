@@ -174,7 +174,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 			v, _ := cs.validators.Get(i)
 			peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
 		}
-		cs.c.NetworkManager().SetRole(cs.height, module.ROLE_VALIDATOR, peerIDs...)
+		cs.c.NetworkManager().SetRole(cs.height, module.RoleValidator, peerIDs...)
 	}
 	nextMembers, err := cs.c.ServiceManager().GetMembers(cs.lastBlock.Result())
 	if err != nil {
@@ -188,7 +188,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 					addr, _ := it.Get()
 					peerIDs = append(peerIDs, network.NewPeerIDFromAddress(addr))
 				}
-				cs.c.NetworkManager().SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
+				cs.c.NetworkManager().SetRole(cs.height, module.RoleNormal, peerIDs...)
 			}
 		}
 	}
@@ -314,10 +314,6 @@ func (cs *consensus) OnReceive(
 		return false, err
 	}
 	return true, nil
-}
-
-func (cs *consensus) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	cs.log.Debugf("OnFailure(subprotocol:%v,  err:%+v)\n", pi, err)
 }
 
 func (cs *consensus) OnJoin(id module.PeerID) {
@@ -1021,7 +1017,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 		return err
 	}
 	cs.log.Debugf("sendProposal %v\n", msg)
-	err = cs.ph.Broadcast(ProtoProposal, msgBS, module.BROADCAST_ALL)
+	err = cs.ph.Broadcast(ProtoProposal, msgBS, module.BroadcastAll)
 	if err != nil {
 		cs.log.Warnf("sendProposal: %+v\n", err)
 		return err
@@ -1037,7 +1033,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 		if err != nil {
 			return err
 		}
-		err = cs.ph.Multicast(ProtoVoteList, vlmsgBS, module.ROLE_VALIDATOR)
+		err = cs.ph.Multicast(ProtoVoteList, vlmsgBS, module.RoleValidator)
 		if err != nil {
 			cs.log.Warnf("sendVoteList: %+v\n", err)
 			return err
@@ -1055,7 +1051,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 			return err
 		}
 		cs.log.Debugf("sendBlockPart %v\n", bpmsg)
-		err = cs.ph.Broadcast(ProtoBlockPart, bpmsgBS, module.BROADCAST_ALL)
+		err = cs.ph.Broadcast(ProtoBlockPart, bpmsgBS, module.BroadcastAll)
 		if err != nil {
 			cs.log.Warnf("sendBlockPart: %+v\n", err)
 			return err
@@ -1169,9 +1165,9 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	}
 	cs.log.Debugf("sendVote %v\n", msg)
 	if vt == VoteTypePrevote {
-		err = cs.ph.Multicast(ProtoVote, msgBS, module.ROLE_VALIDATOR)
+		err = cs.ph.Multicast(ProtoVote, msgBS, module.RoleValidator)
 	} else {
-		err = cs.ph.Broadcast(ProtoVote, msgBS, module.BROADCAST_ALL)
+		err = cs.ph.Broadcast(ProtoVote, msgBS, module.BroadcastAll)
 	}
 	if err != nil {
 		cs.log.Warnf("sendVote: %+v\n", err)

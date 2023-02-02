@@ -105,7 +105,7 @@ func (s *syncer) newSyncProcessorWithBuilders(
 	defer s.mutex.Unlock()
 
 	if s.reactors == nil {
-		return errors.ErrInvalidState
+		return errors.InvalidStateError.Errorf("InvalidState(No Reactors)")
 	}
 
 	progress := newProgressSum(len(stateBuilders)+len(btpBuilders), s.progressCB)
@@ -203,6 +203,19 @@ func (s *syncer) Finalize() error {
 
 func (s *syncer) SetProgressCallback(on ProgressCallback) {
 	s.progressCB = on
+}
+
+func (s *syncer) IsForceSyncing() bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for _, sp := range s.processors {
+		if sp.UnresolvedCount() > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func newSyncerWithHashes(database db.Database, reactors []SyncReactor, plt Platform,

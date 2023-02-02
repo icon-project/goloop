@@ -160,21 +160,10 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 	return
 }
 
-func (r *testReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	rm := &testNetworkMessage{}
-	r.decode(b, rm)
-	msg := rm.Message
-	ctx := context.WithValue(context.Background(), "op", "error")
-	ctx = context.WithValue(ctx, "pi", pi)
-	ctx = context.WithValue(ctx, "msg", msg)
-	ctx = context.WithValue(ctx, "name", r.name)
-	ctx = context.WithValue(ctx, "error", err)
-	r.ch <- ctx
-}
 func (r *testReactor) OnJoin(id module.PeerID) {
 	r.logger.Println("OnJoin", id)
 	ctx := context.WithValue(context.Background(), "op", "join")
-	ctx = context.WithValue(ctx, "p2pConnInfo", newP2PConnInfo(r.p2p))
+	ctx = context.WithValue(ctx, "p2pConnInfo", r.p2pConnInfo())
 	ctx = context.WithValue(ctx, "name", r.name)
 	r.ch <- ctx
 }
@@ -208,7 +197,21 @@ func (r *testReactor) p2pConn() string {
 }
 
 func (r *testReactor) p2pConnInfo() *p2pConnInfo {
-	return newP2PConnInfo(r.p2p)
+	m := Inspect(r.c, true)["p2p"].(map[string]interface{})
+	role := m["self"].(map[string]interface{})["role"]
+	parent := 0
+	if len(m["parent"].(map[string]interface{})) > 0 {
+		parent = 1
+	}
+	return &p2pConnInfo{
+		role:     role.(PeerRoleFlag),
+		friends:  len(m["friends"].([]map[string]interface{})),
+		parent:   parent,
+		uncles:   len(m["uncles"].([]map[string]interface{})),
+		children: len(m["children"].([]map[string]interface{})),
+		nephews:  len(m["nephews"].([]map[string]interface{})),
+		others:   len(m["others"].([]map[string]interface{})),
+	}
 }
 
 type p2pConnInfo struct {
@@ -221,18 +224,6 @@ type p2pConnInfo struct {
 	others   int
 }
 
-func newP2PConnInfo(p2p *PeerToPeer) *p2pConnInfo { //p2p.connections()
-	connInfo := p2p.connections()
-	return &p2pConnInfo{
-		p2p.Role(),
-		connInfo[p2pConnTypeFriend],
-		connInfo[p2pConnTypeParent],
-		connInfo[p2pConnTypeUncle],
-		connInfo[p2pConnTypeChildren],
-		connInfo[p2pConnTypeNephew],
-		connInfo[p2pConnTypeOther],
-	}
-}
 func (ci *p2pConnInfo) String() string {
 	return fmt.Sprintf("role:%d, friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d, others:%d",
 		ci.role,
@@ -247,25 +238,26 @@ func (ci *p2pConnInfo) String() string {
 func (r *testReactor) Broadcast(msg string) string {
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("Broadcast.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Broadcast", m, r.p2pConn())
-	err := r.ph.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
+	err := r.ph.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BroadcastAll)
 	assert.NoError(r.t, err, m.Message)
 	r.logger.Println("Broadcast", m)
 	return m.Message
 }
 
-func (r *testReactor) BroadcastNeighbor(msg string) string {
+func (r *testReactor) BroadcastNeighbor(msg string) (string, int) {
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("BroadcastNeighbor.%s.%s", msg, r.name)}
-	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, r.p2pConn())
-	err := r.ph.Broadcast(ProtoTestNetworkNeighbor, r.encode(m), module.BROADCAST_NEIGHBOR)
+	ci := r.p2pConnInfo()
+	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, ci.String())
+	err := r.ph.Broadcast(ProtoTestNetworkNeighbor, r.encode(m), module.BroadcastNeighbor)
 	assert.NoError(r.t, err, m.Message)
 	r.logger.Println("BroadcastNeighbor", m)
-	return m.Message
+	return m.Message, ci.friends + ci.children + ci.nephews
 }
 
 func (r *testReactor) Multicast(msg string) string {
 	m := &testNetworkMulticast{Message: fmt.Sprintf("Multicast.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Multicast", m, r.p2pConn())
-	err := r.ph.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
+	err := r.ph.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.RoleValidator)
 	assert.NoError(r.t, err, m.Message)
 	r.logger.Println("Multicast", m)
 	return m.Message
@@ -311,9 +303,8 @@ type dummyReactor struct{}
 func (d dummyReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
 	return false, nil
 }
-func (d dummyReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {}
-func (d dummyReactor) OnJoin(id module.PeerID)                               {}
-func (d dummyReactor) OnLeave(id module.PeerID)                              {}
+func (d dummyReactor) OnJoin(id module.PeerID)  {}
+func (d dummyReactor) OnLeave(id module.PeerID) {}
 
 func failIfError(t *testing.T, err error, msgAndArgs ...interface{}) {
 	if err != nil {
@@ -538,16 +529,6 @@ func dailByList(t *testing.T, arr []*testReactor, na NetAddress, delay time.Dura
 	}
 }
 
-func setTrustSeed(m map[string][]*testReactor, na NetAddress) {
-	for _, arr := range m {
-		for _, r := range arr {
-			if r.p2p.NetAddress() != na {
-				r.nm.SetTrustSeeds(string(na))
-			}
-		}
-	}
-}
-
 func listenerClose(t *testing.T, m map[string][]*testReactor) {
 	var wg sync.WaitGroup
 	for _, arr := range m {
@@ -566,8 +547,8 @@ func listenerClose(t *testing.T, m map[string][]*testReactor) {
 
 func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Context) {
 	m = make(map[string][]*testReactor)
-	m[testValidator] = generateNetwork(testValidator, testNumValidator, t, module.ROLE_VALIDATOR)
-	m[testSeed] = generateNetwork(testSeed, testNumSeed, t, module.ROLE_SEED)
+	m[testValidator] = generateNetwork(testValidator, testNumValidator, t, module.RoleValidator)
+	m[testSeed] = generateNetwork(testSeed, testNumSeed, t, module.RoleSeed)
 	m[testCitizen] = generateNetwork(testCitizen, testNumCitizen, t)
 
 	n := testNumValidator + testNumSeed + testNumCitizen
@@ -585,13 +566,132 @@ func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Con
 	connMap, maxD, err := waitConnection(ch, defaultConnectionLimit, n, 10*DefaultSeedPeriod)
 	t.Log(time.Now(), "max:", maxD, connMap)
 	failIfError(t, err, "waitConnection", connMap)
+	return m, ch
+}
 
-	for _, v := range m {
-		for _, r := range v {
-			t.Log("Inspect", r.name, Inspect(r.c, true))
+func assertEqualProtocolHandler(t *testing.T, expected, actual *protocolHandler) {
+	assert.Equal(t, expected.protocol, actual.protocol)
+	assert.Equal(t, sortProtocols(expected.getSubProtocols()),
+		sortProtocols(actual.getSubProtocols()))
+	assert.Equal(t, expected.getReactor(), actual.getReactor())
+	assert.Equal(t, expected.getName(), actual.getName())
+	assert.Equal(t, expected.getPriority(), expected.getPriority())
+	assert.Equal(t, expected.getPolicy(), expected.getPolicy())
+}
+
+func Test_manager(t *testing.T) {
+	w := walletFromGeneratedPrivateKey()
+	logger := testLogger()
+	nt := NewTransport(getAvailableLocalhostAddress(t), w, logger)
+	chainLogger := logger.WithFields(log.Fields{log.FieldKeyCID: "1"})
+	c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
+	nm := NewManager(c, nt, "", module.RoleValidator).(*manager)
+	type registerReactorParam struct {
+		name     string
+		pi       module.ProtocolInfo
+		reactor  module.Reactor
+		piList   []module.ProtocolInfo
+		priority uint8
+		policy   module.NotRegisteredProtocolPolicy
+	}
+	arg := registerReactorParam{
+		name:     "dummyReactor",
+		pi:       ProtoTestNetwork,
+		reactor:  &dummyReactor{},
+		piList:   testSubProtocols,
+		priority: testProtoPriority,
+		policy:   module.NotRegisteredProtocolPolicyClose,
+	}
+	expected := newProtocolHandler(
+		nm,
+		arg.pi,
+		arg.piList,
+		arg.reactor,
+		arg.name,
+		arg.priority,
+		arg.policy,
+		nm.logger)
+
+	expectPanicFunc := func(priority uint8) assert.PanicTestFunc {
+		return func() {
+			_, _ = nm.RegisterReactor(
+				arg.name,
+				arg.pi,
+				arg.reactor,
+				arg.piList,
+				priority,
+				arg.policy)
 		}
 	}
-	return m, ch
+	assert.Panics(t, expectPanicFunc(0))
+	assert.Panics(t, expectPanicFunc(DefaultSendQueueMaxPriority+1))
+
+	actual, err := nm.RegisterReactor(
+		arg.name,
+		arg.pi,
+		arg.reactor,
+		arg.piList,
+		arg.priority,
+		arg.policy)
+	assert.NoError(t, err)
+	assertEqualProtocolHandler(t, expected, actual.(*protocolHandler))
+
+	assertRegistered := func(expected module.ProtocolHandler) {
+		ph, ok := nm.getProtocolHandler(ProtoTestNetwork)
+		assert.True(t, ok)
+		assert.Equal(t, expected, ph)
+	}
+	assertRegistered(actual)
+
+	r2 := &dummyReactor{}
+	actual, err = nm.RegisterReactor(
+		arg.name,
+		arg.pi,
+		r2,
+		arg.piList,
+		arg.priority,
+		arg.policy)
+	assert.NoError(t, err)
+	assertRegistered(actual)
+
+	argFuncs := []func(arg *registerReactorParam){
+		func(arg *registerReactorParam) {
+			arg.name = arg.name + "test"
+		},
+		func(arg *registerReactorParam) {
+			arg.priority = arg.priority + 1
+		},
+		func(arg *registerReactorParam) {
+			arg.policy = arg.policy + 1
+		},
+		func(arg *registerReactorParam) {
+			arg.piList = arg.piList[1:]
+		},
+		func(arg *registerReactorParam) {
+			arg.piList = append(arg.piList, arg.piList[1])[1:]
+		},
+	}
+	for _, argFunc := range argFuncs {
+		copiedArg := arg
+		argFunc(&copiedArg)
+		_, err = nm.RegisterReactor(
+			copiedArg.name,
+			copiedArg.pi,
+			copiedArg.reactor,
+			copiedArg.piList,
+			copiedArg.priority,
+			copiedArg.policy)
+		assert.Error(t, err)
+		assertRegistered(actual)
+	}
+
+	err = nm.UnregisterReactor(arg.reactor)
+	assert.NoError(t, err)
+	_, ok := nm.getProtocolHandler(ProtoTestNetwork)
+	assert.False(t, ok)
+
+	err = nm.UnregisterReactor(arg.reactor)
+	assert.Error(t, err)
 }
 
 func Test_network_basic(t *testing.T) {
@@ -604,9 +704,7 @@ func Test_network_basic(t *testing.T) {
 	err := wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1")
 
-	msg = m[testValidator][0].BroadcastNeighbor("Test2")
-	ci := m[testValidator][0].p2pConnInfo()
-	n = testNumValidator - 1 + ci.children + ci.nephews
+	msg, n = m[testValidator][0].BroadcastNeighbor("Test2")
 	err = wait(ch, ProtoTestNetworkNeighbor, msg, n, time.Second)
 	assert.NoError(t, err, "BroadcastNeighbor", "Test2")
 
@@ -658,8 +756,8 @@ func Test_network_allowedPeer(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 	m := make(map[string][]*testReactor)
-	m[testAllowed] = generateNetwork(testAllowed, testNumAllowedPeer, t, module.ROLE_VALIDATOR)
-	m[testNotAllowed] = generateNetwork(testNotAllowed, testNumNotAllowedPeer, t, module.ROLE_VALIDATOR)
+	m[testAllowed] = generateNetwork(testAllowed, testNumAllowedPeer, t, module.RoleValidator)
+	m[testNotAllowed] = generateNetwork(testNotAllowed, testNumNotAllowedPeer, t, module.RoleValidator)
 	allowed := make([]module.PeerID, 0)
 	notAllowed := make([]module.PeerID, 0)
 
@@ -670,7 +768,7 @@ func Test_network_allowedPeer(t *testing.T) {
 		notAllowed = append(notAllowed, r.nt.PeerID())
 	}
 	for _, r := range m[testAllowed] {
-		r.nm.SetRole(1, module.ROLE_NORMAL, allowed...)
+		r.nm.SetRole(1, module.RoleNormal, allowed...)
 	}
 
 	ch := make(chan context.Context, testNumAllowedPeer+testNumNotAllowedPeer)
@@ -708,7 +806,7 @@ func Test_network_allowedPeer(t *testing.T) {
 	remove := allowed[testNumAllowedPeer-1]
 	go func() {
 		for _, r := range m[testAllowed] {
-			r.nm.RemoveRole(module.ROLE_NORMAL, remove)
+			r.nm.RemoveRole(module.RoleNormal, remove)
 		}
 	}()
 	evtMap, err = waitEvent(ch, n-1, 2*time.Second, p2pEventNotAllowed, remove)

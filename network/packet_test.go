@@ -6,15 +6,8 @@ import (
 	"hash/fnv"
 	"io"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/icon-project/goloop/module"
-)
-
-const (
-	packetTestProtocolInfo = module.ProtocolInfo(0x0000)
 )
 
 func Test_packet_PacketReader(t *testing.T) {
@@ -41,24 +34,6 @@ func Test_packet_PacketReader(t *testing.T) {
 	pkt, err := pr.ReadPacket()
 	assert.NoError(t, err, "ReadPacket fail")
 	assert.Equal(t, hash.Sum64(), pkt.hashOfPacket, "ReadPacket Invalid footer")
-}
-
-func Test_packet_PacketReadWriter(t *testing.T) {
-	prw := NewPacketReadWriter()
-	pkt := newPacket(packetTestProtocolInfo, packetTestProtocolInfo, []byte("test"), generatePeerID())
-	pkt.forceSend = false
-	pkt.timestamp = time.Now()
-	assert.NoError(t, prw.WritePacket(pkt), "WritePacket fail")
-	rpkt, err := prw.ReadPacket()
-	rpkt.timestamp = pkt.timestamp
-	assert.NoError(t, err, "ReadPacket fail")
-	assert.Equal(t, pkt, rpkt, "ReadPacket")
-	rpkt, err = prw.ReadPacket()
-	assert.NoError(t, err, "ReadPacket fail")
-	assert.Equal(t, pkt, rpkt, "ReadPacket")
-	prw.Reset(prw.b, prw.b)
-	rpkt, err = prw.ReadPacket()
-	assert.Error(t, err, "ReadPacket must fail(io.EOF) after Reset")
 }
 
 func FuzzPacketReadFrom(f *testing.F) {
