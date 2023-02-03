@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -81,11 +82,11 @@ func Test_PeerDispatcher(t *testing.T) {
 		return fmt.Sprintf("%s_%d", testChannel, i)
 	}
 	channelConnInfo := func(close, in bool, i int) string {
-		return fmt.Sprintf("in:%v,idx:%d,ch:%s", in, i, channelFunc(i))
+		return fmt.Sprintf("close:%v,in:%v,idx:%d,ch:%s", close, in, i, channelFunc(i))
 	}
 	channelOnPeerFunc := func(ph *testPeerHandler, ch chan string, i int) peerFunc {
 		return func(p *Peer) {
-			ch <- channelConnInfo(false, p.In(), i)
+			ch <- channelConnInfo(p.IsClosed(), p.In(), i)
 		}
 	}
 	channelOnCloseFunc := func(ph *testPeerHandler, ch chan string, i int) peerFunc {
@@ -124,8 +125,21 @@ func Test_PeerDispatcher(t *testing.T) {
 		assert.FailNow(t, err.Error())
 	}
 	assertPeerHandler(numOfPeerHandler)
-	assert.Equal(t, channelConnInfo(false, false, 0), <-dialCh)
 	//PeerDispatcher.onPeer of listener side should close by 'not exists PeerToPeer'
 	//after that channel PeerHandler of dialer side called onClose
-	assert.Equal(t, channelConnInfo(true, false, 0), <-dialCh)
+	waitString(t, dialCh, channelConnInfo(true, false, 0), time.Second)
+}
+
+func waitString(t *testing.T, ch <-chan string, expected string, d time.Duration) {
+	timer := time.After(d)
+	for {
+		select {
+		case actual := <-ch:
+			if expected == actual {
+				return
+			}
+		case <-timer:
+			assert.FailNow(t, "timeout")
+		}
+	}
 }
