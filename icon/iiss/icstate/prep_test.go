@@ -29,10 +29,6 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func getRandomVoteState() VoteState {
-	return []VoteState{None, Success, Failure}[rand.Intn(3)]
-}
-
 func newDummyAddress(value int) module.Address {
 	bs := make([]byte, common.AddressBytes)
 	for i := 0; value != 0 && i < 8; i++ {
@@ -40,6 +36,14 @@ func newDummyAddress(value int) module.Address {
 		value >>= 8
 	}
 	return common.MustNewAddress(bs)
+}
+
+func newDummyAddresses(size int) []module.Address {
+	addrs := make([]module.Address, size)
+	for i := 0; i < size; i++ {
+		addrs[i] = newDummyAddress(i + 1)
+	}
+	return addrs
 }
 
 func newDummyPRepBase(i int) *PRepBaseState {
