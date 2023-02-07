@@ -19,6 +19,7 @@ package foundation.icon.ee.util;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Method.MethodType;
 import org.msgpack.core.MessagePack;
+import org.msgpack.core.MessagePackException;
 import org.msgpack.core.MessageUnpacker;
 
 import java.io.IOException;
@@ -29,6 +30,14 @@ public class MethodUnpacker {
     }
 
     public static Method[] readFrom(byte[] data, boolean longForm) throws IOException {
+        try {
+            return readFromImpl(data, longForm);
+        } catch (MessagePackException e) {
+            throw new IOException(e);
+        }
+    }
+
+    private static Method[] readFromImpl(byte[] data, boolean longForm) throws IOException {
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data);
         int size = unpacker.unpackArrayHeader();
         Method[] methods = new Method[size];
