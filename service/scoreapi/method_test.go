@@ -1328,3 +1328,69 @@ func TestDataType_ConvertJSONToTypedObj(t *testing.T) {
 		})
 	}
 }
+
+func TestDataType_ConvertBytesToJSO(t *testing.T) {
+	type bytesToJSO struct {
+		bytes   []byte
+		wantErr bool
+		want    string
+	}
+	var cases = []struct {
+		name     string
+		dt       DataType
+		jsons    []bytesToJSO
+	}{
+		{
+			"Integer",
+			Integer,
+			[]bytesToJSO{
+				{ []byte{ 0x01 }, false, `"0x1"` },
+				{ []byte{ 0xff }, false, `"-0x1"` },
+				{ nil, false, `null` },
+			},
+		},
+		{
+			"ListOfString",
+			ListTypeOf(1,String),
+			[]bytesToJSO{
+				{ []byte{ 0x01 }, true, `` },
+				{ []byte{}, true, `` },
+				{ nil, false, `null` },
+			},
+		},
+		{
+			"Struct",
+			Struct,
+			[]bytesToJSO{
+				{ []byte{ 0x01 }, true, `` },
+				{ nil, false, `null` },
+			},
+		},
+		{
+			"Address",
+			Address,
+			[]bytesToJSO{
+				{ []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+					false, `"cx0000000000000000000000000000000000000000"` },
+				{ []byte("\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+					true, `` },
+				{ nil, false, `null` },
+			},
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, tc := range tt.jsons {
+				obj, err := tt.dt.ConvertBytesToJSO(tc.bytes)
+				if tc.wantErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+					bs, err := json.Marshal(obj)
+					assert.NoError(t, err)
+					assert.Equal(t, tc.want, string(bs))
+				}
+			}
+		})
+	}
+}
