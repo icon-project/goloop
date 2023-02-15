@@ -270,6 +270,10 @@ func (h *DeployHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 	}
 	salt := cc.NextTransactionSalt()
 
+	if cc.ReadOnlyMode() {
+		return scoreresult.AccessDeniedError.New("DeployOnReadOnly"), nil, nil
+	}
+
 	var contractID []byte
 	var as state.AccountState
 	if h.To.Equal(state.SystemAddress) {
