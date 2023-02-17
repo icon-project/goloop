@@ -315,9 +315,6 @@ func (t DataType) ConvertJSONToTypedObj(bs []byte, fields []Field, nullable bool
 
 // ConvertBytesToJSO convert default bytes and event bytes into JSON value type.
 func (t DataType) ConvertBytesToJSO(bs []byte) (interface{}, error) {
-	if !t.UsableForEvent() {
-		return nil, errors.InvalidStateError.Errorf("UnsupportedType(type=%s)", t.String())
-	}
 	if bs == nil {
 		return nil, nil
 	}
@@ -677,7 +674,7 @@ func (a *Method) ToJSON(version module.JSONVersion) (interface{}, error) {
 				if def, err := input.Type.ConvertBytesToJSO(input.Default); err == nil {
 					io["default"] = def
 				} else {
-					log.Warnf("Fail to decode default bytes err=%+v", def)
+					log.Warnf("Fail to decode default bytes err=%+v", err)
 				}
 			}
 		}
