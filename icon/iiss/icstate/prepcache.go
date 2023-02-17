@@ -109,6 +109,7 @@ func newPRepBaseCache(store containerdb.ObjectStoreState) *PRepBaseCache {
 
 type PRepStatusCache struct {
 	statuses map[string]*PRepStatusState
+	lasts    map[string]*PRepStatusSnapshot
 	dict     *containerdb.DictDB
 	illegal  *containerdb.DictDB
 }
@@ -136,6 +137,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 				status.SetEffectiveDelegated(new(big.Int).Add(status.Delegated(), value.BigInt()))
 			}
 			c.statuses[key] = status
+			c.lasts[key] = snapshot
 		}
 	}
 	return status
@@ -144,6 +146,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 func (c *PRepStatusCache) Clear() {
 	c.Flush()
 	c.statuses = make(map[string]*PRepStatusState)
+	c.lasts = make(map[string]*PRepStatusSnapshot)
 }
 
 func (c *PRepStatusCache) Reset() {
@@ -156,8 +159,11 @@ func (c *PRepStatusCache) Reset() {
 
 		if value == nil {
 			delete(c.statuses, key)
+			delete(c.lasts, key)
 		} else {
-			status.Reset(ToPRepStatus(value.Object()))
+			snapshot := ToPRepStatus(value.Object())
+			status.Reset(snapshot)
+			c.lasts[key] = snapshot
 		}
 	}
 }
@@ -169,16 +175,26 @@ func (c *PRepStatusCache) Flush() {
 			panic(errors.Errorf("PRepStatusCache is broken: %s", k))
 		}
 
-		if status.IsEmpty() {
+		snapshot := status.GetSnapshot()
+		if last := c.lasts[k]; last == snapshot {
+			continue
+		} else if last == nil && snapshot.IsEmpty() {
+			delete(c.statuses, k)
+			continue
+		}
+
+		if snapshot.IsEmpty() {
 			if err = c.dict.Delete(key); err != nil {
 				log.Errorf("Failed to delete PRep key %x, err+%+v", key, err)
 			}
 			delete(c.statuses, k)
+			delete(c.lasts, k)
 		} else {
-			o := icobject.New(TypePRepStatus, status.GetSnapshot())
+			o := icobject.New(TypePRepStatus, snapshot)
 			if err := c.dict.Set(key, o); err != nil {
 				log.Errorf("Failed to set snapshotMap for %x, err+%+v", key, err)
 			}
+			c.lasts[k] = snapshot
 		}
 	}
 }
@@ -186,6 +202,7 @@ func (c *PRepStatusCache) Flush() {
 func newPRepStatusCache(store containerdb.ObjectStoreState) *PRepStatusCache {
 	return &PRepStatusCache{
 		statuses: make(map[string]*PRepStatusState),
+		lasts:    make(map[string]*PRepStatusSnapshot),
 		dict:     containerdb.NewDictDB(store, 1, prepStatusDictPrefix),
 		illegal:  containerdb.NewDictDB(store, 1, pRepIllegalDelegatedKey),
 	}
