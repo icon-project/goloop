@@ -16,6 +16,7 @@ This github repository contains the source code of the Goloop software, which wi
   - [JSON RPC v3](doc/jsonrpc_v3.md)
   - [JSON RPC IISS Extension](doc/iiss_extension.md)
   - [JSON RPC BTP Extension](doc/btp_extension.md)
+  - [JSON RPC BTP2 Extension](doc/btp2_extension.md)
 * Others
   - [`goloop` command line reference](doc/goloop_cli.md)
   - [Genesis Transaction](doc/genesis_tx.md)
