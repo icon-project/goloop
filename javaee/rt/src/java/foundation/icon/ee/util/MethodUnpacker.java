@@ -25,12 +25,40 @@ import org.msgpack.core.MessageUnpacker;
 import java.io.IOException;
 
 public class MethodUnpacker {
+    private static final int MAX_METHODS = 256;
+    private static final int MAX_INPUTS = 64;
+    private static final int MAX_FIELDS = 64;
+    private static final int MAX_STRUCT_DEPTH = 4;
+
+    private static int ensureMaxSize(int max, int size) throws IOException {
+        if (size < 0 || max <= size) {
+            throw new IOException("Invalid size");
+        }
+        return size;
+    }
+
+    private static void ensureSize(int exp, int size) throws IOException {
+        if (exp != size) {
+            throw new IOException("Size mismatch");
+        }
+    }
+
+    private static int ensureFlags(int flags) throws IOException {
+        if ((flags & (Method.Flags.MAX_FLAG - 1)) != flags) {
+            throw new IOException("Invalid flags");
+        }
+        return flags;
+    }
+
     public static Method[] readFrom(byte[] data) throws IOException {
         return readFrom(data, true);
     }
 
     public static Method[] readFrom(byte[] data, boolean longForm) throws IOException {
         try {
+            if (data == null) {
+                throw new IOException("data is null");
+            }
             return readFromImpl(data, longForm);
         } catch (MessagePackException e) {
             throw new IOException(e);
@@ -38,16 +66,17 @@ public class MethodUnpacker {
     }
 
     private static Method[] readFromImpl(byte[] data, boolean longForm) throws IOException {
-        MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data);
-        int size = unpacker.unpackArrayHeader();
+        var unpackerConfig = MessagePack.DEFAULT_UNPACKER_CONFIG.withStringSizeLimit(255);
+        MessageUnpacker unpacker = unpackerConfig.newUnpacker(data);
+        int size = ensureMaxSize(MAX_METHODS, unpacker.unpackArrayHeader());
         Method[] methods = new Method[size];
         for (int i = 0; i < size; i++) {
-            unpacker.unpackArrayHeader(); // 6
+            ensureSize(6, unpacker.unpackArrayHeader());
             int type = unpacker.unpackInt();
             String name = unpacker.unpackString();
-            int flags = unpacker.unpackInt();
-            int indexed = unpacker.unpackInt();
-            int inputSize = unpacker.unpackArrayHeader();
+            int flags = ensureFlags(unpacker.unpackInt());
+            int indexed = ensureMaxSize(MAX_INPUTS, unpacker.unpackInt());
+            int inputSize = ensureMaxSize(MAX_INPUTS, unpacker.unpackArrayHeader());
             if (indexed > inputSize) {
                 throw new IOException("Invalid indexed: " + indexed);
             }
@@ -64,6 +93,7 @@ public class MethodUnpacker {
             int output = unpacker.unpackArrayHeader();
             String outputDescriptor = "V";
             if (output != 0) {
+                ensureSize(1, output);
                 output = unpacker.unpackInt();
                 if (longForm) {
                     outputDescriptor = unpacker.unpackString();
@@ -91,33 +121,41 @@ public class MethodUnpacker {
 
     private static Method.Parameter getParameter(MessageUnpacker unpacker,
             boolean optional, boolean longForm) throws IOException {
-        unpacker.unpackArrayHeader(); // 3 or 4 (longForm)
-        String paramName = unpacker.unpackString();
+        int size = unpacker.unpackArrayHeader();
+        String paramName = unpacker.unpackString(); size--;
         String paramDescriptor = "";
         if (longForm) {
-            paramDescriptor = unpacker.unpackString();
+            paramDescriptor = unpacker.unpackString(); size--;
         }
-        int paramType = unpacker.unpackInt();
-        unpacker.unpackValue(); // value ignored
+        int paramType = unpacker.unpackInt(); size--;
+        if (!unpacker.tryUnpackNil()) {
+            ensureSize(1, unpacker.unpackBinaryHeader());
+            unpacker.readPayload(1); // value ignored
+        }
+        size--;
         Method.Field[] sf = null;
-        if ((paramType&Method.DataType.ELEMENT_MASK) == Method.DataType.STRUCT) {
-            sf = unpackStructFields(unpacker);
+        if (Method.DataType.getElement(paramType) == Method.DataType.STRUCT) {
+            sf = unpackStructFields(unpacker, 0); size--;
+        }
+        if (size != 0) {
+            throw new IOException("Invalid param size");
         }
         return new Method.Parameter(paramName, paramDescriptor, paramType, sf,
                 optional);
     }
 
-    private static Method.Field[] unpackStructFields(MessageUnpacker unpacker)
+    private static Method.Field[] unpackStructFields(MessageUnpacker unpacker, int depth)
         throws IOException {
-        int n = unpacker.unpackArrayHeader();
+        depth = ensureMaxSize(MAX_STRUCT_DEPTH, depth + 1);
+        int n = ensureMaxSize(MAX_FIELDS, unpacker.unpackArrayHeader());
         var res = new Method.Field[n];
         for (int i=0; i<n; i++) {
-            unpacker.unpackArrayHeader(); // 3
+            ensureSize(3, unpacker.unpackArrayHeader());
             String name = unpacker.unpackString();
             int t = unpacker.unpackInt();
             Method.Field[] sf = null;
-            if ((t & Method.DataType.ELEMENT_MASK) == Method.DataType.STRUCT) {
-                sf = unpackStructFields(unpacker);
+            if (Method.DataType.getElement(t) == Method.DataType.STRUCT) {
+                sf = unpackStructFields(unpacker, depth);
             } else {
                 unpacker.unpackNil();
             }

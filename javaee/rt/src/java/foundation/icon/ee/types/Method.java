@@ -19,7 +19,6 @@ package foundation.icon.ee.types;
 import org.objectweb.asm.commons.Remapper;
 
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Objects;
 
 public class Method {
@@ -34,7 +33,7 @@ public class Method {
         public static final int READONLY = 1;
         public static final int EXTERNAL = 2;
         public static final int PAYABLE = 4;
-        public static final int ISOLATED = 8;
+        public static final int MAX_FLAG = 8;
     }
 
     public static class DataType {
