@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/codec"
 )
 
 var testMethods = []*Method{
@@ -37,6 +39,12 @@ var testMethods = []*Method{
 				Type: Address,
 			},
 		},
+	},
+	{
+		Type:    Fallback,
+		Name:    "fallback",
+		Flags:   FlagExternal | FlagPayable,
+		Indexed: 0,
 	},
 }
 
@@ -128,4 +136,41 @@ func TestInfo_CheckEventData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInfo_Codec(t *testing.T) {
+	t.Run("Nil", func(t *testing.T) {
+		var info *Info
+		bs, err := codec.BC.MarshalToBytes(info)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, bs)
+
+		var info1 *Info
+		_, err = codec.BC.UnmarshalFromBytes(bs, &info1)
+		assert.NoError(t, err)
+		assert.Nil(t, info)
+		assert.True(t, info.Equal(info1))
+	})
+	t.Run( "Simple", func(t *testing.T) {
+		info := NewInfo(testMethods)
+		bs, err := codec.BC.MarshalToBytes(info)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, bs)
+
+		var info1 *Info
+		_, err = codec.BC.UnmarshalFromBytes(bs, &info1)
+		assert.NoError(t, err)
+		assert.EqualValues(t, info, info1)
+		assert.True(t, info.Equal(info1))
+	})
+	t.Run("Invalid", func(t *testing.T) {
+		var value = []byte("test")
+		bs, err := codec.BC.MarshalToBytes(value)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, bs)
+
+		var info1 *Info
+		_, err = codec.BC.UnmarshalFromBytes(bs, &info1)
+		assert.Error(t, err)
+	})
 }

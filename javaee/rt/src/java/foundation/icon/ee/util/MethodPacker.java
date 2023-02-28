@@ -33,7 +33,7 @@ public class MethodPacker {
         if (m.getInputs() != null) {
             packer.packArrayHeader(m.getInputs().length);
             for (Method.Parameter p : m.getInputs()) {
-                boolean isStruct = (p.getType()&Method.DataType.ELEMENT_MASK)==Method.DataType.STRUCT;
+                boolean isStruct = Method.DataType.getElement(p.getType()) == Method.DataType.STRUCT;
                 int additionalFields = isStruct ? 1 : 0;
                 if (longForm) {
                     packer.packArrayHeader(4 + additionalFields);
@@ -85,7 +85,7 @@ public class MethodPacker {
             packer.packString(f.getName());
             var t = f.getType();
             packer.packInt(t);
-            if ((t & Method.DataType.ELEMENT_MASK) == Method.DataType.STRUCT) {
+            if (Method.DataType.getElement(t) == Method.DataType.STRUCT) {
                 packStructFields(packer, f.getStructFields());
             } else {
                 packer.packNil();

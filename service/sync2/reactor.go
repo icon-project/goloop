@@ -58,14 +58,15 @@ func (r *ReactorCommon) OnLeave(id module.PeerID) {
 	locker := common.LockForAutoCall(&r.mutex)
 	defer locker.Unlock()
 
-	p := r.readyPool.remove(id)
-	watchers := r.watchers
+	if p := r.readyPool.remove(id); p != nil {
+		watchers := r.watchers
 
-	locker.CallAfterUnlock(func() {
-		for _, w := range watchers {
-			w.OnPeerLeave(p)
-		}
-	})
+		locker.CallAfterUnlock(func() {
+			for _, w := range watchers {
+				w.OnPeerLeave(p)
+			}
+		})
+	}
 }
 
 func (r *ReactorCommon) GetVersion() byte {

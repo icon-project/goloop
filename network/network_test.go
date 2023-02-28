@@ -725,7 +725,7 @@ func Test_network_basic(t *testing.T) {
 
 	tr := m[testSeed][0]
 	for _, r := range m[testSeed] {
-		p := m[testCitizen][0].p2p.getPeer(r.nt.PeerID(), true)
+		p := m[testCitizen][0].p2p.getPeerByProtocol(r.nt.PeerID(), ProtoTestNetwork)
 		if p != nil {
 			tr = r
 			break

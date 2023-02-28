@@ -27,6 +27,9 @@ func (info *Info) RLPDecodeSelf(d codec.Decoder) error {
 	if err := d.Decode(&info.methods); err != nil {
 		return err
 	}
+	if info.methods == nil {
+		return codec.ErrNilValue
+	}
 	info.buildMethodMap()
 	return nil
 }
@@ -49,14 +52,6 @@ func (info *Info) buildMethodMap() {
 		}
 	}
 	info.methodMap = m
-}
-
-func (info *Info) SetBytes(bs []byte) error {
-	_, err := codec.UnmarshalFromBytes(bs, &info.methods)
-	if err != nil {
-		info.buildMethodMap()
-	}
-	return err
 }
 
 func (info *Info) GetMethod(name string) *Method {

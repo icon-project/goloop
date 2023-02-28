@@ -285,41 +285,17 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 	if p2p.isTrustSeed(p) {
 		p2p.trustSeeds.SetAndRemoveByData(p.DialNetAddress(), string(p.NetAddress()))
 	}
-	if dp := p2p.getPeer(p.ID(), false); dp != nil {
-		p2p.onEvent(p2pEventDuplicate, p)
-
-		//'b' is higher (ex : 'b' > 'a'), disconnect lower.outgoing
-		higher := strings.Compare(p2p.ID().String(), p.ID().String()) > 0
-		diff := p.timestamp.Sub(dp.timestamp)
-
-		if diff < DefaultDuplicatedPeerTime && dp.In() != p.In() && higher == p.In() {
-			//close new which is lower outgoing
-			p.CloseByError(ErrDuplicatedPeer)
-			p2p.logger.Infoln("Already exists connected Peer, close new", p, diff)
-			return
-		}
-		//close old
-		dp.CloseByError(ErrDuplicatedPeer)
-		p2p.logger.Infoln("Already exists connected Peer, close old", dp, diff)
-	}
 	if p2p.addPeer(p) && !p.In() {
 		p2p.sendQuery(p)
 	}
 }
 
 func (p2p *PeerToPeer) onClose(p *Peer) {
+	p2p.connMtx.Lock()
+	defer p2p.connMtx.Unlock()
+
 	p2p.logger.Debugln("onClose", p.CloseInfo(), p)
-	if p2p.removePeer(p) {
-		p.WaitClose()
-		for ctx := p.q.Pop(); ctx != nil; ctx = p.q.Pop() {
-			c := ctx.Value(p2pContextKeyCounter).(*Counter)
-			c.increaseClose()
-			if atomic.LoadInt32(&c.fixed) == 1 && c.Close() == c.enqueue {
-				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-				p2p.onFailure(ErrNotAvailable, pkt, c)
-			}
-		}
-	}
+	p2p._onClose(p)
 }
 
 func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
@@ -343,10 +319,7 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 	p2p.logger.Debugln("onFailure", err, pkt, c)
 }
 
-func (p2p *PeerToPeer) removePeer(p *Peer) bool {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
+func (p2p *PeerToPeer) _onClose(p *Peer) bool {
 	if p.HasRole(p2pRoleRoot) {
 		p2p.roots.RemoveData(p.NetAddress())
 	}
@@ -356,11 +329,23 @@ func (p2p *PeerToPeer) removePeer(p *Peer) bool {
 	if p2p.isTrustSeed(p) {
 		p2p.trustSeeds.RemoveData(p.DialNetAddress())
 	}
-	ok := p2p._removePeer(p)
-	if ok && p.ConnType() != p2pConnTypeNone {
-		p2p.onEvent(p2pEventLeave, p)
+	if ok := p2p._removePeer(p); ok {
+		if p.ConnType() != p2pConnTypeNone {
+			p2p.onEvent(p2pEventLeave, p)
+		}
+		//clearPeerQueue
+		p.WaitClose()
+		for ctx := p.q.Pop(); ctx != nil; ctx = p.q.Pop() {
+			c := ctx.Value(p2pContextKeyCounter).(*Counter)
+			c.increaseClose()
+			if atomic.LoadInt32(&c.fixed) == 1 && c.Close() == c.enqueue {
+				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+				p2p.onFailure(ErrNotAvailable, pkt, c)
+			}
+		}
+		return true
 	}
-	return ok
+	return false
 }
 
 //callback from Peer.receiveRoutine
@@ -1078,27 +1063,10 @@ func (c *Counter) Close() int {
 	return c.close
 }
 
-func (p2p *PeerToPeer) getPeer(id module.PeerID, onlyJoin bool) (p *Peer) {
-	if id == nil {
-		return nil
-	}
-
-	if onlyJoin {
-		return p2p.findPeer(func(p *Peer) bool {
-			return p.ID().Equal(id)
-		}, joinPeerConnectionTypes...)
-	} else {
-		return p2p.findPeer(func(p *Peer) bool {
-			return p.ID().Equal(id)
-		})
-	}
-}
-
 func (p2p *PeerToPeer) getPeerByProtocol(id module.PeerID, pi module.ProtocolInfo) (p *Peer) {
-	if p = p2p.getPeer(id, true); p == nil || !p.ProtocolInfos().Exists(pi) {
-		return nil
-	}
-	return p
+	return p2p.findPeer(func(p *Peer) bool {
+		return p.ID().Equal(id) && p.ProtocolInfos().Exists(pi)
+	}, joinPeerConnectionTypes...)
 }
 
 func (p2p *PeerToPeer) getPeers() []*Peer {
@@ -1527,6 +1495,35 @@ func (p2p *PeerToPeer) addPeer(p *Peer) bool {
 	if p.IsClosed() {
 		return false
 	}
+
+	id := p.ID()
+	if dp := p2p._findPeer(func(p *Peer) bool {
+		return p.ID().Equal(id)
+	}); dp != nil {
+		p2p.onEvent(p2pEventDuplicate, p)
+
+		onCloseInLock := func(p *Peer) {
+			p2p.logger.Debugln("onClose", p.CloseInfo(), p)
+			p2p._onClose(p)
+		}
+
+		//'b' is higher (ex : 'b' > 'a'), disconnect lower.outgoing
+		higher := strings.Compare(p2p.ID().String(), p.ID().String()) > 0
+		diff := p.timestamp.Sub(dp.timestamp)
+
+		if diff < DefaultDuplicatedPeerTime && dp.In() != p.In() && higher == p.In() {
+			//close new which is lower outgoing
+			p.setCloseCbFunc(onCloseInLock)
+			p.CloseByError(ErrDuplicatedPeer)
+			p2p.logger.Infoln("Already exists connected Peer, close new", p, diff)
+			return false
+		}
+		//close old
+		dp.setCloseCbFunc(onCloseInLock)
+		dp.CloseByError(ErrDuplicatedPeer)
+		p2p.logger.Infoln("Already exists connected Peer, close old", dp, diff)
+	}
+
 	return p2p.m[p2pConnTypeNone].Add(p)
 }
 
@@ -1544,6 +1541,10 @@ func (p2p *PeerToPeer) findPeer(f PeerPredicate, connTypes ...PeerConnectionType
 	p2p.connMtx.Lock()
 	defer p2p.connMtx.Unlock()
 
+	return p2p._findPeer(f, connTypes...)
+}
+
+func (p2p *PeerToPeer) _findPeer(f PeerPredicate, connTypes ...PeerConnectionType) *Peer {
 	if len(connTypes) == 0 {
 		for _, v := range p2p.m {
 			if p := v.FindOne(f); p != nil {

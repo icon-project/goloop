@@ -615,7 +615,7 @@ func (s *accountStateImpl) ActivateNextContract() error {
 	if s.nextContract == nil {
 		return scoreresult.InvalidParameterError.New("NoNextContract")
 	}
-	if s.nextContract.state == CSActive {
+	if s.nextContract.state != CSPending {
 		return scoreresult.InvalidParameterError.New("InvalidNextContract")
 	}
 	if s.curContract != nil {
@@ -634,6 +634,9 @@ func (s *accountStateImpl) AcceptContract(
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
 		return errors.NotFoundError.Errorf("NoMatchedDeployTxHash(%x)(%x)", txHash, s.nextContract.deployTxHash)
 	}
+	if s.nextContract.state == CSRejected {
+		return errors.InvalidStateError.Errorf("AlreadyRejected(tx=%#x)", s.nextContract.auditTxHash)
+	}
 	s.curContract = s.nextContract
 	s.curContract.state = CSActive
 	s.curContract.auditTxHash = auditTxHash
@@ -649,6 +652,9 @@ func (s *accountStateImpl) RejectContract(
 	}
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
 		return errors.NotFoundError.Errorf("NoMatchedDeployTxHash(%x)(%x)", txHash, s.nextContract.deployTxHash)
+	}
+	if s.nextContract.state != CSPending {
+		return scoreresult.ContractNotFoundError.New("NotPendingContract")
 	}
 	s.nextContract.state = CSRejected
 	s.nextContract.auditTxHash = auditTxHash
@@ -885,10 +891,6 @@ func (a *accountROState) Contract() ContractState {
 }
 
 func (a *accountROState) ActiveContract() ContractState {
-	if a.IsBlocked() == true || a.IsDisabled() == true {
-		return nil
-	}
-
 	if active := a.AccountSnapshot.ActiveContract(); active != nil {
 		return newContractROState(active)
 	}
