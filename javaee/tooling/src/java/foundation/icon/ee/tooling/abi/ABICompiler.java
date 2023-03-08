@@ -89,7 +89,7 @@ public class ABICompiler {
             e.printStackTrace();
         }
 
-        var structDB = new StructDB(classMap);
+        var structDB = new StructDB(classMap, true);
         var cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         var cv = new ABICompilerClassVisitor(cw, classMap, structDB,
                 stripLineNumber);
