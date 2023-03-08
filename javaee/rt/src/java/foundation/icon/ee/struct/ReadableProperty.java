@@ -19,5 +19,5 @@ package foundation.icon.ee.struct;
 import java.lang.reflect.InvocationTargetException;
 
 public interface ReadableProperty extends Property {
-    Object get(Object obj) throws InvocationTargetException;
+    Object get(Object obj) throws InvocationTargetException, IllegalAccessException;
 }
