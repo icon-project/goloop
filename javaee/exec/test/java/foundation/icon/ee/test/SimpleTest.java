@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -99,5 +100,10 @@ public class SimpleTest {
         String cls = this.getClass().getName().replace('.', '/');
         String pkg = cls.substring(0, cls.lastIndexOf('/')+1);
         return Paths.get("test", "resources", pkg, name);
+    }
+
+    public byte[] readResourceFile(String name) throws IOException {
+        var p = getResourcePath(name);
+        return Files.readAllBytes(p);
     }
 }
