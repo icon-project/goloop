@@ -29,19 +29,21 @@ public class JCLAllowlistPrinter {
             }
             var allowlist = AllowlistProvider.getClassLibraryMap();
             allowlist.keySet().stream()
-                    .sorted(Comparator.comparing(Class::getName))
-                    .forEach(clazz -> {
-                        String className = Utilities.fullyQualifiedNameToInternalName(clazz.getName());
-                        if (className.startsWith("java")) {
-                            System.out.println(className);
-                            if (printMethods) {
-                                allowlist.get(clazz).forEach(md -> {
+                .sorted(Comparator.comparing(Class::getName))
+                .forEach(clazz -> {
+                    String className = Utilities.fullyQualifiedNameToInternalName(clazz.getName());
+                    if (className.startsWith("java")) {
+                        System.out.println(className);
+                        if (printMethods) {
+                            allowlist.get(clazz).stream()
+                                .sorted(Comparator.comparing(AllowlistProvider.MethodDescriptor::toString))
+                                .forEach(md -> {
                                     System.out.printf("  - %s%s %s\n",
                                             md.name, md.parameters, md.isStatic ? "(static)" : "");
                                 });
-                            }
                         }
-                    });
+                    }
+                });
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
