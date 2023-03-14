@@ -41,7 +41,11 @@ public class StructDB {
     private final Set<Type> returnStructs = new HashSet<>();
 
     public StructDB(Map<String, byte[]> classMap) {
-        this.cpiMap = ClassPropertyMemberInfo.map(classMap);
+        this(classMap, false);
+    }
+
+    public StructDB(Map<String, byte[]> classMap, boolean onlyPublicClass) {
+        this.cpiMap = ClassPropertyMemberInfo.map(classMap, onlyPublicClass);
         updatePropsMap();
     }
 

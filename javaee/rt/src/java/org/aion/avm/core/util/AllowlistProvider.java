@@ -36,6 +36,7 @@ public class AllowlistProvider {
                     .filter(method -> isSupportedExecutable(method) && hasValidParamTypes(method))
                     .map(AllowlistProvider::generateMethodDescriptor)
                     .sorted(Comparator.comparing(m -> m.parameters))
+                    .distinct()
                     .collect(Collectors.toList());
             classDeclaredMethodMap.put(jclClass, declaredMethodList);
         }

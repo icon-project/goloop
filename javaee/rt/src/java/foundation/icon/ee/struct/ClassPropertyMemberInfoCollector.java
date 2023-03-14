@@ -32,11 +32,15 @@ public class ClassPropertyMemberInfoCollector extends ClassVisitor {
     private boolean hasAConstructor = false;
     private boolean hasZeroArgPublicConstructor = false;
     private boolean hasCreatableModifier = true;
+    private boolean collect;
+    private final boolean onlyPublicClass;
     private Type type;
     private Type superType;
 
-    public ClassPropertyMemberInfoCollector() {
+    public ClassPropertyMemberInfoCollector(boolean onlyPublicClass) {
         super(Opcodes.ASM7);
+        this.onlyPublicClass = onlyPublicClass;
+        this.collect = !onlyPublicClass;
     }
 
     public ClassPropertyMemberInfo getClassPropertyInfo() {
@@ -53,6 +57,9 @@ public class ClassPropertyMemberInfoCollector extends ClassVisitor {
     public void visit(int version, int access, java.lang.String name,
             java.lang.String signature, java.lang.String superName,
             java.lang.String[] interfaces) {
+        if (onlyPublicClass && (access&Opcodes.ACC_PUBLIC) != 0) {
+            collect = true;
+        }
         if ((access&Opcodes.ACC_ABSTRACT) != 0
                 || (access&Opcodes.ACC_INTERFACE) != 0) {
             hasCreatableModifier = false;
@@ -66,7 +73,8 @@ public class ClassPropertyMemberInfoCollector extends ClassVisitor {
     public FieldVisitor visitField(int access, String name, String descriptor,
             String signature, Object value) {
         if ((access & Opcodes.ACC_PUBLIC) != 0
-                && (access & Opcodes.ACC_STATIC) == 0) {
+                && (access & Opcodes.ACC_STATIC) == 0
+                && collect) {
             fields.add(new PropertyMember(PropertyMember.FIELD, type, name, descriptor));
         }
         return super.visitField(access, name, descriptor, signature, value);
@@ -116,9 +124,9 @@ public class ClassPropertyMemberInfoCollector extends ClassVisitor {
             }
         }
         var memberType = Type.getType(descriptor);
-        if (isSetter(access, name, memberType)) {
+        if (isSetter(access, name, memberType) && collect) {
             setters.add(new PropertyMember(PropertyMember.SETTER, type, name, memberType));
-        } else if (isGetter(access, name, memberType)) {
+        } else if (isGetter(access, name, memberType) && collect) {
             getters.add(new PropertyMember(PropertyMember.GETTER, type, name, memberType));
         }
         return super.visitMethod(access, name, descriptor, signature, exceptions);

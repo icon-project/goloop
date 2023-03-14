@@ -16,8 +16,6 @@
 
 package foundation.icon.ee.struct;
 
-import i.RuntimeAssertionError;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -26,11 +24,7 @@ public class ReadableMethodProperty extends MethodProperty implements ReadablePr
         super(method);
     }
 
-    public Object get(Object obj) throws InvocationTargetException {
-        try {
-            return method.invoke(obj);
-        } catch (IllegalAccessException e) {
-            throw RuntimeAssertionError.unexpected(e);
-        }
+    public Object get(Object obj) throws InvocationTargetException, IllegalAccessException {
+        return method.invoke(obj);
     }
 }

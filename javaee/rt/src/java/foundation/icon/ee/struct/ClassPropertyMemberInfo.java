@@ -66,16 +66,18 @@ public class ClassPropertyMemberInfo {
         return setters;
     }
 
-    public static ClassPropertyMemberInfo fromBytes(byte[] classBytes) {
-        return ASM.accept(classBytes, new ClassPropertyMemberInfoCollector())
+    public static ClassPropertyMemberInfo fromBytes(
+            byte[] classBytes, boolean onlyPublicClass
+    ) {
+        return ASM.accept(classBytes, new ClassPropertyMemberInfoCollector(onlyPublicClass))
                 .getClassPropertyInfo();
     }
 
     public static Map<Type, ClassPropertyMemberInfo> map(
-            Map<String, byte[]> classMap) {
+            Map<String, byte[]> classMap, boolean onlyPublicClass) {
         var cpiMap = new HashMap<Type, ClassPropertyMemberInfo>();
         for (var e : classMap.entrySet()) {
-            var cpi = ClassPropertyMemberInfo.fromBytes(e.getValue());
+            var cpi = ClassPropertyMemberInfo.fromBytes(e.getValue(), onlyPublicClass);
             cpiMap.put(cpi.getType(), cpi);
         }
         return cpiMap;

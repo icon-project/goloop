@@ -149,7 +149,9 @@ public class Unshadower {
             for (var rp : rProps) {
                 try {
                     map.put(rp.getName(), Unshadower.unshadow(rp.get(so)));
-                } catch (InvocationTargetException e) {
+                } catch (InvocationTargetException | IllegalAccessException e) {
+                    // IllegalAccessException can be thrown if this object is
+                    // not public.
                     throw new IllegalArgumentException(e);
                 }
             }
