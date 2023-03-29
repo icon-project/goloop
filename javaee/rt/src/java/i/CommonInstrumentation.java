@@ -2,12 +2,13 @@ package i;
 
 import score.UserRevertedException;
 
-import java.util.*;
+import java.util.IdentityHashMap;
+import java.util.Stack;
 
 /**
  * CommonInstrumentation operates on the state of the Dapp running in a single thread, only used internally
  * Forces the execution to stop if the abort state is activated
- **/
+ */
 public class CommonInstrumentation implements IInstrumentation {
     // Single-frame states (the currentFrame cannot also be in the callerFrame - this is just an optimization since the currentFrame access
     // is the common case and is in the critical path - may actually be worth fully-inlining these variables, at some point).
@@ -22,7 +23,6 @@ public class CommonInstrumentation implements IInstrumentation {
         RuntimeAssertionError.assertTrue(null != contractLoader);
         FrameState newFrame = new FrameState();
         newFrame.lateLoader = contractLoader;
-
         newFrame.energyLeft = energyLeft;
         newFrame.nextHashCode = nextHashCode;
         newFrame.frameContext = frameContext;
@@ -33,18 +33,23 @@ public class CommonInstrumentation implements IInstrumentation {
         if (1 == nextHashCode) {
             newFrame.internedStringWrappers = new IdentityHashMap<>();
         }
-
         newFrame.internedClassWrappers = classWrappers;
 
-        // setting up a default stack watcher.
-        newFrame.stackWatcher = new StackWatcher();
-        newFrame.stackWatcher.setPolicy(StackWatcher.POLICY_SIZE | StackWatcher.POLICY_DEPTH);
-        newFrame.stackWatcher.setMaxStackDepth(512);
-        newFrame.stackWatcher.setMaxStackSize(16 * 1024);
-        
         // Install the frame.
         if (null != this.currentFrame) {
             this.callerFrames.push(this.currentFrame);
+            // reuse the previous stack watcher
+            newFrame.stackWatcher = this.currentFrame.stackWatcher;
+            // check the frame depth as well
+            if (this.callerFrames.size() > 64) {
+                newFrame.forceExitState = new OutOfStackException();
+            }
+        } else {
+            // setting up an initial stack watcher
+            newFrame.stackWatcher = new StackWatcher();
+            newFrame.stackWatcher.setPolicy(StackWatcher.POLICY_SIZE | StackWatcher.POLICY_DEPTH);
+            newFrame.stackWatcher.setMaxStackDepth(512);
+            newFrame.stackWatcher.setMaxStackSize(16 * 1024);
         }
         this.currentFrame = newFrame;
     }
