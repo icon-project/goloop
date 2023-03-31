@@ -345,6 +345,40 @@ public final class Context {
         return null;
     }
 
+        /**
+     * Returns elliptic curve point multiplication on altBN128 curve
+     * @param operation is an operation to apply to the data. Possible values are:
+     *              add, mul, pairing
+     * @param input
+     * For add operation, the data should have following layout
+     *      0-31: x-coordinate of point `a` in G1
+     *      32-63: y-coordinate of point `a` in G1
+     *      64-95: x-coordinate of point `b` in G1
+     *      96-127: y-coordinate of point `b` in G1
+     * For mul operation, the data should have following layout
+     *      0-31: x-coordinate of point `p` in G1
+     *      32-63: y-coordinate of point `p` in G1
+     *      64-95: a scalar of group G1 of altBN128 curve
+     * For pairing operation, the data should have following layout
+     *      0-31 bytes: x-coordinate of a point `p` in G1
+     *      32-63 bytes: y-coordinate of a point `p` in G1
+     *      64-95 real part of x-coordinate of a point `p2` in G2
+     *      96-127 imag part of x-coordinate of a point `p2` in G2
+     *      127-159 real part of y-coordinate of a point `p2` in G2
+     *      160+191 imag part of y-coordinate of a point `p2` in G2
+     * ... and this layout repeats for each additional pair
+     * @return a byte array specific to each operation
+     * For add and mul operation, the layout is
+     *      0-31: x-coordinate of point `a` in G1
+     *      32-63: y-coordinate of point `a` in G1
+     * For pairing operation, the layout is
+     *      0-1: a single byte with value `0` for failure and `1` for success.
+     * @throws IllegalArgumentException specified point coordinates are invalid
+     */
+    public static byte[] altBN128(String operation, byte[] input) {
+        return null;
+    }
+
     /**
      * Returns {@code true} if the given signature for the given message by
      * the given public key is correct.

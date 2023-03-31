@@ -138,6 +138,7 @@ public interface IBlockchainRuntime {
     void avm_println(String message);
 
     ByteArray avm_hash(String alg, ByteArray msg);
+    ByteArray avm_altBN128(String operation, ByteArray input);
     boolean avm_verifySignature(String alg, ByteArray msg, ByteArray sig,
             ByteArray pubKey);
     ByteArray avm_recoverKey(String alg, ByteArray msg, ByteArray sig,
