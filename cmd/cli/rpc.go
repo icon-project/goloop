@@ -85,10 +85,10 @@ func readJSONObject(s string) (map[string]interface{}, error) {
 
 // getParamsFromFlags process "params" string flag and "param" stringToString flag
 // for parameter handling.
-func getParamsFromFlags(flags *pflag.FlagSet) (interface{}, error){
+func getParamsFromFlags(flags *pflag.FlagSet) (interface{}, error) {
 	var params interface{}
 	if pp, err := flags.GetString("params"); err == nil && len(pp) > 0 {
-		if parsed, err := readJSONObject(pp) ; err != nil {
+		if parsed, err := readJSONObject(pp); err != nil {
 			return nil, err
 		} else if parsed != nil {
 			params = parsed
@@ -307,7 +307,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 			if dataMethod := cmd.Flag("method").Value.String(); dataMethod != "" {
 				dataM["method"] = dataMethod
 			}
-			if dataParams, err := getParamsFromFlags(cmd.Flags()) ; err != nil {
+			if dataParams, err := getParamsFromFlags(cmd.Flags()); err != nil {
 				return err
 			} else if dataParams != nil {
 				dataM["params"] = dataParams
@@ -332,7 +332,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 	callFlags.Int("height", -1, "BlockHeight")
 	callFlags.String("method", "",
 		"Name of the function to invoke in SCORE, if '--raw' used, will overwrite")
-	callFlags.StringToString("params", nil,
+	callFlags.String("params", "",
 		"raw json string or '@<json file>' or '-' for stdin for parameter JSON. it overrides raw one ")
 	callFlags.StringToString("param", nil,
 		"key=value, Function parameters, if '--raw' used, will overwrite")
@@ -969,7 +969,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if dataMethod := cmd.Flag("method").Value.String(); dataMethod != "" {
 				dataM["method"] = dataMethod
 			}
-			if dataParams, err := getParamsFromFlags(cmd.Flags()) ; err != nil {
+			if dataParams, err := getParamsFromFlags(cmd.Flags()); err != nil {
 				return err
 			} else if dataParams != nil {
 				dataM["params"] = dataParams
