@@ -23,7 +23,6 @@ import org.objectweb.asm.Type;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 public class ScoreClass {
     private static final String METHOD_PREFIX = "avm_";

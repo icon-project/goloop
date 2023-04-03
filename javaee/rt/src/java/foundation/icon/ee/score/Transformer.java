@@ -3,7 +3,6 @@ package foundation.icon.ee.score;
 import foundation.icon.ee.Agent;
 import foundation.icon.ee.types.IllegalFormatException;
 import foundation.icon.ee.types.Status;
-import i.AvmException;
 import i.GenericPredefinedException;
 import i.PackageConstants;
 import i.RuntimeAssertionError;

@@ -1,8 +1,6 @@
 package i;
 
 
-import foundation.icon.ee.types.Status;
-
 /**
  * Indicates an internal runtime unexpected condition, especially for AVM execution rule violation.
  *

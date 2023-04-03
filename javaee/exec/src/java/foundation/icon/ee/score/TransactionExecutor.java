@@ -27,7 +27,6 @@ import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Transaction;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
-import org.aion.avm.core.IExternalState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

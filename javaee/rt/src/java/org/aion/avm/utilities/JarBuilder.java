@@ -2,7 +2,6 @@ package org.aion.avm.utilities;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
