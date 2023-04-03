@@ -84,7 +84,7 @@ class StackWatcherMethodAdapter extends AdviceAdapter {
         visitLdcInsn(this.maxLocals + this.maxStack);
         invokeStatic(typeHelper, m1);
 
-        // If current method has at least one try catch block, we need to generate a StackWacher stamp.
+        // If current method has at least one try catch block, we need to generate a StackWatcher stamp.
         if (this.tryCatchBlockCount > 0){
             //invoke AVMStackWatcher.getCurStackDepth() and put the result into local variable
             Method m2 = Method.getMethod("int getCurStackDepth()");
@@ -112,7 +112,7 @@ class StackWatcherMethodAdapter extends AdviceAdapter {
     @Override
     public void visitTryCatchBlock(Label start, Label end, Label handler, String type){
         // visitTryCatchBlock is guaranteed to be called before the visits of its labels.
-        // we keep track of all exception handlers so we can instrument them when they are visited.
+        // we keep track of all exception handlers, so we can instrument them when they are visited.
         catchBlockList.add(handler);
         mv.visitTryCatchBlock(start, end, handler, type);
     }

@@ -111,7 +111,7 @@ public class Transformer {
         processedClasses.put(PackageConstants.kConstantClassName, constantClass.bytecode);
 
         // merge the generated classes and processed classes, assuming the package spaces do not conflict.
-        // We also want to expose this type to the class writer so it can compute common superclasses.
+        // We also want to expose this type to the class writer, so it can compute common superclasses.
         GeneratedClassConsumer generatedClassesSink = (superClassSlashName, classSlashName, bytecode) -> {
             // Note that the processed classes are expected to use .-style names.
             String classDotName = Utilities.internalNameToFullyQualifiedName(classSlashName);
