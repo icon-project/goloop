@@ -405,10 +405,10 @@ pages:IT:goloop:javagov:
   only:
     - tags
 
-push:goloop:py:
-  <<: *push
-  variables:
-    REPO_TAG: "goloop-py:${CI_COMMIT_REF_NAME}"
+#push:goloop:py:
+#  <<: *push
+#  variables:
+#    REPO_TAG: "goloop-py:${CI_COMMIT_REF_NAME}"
 
 push:goloop:java:
   <<: *push
