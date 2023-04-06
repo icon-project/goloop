@@ -463,8 +463,7 @@ public class IconService {
      * @return a {@code Monitor} object
      */
     public Monitor<BlockNotification> monitorBlocks(BigInteger height) {
-        MonitorSpec ms = new BlockMonitorSpec(height, null);
-        return provider.monitor(ms, findConverter(BlockNotification.class));
+        return this.monitor(new BlockMonitorSpec(height, null));
     }
 
     /**
@@ -475,8 +474,7 @@ public class IconService {
      * @return a {@code Monitor} object
      */
     public Monitor<BlockNotification> monitorBlocks(BigInteger height, EventMonitorSpec.EventFilter[] eventFilters) {
-        MonitorSpec ms = new BlockMonitorSpec(height, eventFilters);
-        return provider.monitor(ms, findConverter(BlockNotification.class));
+        return this.monitor(new BlockMonitorSpec(height, eventFilters));
     }
 
     /**
@@ -490,8 +488,7 @@ public class IconService {
      * @return a {@code Monitor} object
      */
     public Monitor<EventNotification> monitorEvents(BigInteger height, String event, Address addr, String[] indexed, String[] data) {
-        MonitorSpec ms = new EventMonitorSpec(height, event, addr, indexed, data);
-        return provider.monitor(ms, findConverter(EventNotification.class));
+        return monitor(new EventMonitorSpec(height, event, addr, indexed, data));
     }
 
     /**
@@ -504,8 +501,17 @@ public class IconService {
      *
      */
     public Monitor<BTPNotification> monitorBTP(BigInteger height, BigInteger networkId, boolean proofFlag) {
-        MonitorSpec ms = new BTPMonitorSpec(height, networkId, proofFlag);
-        return provider.monitor(ms, findConverter(BTPNotification.class));
+        return this.monitor(new BTPMonitorSpec(height, networkId, proofFlag));
+    }
+
+    /**
+     * Get a monitor for notification
+     * @param ms Monitoring spec for the notification
+     * @return a {@code Monitor} object
+     * @param <T> Notification class
+     */
+    public <T> Monitor<T> monitor(MonitorSpec<T> ms) {
+        return provider.monitor(ms, findConverter(ms.getNotificationClass()));
     }
 
     // Below APIs are additional features for BTP 2.0

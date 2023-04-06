@@ -16,21 +16,28 @@
 
 package foundation.icon.icx.transport.monitor;
 
+import foundation.icon.icx.data.BTPNotification;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 
 import java.math.BigInteger;
 
-public class BTPMonitorSpec extends MonitorSpec {
+public class BTPMonitorSpec extends MonitorSpec<BTPNotification> {
     private final BigInteger height;
     private final BigInteger networkId;
     private final boolean proofFlag;
+    private final long progressInterval;
 
     public BTPMonitorSpec(BigInteger height, BigInteger networkId, boolean proofFlag) {
+        this(height, networkId, proofFlag, 0);
+    }
+
+    public BTPMonitorSpec(BigInteger height, BigInteger networkId, boolean proofFlag, long progressInterval) {
         this.path = "btp";
         this.height = height;
         this.networkId = networkId;
         this.proofFlag = proofFlag;
+        this.progressInterval = progressInterval;
     }
 
     @Override
@@ -39,6 +46,14 @@ public class BTPMonitorSpec extends MonitorSpec {
                 .put("height", new RpcValue(this.height))
                 .put("networkID", new RpcValue(this.networkId))
                 .put("proofFlag", new RpcValue(this.proofFlag));
+        if (this.progressInterval > 0) {
+            builder.put("progressInterval", new RpcValue(BigInteger.valueOf(this.progressInterval)));
+        }
         return builder.build();
+    }
+
+    @Override
+    public Class<BTPNotification> getNotificationClass() {
+        return BTPNotification.class;
     }
 }

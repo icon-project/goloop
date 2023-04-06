@@ -18,10 +18,11 @@ package foundation.icon.icx.transport.monitor;
 
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 
-public abstract class MonitorSpec {
+public abstract class MonitorSpec<T> {
     protected String path;
 
     public abstract RpcObject getParams();
 
     public String getPath() {return path;}
+    public abstract Class<T> getNotificationClass();
 }
