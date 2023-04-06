@@ -32,9 +32,9 @@ func (wm *wsSessionManager) RunBtpSession(ctx echo.Context) error {
 	defer wm.StopSession(wss)
 
 	bm := wss.chain.BlockManager()
-
 	sm := wss.chain.ServiceManager()
-	if bm == nil || sm == nil {
+	cs := wss.chain.Consensus()
+	if bm == nil || sm == nil || cs == nil {
 		_ = wss.response(int(jsonrpc.ErrorCodeServer), "Stopped")
 		return nil
 	}
@@ -74,13 +74,6 @@ loop:
 				break loop
 			}
 			if nw.StartHeight()+1 <= h {
-				chain, ok := ctx.Get("chain").(module.Chain)
-				if chain == nil || !ok {
-					wm.logger.Infof("err:%+v\n", err)
-					break loop
-				}
-
-				cs := chain.Consensus()
 				nw, err := sm.BTPNetworkFromResult(blk.Result(), br.NetworkId.Value)
 				if !nw.Open() {
 					wm.logger.Infof("network is closed (height=%d, err:%+v)\n", h, err)
