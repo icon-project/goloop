@@ -12,10 +12,11 @@ import (
 )
 
 type BTPRequest struct {
-	Height    common.HexInt64 `json:"height"`
-	NetworkId common.HexInt64 `json:"networkID"`
-	ProofFlag common.HexBool  `json:"proofFlag"`
-	bn        BTPNotification
+	Height           common.HexInt64 `json:"height"`
+	NetworkId        common.HexInt64 `json:"networkID"`
+	ProofFlag        common.HexBool  `json:"proofFlag"`
+	ProgressInterval common.HexInt64 `json:"progressInterval,omitempty"`
+	bn               BTPNotification
 }
 
 type BTPNotification struct {
@@ -60,6 +61,7 @@ func (wm *wsSessionManager) RunBtpSession(ctx echo.Context) error {
 		return nil
 	}
 
+	var pn ProgressNotification;
 loop:
 	for {
 		bch, err = bm.WaitForBlock(h)
@@ -73,6 +75,7 @@ loop:
 			if !ok {
 				break loop
 			}
+			msgSent := 0
 			if nw.StartHeight()+1 <= h {
 				nw, err := sm.BTPNetworkFromResult(blk.Result(), br.NetworkId.Value)
 				if !nw.Open() {
@@ -98,6 +101,18 @@ loop:
 
 					if err = wss.WriteJSON(&br.bn); err != nil {
 						wm.logger.Infof("fail to write json BtpNotification err:%+v\n", err)
+						break loop
+					}
+					msgSent += 1
+				}
+			}
+			// notify progress
+			if pi := br.ProgressInterval.Value ; pi > 0 {
+				last := pn.Progress.Value
+				if last == 0 || (h-last) >= pi || msgSent > 0 {
+					pn.Progress.Value = h
+					if err := wss.WriteJSON(&pn); err != nil {
+						wm.logger.Infof("fail to write json ProgressNotification(height=%d)", h)
 						break loop
 					}
 				}

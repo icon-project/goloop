@@ -16,8 +16,9 @@ import (
 
 type EventRequest struct {
 	EventFilter
-	Height common.HexInt64 `json:"height"`
-	Logs   common.HexBool  `json:"logs,omitempty"`
+	Height           common.HexInt64 `json:"height"`
+	Logs             common.HexBool  `json:"logs,omitempty"`
+	ProgressInterval common.HexInt64 `json:"progressInterval,omitempty"`
 
 	Filters EventFilters `json:"eventFilters,omitempty"`
 }
@@ -133,13 +134,14 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 	wss.RunLoop(ech)
 
 	var bch <-chan module.Block
-
+	var pn ProgressNotification;
 loop:
 	for {
 		bch, err = bm.WaitForBlock(h)
 		if err != nil {
 			break loop
 		}
+		msgSent := 0
 		select {
 		case err = <-ech:
 			break loop
@@ -172,8 +174,20 @@ loop:
 						wm.logger.Infof("fail to write json EventNotification err:%+v\n", err)
 						break loop
 					}
+					msgSent++
 				}
 				index++
+			}
+		}
+		// notify progress
+		if pi := er.ProgressInterval.Value ; pi > 0 {
+			last := pn.Progress.Value
+			if last == 0 || (h-last) >= pi || msgSent>0 {
+				pn.Progress.Value = h
+				if err := wss.WriteJSON(&pn); err != nil {
+					wm.logger.Infof("fail to write json ProgressNotification(height=%d)", h)
+					break loop
+				}
 			}
 		}
 		h++
