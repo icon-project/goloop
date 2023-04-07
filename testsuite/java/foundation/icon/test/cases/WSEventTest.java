@@ -259,6 +259,7 @@ public class WSEventTest {
         KeyWallet ownerWallet = KeyWallet.create();
         KeyWallet aliceWallet = KeyWallet.create();
         KeyWallet bobWallet = KeyWallet.create();
+        final long PROGRESS_INTERVAL = 3;
 
         // deploy 2 scores with same source
         EventGen[] eventGen = new EventGen[2];
@@ -291,9 +292,12 @@ public class WSEventTest {
             2. monitor with event and address
             3. monitor with event, address and data
              */
-            Monitor<EventNotification> em = iconService.monitorEvents(lastBlk.getHeight(), event, addrs[i], data[i], null);
+            Monitor<EventNotification> em = iconService.monitor(new EventMonitorSpec(
+                    lastBlk.getHeight(), event, addrs[i], data[i], null, false, PROGRESS_INTERVAL
+            ));
             boolean started = em.start(new Monitor.Listener<EventNotification>() {
                 boolean stop = false;
+                BigInteger last = null;
 
                 @Override
                 public void onStart() {
@@ -308,6 +312,19 @@ public class WSEventTest {
                         assertFalse(stop);
                         LOG.info("receive height : " + event.getHeight() + ", index : " + event.getIndex());
                         eventList.add(event);
+                    }
+                }
+
+                @Override
+                public void onProgress(BigInteger height) {
+                    synchronized (condVar) {
+                        assertFalse(stop);
+                        if (last != null) {
+                            var distance = height.subtract(last).longValue();
+                            assertFalse(distance > PROGRESS_INTERVAL);
+                        }
+                        last = height;
+                        LOG.info("receive progress height : " + height.toString());
                     }
                 }
 
