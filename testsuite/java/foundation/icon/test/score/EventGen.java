@@ -22,6 +22,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
+import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
@@ -35,19 +36,25 @@ public class EventGen extends Score {
     }
 
     // install with the default parameter
-    public static EventGen install(TransactionHandler txHandler, Wallet wallet)
+    public static EventGen install(TransactionHandler txHandler, Wallet wallet, String contentType)
             throws TransactionFailureException, ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("EventGen"))
                 .build();
-        return install(txHandler, wallet, params);
+        return install(txHandler, wallet, contentType, params);
     }
 
     // install with the passed parameter
     public static EventGen install(TransactionHandler txHandler,
-                                   Wallet wallet, RpcObject params)
+                                   Wallet wallet, String contentType, RpcObject params)
             throws TransactionFailureException, ResultTimeoutException, IOException {
-        return new EventGen(txHandler.deploy(wallet, getFilePath("event_gen"), params));
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            return new EventGen(txHandler.deploy(wallet, getFilePath("event_gen"), params));
+        } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)){
+            return new EventGen(txHandler.deploy(wallet, testcases.EventGen.class, params));
+        } else {
+            throw new IllegalArgumentException("InvalidContentType("+contentType+")");
+        }
     }
 
     public Bytes invokeGenerate(Wallet from, Address addr, BigInteger i, byte[] bytes) throws IOException {

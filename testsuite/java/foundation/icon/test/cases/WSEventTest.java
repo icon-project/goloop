@@ -46,7 +46,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 // TODO What about adding annotation indicating requirements. For example,
 // "@require(nodeNum=4,chainNum=1)" indicates it requires at least 4 nodes and
 // 1 chain for each.
-@Tag(Constants.TAG_PY_SCORE)
 public class WSEventTest {
     private static TransactionHandler txHandler;
     private static IconService iconService;
@@ -142,7 +141,18 @@ public class WSEventTest {
     }
 
     @Test
-    public void wsBlkMonitorWithEventFiltersTest() throws Exception {
+    @Tag(Constants.TAG_PY_SCORE)
+    public void wsBlkMonitorWithEventFiltersTestWithPython() throws Exception {
+        wsBlkMonitorWithEventFiltersTest(Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    @Test
+    @Tag(Constants.TAG_JAVA_SCORE)
+    public void wsBlkMonitorWithEventFiltersTestWithJava() throws Exception {
+        wsBlkMonitorWithEventFiltersTest(Constants.CONTENT_TYPE_JAVA);
+    }
+
+    public void wsBlkMonitorWithEventFiltersTest(String contentType) throws Exception {
         KeyWallet ownerWallet = KeyWallet.create();
         KeyWallet aliceWallet = KeyWallet.create();
         KeyWallet bobWallet = KeyWallet.create();
@@ -150,11 +160,11 @@ public class WSEventTest {
         // deploy 2 scores with same source
         EventGen[] eventGen = new EventGen[2];
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[0] = EventGen.install(txHandler, ownerWallet);
+        eventGen[0] = EventGen.install(txHandler, ownerWallet, contentType);
         LOG.infoExiting();
 
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[1] = EventGen.install(txHandler, ownerWallet);
+        eventGen[1] = EventGen.install(txHandler, ownerWallet, contentType);
         LOG.infoExiting();
 
         String event = "Event(Address,int,bytes)";
@@ -255,7 +265,18 @@ public class WSEventTest {
     }
 
     @Test
-    public void wsEvtMonitorTest() throws Exception {
+    @Tag(Constants.TAG_PY_SCORE)
+    public void wsEvtMonitorTestWithPython() throws Exception {
+        wsEvtMonitorTest(Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    @Test
+    @Tag(Constants.TAG_JAVA_SCORE)
+    public void wsEvtMonitorTestWithJava() throws Exception {
+        wsEvtMonitorTest(Constants.CONTENT_TYPE_JAVA);
+    }
+
+    public void wsEvtMonitorTest(String contentType) throws Exception {
         KeyWallet ownerWallet = KeyWallet.create();
         KeyWallet aliceWallet = KeyWallet.create();
         KeyWallet bobWallet = KeyWallet.create();
@@ -264,11 +285,11 @@ public class WSEventTest {
         // deploy 2 scores with same source
         EventGen[] eventGen = new EventGen[2];
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[0] = EventGen.install(txHandler, ownerWallet);
+        eventGen[0] = EventGen.install(txHandler, ownerWallet, contentType);
         LOG.infoExiting();
 
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[1] = EventGen.install(txHandler, ownerWallet);
+        eventGen[1] = EventGen.install(txHandler, ownerWallet, contentType);
         LOG.infoExiting();
 
         String event = "Event(Address,int,bytes)";
