@@ -729,6 +729,17 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "altBN128",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"operation", scoreapi.String, nil, nil},
+			{"input", scoreapi.Bytes, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bytes,
+		},
+	}, icmodule.Revision9, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

@@ -167,6 +167,11 @@ public final class Context extends Object {
         return blockchainRuntime.avm_hash(alg, data);
     }
 
+    public static ByteArray avm_altBN128(String operation, ByteArray input) {
+        // Charge steps in blockchainRuntime
+        return blockchainRuntime.avm_altBN128(operation, input);
+    }
+
     public static boolean avm_verifySignature(String alg, ByteArray msg,
             ByteArray sig, ByteArray pubKey) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
