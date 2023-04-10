@@ -21,12 +21,24 @@ import org.aion.avm.core.util.Helpers;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import supranational.blst.P1;
+import supranational.blst.P2;
+import java.math.BigInteger;
 
-import java.util.Arrays;
 
 public class BLSTest {
-    private static byte[] hexToBytes(String hex) {
-        return Helpers.hexStringToBytes(hex);
+
+    private static byte[] concatBytes(byte[]... args) {
+        int length = 0;
+        for (int i = 0; i < args.length; i++) {
+            length += args[i].length;
+        }
+        byte[] out = new byte[length];
+        int offset = 0;
+        for (int i = 0; i < args.length; i++) {
+            System.arraycopy(args[i], 0, out, offset, args[i].length);
+            offset += args[i].length;
+        }
+        return out;
     }
 
     @Test
@@ -68,4 +80,41 @@ public class BLSTest {
     public void identityInGroup() {
         Assertions.assertTrue(BLS12381.identity().in_group());
     }
+
+    @Test
+    public void pairingCheck() {
+        P1 g1 = P1.generator();
+        P2 g2 = P2.generator();
+        Assertions.assertTrue(BLS12381.pairingCheck(
+                concatBytes(
+                        g1.serialize(), g2.serialize(),
+                        g1.dup().neg().serialize(), g2.serialize(),
+                        g1.serialize(), g2.serialize(),
+                        g1.serialize(), g2.dup().neg().serialize()),
+                false));
+    }
+
+    @Test
+    public void addAndScalarMul() {
+        byte[] out;
+
+        // g1 add and scalarMul tests
+        P1 g1 = P1.generator();
+        byte[] g1x2b = BLS12381.g1ScalarMul(new BigInteger("2").toByteArray(), g1.serialize(), false);
+        byte[] g1x3b = BLS12381.g1ScalarMul(new BigInteger("3").toByteArray(), g1.serialize(), false);
+
+        out = BLS12381.g1Add(concatBytes(g1.serialize(), g1x2b), false);
+
+        Assertions.assertTrue(new P1(g1x3b).is_equal(new P1(out)), "should be equal");
+
+        // g2 add and scalarMul tests
+        P2 g2 = P2.generator();
+        byte[] g2x2b = BLS12381.g2ScalarMul(new BigInteger("2").toByteArray(), g2.serialize(), false);
+        byte[] g2x3b = BLS12381.g2ScalarMul(new BigInteger("3").toByteArray(), g2.serialize(), false);
+
+        out = BLS12381.g2Add(concatBytes(g2.serialize(), g2x2b), false);
+
+        Assertions.assertTrue(new P2(g2x3b).is_equal(new P2(out)), "should be equal");
+    }
+
 }
