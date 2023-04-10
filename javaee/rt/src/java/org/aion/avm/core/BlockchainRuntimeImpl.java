@@ -20,6 +20,7 @@ import foundation.icon.ee.util.LogMarker;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import foundation.icon.ee.util.ValueCodec;
+import foundation.icon.ee.util.bls12381.BLS12381;
 import i.GenericPredefinedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
@@ -369,6 +370,63 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         return new ByteArray(Crypto.aggregate(
                 type.getUnderlying(), pa, values.getUnderlying()
         ));
+    }
+
+    @Override
+    public ByteArray avm_ecAdd(s.java.lang.String curve, ByteArray data, boolean compressed) {
+        Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
+        Objects.requireNonNull(data, "Data can't be NULL");
+        Objects.requireNonNull(compressed, "Compressed flag can't be NULL");
+        byte[] dataBytes = data.getUnderlying();
+        int nPoints;
+        switch (curve.getUnderlying()) {
+            case "bls12-381-g1":
+                nPoints = dataBytes.length / BLS12381.G1_LEN;
+                if (compressed) nPoints /= 2;
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(1000 * nPoints);
+                return new ByteArray(BLS12381.g1Add(dataBytes, compressed));
+            case "bls12-381-g2":
+                nPoints = dataBytes.length / BLS12381.G2_LEN;
+                if (compressed) nPoints /= 2;
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(8 * 1000 * nPoints);
+                return new ByteArray(BLS12381.g2Add(dataBytes, compressed));    
+        }
+        throw new IllegalArgumentException("Unsupported curve " + curve);
+    }
+
+    @Override
+    public ByteArray avm_ecScalarMul(s.java.lang.String curve, ByteArray scalar, ByteArray data, boolean compressed) {
+        Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
+        Objects.requireNonNull(scalar, "Scalar can't be NULL");
+        Objects.requireNonNull(data, "Data can't be NULL");
+        Objects.requireNonNull(compressed, "Compressed flag can't be NULL");
+        byte[] dataBytes = data.getUnderlying();
+        byte[] scalarBytes = scalar.getUnderlying();
+        switch (curve.getUnderlying()) {
+            case "bls12-381-g1":
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(20000);
+                return new ByteArray(BLS12381.g1ScalarMul(scalarBytes, dataBytes, compressed));
+            case "bls12-381-g2":
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(95000);
+                return new ByteArray(BLS12381.g2ScalarMul(scalarBytes, dataBytes, compressed));    
+            }
+            throw new IllegalArgumentException("Unsupported curve " + curve);
+        }
+        
+    @Override
+    public boolean avm_ecPairingCheck(s.java.lang.String curve, ByteArray data, boolean compressed) {
+        Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
+        Objects.requireNonNull(data, "Data can't be NULL");
+        Objects.requireNonNull(compressed, "Compressed flag can't be NULL");
+        byte[] dataBytes = data.getUnderlying();
+        switch (curve.getUnderlying()) {
+            case "bls12-381":
+                int nPairs = dataBytes.length / (BLS12381.G1_LEN + BLS12381.G2_LEN);
+                if (compressed) nPairs /= 2;
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(200000 + 40000 * nPairs);
+                return BLS12381.pairingCheck(dataBytes, compressed);   
+        }
+        throw new IllegalArgumentException("Unsupported curve " + curve);
     }
 
     @Override

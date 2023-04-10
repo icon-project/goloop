@@ -144,6 +144,11 @@ public interface IBlockchainRuntime {
             boolean compressed);
     ByteArray avm_aggregate(String type, ByteArray prevAgg, ByteArray values);
 
+    // Elliptic curve operations
+    ByteArray avm_ecAdd(String curve, ByteArray data, boolean compressed);
+    ByteArray avm_ecScalarMul(String curve, ByteArray scalar, ByteArray data, boolean compressed);
+    boolean avm_ecPairingCheck(String curve, ByteArray data, boolean compressed);
+
     /**
      * Returns the address that is associated with the given public key
      */
