@@ -10,6 +10,8 @@ ignore:
   - "**/*_test.*"
   - "**/mocks/*"
   - "**/mock/*"
+  - "module"
+  - "test"
 
 coverage:
   precision: 2
