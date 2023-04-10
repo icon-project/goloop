@@ -22,7 +22,7 @@ public class AvmConfiguration {
     public AvmConfiguration() {
         // By default, none of our verbose options are enabled.
         this.preserveDebuggability = false;
-        this.testMode = true;
+        this.testMode = false;
     }
 
     public AvmConfiguration(AvmConfiguration conf) {

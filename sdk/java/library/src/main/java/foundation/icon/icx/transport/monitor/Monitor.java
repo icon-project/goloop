@@ -16,11 +16,14 @@
 
 package foundation.icon.icx.transport.monitor;
 
+import java.math.BigInteger;
+
 public interface Monitor<T> {
     interface Listener<T> {
         void onStart();
         void onEvent(T msg);
         void onError(long code);
+        default void onProgress(BigInteger height) { }
         void onClose();
     }
 

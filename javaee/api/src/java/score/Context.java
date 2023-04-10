@@ -494,7 +494,7 @@ public final class Context {
 
     /**
      * Returns a new object reader reading from a byte array.
-     * @param codec codec. Currently "RLPn" is supported.
+     * @param codec codec, currently "RLP" and "RLPn" are supported.
      * @param byteArray byte array.
      * @return object reader.
      * @throws IllegalArgumentException if the codec is unsupported.
@@ -506,7 +506,7 @@ public final class Context {
 
     /**
      * Returns a new object writer writing to a byte array.
-     * @param codec codec. Currently "RLPn" is supported.
+     * @param codec codec, currently "RLP" and "RLPn" are supported.
      * @return byte array object writer
      * @throws IllegalArgumentException if the codec is unsupported.
      */

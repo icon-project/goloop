@@ -2,12 +2,13 @@ package i;
 
 import score.UserRevertedException;
 
-import java.util.*;
+import java.util.IdentityHashMap;
+import java.util.Stack;
 
 /**
  * CommonInstrumentation operates on the state of the Dapp running in a single thread, only used internally
  * Forces the execution to stop if the abort state is activated
- **/
+ */
 public class CommonInstrumentation implements IInstrumentation {
     // Single-frame states (the currentFrame cannot also be in the callerFrame - this is just an optimization since the currentFrame access
     // is the common case and is in the critical path - may actually be worth fully-inlining these variables, at some point).
@@ -22,7 +23,6 @@ public class CommonInstrumentation implements IInstrumentation {
         RuntimeAssertionError.assertTrue(null != contractLoader);
         FrameState newFrame = new FrameState();
         newFrame.lateLoader = contractLoader;
-
         newFrame.energyLeft = energyLeft;
         newFrame.nextHashCode = nextHashCode;
         newFrame.frameContext = frameContext;
@@ -33,18 +33,23 @@ public class CommonInstrumentation implements IInstrumentation {
         if (1 == nextHashCode) {
             newFrame.internedStringWrappers = new IdentityHashMap<>();
         }
-
         newFrame.internedClassWrappers = classWrappers;
 
-        // setting up a default stack watcher.
-        newFrame.stackWatcher = new StackWatcher();
-        newFrame.stackWatcher.setPolicy(StackWatcher.POLICY_SIZE | StackWatcher.POLICY_DEPTH);
-        newFrame.stackWatcher.setMaxStackDepth(512);
-        newFrame.stackWatcher.setMaxStackSize(16 * 1024);
-        
         // Install the frame.
         if (null != this.currentFrame) {
             this.callerFrames.push(this.currentFrame);
+            // reuse the previous stack watcher
+            newFrame.stackWatcher = this.currentFrame.stackWatcher;
+            // check the frame depth as well
+            if (this.callerFrames.size() > 64) {
+                newFrame.forceExitState = new OutOfStackException();
+            }
+        } else {
+            // setting up an initial stack watcher
+            newFrame.stackWatcher = new StackWatcher();
+            newFrame.stackWatcher.setPolicy(StackWatcher.POLICY_SIZE | StackWatcher.POLICY_DEPTH);
+            newFrame.stackWatcher.setMaxStackDepth(512);
+            newFrame.stackWatcher.setMaxStackSize(16 * 1024);
         }
         this.currentFrame = newFrame;
     }
@@ -105,8 +110,8 @@ public class CommonInstrumentation implements IInstrumentation {
                     shadow = convertVmGeneratedException(t);
                 }
             } else if (t instanceof AvmThrowable) {
-                // There are cases where an AvmException might appear here during, for example, a finally clause.  We just want to re-throw it
-                // since these aren't catchable within the user code.
+                // There are cases where an AvmException might appear here during, for example, a 'finally' clause.
+                // We just want to re-throw it since these aren't catchable within the user code.
                 exceptionToRethrow = (AvmThrowable)t;
             } else {
                 // This is one of our wrappers.
@@ -285,7 +290,7 @@ public class CommonInstrumentation implements IInstrumentation {
     // Private helpers used internally.
     private s.java.lang.Throwable convertUserRevertedException(UserRevertedException t) throws Exception {
         int code = t.getCode();
-        // (note that converting the cause is recusrive on the causal chain)
+        // (note that converting the cause is recursive on the causal chain)
         Throwable originalCause = t.getCause();
         s.java.lang.Throwable cause = (null != originalCause)
                 ? convertVmGeneratedException(originalCause)
@@ -302,7 +307,7 @@ public class CommonInstrumentation implements IInstrumentation {
 
     // Private helpers used internally.
     private s.java.lang.Throwable convertVmGeneratedException(Throwable t) throws Exception {
-        // (note that converting the cause is recusrive on the causal chain)
+        // (note that converting the cause is recursive on the causal chain)
         Throwable originalCause = t.getCause();
         s.java.lang.Throwable cause = (null != originalCause)
                 ? convertVmGeneratedException(originalCause)
@@ -345,7 +350,7 @@ public class CommonInstrumentation implements IInstrumentation {
          * -Class instance equality is generally more important since classes don't otherwise have a clear definition of "equality"
          * Therefore, we will only create a map for interning strings if we suspect that this is the first call (a 1 nextHashCode - we may make this
          * explicit, in the future) but we will always create the map for interning classes.
-         * The persistence layer also knows that classes are encoded differently so it will correctly resolve instance through this interning map.
+         * The persistence layer also knows that classes are encoded differently, so it will correctly resolve instance through this interning map.
          */
         private IdentityHashMap<String, s.java.lang.String> internedStringWrappers;
         private InternedClasses internedClassWrappers;

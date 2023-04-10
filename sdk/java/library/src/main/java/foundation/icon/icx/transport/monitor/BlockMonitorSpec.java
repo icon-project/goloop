@@ -16,13 +16,14 @@
 
 package foundation.icon.icx.transport.monitor;
 
+import foundation.icon.icx.data.BlockNotification;
 import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 
 import java.math.BigInteger;
 
-public class BlockMonitorSpec extends MonitorSpec {
+public class BlockMonitorSpec extends MonitorSpec<BlockNotification> {
     private final BigInteger height;
     private final EventMonitorSpec.EventFilter[] eventFilters;
 
@@ -46,5 +47,10 @@ public class BlockMonitorSpec extends MonitorSpec {
             builder.put("eventFilters", arrBuilder.build());
         }
         return builder.build();
+    }
+
+    @Override
+    public Class<BlockNotification> getNotificationClass() {
+        return BlockNotification.class;
     }
 }

@@ -43,10 +43,10 @@ public class DAppLoader {
         
         // Load all the user-defined classes (these are required for both loading and storing state).
         // (we do this in alphabetical order since the persistence model needs consistent read/write order).
-        List<Class<?>> aphabeticalContractClasses = Helpers.getAlphabeticalUserTransformedDappClasses(classLoader, app.classes.keySet());
+        List<Class<?>> alphabeticalContractClasses = Helpers.getAlphabeticalUserTransformedDappClasses(classLoader, app.classes.keySet());
 
         // We now have all the information to describe the LoadedDApp.
-        SplitClasses splitClasses = SplitClasses.splitAllSavedClasses(aphabeticalContractClasses);
+        SplitClasses splitClasses = SplitClasses.splitAllSavedClasses(alphabeticalContractClasses);
         byte[] apis = JarBuilder.getAPIsBytesFromJAR(immortalDappJar);
         if (apis == null)
             return null;
@@ -68,10 +68,10 @@ public class DAppLoader {
         
         // Load all the user-defined classes (these are required for both loading and storing state).
         // (we do this in alphabetical order since the persistence model needs consistent read/write order).
-        List<Class<?>> aphabeticalContractClasses = Helpers.getAlphabeticalUserTransformedDappClasses(classLoader, app.classes.keySet());
+        List<Class<?>> alphabeticalContractClasses = Helpers.getAlphabeticalUserTransformedDappClasses(classLoader, app.classes.keySet());
 
         // We now have all the information to describe the LoadedDApp.
-        SplitClasses splitClasses = SplitClasses.splitAllSavedClasses(aphabeticalContractClasses);
+        SplitClasses splitClasses = SplitClasses.splitAllSavedClasses(alphabeticalContractClasses);
         return new LoadedDApp(classLoader, splitClasses.sortedUserClasses, splitClasses.constantClass, app.mainClass, apis, preserveDebuggability);
     }
 

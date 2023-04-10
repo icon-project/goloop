@@ -17,16 +17,18 @@
 package foundation.icon.icx.transport.monitor;
 
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.EventNotification;
 import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 
 import java.math.BigInteger;
 
-public class EventMonitorSpec extends MonitorSpec {
+public class EventMonitorSpec extends MonitorSpec<EventNotification> {
     private final BigInteger height;
-    private final EventFilter filter;
+    private final EventFilter[] filters;
     private final boolean logs;
+    private final long progressInterval;
 
     public static class EventFilter {
         private final String event;
@@ -74,10 +76,19 @@ public class EventMonitorSpec extends MonitorSpec {
     }
 
     public EventMonitorSpec(BigInteger height, String event, Address addr, String[] indexed, String[] data, boolean logs) {
+        this(height, event, addr, indexed, data, logs, 0);
+    }
+
+    public EventMonitorSpec(BigInteger height, String event, Address addr, String[] indexed, String[] data, boolean logs, long progressInterval) {
+        this(height, new EventFilter[]{new EventFilter(event, addr, indexed, data)}, logs, progressInterval);
+    }
+
+    public EventMonitorSpec(BigInteger height, EventFilter[] filters, boolean logs, long progressInterval) {
         this.path = "event";
         this.height = height;
-        this.filter = new EventFilter(event, addr, indexed, data);
+        this.filters = filters;
         this.logs = logs;
+        this.progressInterval = progressInterval;
     }
 
     @Override
@@ -87,7 +98,25 @@ public class EventMonitorSpec extends MonitorSpec {
         if (this.logs) {
             builder = builder.put("logs", new RpcValue(true));
         }
-        this.filter.apply(builder);
+        if (filters.length==1) {
+            this.filters[0].apply(builder);
+        } else {
+            RpcArray.Builder arrBuilder = new RpcArray.Builder();
+            for (EventFilter ef : this.filters) {
+                RpcObject.Builder efBuilder = new RpcObject.Builder();
+                ef.apply(efBuilder);
+                arrBuilder.add(efBuilder.build());
+            }
+            builder = builder.put("eventFilters", arrBuilder.build());
+        }
+        if (this.progressInterval>0) {
+            builder = builder.put("progressInterval", new RpcValue(BigInteger.valueOf(this.progressInterval)));
+        }
         return builder.build();
+    }
+
+    @Override
+    public Class<EventNotification> getNotificationClass() {
+        return EventNotification.class;
     }
 }

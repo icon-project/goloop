@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -39,6 +40,14 @@ type wsSessionManager struct {
 	maxSession int
 	logger     log.Logger
 	sessions   []*wsSession
+}
+
+// ProgressNotification is used to notify the height of the processed block
+// If it's enabled, then it would be sent on every interval. If there are
+// some notifications to be sent, it would be also sent regardless of the
+// interval.
+type ProgressNotification struct {
+	Progress common.HexInt64 `json:"progress"`
 }
 
 func newWSSessionManager(logger log.Logger, maxSession int) *wsSessionManager {

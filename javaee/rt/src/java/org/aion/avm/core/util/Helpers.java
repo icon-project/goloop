@@ -84,7 +84,7 @@ public class Helpers {
         try (FileOutputStream fos = new FileOutputStream(f)) {
             fos.write(bytes);
         } catch (IOException e) {
-            // This is for tests so we aren't expecting the failure.
+            // This is for tests, so we aren't expecting the failure.
             throw RuntimeAssertionError.unexpected(e);
         }
     }
@@ -155,7 +155,7 @@ public class Helpers {
 
     /**
      * Sorts the user contract class names given in "classNames", alphabetically, and then looks up each of their corresponding class objects in
-     * classLoader.  Note that only class names within the "user" namspace are considered.
+     * classLoader.  Note that only class names within the "user" namespace are considered.
      * 
      * @param classLoader The class loader where the classes exist.
      * @param classNames The names of the classes which should be loaded.

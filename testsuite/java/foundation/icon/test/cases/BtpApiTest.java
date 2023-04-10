@@ -38,7 +38,7 @@ import java.util.Arrays;
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@Tag(Constants.TAG_PY_SCORE)
+@Tag(Constants.TAG_JAVA_SCORE)
 public class BtpApiTest extends TestBase {
     private static TransactionHandler txHandler;
     private static IconService iconService;
@@ -233,7 +233,7 @@ public class BtpApiTest extends TestBase {
 
         LOG.infoEntering("getProofForEvents");
         KeyWallet ownerWallet = KeyWallet.create();
-        EventGen eventGen = EventGen.install(txHandler, ownerWallet);
+        EventGen eventGen = EventGen.install(txHandler, ownerWallet, Constants.CONTENT_TYPE_JAVA);
         txHash = eventGen.invokeGenerate(ownerWallet, ownerWallet.getAddress(), BigInteger.ONE, new byte[]{1});
         txResult = txHandler.getResult(txHash);
         height = txResult.getBlockHeight();

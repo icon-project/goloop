@@ -39,7 +39,7 @@ public class AutomaticGraphVisitor extends ClassToolchain.ToolChainClassVisitor 
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        // Note that we don'tw ant to change interfaces - clearly, they have no constructors.
+        // Note that we don't want to change interfaces - clearly, they have no constructors.
         this.isInterface = (0 != (Opcodes.ACC_INTERFACE & access));
         // We need the class name for the analyzer.
         this.className = name;
@@ -72,7 +72,7 @@ public class AutomaticGraphVisitor extends ClassToolchain.ToolChainClassVisitor 
                 public void visitEnd() {
                     super.visitEnd();
                     
-                    // The MethodNode is fully populated so we can now analyze it.
+                    // The MethodNode is fully populated, so we can now analyze it.
                     // We use a custom interpreter which only worries about "this" or "not this".
                     Analyzer<ConstructorThisInterpreter.ThisValue> analyzer = new Analyzer<>(new ConstructorThisInterpreter());
                     try {

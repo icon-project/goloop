@@ -2,7 +2,7 @@ package i;
 
 public class StackWatcher {
 
-    /* StackWacher policy:
+    /* StackWatcher policy:
      *  POLICY_DEPTH will keep JVM stack within depth of maxStackDepth.
      *  POLICY_SIZE  will keep JVM stack within size (in terms of JVM stack
      *  frame slots) of maxStackSize. With Java 10 each slot is 8 bytes.
@@ -125,7 +125,7 @@ public class StackWatcher {
      * This method will be inserted into the beginning of every catch block.
      * If a method contains try catch block(s), we generate a stack watcher stamp.
      * The stamp will be stored as local variables of the instrumented method.
-     * In case of a exception caught, we load the stamp to get the corrent depth and size.
+     * In case of an exception caught, we load the stamp to get the correct depth and size.
      * @param depth stack depth from the stamp.
      * @param size stack size from the stamp.
      */

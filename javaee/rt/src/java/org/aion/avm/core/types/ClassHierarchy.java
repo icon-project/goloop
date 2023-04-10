@@ -462,7 +462,7 @@ public final class ClassHierarchy {
     }
 
     /**
-     * Visists all descendants of the root node in the hierarchy only if they are doubly marked
+     * Visits all descendants of the root node in the hierarchy only if they are doubly marked
      * (that is, marked both green and red).
      *
      * Returns the list of all such doubly-marked nodes that are leaf nodes in this node subset.

@@ -59,7 +59,7 @@ class ScoreEventTest {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        testScore = EventGen.install(txHandler, ownerWallet, params);
+        testScore = EventGen.install(txHandler, ownerWallet, Constants.CONTENT_TYPE_PYTHON, params);
     }
 
     @Test

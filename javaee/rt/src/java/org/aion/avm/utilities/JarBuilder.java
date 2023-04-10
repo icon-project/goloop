@@ -2,7 +2,6 @@ package org.aion.avm.utilities;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -213,7 +212,7 @@ public class JarBuilder {
         }
         saveClassToStream(className, bytes);
 
-        // Load any inner classes which might exist (these are just decimal suffixes, starting at 1.
+        // Load any inner classes which might exist (these are just decimal suffixes, starting at 1).
         int i = 1;
         String innerName = className + "$" + Integer.toString(i);
         byte[] innerBytes = Utilities.loadRequiredResourceAsBytes(Utilities.fullyQualifiedNameToInternalName(innerName) + ".class");

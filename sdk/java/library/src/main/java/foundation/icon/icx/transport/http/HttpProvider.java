@@ -27,6 +27,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcItemDeserializer;
 import foundation.icon.icx.transport.jsonrpc.RpcItemSerializer;
+import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.monitor.Monitor;
 import foundation.icon.icx.transport.monitor.MonitorSpec;
 import okhttp3.MediaType;
@@ -252,8 +253,14 @@ public class HttpProvider implements Provider {
                         case WS_START:
                             try {
                                 RpcItem rpcItem = mapper.readValue(message, RpcItem.class);
-                                T obj = rpcConverter.convertTo(rpcItem.asObject());
-                                listener.onEvent(obj);
+                                RpcObject rpcObj = rpcItem.asObject();
+                                RpcItem value = rpcObj.getItem("progress");
+                                if (value != null) {
+                                    listener.onProgress(value.asInteger());
+                                } else {
+                                    T obj = rpcConverter.convertTo(rpcObj);
+                                    listener.onEvent(obj);
+                                }
                             }
                             catch (IOException ex) {
                                 listener.onError(100);
