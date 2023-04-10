@@ -2,15 +2,14 @@ package state
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/common/log"
 	"sync"
-
-	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -23,6 +22,8 @@ type ValidatorState interface {
 	Set([]module.Validator) error
 	Add(v module.Validator) error
 	Remove(v module.Validator) bool
+	Replace(ov, nv module.Validator) error
+	SetAt(i int, v module.Validator) error
 	GetSnapshot() ValidatorSnapshot
 	Reset(ValidatorSnapshot)
 }
@@ -45,6 +46,10 @@ func (vl *validatorList) Get(i int) (module.Validator, bool) {
 	vl.lock.Lock()
 	defer vl.lock.Unlock()
 
+	return vl.getInLock(i)
+}
+
+func (vl *validatorList) getInLock(i int) (module.Validator, bool) {
 	if i < 0 || i >= len(vl.validators) {
 		return nil, false
 	}
@@ -236,7 +241,7 @@ func (vs *validatorState) Add(v module.Validator) error {
 		}
 		vs.validators = append(vs.validators, vo)
 		if vs.addrMap != nil {
-			vs.addrMap[string(v.Address().ID())] = len(vs.validators)
+			vs.addrMap[string(v.Address().Bytes())] = len(vs.validators)-1
 		}
 	}
 	return nil
@@ -259,7 +264,78 @@ func (vs *validatorState) Remove(v module.Validator) bool {
 		vs.addrMap = nil
 	}
 	vs.validators = append(vs.validators[:i], vs.validators[i+1:]...)
+	vs.addrMap = nil
 	return true
+}
+
+func (vs *validatorState) Replace(ov, nv module.Validator) error {
+	oAddr := ov.Address()
+	nAddr := nv.Address()
+	if oAddr.Equal(nAddr) {
+		return nil
+	}
+
+	vs.lock.Lock()
+	defer vs.lock.Unlock()
+
+	i := vs.indexOfInLock(oAddr, true)
+	if i < 0 {
+		return errors.NotFoundError.New("ValidatorNotFound")
+	}
+
+	if idx := vs.indexOfInLock(nAddr, true); idx >= 0 {
+		return errors.IllegalArgumentError.New("ValidatorInUse")
+	}
+
+	return vs.setAtInLock(i, ov, nv)
+}
+
+func (vs *validatorState) SetAt(i int, v module.Validator) error {
+	vs.lock.Lock()
+	defer vs.lock.Unlock()
+
+	ov, ok := vs.getInLock(i)
+	if !ok {
+		return errors.IllegalArgumentError.New("IndexOutOfRange")
+	}
+
+	oAddr := ov.Address()
+	nAddr := v.Address()
+	if oAddr.Equal(nAddr) {
+		// No need to change
+		return nil
+	}
+
+	if idx := vs.indexOfInLock(nAddr, true); idx >= 0 {
+		return errors.IllegalArgumentError.New("ValidatorInUse")
+	}
+
+	return vs.setAtInLock(i, ov, v)
+}
+
+// setAtInLock() assumes that all arguments are valid
+func (vs *validatorState) setAtInLock(i int, ov, nv module.Validator) error {
+	if vs.snapshot != nil {
+		n := make([]*validator, len(vs.validators))
+		copy(n, vs.validators)
+		vs.validators = n
+		vs.snapshot = nil
+		vs.addrMap = nil
+	}
+
+	vo, err := validatorFromValidator(nv)
+	if err != nil {
+		return err
+	}
+	vs.validators[i] = vo
+
+	// Update addrMap if exists
+	if len(vs.addrMap) > 0 {
+		delete(vs.addrMap, string(ov.Address().Bytes()))
+		vs.addrMap[string(nv.Address().Bytes())] = i
+	}
+
+	return nil
 }
 
 func ValidatorStateFromHash(database db.Database, h []byte) (ValidatorState, error) {
