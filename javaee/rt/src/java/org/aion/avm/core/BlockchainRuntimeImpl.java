@@ -376,7 +376,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public ByteArray avm_ecAdd(s.java.lang.String curve, ByteArray data, boolean compressed) {
         Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
         Objects.requireNonNull(data, "Data can't be NULL");
-        Objects.requireNonNull(compressed, "Compressed flag can't be NULL");
         byte[] dataBytes = data.getUnderlying();
         int nPoints;
         switch (curve.getUnderlying()) {
@@ -399,7 +398,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
         Objects.requireNonNull(scalar, "Scalar can't be NULL");
         Objects.requireNonNull(data, "Data can't be NULL");
-        Objects.requireNonNull(compressed, "Compressed flag can't be NULL");
         byte[] dataBytes = data.getUnderlying();
         byte[] scalarBytes = scalar.getUnderlying();
         switch (curve.getUnderlying()) {
@@ -417,7 +415,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public boolean avm_ecPairingCheck(s.java.lang.String curve, ByteArray data, boolean compressed) {
         Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
         Objects.requireNonNull(data, "Data can't be NULL");
-        Objects.requireNonNull(compressed, "Compressed flag can't be NULL");
         byte[] dataBytes = data.getUnderlying();
         switch (curve.getUnderlying()) {
             case "bls12-381":
