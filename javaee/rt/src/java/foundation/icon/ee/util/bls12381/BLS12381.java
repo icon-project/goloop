@@ -116,8 +116,8 @@ public class BLS12381 {
     public static byte[] g1ScalarMul(byte[] scalarBytes, byte[] data, boolean compressed) {
         int size = compressed ? G1_LEN : 2 * G1_LEN;
         Scalar scalar = new Scalar().from_bendian(scalarBytes);
-        if (data.length == 0 || data.length != size) {
-            throw new IllegalArgumentException("BLS12-381: g1ScalarMul: invalid data length: expected=" + size + ", got=" + data.length);
+        if (data.length != size) {
+            throw new IllegalArgumentException("BLS12-381: g1ScalarMul: invalid data layout: expected=" + size + "bytes, got=" + data.length);
         }
         P1 p = new P1(data);
         p = p.mult(scalar);
@@ -127,8 +127,8 @@ public class BLS12381 {
     public static byte[] g2ScalarMul(byte[] scalarBytes, byte[] data, boolean compressed) {
         int size = compressed ? G2_LEN : 2 * G2_LEN;
         Scalar scalar = new Scalar().from_bendian(scalarBytes);
-        if (data.length == 0 || data.length != size) {
-            throw new IllegalArgumentException("BLS12-381: g2ScalarMul: invalid data length: expected=" + size + ", got=" + data.length);
+        if (data.length != size) {
+            throw new IllegalArgumentException("BLS12-381: g2ScalarMul: invalid data layout: expected=" + size + "bytes, got=" + data.length);
         }
         P2 p = new P2(data);
         p = p.mult(scalar);
@@ -141,7 +141,7 @@ public class BLS12381 {
         int size = g1Size + g2Size;
 
         if (data.length == 0 || data.length % size != 0) {
-            throw new IllegalArgumentException("BLS12-381: pairingCheck: invalid data layout!");
+            throw new IllegalArgumentException("BLS12-381: pairingCheck: invalid data layout: expected a multiple of " + size + "bytes, got=" + data.length);
         }
 
         PT acc = PT.one();
