@@ -12,9 +12,13 @@ import (
 )
 
 func newDummyValidators(size int) []module.Validator {
+	return newDummyValidatorsFrom(0, size)
+}
+
+func newDummyValidatorsFrom(from, size int) []module.Validator {
 	validators := make([]module.Validator, size)
 	for i := 0; i < size; i++ {
-		validators[i] = newDummyValidator(i)
+		validators[i] = newDummyValidator(from+i)
 	}
 	return validators
 }
@@ -76,6 +80,7 @@ func TestValidatorListBasic(t *testing.T) {
 		t.Errorf("Fail to make validatorList from hash err=%+v", err)
 		return
 	}
+	t.Logf("Validators: %s", vList2)
 
 	addrErr := common.MustNewAddressFromString("cx9999999999999999999999999999999999999999")
 	if ridx := vList2.IndexOf(addrErr); ridx >= 0 {
@@ -262,6 +267,13 @@ func TestValidatorState_Replace(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, vss, vs.GetSnapshot())
 
+	// Error case: Replace non-existent validator with same
+	ov = newDummyValidator(1234)
+	nv = newDummyValidator(1234)
+	err = vs.Replace(ov, nv)
+	assert.Error(t, err)
+	assert.Equal(t, vss, vs.GetSnapshot())
+
 	for i := 0; i < size; i++ {
 		ev := validators[i]
 		v, ok := vs.Get(i)
@@ -350,4 +362,112 @@ func TestValidatorState_SetAt(t *testing.T) {
 		assert.Equal(t, i, vs.IndexOf(nv.Address()))
 		assert.True(t, vs.IndexOf(ov.Address()) < 0)
 	}
+}
+
+func TestValidatorState_Set(t *testing.T) {
+	size := 5
+	validators := newDummyValidators(size)
+
+	dbase := db.NewMapDB()
+	vss, err := ValidatorSnapshotFromSlice(dbase, validators)
+	assert.NoError(t, err)
+	assert.Equal(t, size, vss.Len())
+
+	for i := 0; i < size ; i++ {
+		assert.Equal(t, i, vss.IndexOf(validators[i].Address()))
+	}
+
+	vs := ValidatorStateFromSnapshot(vss)
+
+	validators2 := newDummyValidatorsFrom(size, size)
+	err = vs.Set(validators2)
+	assert.NoError(t, err)
+
+	for i := 0; i < size ; i++ {
+		assert.Equal(t, i, vs.IndexOf(validators2[i].Address()))
+	}
+
+	err = vs.Set(validators)
+	assert.NoError(t, err)
+
+	for i := 0; i < size ; i++ {
+		assert.Equal(t, -1, vs.IndexOf(validators2[i].Address()))
+		assert.Equal(t, i, vs.IndexOf(validators[i].Address()))
+	}
+
+	vss2 := vs.GetSnapshot()
+	assert.NoError(t, vss2.Flush())
+
+	vss3, err := ValidatorSnapshotFromHash(dbase, vss2.Hash())
+	assert.NoError(t, err)
+
+	for i := 0; i < size ; i++ {
+		assert.Equal(t, -1, vss3.IndexOf(validators2[i].Address()))
+		assert.Equal(t, i, vss3.IndexOf(validators[i].Address()))
+	}
+
+	// test failure for duplicated validators
+	validators3 := newDummyValidators(size)
+	validators3 = append(validators3, validators3[1])
+
+	err = vs.Set(validators3)
+	assert.Error(t, err)
+
+	for i := 0; i < size ; i++ {
+		assert.Equal(t, -1, vs.IndexOf(validators2[i].Address()))
+		assert.Equal(t, i, vs.IndexOf(validators[i].Address()))
+	}
+}
+
+func TestValidatorState_GetSnapshot(t *testing.T) {
+	size := 5
+	validators := newDummyValidators(size)
+	dbase := db.NewMapDB()
+
+	vss, err := ValidatorSnapshotFromSlice(dbase, validators)
+	assert.NoError(t, err)
+	assert.Equal(t, size, vss.Len())
+
+	vs := ValidatorStateFromSnapshot(vss)
+
+	assert.True(t, vss == vs.GetSnapshot())
+	for i, v := range validators {
+		assert.Equal(t, i, vs.IndexOf(v.Address()))
+		assert.Equal(t, i, vss.IndexOf(v.Address()))
+	}
+
+	validator1 := newDummyValidator(size)
+	err = vs.Add(validator1)
+	assert.NoError(t, err)
+
+	validator2 := newDummyValidator(size+1)
+	assert.False(t, vs.Remove(validator2))
+	assert.NoError(t, vs.Add(validator2))
+
+	// making new validators (but same content)
+	validators2 := newDummyValidators(size+2)
+
+	vss2 := vs.GetSnapshot()
+	assert.False(t, vss == vss2)
+
+	for i, v := range validators2 {
+		err = vs.SetAt(i, v)
+		assert.NoError(t, err)
+		assert.True(t, vss2 == vs.GetSnapshot())
+	}
+
+	for _, v := range validators2 {
+		err = vs.Replace(v, v)
+		assert.NoError(t, err)
+		assert.True(t, vss2 == vs.GetSnapshot())
+	}
+
+	err = vs.Set(validators2)
+	assert.NoError(t, err)
+	assert.True(t, vss2 == vs.GetSnapshot())
+
+	vs.Reset(vss)
+	assert.True(t, vss == vs.GetSnapshot())
+	vs.Reset(vss)
+	assert.True(t, vss == vs.GetSnapshot())
 }
