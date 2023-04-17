@@ -387,7 +387,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 nPoints = dataBytes.length / Crypto.BLS12381_G2_LEN;
                 if (!compressed) nPoints /= 2;
                 IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(8 * 1000 * nPoints);
-                return new ByteArray(Crypto.bls12381G2Add(dataBytes, compressed));    
+                return new ByteArray(Crypto.bls12381G2Add(dataBytes, compressed));
         }
         throw new IllegalArgumentException("Unsupported curve " + curve);
     }
@@ -405,11 +405,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 return new ByteArray(Crypto.bls12381G1ScalarMul(scalarBytes, dataBytes, compressed));
             case "bls12-381-g2":
                 IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(95000);
-                return new ByteArray(Crypto.bls12381G2ScalarMul(scalarBytes, dataBytes, compressed));    
+                return new ByteArray(Crypto.bls12381G2ScalarMul(scalarBytes, dataBytes, compressed));
             }
             throw new IllegalArgumentException("Unsupported curve " + curve);
         }
-        
+
     @Override
     public boolean avm_ecPairingCheck(s.java.lang.String curve, ByteArray data, boolean compressed) {
         Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
@@ -421,7 +421,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 nPairs = dataBytes.length / (Crypto.BLS12381_G1_LEN + Crypto.BLS12381_G2_LEN);
                 if (!compressed) nPairs /= 2;
                 IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(200000 + 40000 * nPairs);
-                return Crypto.bls12381PairingCheck(dataBytes, compressed);   
+                return Crypto.bls12381PairingCheck(dataBytes, compressed);
         }
         throw new IllegalArgumentException("Unsupported curve " + curve);
     }

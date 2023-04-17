@@ -39,7 +39,7 @@ public class BLS12381 {
 
     /**
      * Returns aggregation of prevAgg and values.
-     * 
+     *
      * @param prevAgg previous aggregation. null if there is no previous
      *                aggregation.
      * @param values  values to be aggregated.
@@ -116,9 +116,17 @@ public class BLS12381 {
         return compressed ? acc.compress() : acc.serialize();
     }
 
+    /*
+     * The layout of a G2 point that BLST JNI takes is of the form,
+     *     (x1 * i + x0, y1 * i + y0) -> (x1, x0, y1, y0)
+     * The input to the the Context API, however, has to be made consistent and equivalent
+     * across multiple curves, so that there is consistency between how inputs are provided by
+     * the developer. Therefore, we chose a consistent input format on the Context API,
+     *     (x0 + x1 * i, y0 + y1 * i) -> (x0, x1, y0, y1)
+     */
     public static byte[] flipUncompressedG2Layout(byte[] data) {
         if (data.length != 2 * G2_LEN) {
-            throw new IllegalArgumentException("alignG2Bytes: invalid G2 data layout");
+            throw new IllegalArgumentException("flipUncompressedG2Layout: invalid G2 data layout");
         }
         // flip position of (a, b, c, d) -> (b, a, d, c)
         byte[] a = Arrays.copyOfRange(data, 0 * G2_LEN / 2, 1 * G2_LEN / 2);

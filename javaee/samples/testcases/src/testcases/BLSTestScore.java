@@ -153,7 +153,7 @@ public class BLSTestScore {
 
         byte[] out = Context.ecAdd("bls12-381-g1", concatBytes(g1b, g1x2b, g1x3b), false);
         Context.require(Arrays.equals(g1x6b, out), "incorrect ecAddG1 result");
-        
+
         Context.println("testBLS12381ecAddG1 - OK");
     }
 
@@ -165,7 +165,7 @@ public class BLSTestScore {
 
         byte[] out = Context.ecAdd("bls12-381-g1", concatBytes(g1b, g1x2b, g1x3b), true);
         Context.require(Arrays.equals(g1x6b, out), "incorrect ecAddG1 result");
-        
+
         Context.println("testBLS12381ecAddG1Compressed - OK");
     }
 
@@ -173,12 +173,12 @@ public class BLSTestScore {
         byte[] g1b = hexToBytes("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1");
         byte[] g1x2b = hexToBytes("0572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e166a9d8cabc673a322fda673779d8e3822ba3ecb8670e461f73bb9021d5fd76a4c56d9d4cd16bd1bba86881979749d28");
         byte[] g1x6b = hexToBytes("06e82f6da4520f85c5d27d8f329eccfa05944fd1096b20734c894966d12a9e2a9a9744529d7212d33883113a0cadb90917d81038f7d60bee9110d9c0d6d1102fe2d998c957f28e31ec284cc04134df8e47e8f82ff3af2e60a6d9688a4563477c");
-       
+
         byte[] out;
-        
+
         out = Context.ecScalarMul("bls12-381-g1", new BigInteger("2").toByteArray(), g1b, false);
         Context.require(Arrays.equals(g1x2b, out), "incorrect ecAdd result");
-        
+
         out = Context.ecScalarMul("bls12-381-g1", new BigInteger("3").toByteArray(), g1x2b, false);
         Context.require(Arrays.equals(g1x6b, out), "incorrect ecScalarMulG1 result");
 
@@ -189,12 +189,12 @@ public class BLSTestScore {
         byte[] g1b = hexToBytes("97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb");
         byte[] g1x2b = hexToBytes("a572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e");
         byte[] g1x6b = hexToBytes("a6e82f6da4520f85c5d27d8f329eccfa05944fd1096b20734c894966d12a9e2a9a9744529d7212d33883113a0cadb909");
-        
+
         byte[] out;
-        
+
         out = Context.ecScalarMul("bls12-381-g1", new BigInteger("2").toByteArray(), g1b, true);
         Context.require(Arrays.equals(g1x2b, out), "incorrect ecScalarMul result");
-        
+
         out = Context.ecScalarMul("bls12-381-g1", new BigInteger("3").toByteArray(), g1x2b, true);
         Context.require(Arrays.equals(g1x6b, out), "incorrect ecScalarMulG1 result");
 
@@ -209,7 +209,7 @@ public class BLSTestScore {
 
         byte[] out = Context.ecAdd("bls12-381-g2", concatBytes(g2b, g2x2b, g2x3b), false);
         Context.require(Arrays.equals(g2x6b, out), "incorrect ecAdd.G2 result");
-        
+
         Context.println("testBLS12381ecAddG2 - OK");
     }
 
@@ -221,7 +221,7 @@ public class BLSTestScore {
 
         byte[] out = Context.ecAdd("bls12-381-g2", concatBytes(g2b, g2x2b, g2x3b), true);
         Context.require(Arrays.equals(g2x6b, out), "incorrect ecAdd.G2 result");
-        
+
         Context.println("testBLS12381ecAddG2Compressed - OK");
     }
 
@@ -231,10 +231,10 @@ public class BLSTestScore {
         byte[] g2x6b = hexToBytes("19e384121b7d70927c49e6d044fd8517c36bc6ed2813a8956dd64f049869e8a77f7e46930240e6984abe26fa6a89658f03f4b4e761936d90fd5f55f99087138a07a69755ad4a46e4dd1c2cfe6d11371e1cc033111a0595e3bba98d0f538db45117a31a4fccfb5f768a2157517c77a4f8aaf0dee8f260d96e02e1175a8754d09600923beae02a019afc327b65a2fdbbfc088bb5832f4a4a452edda646ebaa2853a54205d56329960b44b2450070734724a74daaa401879bad142132316e9b3401");
 
         byte[] out;
-        
+
         out = Context.ecScalarMul("bls12-381-g2", new BigInteger("2").toByteArray(), g2b, false);
         Context.require(Arrays.equals(g2x2b, out), "incorrect ecAdd result");
-        
+
         out = Context.ecScalarMul("bls12-381-g2", new BigInteger("3").toByteArray(), g2x2b, false);
         Context.require(Arrays.equals(g2x6b, out), "incorrect ecAdd result");
 
@@ -247,10 +247,10 @@ public class BLSTestScore {
         byte[] g2x6b = hexToBytes("83f4b4e761936d90fd5f55f99087138a07a69755ad4a46e4dd1c2cfe6d11371e1cc033111a0595e3bba98d0f538db45119e384121b7d70927c49e6d044fd8517c36bc6ed2813a8956dd64f049869e8a77f7e46930240e6984abe26fa6a89658f");
 
         byte[] out;
-        
+
         out = Context.ecScalarMul("bls12-381-g2", new BigInteger("2").toByteArray(), g2b, true);
         Context.require(Arrays.equals(g2x2b, out), "incorrect ecScalarMul result");
-        
+
         out = Context.ecScalarMul("bls12-381-g2", new BigInteger("3").toByteArray(), g2x2b, true);
         Context.require(Arrays.equals(g2x6b, out), "incorrect ecScalarMul result");
 
@@ -262,7 +262,7 @@ public class BLSTestScore {
         byte[] g1Negb = hexToBytes("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb114d1d6855d545a8aa7d76c8cf2e21f267816aef1db507c96655b9d5caac42364e6f38ba0ecb751bad54dcd6b939c2ca");
         byte[] g2b = hexToBytes("024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb813e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b828010606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be");
         byte[] g2Negb = hexToBytes("024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb813e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e0d1b3cc2c7027888be51d9ef691d77bcb679afda66c73f17f9ee3837a55024f78c71363275a75d75d86bab79f74782aa13fa4d4a0ad8b1ce186ed5061789213d993923066dddaf1040bc3ff59f825c78df74f2d75467e25e0f55f8a00fa030ed");
-    
+
         boolean res = Context.ecPairingCheck("bls12-381", concatBytes(
             g1b, g2b,
             g1Negb, g2b,
@@ -279,7 +279,7 @@ public class BLSTestScore {
         byte[] g1Negb = hexToBytes("b7f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb");
         byte[] g2b = hexToBytes("93e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8");
         byte[] g2Negb = hexToBytes("b3e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8");
-    
+
         boolean res = Context.ecPairingCheck("bls12-381", concatBytes(
             g1b, g2b,
             g1Negb, g2b,
@@ -343,7 +343,7 @@ public class BLSTestScore {
         } catch (IllegalArgumentException e) {
             Context.println("testBLS12381InvalidPointEncoding - OK (ecScalarMulG2)");
         }
-        
+
         try {
             Context.ecScalarMul("bls12-381-g2", new BigInteger("2").toByteArray(), concatBytes(g1b, g1b), true);
             Context.require(false, "ecScalarMulG2Compressed: shall not reach here");
@@ -357,7 +357,7 @@ public class BLSTestScore {
         } catch (IllegalArgumentException e) {
             Context.println("testBLS12381InvalidPointEncoding - OK (ecPairingCheck)");
         }
-        
+
         try {
             Context.ecPairingCheck("bls12-381", concatBytes(g1b, g2b), true);
             Context.require(false, "ecPairingCheckCompressed: shall not reach here");
