@@ -36,6 +36,14 @@ func (s secp256k1DSAModule) Verify(pubKey []byte) error {
 	return err
 }
 
+func (s secp256k1DSAModule) Canonicalize(pubKey []byte) ([]byte, error) {
+	pk, err := crypto.ParsePublicKey(pubKey)
+	if err != nil {
+		return nil, err
+	}
+	return pk.SerializeCompressed(), nil
+}
+
 var secp256k1DSAModuleInstance secp256k1DSAModule
 
 func init() {
