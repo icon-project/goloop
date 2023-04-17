@@ -16,6 +16,8 @@
 
 package foundation.icon.ee.util.bls12381;
 
+import java.util.Arrays;
+
 import supranational.blst.BLST_ERROR;
 import supranational.blst.P1;
 import supranational.blst.P1_Affine;
@@ -37,15 +39,16 @@ public class BLS12381 {
 
     /**
      * Returns aggregation of prevAgg and values.
+     * 
      * @param prevAgg previous aggregation. null if there is no previous
      *                aggregation.
-     * @param values values to be aggregated.
+     * @param values  values to be aggregated.
      * @return aggregated value.
      */
     public static byte[] aggregateG1Values(byte[] prevAgg, byte[] values) {
         try {
             P1 res;
-            if (prevAgg!=null) {
+            if (prevAgg != null) {
                 res = new P1(prevAgg);
                 if (!res.in_group()) {
                     throw new IllegalArgumentException("prevAgg is not in group");
@@ -55,8 +58,8 @@ public class BLS12381 {
             }
             var nValues = values.length / G1_LEN;
             byte[] pk = new byte[G1_LEN];
-            for (int i=0; i<nValues; i++) {
-                System.arraycopy(values, i*G1_LEN, pk, 0, G1_LEN);
+            for (int i = 0; i < nValues; i++) {
+                System.arraycopy(values, i * G1_LEN, pk, 0, G1_LEN);
                 var p1a = new P1_Affine(pk);
                 if (!p1a.in_group()) {
                     throw new IllegalArgumentException("a value is not in group");
@@ -84,12 +87,26 @@ public class BLS12381 {
         }
     }
 
+    private static byte[] concat(byte[]... args) {
+        int length = 0;
+        for (int i = 0; i < args.length; i++) {
+            length += args[i].length;
+        }
+        byte[] out = new byte[length];
+        int offset = 0;
+        for (int i = 0; i < args.length; i++) {
+            System.arraycopy(args[i], 0, out, offset, args[i].length);
+            offset += args[i].length;
+        }
+        return out;
+    }
 
     public static byte[] g1Add(byte[] data, boolean compressed) {
         P1 acc = new P1();
         int size = compressed ? G1_LEN : 2 * G1_LEN;
         if (data.length == 0 || data.length % size != 0) {
-            throw new IllegalArgumentException("BLS12-381: g1Add: invalid data layout: expected a multiple of " + size + " bytes, got=" + data.length);
+            throw new IllegalArgumentException("BLS12-381: g1Add: invalid data layout: expected a multiple of " + size
+                    + " bytes, got " + data.length);
         }
         byte[] buf = new byte[size];
         for (int i = 0; i < data.length; i += size) {
@@ -97,27 +114,43 @@ public class BLS12381 {
             acc = acc.add(new P1(buf));
         }
         return compressed ? acc.compress() : acc.serialize();
-    } 
+    }
+
+    public static byte[] flipUncompressedG2Layout(byte[] data) {
+        if (data.length != 2 * G2_LEN) {
+            throw new IllegalArgumentException("alignG2Bytes: invalid G2 data layout");
+        }
+        // flip position of (a, b, c, d) -> (b, a, d, c)
+        byte[] a = Arrays.copyOfRange(data, 0 * G2_LEN / 2, 1 * G2_LEN / 2);
+        byte[] b = Arrays.copyOfRange(data, 1 * G2_LEN / 2, 2 * G2_LEN / 2);
+        byte[] c = Arrays.copyOfRange(data, 2 * G2_LEN / 2, 3 * G2_LEN / 2);
+        byte[] d = Arrays.copyOfRange(data, 3 * G2_LEN / 2, 4 * G2_LEN / 2);
+        return concat(b, a, d, c);
+    }
 
     public static byte[] g2Add(byte[] data, boolean compressed) {
         P2 acc = new P2();
         int size = compressed ? G2_LEN : 2 * G2_LEN;
         if (data.length == 0 || data.length % size != 0) {
-            throw new IllegalArgumentException("BLS12-381: g2Add: invalid data layout: expected a multiple of " + size + " bytes, got=" + data.length);
+            throw new IllegalArgumentException("BLS12-381: g2Add: invalid data layout: expected a multiple of " + size
+                    + " bytes, got " + data.length);
         }
-        byte[] buf = new byte[size];
         for (int i = 0; i < data.length; i += size) {
-            System.arraycopy(data, i, buf, 0, size);
+            byte[] buf = Arrays.copyOfRange(data, i, i + size);
+            if (!compressed) {
+                buf = flipUncompressedG2Layout(buf);
+            }
             acc = acc.add(new P2(buf));
         }
-        return compressed ? acc.compress() : acc.serialize();
+        return compressed ? acc.compress() : flipUncompressedG2Layout(acc.serialize());
     }
 
     public static byte[] g1ScalarMul(byte[] scalarBytes, byte[] data, boolean compressed) {
         int size = compressed ? G1_LEN : 2 * G1_LEN;
         Scalar scalar = new Scalar().from_bendian(scalarBytes);
         if (data.length != size) {
-            throw new IllegalArgumentException("BLS12-381: g1ScalarMul: invalid data layout: expected=" + size + "bytes, got=" + data.length);
+            throw new IllegalArgumentException(
+                    "BLS12-381: g1ScalarMul: invalid data layout: expected " + size + " bytes, got " + data.length);
         }
         P1 p = new P1(data);
         p = p.mult(scalar);
@@ -128,11 +161,15 @@ public class BLS12381 {
         int size = compressed ? G2_LEN : 2 * G2_LEN;
         Scalar scalar = new Scalar().from_bendian(scalarBytes);
         if (data.length != size) {
-            throw new IllegalArgumentException("BLS12-381: g2ScalarMul: invalid data layout: expected=" + size + "bytes, got=" + data.length);
+            throw new IllegalArgumentException(
+                    "BLS12-381: g2ScalarMul: invalid data layout: expected " + size + " bytes, got " + data.length);
+        }
+        if (!compressed) {
+            data = flipUncompressedG2Layout(data);
         }
         P2 p = new P2(data);
         p = p.mult(scalar);
-        return compressed ? p.compress() : p.serialize();
+        return compressed ? p.compress() : flipUncompressedG2Layout(p.serialize());
     }
 
     public static boolean pairingCheck(byte[] data, boolean compressed) {
@@ -141,17 +178,18 @@ public class BLS12381 {
         int size = g1Size + g2Size;
 
         if (data.length == 0 || data.length % size != 0) {
-            throw new IllegalArgumentException("BLS12-381: pairingCheck: invalid data layout: expected a multiple of " + size + "bytes, got=" + data.length);
+            throw new IllegalArgumentException("BLS12-381: pairingCheck: invalid data layout: expected a multiple of "
+                    + size + " bytes, got " + data.length);
         }
 
         PT acc = PT.one();
 
-        byte[] p1buf = new byte[g1Size];
-        byte[] p2buf = new byte[g2Size];
-
         for (int i = 0; i < data.length; i += size) {
-            System.arraycopy(data, i, p1buf, 0, g1Size);
-            System.arraycopy(data, i + g1Size, p2buf, 0, g2Size);
+            byte[] p1buf = Arrays.copyOfRange(data, i, i + g1Size);
+            byte[] p2buf = Arrays.copyOfRange(data, i + g1Size, i + g1Size + g2Size);
+            if (!compressed) {
+                p2buf = flipUncompressedG2Layout(p2buf);
+            }
             P1 p1 = new P1(p1buf);
             P2 p2 = new P2(p2buf);
             if (!p1.in_group() || !p2.in_group()) {
