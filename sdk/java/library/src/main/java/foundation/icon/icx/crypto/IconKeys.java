@@ -34,6 +34,7 @@ public class IconKeys {
 
     public static final int PRIVATE_KEY_SIZE = 32;
     public static final int PUBLIC_KEY_SIZE = 65;
+    public static final int PUBLIC_KEY_SIZE_COMP = 33;
 
     public static final int ADDRESS_SIZE = 160;
     public static final int ADDRESS_LENGTH_IN_HEX = ADDRESS_SIZE >> 2;
@@ -77,16 +78,45 @@ public class IconKeys {
         return new Bytes(BigIntegers.asUnsignedByteArray(PRIVATE_KEY_SIZE, d));
     }
 
-    public static Bytes getPublicKey(Bytes privateKey) {
+    public static Bytes privateKeyToPublicKey(Bytes privateKey, boolean compressed) {
         ECNamedCurveParameterSpec spec = ECNamedCurveTable.getParameterSpec("secp256k1");
         ECPoint pointQ = spec.getG().multiply(new BigInteger(1, privateKey.toByteArray()));
-        return new Bytes(pointQ.getEncoded(false));
+        return new Bytes(pointQ.getEncoded(compressed));
+    }
+
+    public static Bytes getPublicKey(Bytes privateKey) {
+        return privateKeyToPublicKey(privateKey, false);
+    }
+
+    public static Bytes getPublicKeyCompressed(Bytes privateKey) {
+        return privateKeyToPublicKey(privateKey, true);
+    }
+
+    public static Bytes convertPublicKey(Bytes pubKey, boolean toCompressed) {
+        int inputLen = pubKey.length();
+        int expectInputLen = toCompressed ? PUBLIC_KEY_SIZE : PUBLIC_KEY_SIZE_COMP;
+        int resultLen = toCompressed ? PUBLIC_KEY_SIZE_COMP : PUBLIC_KEY_SIZE;
+
+        if (inputLen == resultLen) {
+            return pubKey;
+        }
+        if (inputLen != expectInputLen) {
+            throw new IllegalArgumentException("The length of Bytes must be " + PUBLIC_KEY_SIZE + " or " + PUBLIC_KEY_SIZE_COMP);
+        }
+        ECNamedCurveParameterSpec spec = ECNamedCurveTable.getParameterSpec("secp256k1");
+        ECPoint point = spec.getCurve().decodePoint(pubKey.toByteArray());
+        return new Bytes(point.getEncoded(toCompressed));
+    }
+
+    public static Bytes publicKeyToUncompressed(Bytes pubKey) {
+        return convertPublicKey(pubKey, false);
+    }
+
+    public static Bytes publicKeyToCompressed(Bytes pubKey) {
+        return convertPublicKey(pubKey, true);
     }
 
     public static Address getAddress(Bytes publicKey) {
-        if (publicKey.length() != PUBLIC_KEY_SIZE) {
-            throw new IllegalArgumentException("The length of Bytes is not " + PUBLIC_KEY_SIZE);
-        }
         return new Address(Address.AddressPrefix.EOA, getAddressHash(publicKey.toByteArray()));
     }
 
@@ -98,9 +128,10 @@ public class IconKeys {
     }
 
     public static byte[] getAddressHash(byte[] publicKey) {
+        byte[] pubKey = publicKeyToUncompressed(new Bytes(publicKey)).toByteArray();
         // remove a constant prefix (0x04)
         // https://github.com/bcgit/bc-java/blob/master/core/src/main/java/org/bouncycastle/math/ec/ECPoint.java#L489
-        byte[] pub = Arrays.copyOfRange(publicKey, 1, publicKey.length);
+        byte[] pub = Arrays.copyOfRange(pubKey, 1, pubKey.length);
         byte[] hash = new SHA3.Digest256().digest(pub);
 
         int length = 20;
