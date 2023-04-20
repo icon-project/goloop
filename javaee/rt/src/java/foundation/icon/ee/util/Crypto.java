@@ -220,7 +220,7 @@ public class Crypto {
         try {
             return BLS12381.g1Add(data, compressed);
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException(e.getCause());
+            throw new IllegalArgumentException(e.fillInStackTrace());
         }
     }
 
@@ -228,7 +228,7 @@ public class Crypto {
         try {
             return BLS12381.g2Add(data, compressed);
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException(e.getCause());
+            throw new IllegalArgumentException(e.fillInStackTrace());
         }
     }
 
@@ -236,7 +236,7 @@ public class Crypto {
         try {
             return BLS12381.g1ScalarMul(scalar, data, compressed);
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException(e.getCause());
+            throw new IllegalArgumentException(e.fillInStackTrace());
         }
     }
 
@@ -244,7 +244,7 @@ public class Crypto {
         try {
             return BLS12381.g2ScalarMul(scalar, data, compressed);
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException(e.getCause());
+            throw new IllegalArgumentException(e.fillInStackTrace());
         }
     }
 
@@ -252,7 +252,7 @@ public class Crypto {
         try {
             return BLS12381.pairingCheck(data, compressed);
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException(e.getCause());
+            throw new IllegalArgumentException(e.fillInStackTrace());
         }
     }
 
