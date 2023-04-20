@@ -116,26 +116,6 @@ public class BLS12381 {
         return compressed ? acc.compress() : acc.serialize();
     }
 
-    /*
-     * The layout of a G2 point that BLST JNI takes is of the form,
-     *     (x1 * i + x0, y1 * i + y0) -> (x1, x0, y1, y0)
-     * The input to the the Context API, however, has to be made consistent and equivalent
-     * across multiple curves, so that there is consistency between how inputs are provided by
-     * the developer. Therefore, we chose a consistent input format on the Context API,
-     *     (x0 + x1 * i, y0 + y1 * i) -> (x0, x1, y0, y1)
-     */
-    public static byte[] flipUncompressedG2Layout(byte[] data) {
-        if (data.length != 2 * G2_LEN) {
-            throw new IllegalArgumentException("flipUncompressedG2Layout: invalid G2 data layout");
-        }
-        // flip position of (a, b, c, d) -> (b, a, d, c)
-        byte[] a = Arrays.copyOfRange(data, 0 * G2_LEN / 2, 1 * G2_LEN / 2);
-        byte[] b = Arrays.copyOfRange(data, 1 * G2_LEN / 2, 2 * G2_LEN / 2);
-        byte[] c = Arrays.copyOfRange(data, 2 * G2_LEN / 2, 3 * G2_LEN / 2);
-        byte[] d = Arrays.copyOfRange(data, 3 * G2_LEN / 2, 4 * G2_LEN / 2);
-        return concat(b, a, d, c);
-    }
-
     public static byte[] g2Add(byte[] data, boolean compressed) {
         P2 acc = new P2();
         int size = compressed ? G2_LEN : 2 * G2_LEN;
@@ -145,12 +125,9 @@ public class BLS12381 {
         }
         for (int i = 0; i < data.length; i += size) {
             byte[] buf = Arrays.copyOfRange(data, i, i + size);
-            if (!compressed) {
-                buf = flipUncompressedG2Layout(buf);
-            }
             acc = acc.add(new P2(buf));
         }
-        return compressed ? acc.compress() : flipUncompressedG2Layout(acc.serialize());
+        return compressed ? acc.compress() : acc.serialize();
     }
 
     public static byte[] g1ScalarMul(byte[] scalarBytes, byte[] data, boolean compressed) {
@@ -172,12 +149,9 @@ public class BLS12381 {
             throw new IllegalArgumentException(
                     "BLS12-381: g2ScalarMul: invalid data layout: expected " + size + " bytes, got " + data.length);
         }
-        if (!compressed) {
-            data = flipUncompressedG2Layout(data);
-        }
         P2 p = new P2(data);
         p = p.mult(scalar);
-        return compressed ? p.compress() : flipUncompressedG2Layout(p.serialize());
+        return compressed ? p.compress() : p.serialize();
     }
 
     public static boolean pairingCheck(byte[] data, boolean compressed) {
@@ -195,9 +169,6 @@ public class BLS12381 {
         for (int i = 0; i < data.length; i += size) {
             byte[] p1buf = Arrays.copyOfRange(data, i, i + g1Size);
             byte[] p2buf = Arrays.copyOfRange(data, i + g1Size, i + g1Size + g2Size);
-            if (!compressed) {
-                p2buf = flipUncompressedG2Layout(p2buf);
-            }
             P1 p1 = new P1(p1buf);
             P2 p2 = new P2(p2buf);
             if (!p1.in_group() || !p2.in_group()) {

@@ -24,7 +24,6 @@ import supranational.blst.P1;
 import supranational.blst.P2;
 import java.math.BigInteger;
 
-
 public class BLSTest {
 
     private static byte[] concatBytes(byte[]... args) {
@@ -90,10 +89,10 @@ public class BLSTest {
 
         Assertions.assertTrue(BLS12381.pairingCheck(
                 concatBytes(
-                        g1.serialize(), BLS12381.flipUncompressedG2Layout(g2.serialize()),
-                        g1.dup().neg().serialize(), BLS12381.flipUncompressedG2Layout(g2.serialize()),
-                        g1.serialize(), BLS12381.flipUncompressedG2Layout(g2.serialize()),
-                        g1.serialize(), BLS12381.flipUncompressedG2Layout(g2.dup().neg().serialize())),
+                        g1.serialize(), g2.serialize(),
+                        g1.dup().neg().serialize(), g2.serialize(),
+                        g1.serialize(), g2.serialize(),
+                        g1.serialize(), g2.dup().neg().serialize()),
                 false));
 
         // compressed points
@@ -134,17 +133,12 @@ public class BLSTest {
 
         // g2 add and scalarMul tests
         g2 = P2.generator();
-        g2x2b = BLS12381.g2ScalarMul(new BigInteger("2").toByteArray(),
-                BLS12381.flipUncompressedG2Layout(g2.serialize()), false);
-        g2x3b = BLS12381.g2ScalarMul(new BigInteger("3").toByteArray(),
-                BLS12381.flipUncompressedG2Layout(g2.serialize()), false);
+        g2x2b = BLS12381.g2ScalarMul(new BigInteger("2").toByteArray(), g2.serialize(), false);
+        g2x3b = BLS12381.g2ScalarMul(new BigInteger("3").toByteArray(), g2.serialize(), false);
 
-        out = BLS12381.g2Add(concatBytes(BLS12381.flipUncompressedG2Layout(g2.serialize()), g2x2b), false);
+        out = BLS12381.g2Add(concatBytes(g2.serialize(), g2x2b), false);
 
-        Assertions.assertTrue(
-                new P2(BLS12381.flipUncompressedG2Layout(g2x3b))
-                        .is_equal(new P2(BLS12381.flipUncompressedG2Layout(out))),
-                "should be equal");
+        Assertions.assertTrue(new P2(g2x3b).is_equal(new P2(out)), "should be equal");
 
         // g2 add and scalarMul tests: compressed points
         g2 = P2.generator();

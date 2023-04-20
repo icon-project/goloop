@@ -391,7 +391,7 @@ public final class Context {
     /**
      * Returns result of point addition as bigendian integers:
      *   bls12-381-g1: (x, y) 96 bytes or (flag | x) 48 bytes for compressed
-     *   bls12-381-g2: (x0 + x1 * i, y0 + y1 * i) 192 bytes or (flag | x0 + x1 * i) 96 bytes for compressed
+     *   bls12-381-g2: (x1 * i + x0, y1 * i + y0) 192 bytes or (flag | x1 * i + x0) 96 bytes for compressed
      * @param curve bls12-381-g1, bls12-381-g2
      * @param data set of points each encoded as bigendian integers as specified above
      * @param compressed flag to represent compressed point
@@ -405,7 +405,7 @@ public final class Context {
     /**
      * Returns result of scalar multiplication as bigendian integers:
      *   bls12-381-g1: (x, y) 96 bytes or (flag | x) 48 bytes for compressed
-     *   bls12-381-g2: (x0 + x1 * i, y0 + y1 * i) 192 bytes or (flag | x0 + x1 * i) 96 bytes for compressed
+     *   bls12-381-g2: (x1 * i + x0, y1 * i + y0) 192 bytes or (flag | x1 * i + x0) 96 bytes for compressed
      * @param curve bls12-381-g1, bls12-381-g2
      * @param data set of points each encoded as bigendian integers as specified above
      * @param scalar 32 bytes scalar
@@ -423,7 +423,7 @@ public final class Context {
      * @param data set of alternating G1, and G2 points,
      *   bls12-381:
      *       G1: ((x, y) 96 bytes or (flag | x) 48 bytes for compressed bigendian integers) and
-     *       G2: ((x0 + x1 * i, y0 + y1 * i) 192 bytes or (flag | x0 + x1 * i) 96 bytes for compressed bigendian integers
+     *       G2: ((x1 * i + x0, y1 * i + y0) 192 bytes or (flag | x1 * i + x0) 96 bytes for compressed bigendian integers
      * @param compressed flag to represent compressed points
      * @return boolean representing pairing check result
      * @throws IllegalArgumentException if the arguments are invalid
