@@ -97,9 +97,8 @@ public interface IExternalState {
     void putStorage(byte[] key, byte[] value, IntConsumer prevSizeCB);
 
     /**
-     * Waits for a pending callback.
-     *
-     * Immediately returns false if there is no callback to wait.
+     * Waits for a pending callback. Immediately returns false if there is no
+     * callback to wait.
      *
      * @return false if there is no callback to wait.
      */
@@ -109,6 +108,11 @@ public interface IExternalState {
      * Waits for all pending callbacks.
      */
     void waitForCallbacks();
+
+    /**
+     * Consume some pending callbacks if the queue is too long.
+     */
+    void limitPendingCallbackLength();
 
     /**
      * Returns the value in the key-value pairing to the specified key for the given address if any
