@@ -24,7 +24,6 @@ import supranational.blst.P2_Affine;
 import supranational.blst.PT;
 import supranational.blst.Scalar;
 
-
 public class BLS12381 {
     private static final String dst = "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
     public static final int G1_LEN = 48;
@@ -83,20 +82,6 @@ public class BLS12381 {
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }
-    }
-
-    private static byte[] concat(byte[]... args) {
-        int length = 0;
-        for (int i = 0; i < args.length; i++) {
-            length += args[i].length;
-        }
-        byte[] out = new byte[length];
-        int offset = 0;
-        for (int i = 0; i < args.length; i++) {
-            System.arraycopy(args[i], 0, out, offset, args[i].length);
-            offset += args[i].length;
-        }
-        return out;
     }
 
     public static byte[] g1Add(byte[] data, boolean compressed) {
@@ -182,5 +167,4 @@ public class BLS12381 {
 
         return acc.final_exp().is_one();
     }
-
 }

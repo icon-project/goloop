@@ -366,8 +366,7 @@ public class BLSTestScore {
         }
     }
 
-
-     private static byte[] concatBytes(byte[]... args) {
+    private static byte[] concatBytes(byte[]... args) {
         int length = 0;
         for (int i = 0; i < args.length; i++) {
             length += args[i].length;

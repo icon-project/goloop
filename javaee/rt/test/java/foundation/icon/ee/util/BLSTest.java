@@ -103,7 +103,6 @@ public class BLSTest {
                         g1.compress(), g2.compress(),
                         g1.compress(), g2.dup().neg().compress()),
                 true));
-
     }
 
     @Test
@@ -148,7 +147,5 @@ public class BLSTest {
         out = BLS12381.g2Add(concatBytes(g2.compress(), g2x2b), true);
 
         Assertions.assertTrue(new P2(g2x3b).is_equal(new P2(out)), "should be equal");
-
     }
-
 }
