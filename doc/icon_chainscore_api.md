@@ -417,7 +417,7 @@ def getBTPNetworkTypeID(name: str) -> int:
 
 ### getPRepNodePublicKey
 
-Returns a public key for the P-Rep node address.
+Returns a compressed public key for the P-Rep node address.
 
 ```python
 def getPRepNodePublicKey(address: Address) -> bytes:
@@ -545,10 +545,10 @@ def registerPRepNodePublicKey(address: Address, pubKey: bytes) -> None:
 
 *Parameters:*
 
-| Name    | Type    | Description      |
-|:--------|:--------|:-----------------|
-| address | Address | address of P-Rep |
-| pubKey  | bytes   | public key       |
+| Name    | Type    | Description           |
+|:--------|:--------|:----------------------|
+| address | Address | address of P-Rep      |
+| pubKey  | bytes   | compressed public key |
 
 *Revision:* 21 ~
 
@@ -562,9 +562,9 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 *Parameters:*
 
-| Name   | Type  | Description |
-|:-------|:------|:------------|
-| pubKey | bytes | public key  |
+| Name   | Type  | Description            |
+|:-------|:------|:-----------------------|
+| pubKey | bytes | compressed public key  |
 
 *Revision:* 21 ~
 
