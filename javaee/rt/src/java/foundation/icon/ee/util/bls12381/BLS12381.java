@@ -16,8 +16,6 @@
 
 package foundation.icon.ee.util.bls12381;
 
-import java.util.Arrays;
-
 import supranational.blst.BLST_ERROR;
 import supranational.blst.P1;
 import supranational.blst.P1_Affine;
@@ -123,8 +121,9 @@ public class BLS12381 {
             throw new IllegalArgumentException("BLS12-381: g2Add: invalid data layout: expected a multiple of " + size
                     + " bytes, got " + data.length);
         }
+        byte[] buf = new byte[size];
         for (int i = 0; i < data.length; i += size) {
-            byte[] buf = Arrays.copyOfRange(data, i, i + size);
+            System.arraycopy(data, i, buf, 0, size);
             acc = acc.add(new P2(buf));
         }
         return compressed ? acc.compress() : acc.serialize();
@@ -165,10 +164,11 @@ public class BLS12381 {
         }
 
         PT acc = PT.one();
-
+        byte[] p1buf = new byte[g1Size];
+        byte[] p2buf = new byte[g2Size];
         for (int i = 0; i < data.length; i += size) {
-            byte[] p1buf = Arrays.copyOfRange(data, i, i + g1Size);
-            byte[] p2buf = Arrays.copyOfRange(data, i + g1Size, i + g1Size + g2Size);
+            System.arraycopy(data, i, p1buf, 0, g1Size);
+            System.arraycopy(data, i + g1Size, p2buf, 0, g2Size);
             P1 p1 = new P1(p1buf);
             P2 p2 = new P2(p2buf);
             if (!p1.in_group() || !p2.in_group()) {
