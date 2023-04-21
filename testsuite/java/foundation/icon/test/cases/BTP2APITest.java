@@ -140,11 +140,11 @@ public class BTP2APITest extends TestBase {
 
         byte[] pubKeyEmpty = new byte[0];
         var caller1PubKey = caller1.getPublicKey().toByteArray();
-        var caller1CompPubKey = IconKeys.publicKeyToCompressed(new Bytes(caller1PubKey)).toByteArray();
-        var caller2CompPubKey = IconKeys.publicKeyToCompressed(caller2.getPublicKey()).toByteArray();
+        var caller1CompPubKey = caller1.getPublicKey(true).toByteArray();
+        var caller2CompPubKey = caller2.getPublicKey(true).toByteArray();
 
         var cases = new Case[]{
-                new Case(caller1, NT_ETH, caller1.getPublicKey().toByteArray(), false, "Invalid name"),
+                new Case(caller1, NT_ETH, caller1PubKey, false, "Invalid name"),
                 new Case(caller1, DSA_SECP256K1, "a023bd9e".getBytes(), false, "Invalid public key"),
                 new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set public key"),
                 new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set same public key again"),
@@ -172,7 +172,6 @@ public class BTP2APITest extends TestBase {
                     assertEquals(33, retPubKey.length);
                     Address inputAddr = IconKeys.getAddress(new Bytes(c.pubKey));
                     Address retAddr = IconKeys.getAddress(new Bytes(retPubKey));
-//                    assertTrue(inputAddr.equals(retAddr));
                     assertEquals(inputAddr, retAddr);
                 }
             } else {

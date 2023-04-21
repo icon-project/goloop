@@ -78,22 +78,18 @@ public class IconKeys {
         return new Bytes(BigIntegers.asUnsignedByteArray(PRIVATE_KEY_SIZE, d));
     }
 
-    public static Bytes privateKeyToPublicKey(Bytes privateKey, boolean compressed) {
+    public static Bytes getPublicKey(Bytes privateKey) {
+        return getPublicKey(privateKey, false);
+    }
+
+    public static Bytes getPublicKey(Bytes privateKey, boolean compressed) {
         ECNamedCurveParameterSpec spec = ECNamedCurveTable.getParameterSpec("secp256k1");
         ECPoint pointQ = spec.getG().multiply(new BigInteger(1, privateKey.toByteArray()));
         return new Bytes(pointQ.getEncoded(compressed));
     }
 
-    public static Bytes getPublicKey(Bytes privateKey) {
-        return privateKeyToPublicKey(privateKey, false);
-    }
-
-    public static Bytes getPublicKeyCompressed(Bytes privateKey) {
-        return privateKeyToPublicKey(privateKey, true);
-    }
-
-    public static Bytes convertPublicKey(Bytes pubKey, boolean toCompressed) {
-        int inputLen = pubKey.length();
+    private static byte[] convertPublicKey(byte[] pubKey, boolean toCompressed) {
+        int inputLen = pubKey != null ? pubKey.length : -1;
         int expectInputLen = toCompressed ? PUBLIC_KEY_SIZE : PUBLIC_KEY_SIZE_COMP;
         int resultLen = toCompressed ? PUBLIC_KEY_SIZE_COMP : PUBLIC_KEY_SIZE;
 
@@ -104,16 +100,8 @@ public class IconKeys {
             throw new IllegalArgumentException("The length of Bytes must be " + PUBLIC_KEY_SIZE + " or " + PUBLIC_KEY_SIZE_COMP);
         }
         ECNamedCurveParameterSpec spec = ECNamedCurveTable.getParameterSpec("secp256k1");
-        ECPoint point = spec.getCurve().decodePoint(pubKey.toByteArray());
-        return new Bytes(point.getEncoded(toCompressed));
-    }
-
-    public static Bytes publicKeyToUncompressed(Bytes pubKey) {
-        return convertPublicKey(pubKey, false);
-    }
-
-    public static Bytes publicKeyToCompressed(Bytes pubKey) {
-        return convertPublicKey(pubKey, true);
+        ECPoint point = spec.getCurve().decodePoint(pubKey);
+        return point.getEncoded(toCompressed);
     }
 
     public static Address getAddress(Bytes publicKey) {
@@ -128,7 +116,7 @@ public class IconKeys {
     }
 
     public static byte[] getAddressHash(byte[] publicKey) {
-        byte[] pubKey = publicKeyToUncompressed(new Bytes(publicKey)).toByteArray();
+        byte[] pubKey = convertPublicKey(publicKey, false);
         // remove a constant prefix (0x04)
         // https://github.com/bcgit/bc-java/blob/master/core/src/main/java/org/bouncycastle/math/ec/ECPoint.java#L489
         byte[] pub = Arrays.copyOfRange(pubKey, 1, pubKey.length);
