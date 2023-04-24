@@ -27,6 +27,7 @@ import i.IObject;
 import i.IObjectArray;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
@@ -369,6 +370,69 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         return new ByteArray(Crypto.aggregate(
                 type.getUnderlying(), pa, values.getUnderlying()
         ));
+    }
+
+    @Override
+    public ByteArray avm_ecAdd(s.java.lang.String curve, ByteArray data, boolean compressed) {
+        Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
+        Objects.requireNonNull(data, "Data can't be NULL");
+        byte[] dataBytes = data.getUnderlying();
+        int nPoints;
+        switch (curve.getUnderlying()) {
+            case "bls12-381-g1":
+                nPoints = dataBytes.length / Crypto.BLS12381_G1_LEN;
+                if (!compressed) nPoints /= 2;
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecAdd +
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecAdd_per_points * nPoints);
+                return new ByteArray(Crypto.bls12381G1Add(dataBytes, compressed));
+            case "bls12-381-g2":
+                nPoints = dataBytes.length / Crypto.BLS12381_G2_LEN;
+                if (!compressed) nPoints /= 2;
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecAdd +
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecAdd_per_points * nPoints * 8);
+                return new ByteArray(Crypto.bls12381G2Add(dataBytes, compressed));
+        }
+        throw new IllegalArgumentException("Unsupported curve " + curve);
+    }
+
+    @Override
+    public ByteArray avm_ecScalarMul(s.java.lang.String curve, ByteArray scalar, ByteArray data, boolean compressed) {
+        Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
+        Objects.requireNonNull(scalar, "Scalar can't be NULL");
+        Objects.requireNonNull(data, "Data can't be NULL");
+        byte[] dataBytes = data.getUnderlying();
+        byte[] scalarBytes = scalar.getUnderlying();
+        switch (curve.getUnderlying()) {
+            case "bls12-381-g1":
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecScalarMul_g1);
+                return new ByteArray(Crypto.bls12381G1ScalarMul(scalarBytes, dataBytes, compressed));
+            case "bls12-381-g2":
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecScalarMul_g2);
+                return new ByteArray(Crypto.bls12381G2ScalarMul(scalarBytes, dataBytes, compressed));
+        }
+        throw new IllegalArgumentException("Unsupported curve " + curve);
+    }
+
+    @Override
+    public boolean avm_ecPairingCheck(s.java.lang.String curve, ByteArray data, boolean compressed) {
+        Objects.requireNonNull(curve, "Elliptic curve can't be NULL");
+        Objects.requireNonNull(data, "Data can't be NULL");
+        int nPairs;
+        byte[] dataBytes = data.getUnderlying();
+        switch (curve.getUnderlying()) {
+            case "bls12-381":
+                nPairs = dataBytes.length / (Crypto.BLS12381_G1_LEN + Crypto.BLS12381_G2_LEN);
+                if (!compressed) nPairs /= 2;
+                IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecPairingCheck +
+                        RuntimeMethodFeeSchedule.BlockchainRuntime_avm_ecPairingCheck_per_pairs * nPairs);
+                return Crypto.bls12381PairingCheck(dataBytes, compressed);
+        }
+        throw new IllegalArgumentException("Unsupported curve " + curve);
     }
 
     @Override
