@@ -293,6 +293,13 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_aggregate = RT_METHOD_FEE_LEVEL_6;
     public static final int BlockchainRuntime_avm_aggregate_per_bytes = 20;
 
+    public static final int BlockchainRuntime_avm_ecAdd = RT_METHOD_FEE_LEVEL_6;
+    public static final int BlockchainRuntime_avm_ecAdd_per_points = 1000;
+    public static final int BlockchainRuntime_avm_ecScalarMul_g1 = 20000;
+    public static final int BlockchainRuntime_avm_ecScalarMul_g2 = 95000;
+    public static final int BlockchainRuntime_avm_ecPairingCheck = 200000;
+    public static final int BlockchainRuntime_avm_ecPairingCheck_per_pairs = 40000;
+
     public static final int BlockchainRuntime_avm_getAddressFromKey = RT_METHOD_FEE_LEVEL_5;
     public static final int BlockchainRuntime_avm_getFeeSharingProportion = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_setFeeSharingProportion = RT_METHOD_FEE_LEVEL_1;

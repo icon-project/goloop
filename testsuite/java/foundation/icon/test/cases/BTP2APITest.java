@@ -18,6 +18,7 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.BTPNetworkInfo;
 import foundation.icon.icx.data.BTPNetworkTypeInfo;
@@ -139,17 +140,19 @@ public class BTP2APITest extends TestBase {
 
         byte[] pubKeyEmpty = new byte[0];
         var caller1PubKey = caller1.getPublicKey().toByteArray();
-        var caller2PubKey = caller2.getPublicKey().toByteArray();
+        var caller1CompPubKey = caller1.getPublicKey(true).toByteArray();
+        var caller2CompPubKey = caller2.getPublicKey(true).toByteArray();
 
         var cases = new Case[]{
-                new Case(caller1, NT_ETH, caller1.getPublicKey().toByteArray(), false, "Invalid name"),
+                new Case(caller1, NT_ETH, caller1PubKey, false, "Invalid name"),
                 new Case(caller1, DSA_SECP256K1, "a023bd9e".getBytes(), false, "Invalid public key"),
                 new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set public key"),
                 new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Set same public key again"),
-                new Case(caller1, DSA_SECP256K1, caller2PubKey, true, "Modify public key"),
-                new Case(caller1, DSA_SECP256K1, caller1PubKey, true, "Restore public key"),
+                new Case(caller1, DSA_SECP256K1, caller1CompPubKey, true, "Set same compressed public key again"),
+                new Case(caller1, DSA_SECP256K1, caller2CompPubKey, true, "Modify public key"),
+                new Case(caller1, DSA_SECP256K1, caller1CompPubKey, true, "Restore public key"),
                 new Case(caller2, DSA_SECP256K1, caller1PubKey, false, "Set public key with already exist"),
-                new Case(caller2, DSA_SECP256K1, caller2PubKey, true, "Set with deleted public key"),
+                new Case(caller2, DSA_SECP256K1, caller2CompPubKey, true, "Set with deleted public key"),
                 new Case(caller1, NT_ETH, pubKeyEmpty, false, "Delete with Invalid name"),
                 new Case(caller1, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),
                 new Case(caller2, DSA_SECP256K1, pubKeyEmpty, true, "Delete public key"),
@@ -166,7 +169,10 @@ public class BTP2APITest extends TestBase {
                 if (c.pubKey.equals(pubKeyEmpty)) {
                     assertArrayEquals(null, retPubKey);
                 } else {
-                    assertArrayEquals(c.pubKey, retPubKey);
+                    assertEquals(33, retPubKey.length);
+                    Address inputAddr = IconKeys.getAddress(new Bytes(c.pubKey));
+                    Address retAddr = IconKeys.getAddress(new Bytes(retPubKey));
+                    assertEquals(inputAddr, retAddr);
                 }
             } else {
                 assertFailure(result);

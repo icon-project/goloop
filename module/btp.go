@@ -259,4 +259,7 @@ type DSAModule interface {
 
 	// Verify verifies format of public key.
 	Verify(pubKey []byte) error
+
+	// Canonicalize returns canonical public key.
+	Canonicalize(pubKey []byte) ([]byte, error)
 }

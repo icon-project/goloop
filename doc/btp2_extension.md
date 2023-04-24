@@ -26,11 +26,12 @@ Summarize the document to following items.
 ```
 #### Parameters
 
-| Name      | Type    | Required    | Description          |
-|:----------|:--------|:------------|:---------------------|
-| height    | T_INT   | true        | Start height         |
-| networkID | T_INT   | true        | Network ID           |
-| proofFlag | T_BOOL  | true        | Proof included flag  |
+| Name             | Type   | Required | Description                    |
+|:-----------------|:-------|:---------|:-------------------------------|
+| height           | T_INT  | true     | Start height                   |
+| networkID        | T_INT  | true     | Network ID                     |
+| proofFlag        | T_BOOL | true     | Proof included flag            |
+| progressInterval | T_INT  | false    | Progress notification interval |
 > Success Responses
 
 ```json
@@ -71,6 +72,7 @@ Summarize the document to following items.
 | header | T_BASE64  | Base64 encoded [BTPBlockHeader](#btpblockheader) |
 | proof  | T_BASE64  | Base64 encoded proof                             |
 
+If `progressInterval` is not zero, then [Progress Interval](btp_extension.md#progress-notification) may also be notified.
 
 ## BTP JSON-RPC Methods
 

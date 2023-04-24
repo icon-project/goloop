@@ -126,7 +126,22 @@ public class KeyWallet implements Wallet {
         return privateKey;
     }
 
+    /**
+     * Gets the public key
+     *
+     * @return public key in uncompressed format
+     */
     public Bytes getPublicKey() {
         return publicKey;
+    }
+
+    /**
+     * Gets the public key in the specified format
+     *
+     * @param compressed whether to generate a compressed format
+     * @return public key in the specified format
+     */
+    public Bytes getPublicKey(boolean compressed) {
+        return IconKeys.getPublicKey(privateKey, compressed);
     }
 }

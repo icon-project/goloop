@@ -49,6 +49,8 @@ public class EEProxy extends Proxy {
     public static final int LOG_DEBUG = 5;
     public static final int LOG_TRACE = 6;
 
+    private static final int MAX_PREV_SIZE_CB = 32;
+
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
     private final ArrayList<IntConsumer> mPrevSizeCBs = new ArrayList<>();
@@ -191,6 +193,12 @@ public class EEProxy extends Proxy {
     @SuppressWarnings("StatementWithEmptyBody")
     public void waitForCallbacks() throws IOException {
         while(waitForCallback());
+    }
+
+    public void limitPendingCallbackLength() throws IOException {
+        while (mPrevSizeCBs.size() > MAX_PREV_SIZE_CB) {
+            waitForCallback();
+        }
     }
 
     public void setCode(byte[] code) throws IOException {

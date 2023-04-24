@@ -158,6 +158,7 @@ Summarize the document to following items.
 | <a id="eventsindexed">indexed</a> | Array  | false    | Array of arguments to match with indexed parameters of event. null matches any value.                                                                                              |
 | data                              | Array  | false    | Array of arguments to match with not indexed parameters of event. null matches any value. If indexed parameters of event are exists, require ['indexed'](#eventsindexed) parameter |
 | eventFilters                      | Array  | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters)) All events that match any of filters will be notified.                                          |
+| progressInterval                  | T_INT  | false    | Block interval to send progress notification, see [Progress Notification](#progress-notification)                                                                                  |
 
 
 > Success Responses
@@ -218,6 +219,18 @@ You may use `hash` and `index` to get proof of the result including
 the events(`icx_getProofForResult`).
 You may use `hash`, `index` and `events` to get proofs of the result and the events(`icx_getProofForEvents`).
 
+You may also get [Progress Notification](#progress-notification) if the `progressInterval` is not zero.
+
+### Progress Notification
+
+| Name     | Type  | Required | Description                                 |
+|:---------|:------|:---------|:--------------------------------------------|
+| progress | T_INT | true     | The height of the block which is processed. |
+
+It should be sent in specified progress interval. Zero interval means disabling it.
+It should also be sent right after sending other notifications to ensure that all notifications in the block is sent.
+
+It may be used to record last position of the monitoring task.
 
 ## Extended JSON-RPC Methods
 

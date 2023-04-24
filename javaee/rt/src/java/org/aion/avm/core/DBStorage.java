@@ -62,8 +62,15 @@ public class DBStorage implements IDBStorage {
             throw new IllegalStateException();
         }
         var stepCost = ctx.getStepCost();
+
+        // Limit proxy connection's pending read buffer by consuming not to
+        // block sender (=proxy in sm). Do not wait unless we have too many
+        // pending items.
+        this.ctx.limitPendingCallbackLength();
+
         if (v == null) {
             var rb = stepCost.replaceBase();
+
             if (tryCharge(rb)) {
                 ctx.putStorage(k, null, prevSize -> {
                     if (prevSize > 0) {

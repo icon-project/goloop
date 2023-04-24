@@ -28,7 +28,6 @@ import score.RevertedException;
 import score.annotation.External;
 
 import java.io.IOException;
-import java.nio.file.Files;
 
 public class DeployTest2 extends SimpleTest {
     public static class ValueHolder {
@@ -222,8 +221,7 @@ public class DeployTest2 extends SimpleTest {
 
     @Test
     void constantDynamic() throws IOException {
-        var p = getResourcePath("constant-dynamic.jar");
-        var jar = Files.readAllBytes(p);
+        var jar = readResourceFile("constant-dynamic.jar");
         var res = sm.tryDeploy(jar);
         Assertions.assertEquals(Status.IllegalFormat, res.getStatus());
     }

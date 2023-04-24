@@ -174,6 +174,16 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
+    public void limitPendingCallbackLength() {
+        try {
+            proxy.limitPendingCallbackLength();
+        } catch (IOException e) {
+            logger.debug("[limitPendingCallbackLength] {}", e.getMessage());
+            RuntimeAssertionError.unexpected(e);
+        }
+    }
+
+    @Override
     public byte[] getStorage(byte[] key) {
         try {
             byte[] value = proxy.getValue(key);

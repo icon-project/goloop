@@ -18,10 +18,17 @@ package foundation.icon.ee;
 
 import foundation.icon.ee.test.NoDebugTest;
 import foundation.icon.ee.tooling.abi.ABICompilerException;
+import foundation.icon.ee.types.Status;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import score.Address;
+import score.Context;
 import score.annotation.External;
 import score.annotation.Keep;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 public class StructTest extends NoDebugTest {
     static class PackagePrivate {
@@ -54,5 +61,52 @@ public class StructTest extends NoDebugTest {
         Assertions.assertThrows(ABICompilerException.class, () -> {
             makeRelJar(ScorePackagePrivateStructMaker.class, PackagePrivate.class);
         });
+    }
+
+    public static class ScoreListOfPackagePrivateStructMaker {
+        @External
+        public List<PackagePrivate> run() {
+            return List.of(new PackagePrivate());
+        }
+    }
+
+    @Test
+    void testPackagePrivateStructList() {
+        var c = sm.mustDeploy(new Class[] {ScoreListOfPackagePrivateStructMaker.class, PackagePrivate.class});
+        var res = c.tryInvoke("run");
+        Assertions.assertEquals(Status.UnknownFailure, res.getStatus());
+    }
+
+    public static class ScoreMapMaker {
+        @External
+        public Map<String, String> run() {
+            return Map.of("name", "Jung");
+        }
+    }
+
+    public static class ScorePackagePrivateStructTaker {
+        @External
+        public void run(Address addr) {
+            var l = Context.call(PackagePrivate.class, addr, "run");
+        }
+    }
+
+    @Test
+    void testPackagePrivateStructFromMap() {
+        var maker = sm.mustDeploy(ScoreMapMaker.class);
+        var taker = sm.mustDeploy(new Class[]{ScorePackagePrivateStructTaker.class, PackagePrivate.class});
+        var res = taker.tryInvoke("run", maker.getAddress());
+        Assertions.assertEquals(Status.UnknownFailure, res.getStatus());
+    }
+
+    @Test
+    void errorInReadableMethodProperty() throws IOException {
+        var jar = readResourceFile("StructTest-packagePrivateStruct.jar");
+        var c = sm.mustDeploy(jar);
+        var res = c.invoke("createProject", "test1", "token_uri1");
+        Assertions.assertEquals(Status.Success, res.getStatus());
+
+        res = c.tryInvoke("getAllProjects");
+        Assertions.assertEquals(Status.UnknownFailure, res.getStatus());
     }
 }

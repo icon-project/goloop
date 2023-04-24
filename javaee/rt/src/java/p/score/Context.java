@@ -191,6 +191,21 @@ public final class Context extends Object {
         return blockchainRuntime.avm_aggregate(type, prevAgg, values);
     }
 
+    public static ByteArray avm_ecAdd(String curve, ByteArray data, boolean compressed) {
+        // Charge steps in BlockchainRuntime
+        return blockchainRuntime.avm_ecAdd(curve, data, compressed);
+    }
+
+    public static ByteArray avm_ecScalarMul(String curve, ByteArray scalar, ByteArray data, boolean compressed) {
+        // Charge steps in BlockchainRuntime
+        return blockchainRuntime.avm_ecScalarMul(curve, scalar, data, compressed);
+    }
+
+    public static boolean avm_ecPairingCheck(String curve, ByteArray data, boolean compressed) {
+        // Charge steps in BlockchainRuntime
+        return blockchainRuntime.avm_ecPairingCheck(curve, data, compressed);
+    }
+
     public static Address avm_getAddressFromKey(ByteArray publicKey) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getAddressFromKey);
         return blockchainRuntime.avm_getAddressFromKey(publicKey);

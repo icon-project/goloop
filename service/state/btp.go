@@ -579,21 +579,25 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 		return scoreresult.InvalidParameterError.Errorf("Invalid name %s", name)
 	}
 	ownerDB := scoredb.NewDictDB(bc.Store(), PubKeyOwner, 1)
-	ownerKey := crypto.SHA3Sum256(pubKey)
+
+	var publicKey, ownerKey []byte
 	if len(pubKey) != 0 {
-		if err := dsa.Verify(pubKey); err != nil {
+		var err error
+		if publicKey, err = dsa.Canonicalize(pubKey); err != nil {
 			return scoreresult.InvalidParameterError.Errorf("Invalid pubKey %+v", err)
-		}
-		if value := ownerDB.Get(ownerKey); value != nil {
-			if !value.Address().Equal(from) {
-				return scoreresult.InvalidParameterError.Errorf("Already exist pubkey")
+		} else {
+			ownerKey = crypto.SHA3Sum256(publicKey)
+			if value := ownerDB.Get(ownerKey); value != nil {
+				if !value.Address().Equal(from) {
+					return scoreresult.InvalidParameterError.Errorf("Already exist pubkey")
+				}
 			}
 		}
 	}
 
 	dbase := scoredb.NewDictDB(bc.Store(), PubKeyByNameKey, 2)
 	oPubKey := dbase.Get(from, name)
-	if oPubKey != nil && bytes.Equal(oPubKey.Bytes(), pubKey) {
+	if oPubKey != nil && bytes.Equal(oPubKey.Bytes(), publicKey) {
 		return nil
 	}
 
@@ -609,7 +613,7 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 			return err
 		}
 	}
-	if len(pubKey) == 0 {
+	if len(publicKey) == 0 {
 		if err := dbase.Delete(from, name); err != nil {
 			return err
 		}
@@ -619,7 +623,7 @@ func (bs *BTPStateImpl) SetPublicKey(bc BTPContext, from module.Address, name st
 			}
 		}
 	} else {
-		if err := dbase.Set(from, name, pubKey); err != nil {
+		if err := dbase.Set(from, name, publicKey); err != nil {
 			return err
 		}
 		if err := ownerDB.Set(ownerKey, from); err != nil {

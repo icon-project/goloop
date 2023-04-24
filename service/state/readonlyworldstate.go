@@ -88,6 +88,14 @@ func (vs *readonlyValidatorState) Remove(v module.Validator) bool {
 	return false
 }
 
+func (vs *readonlyValidatorState) Replace(ov, nv module.Validator) error {
+	return errors.InvalidStateError.New("ReadOnlyState")
+}
+
+func (vs *readonlyValidatorState) SetAt(i int, v module.Validator) error {
+	return errors.InvalidStateError.New("ReadOnlyState")
+}
+
 func (vs *readonlyValidatorState) GetSnapshot() ValidatorSnapshot {
 	return vs.ValidatorSnapshot
 }

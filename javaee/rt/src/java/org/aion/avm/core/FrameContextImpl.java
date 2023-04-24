@@ -48,6 +48,10 @@ public class FrameContextImpl implements FrameContext {
         return externalState.waitForCallback();
     }
 
+    public void limitPendingRefundLength() {
+        externalState.limitPendingCallbackLength();
+    }
+
     public void setStatusFlag(int flag) {
         this.flag = flag;
     }

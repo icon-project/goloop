@@ -37,6 +37,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class Crypto {
+    public static int BLS12381_G1_LEN = BLS12381.G1_LEN;
+    public static int BLS12381_G2_LEN = BLS12381.G2_LEN;
+
     public static byte[] sha3_256(byte[] msg) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA3-256");
@@ -210,6 +213,56 @@ public class Crypto {
     private static void checkArgument(boolean expression, String message) {
         if (!expression) {
             throw new IllegalArgumentException(message);
+        }
+    }
+
+    public static byte[] bls12381G1Add(byte[] data, boolean compressed) {
+        try {
+            return BLS12381.g1Add(data, compressed);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(e.getMessage());
+        }
+    }
+
+    public static byte[] bls12381G2Add(byte[] data, boolean compressed) {
+        try {
+            return BLS12381.g2Add(data, compressed);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(e.getMessage());
+        }
+    }
+
+    public static byte[] bls12381G1ScalarMul(byte[] scalar, byte[] data, boolean compressed) {
+        try {
+            return BLS12381.g1ScalarMul(scalar, data, compressed);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(e.getMessage());
+        }
+    }
+
+    public static byte[] bls12381G2ScalarMul(byte[] scalar, byte[] data, boolean compressed) {
+        try {
+            return BLS12381.g2ScalarMul(scalar, data, compressed);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(e.getMessage());
+        }
+    }
+
+    public static boolean bls12381PairingCheck(byte[] data, boolean compressed) {
+        try {
+            return BLS12381.pairingCheck(data, compressed);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(e.getMessage());
         }
     }
 }
