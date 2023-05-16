@@ -107,15 +107,16 @@ Get BTP network information.
   "id": 1001,
   "jsonrpc": "2.0",
   "result": {
-    "startHeight" : "0x11",
-    "networkTypeID" : "0x1",
-    "networkTypeName" : "eth",
-    "networkID" : "0x3",
-    "networkName" : "snow",
+    "startHeight": "0x5f0bf9",
+    "networkTypeID": "0x1",
+    "networkTypeName": "eth",
+    "networkID": "0x3",
+    "networkName": "iconBsc",
     "open": "0x1",
-    "nextMessageSN" : "0x20",
-    "prevNSHash" : "0x…",
-    "lastNSHash" : "0x…"
+    "owner": "cxf1b0808f09138fffdb890772315aeabb37072a8a",
+    "nextMessageSN": "0x143",
+    "prevNSHash": "0x83ffc865e76a169f186c106bda2fa0b4714cc86bc891aaeb0884a2d5063ceebb",
+    "lastNSHash": "0x68d8a929feb846b6a8f25d29b187f1acd39c295facc28ff12aa7caa1b80e229e"
   }
 }
 ```
@@ -129,6 +130,7 @@ Get BTP network information.
 | networkID       | T_INT     | Network ID                           |
 | networkName     | T_STRING  | Network name                         |
 | open            | T_INT     | Active state of network              |
+| owner           | T_ADDR    | Owner of the BTP Network             |
 | nextMessageSN   | T_INT     | Next message SN                      |
 | prevNSHash      | T_HASH    | Previous network hash                |
 | lastNSHash      | T_HASH    | Last network hash                    |
