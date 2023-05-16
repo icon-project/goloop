@@ -574,6 +574,20 @@ func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
 	return es.State.GetPRepStatsInJSON(rev, s.cc.BlockHeight())
 }
 
+func (s *chainScore) Ex_getPRepStatsOf(address module.Address) (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	if err := s.checkQueryMode(); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	return es.State.GetPRepStatsOfInJSON(s.cc.Revision().Value(), s.cc.BlockHeight(), address)
+}
+
 func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err

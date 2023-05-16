@@ -32,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -624,6 +625,26 @@ func (s *State) GetPRepStatsInJSON(rev int, blockHeight int64) (map[string]inter
 	return map[string]interface{}{
 		"blockHeight": blockHeight,
 		"preps":       preps,
+	}, nil
+}
+
+func (s *State) GetPRepStatsOfInJSON(
+	rev int, blockHeight int64, address module.Address) (map[string]interface{}, error) {
+	if address == nil {
+		return nil, scoreresult.InvalidParameterError.New("InvalidAddress")
+	}
+
+	ps := s.GetPRepStatusByOwner(address, false)
+	if ps == nil {
+		return nil, scoreresult.InvalidParameterError.Errorf("PRepStatusNotFound(address=%s)", address)
+	}
+
+	stats := NewPRepStats(address, ps)
+	return map[string]interface{}{
+		"blockHeight": blockHeight,
+		"preps": []interface{}{
+			stats.ToJSON(rev, blockHeight),
+		},
 	}, nil
 }
 

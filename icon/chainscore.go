@@ -507,6 +507,16 @@ var chainMethods = []*chainMethod{
 		},
 	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "getPRepStatsOf",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{"address", scoreapi.Address, nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionUpdatePRepStats, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "validateIRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
