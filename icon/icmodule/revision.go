@@ -104,7 +104,8 @@ const (
 	// Unused
 	// RevisionJavaFixMapValues = Revision20
 
-	RevisionBTP2 = Revision21
+	RevisionBTP2            = Revision21
+	RevisionUpdatePRepStats = Revision21
 )
 
 var revisionFlags = []module.Revision{

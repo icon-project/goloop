@@ -18,6 +18,7 @@ package icstate
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/module"
 	"io"
 	"math/big"
 	"math/bits"
@@ -713,4 +714,28 @@ func NewPRepStatusWithSnapshot(snapshot *PRepStatusSnapshot) *PRepStatusState {
 
 func NewPRepStatus() *PRepStatusState {
 	return new(PRepStatusState).Reset(emptyPRepStatusSnapshot)
+}
+
+type PRepStats struct {
+	owner module.Address
+	*PRepStatusState
+}
+
+func (p *PRepStats) Owner() module.Address {
+	return p.owner
+}
+
+func (p *PRepStats) ToJSON(rev int, blockHeight int64) map[string]interface{} {
+	jso := p.PRepStatusState.GetStatsInJSON(blockHeight)
+	if rev >= icmodule.RevisionUpdatePRepStats {
+		jso["owner"] = p.owner
+	}
+	return jso
+}
+
+func NewPRepStats(owner module.Address, ps *PRepStatusState) *PRepStats {
+	return &PRepStats{
+		owner:           owner,
+		PRepStatusState: ps,
+	}
 }

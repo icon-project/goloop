@@ -425,44 +425,43 @@ func (s *State) OnValidatorOut(blockHeight int64, owner module.Address) error {
 	return err
 }
 
-// GetPRepStatuses returns PRepStatus list ordered by bonded delegation
-func (s *State) GetPRepStatuses() ([]*PRepStatusState, error) {
+// GetPRepStatsList returns PRepStatus list ordered by bonded delegation
+func (s *State) GetPRepStatsList() ([]*PRepStats, error) {
 	br := s.GetBondRequirement()
 
 	size := s.allPRepCache.Size()
-	owners := make([]module.Address, 0)
-	pss := make([]*PRepStatusState, 0)
+	statsList := make([]*PRepStats, 0)
 
 	for i := 0; i < size; i++ {
 		owner := s.allPRepCache.Get(i)
 		ps := s.GetPRepStatusByOwner(owner, false)
 		if ps.Status() == Active {
-			owners = append(owners, owner)
-			pss = append(pss, ps)
+			stats := NewPRepStats(owner, ps)
+			statsList = append(statsList, stats)
 		}
 	}
 
-	sortPRepStatuses(owners, pss, br)
-	return pss, nil
+	sortPRepStatsList(statsList, br)
+	return statsList, nil
 }
 
-func sortPRepStatuses(owners []module.Address, pss []*PRepStatusState, br int64) {
-	sort.Slice(pss, func(i, j int) bool {
-		ret := pss[i].GetBondedDelegation(br).Cmp(pss[j].GetBondedDelegation(br))
+func sortPRepStatsList(statsList []*PRepStats, br int64) {
+	sort.Slice(statsList, func(i, j int) bool {
+		ret := statsList[i].GetBondedDelegation(br).Cmp(statsList[j].GetBondedDelegation(br))
 		if ret > 0 {
 			return true
 		} else if ret < 0 {
 			return false
 		}
 
-		ret = pss[i].Delegated().Cmp(pss[j].Delegated())
+		ret = statsList[i].Delegated().Cmp(statsList[j].Delegated())
 		if ret > 0 {
 			return true
 		} else if ret < 0 {
 			return false
 		}
 
-		return bytes.Compare(owners[i].Bytes(), owners[j].Bytes()) > 0
+		return bytes.Compare(statsList[i].Owner().Bytes(), statsList[j].Owner().Bytes()) > 0
 	})
 }
 
@@ -609,24 +608,23 @@ func (s *State) GetPReps(activeOnly bool) []*PRep {
 	return preps
 }
 
-func (s *State) GetPRepStatsInJSON(blockHeight int64) (map[string]interface{}, error) {
-	pss, err := s.GetPRepStatuses()
+func (s *State) GetPRepStatsInJSON(rev int, blockHeight int64) (map[string]interface{}, error) {
+	statsList, err := s.GetPRepStatsList()
 	if err != nil {
 		return nil, err
 	}
 
-	size := len(pss)
-	jso := make(map[string]interface{})
-	psList := make([]interface{}, size)
-
+	size := len(statsList)
+	preps := make([]interface{}, size)
 	for i := 0; i < size; i++ {
-		ps := pss[i]
-		psList[i] = ps.GetStatsInJSON(blockHeight)
+		stats := statsList[i]
+		preps[i] = stats.ToJSON(rev, blockHeight)
 	}
 
-	jso["blockHeight"] = blockHeight
-	jso["preps"] = psList
-	return jso, nil
+	return map[string]interface{}{
+		"blockHeight": blockHeight,
+		"preps":       preps,
+	}, nil
 }
 
 func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, end int, revision int) (map[string]interface{}, error) {

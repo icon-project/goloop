@@ -557,7 +557,7 @@ func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return es.State.GetPRepStatsInJSON(s.cc.BlockHeight())
+	return es.State.GetPRepStatsInJSON(s.cc.Revision().Value(), s.cc.BlockHeight())
 }
 
 func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
