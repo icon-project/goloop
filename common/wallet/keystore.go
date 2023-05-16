@@ -178,7 +178,15 @@ func DecryptKeyStore(data, pw []byte) (*crypto.PrivateKey, error) {
 
 	secretBytes := make([]byte, len(cipheredBytes))
 
-	stream := cipher.NewCTR(block, cipherParams.IV.Bytes())
+	ivBytes := cipherParams.IV.Bytes()
+	if bl, sz := len(ivBytes), block.BlockSize() ; bl < sz {
+		nbs := make([]byte, sz)
+		copy(nbs[sz-bl:], ivBytes)
+		ivBytes = nbs
+	} else if bl > sz {
+		ivBytes = ivBytes[bl-sz:]
+	}
+	stream := cipher.NewCTR(block, ivBytes)
 	stream.XORKeyStream(secretBytes, cipheredBytes)
 
 	secret, err := crypto.ParsePrivateKey(secretBytes)
