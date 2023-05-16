@@ -33,9 +33,44 @@ func newKeystoreGenCmd(c string) *cobra.Command {
 	return cmd
 }
 
+func newVerifyCmd(c string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use: c,
+		Short: "Verify keystore with the password",
+	}
+	flags := cmd.PersistentFlags()
+	secret := flags.StringP("secret", "s", "", "KeySecret file path")
+	pass := flags.StringP("password", "p", "gochain", "Password for the keystore")
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		for _, arg := range args {
+			var pb []byte
+			if kb, err := ioutil.ReadFile(arg); err != nil {
+				log.Panicf("fail to open keystore file err=%+v", err)
+			} else {
+				if *secret != "" {
+					if pb, err = ioutil.ReadFile(*secret); err != nil {
+						log.Panicf("fail to open KeySecret err=%+v", err)
+					}
+				} else {
+					pb = []byte(*pass)
+				}
+
+				_, err := wallet.NewFromKeyStore(kb, pb)
+				if err != nil {
+					fmt.Printf("FAIL err=%v\n", err)
+				} else {
+					fmt.Println("SUCCESS")
+				}
+			}
+		}
+	}
+	return cmd
+}
+
 func NewKeystoreCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{Use: c, Short: "Keystore manipulation"}
 	cmd.AddCommand(newKeystoreGenCmd("gen"))
+	cmd.AddCommand(newVerifyCmd("verify"))
 	cmd.AddCommand(publickeyFromKeyStore("pubkey"))
 	return cmd
 }
