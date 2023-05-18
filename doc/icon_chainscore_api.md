@@ -9,6 +9,8 @@
     + [getPRep](#getprep)
     + [getPReps](#getpreps)
     + [getBonderList](#getbonderlist)
+    + [getPRepStats](#getprepstats)
+    + [getPRepStatsOf](#getprepstatsof)
   * Writable APIs
     + [setStake](#setstake)
     + [setDelegation](#setdelegation)
@@ -202,6 +204,43 @@ def getBonderList(address: Address) -> dict:
 | bonderList | \[\]Address | addresses of ICONist who can bond to the `address` |
 
 *Revision:* 13 ~
+
+### getPRepStats
+
+Returns the list of block validation statistics for all active PReps
+
+```python
+def getPRepStats() -> dict:
+```
+
+*Returns:*
+
+| Name        | Type                            | Description                                             |
+|:------------|:--------------------------------|:--------------------------------------------------------|
+| blockHeight | int                             | state blockHeight                                       |
+| preps       | List\[[PRepStats](#prepstats)\] | List of block validation statistics for all active PRep |
+
+### getPRepStatsOf
+
+* Returns the list of block validation statistics for a given PRep
+* Since `revision 22`
+
+```python
+def getPRepStatsOf(address: Address) -> dict:
+```
+
+*Parameters:*
+
+| Name    | Type    | Description                    |
+|:--------|:--------|:-------------------------------|
+| address | Address | Owner address of PRep to query |
+
+*Returns:*
+
+| Name        | Type                            | Description                                          |
+|:------------|:--------------------------------|:-----------------------------------------------------|
+| blockHeight | int                             | state blockHeight                                    |
+| preps       | List\[[PRepStats](#prepstats)\] | List of block validation statistics for a given PRep |
 
 ## Writable APIs
 
@@ -613,8 +652,24 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 | nodeAddress            | str        | node Key for only consensus                                                                                                                                                                               |
 | p2pEndpoint            | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
 | penalty                | int        | 0: None, 1: Disqualification, 2: Low Productivity, 3: Block Validation, 4: NonVote                                                                                                                        |
-| power                  | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20))                                                                                                             |
+| power                  | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20))                                                                                                          |
 | status                 | int        | 0: active, 1: unregistered                                                                                                                                                                                |
 | totalBlocks            | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
 | validatedBlocks        | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
 | website                | str        | P-Rep homepage URL                                                                                                                                                                                        |
+
+## PRepStats
+
+| Key          | Value Type | Description                                                                     |
+|:-------------|:-----------|:--------------------------------------------------------------------------------|
+| fail         | int        | number of blocks that this PRep failed to validate until lastHeight             |
+| failCont     | int        | number of consecutive blocks that this PRep failed to validate until lastHeight |
+| grade        | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                 |
+| lastHeight   | int        | Latest blockHeight when lastState change happened                               |
+| lastState    | int        | 0: None, 1: Ready, 2: Success, 3: Failure                                       |
+| owner        | Address    | PRep owner address                                                              |
+| realFail     | int        | number of blocks that this PRep failed to validate                              |
+| realFailCont | int        | number of blocks that this PRep failed to validate consecutively                |
+| realTotal    | int        | number of blocks that this PRep was supposed to validate                        |
+| status       | int        | 0: Active, 1: Unregistered, 2: Disqualified                                     |
+| total        | int        | number of blocks that this PRep was supposed to validate until lastHeight       |
