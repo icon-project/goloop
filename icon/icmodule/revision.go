@@ -40,13 +40,14 @@ const (
 	Revision19
 	Revision20
 	Revision21
+	Revision22
 	RevisionReserved
 )
 
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision20
+	LatestRevision  = Revision22
 )
 
 const (
@@ -104,8 +105,9 @@ const (
 	// Unused
 	// RevisionJavaFixMapValues = Revision20
 
-	RevisionBTP2            = Revision21
-	RevisionUpdatePRepStats = Revision21
+	RevisionBTP2 = Revision21
+
+	RevisionUpdatePRepStats = Revision22
 )
 
 var revisionFlags = []module.Revision{
@@ -153,6 +155,8 @@ var revisionFlags = []module.Revision{
 	module.FixMapValues,
 	// Revision21
 	module.MultipleFeePayers,
+	// Revision22
+	0,
 }
 
 func init() {
