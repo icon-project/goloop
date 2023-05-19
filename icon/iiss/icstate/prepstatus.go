@@ -18,7 +18,6 @@ package icstate
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/module"
 	"io"
 	"math/big"
 	"math/bits"
@@ -27,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/module"
 )
 
 type Grade int

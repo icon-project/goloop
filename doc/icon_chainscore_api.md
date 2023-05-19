@@ -660,16 +660,17 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## PRepStats
 
-| Key          | Value Type | Description                                                                     |
-|:-------------|:-----------|:--------------------------------------------------------------------------------|
-| fail         | int        | number of blocks that this PRep failed to validate until lastHeight             |
-| failCont     | int        | number of consecutive blocks that this PRep failed to validate until lastHeight |
-| grade        | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                 |
-| lastHeight   | int        | Latest blockHeight when lastState change happened                               |
-| lastState    | int        | 0: None, 1: Ready, 2: Success, 3: Failure                                       |
-| owner        | Address    | PRep owner address                                                              |
-| realFail     | int        | number of blocks that this PRep failed to validate                              |
-| realFailCont | int        | number of blocks that this PRep failed to validate consecutively                |
-| realTotal    | int        | number of blocks that this PRep was supposed to validate                        |
-| status       | int        | 0: Active, 1: Unregistered, 2: Disqualified                                     |
-| total        | int        | number of blocks that this PRep was supposed to validate until lastHeight       |
+| Key          | Value Type | Description                                                                      |
+|:-------------|:-----------|:---------------------------------------------------------------------------------|
+| fail         | int        | number of blocks that this PRep failed to validate until lastHeight              |
+| failCont     | int        | number of consecutive blocks that this PRep failed to validate until lastHeight  |
+| grade        | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                  |
+| lastHeight   | int        | Latest blockHeight when lastState change happened                                |
+| lastState    | int        | 0: None, 1: Ready, 2: Success, 3: Failure                                        |
+| owner        | Address    | PRep owner address                                                               |
+| penalties    | int        | number of times that this PRep got penalized in the last 30 terms as a validator |
+| realFail     | int        | number of blocks that this PRep failed to validate                               |
+| realFailCont | int        | number of blocks that this PRep failed to validate consecutively                 |
+| realTotal    | int        | number of blocks that this PRep was supposed to validate                         |
+| status       | int        | 0: Active, 1: Unregistered, 2: Disqualified                                      |
+| total        | int        | number of blocks that this PRep was supposed to validate until lastHeight        |
