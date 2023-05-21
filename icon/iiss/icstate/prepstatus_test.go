@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/module"
 )
 
 func TestPRepStatus_Bytes(t *testing.T) {
@@ -716,4 +718,32 @@ func TestPrepStatusData_ToJSON(t *testing.T) {
 	power, ok := jso["power"].(*big.Int)
 	assert.True(t, ok)
 	assert.Zero(t, power.Sign())
+}
+
+func TestPRepStats_ToJSON(t *testing.T) {
+	ps := NewPRepStatus()
+	owner := newDummyAddress(1)
+
+	stats := NewPRepStats(owner, ps)
+
+	args := []struct {
+		rev int
+	}{
+		{icmodule.RevisionUpdatePRepStats - 1},
+		{icmodule.RevisionUpdatePRepStats},
+		{icmodule.RevisionUpdatePRepStats + 1},
+	}
+
+	for _, arg := range args {
+		name := fmt.Sprintf("rev-%02d", arg.rev)
+		t.Run(name, func(t *testing.T) {
+			jso := stats.ToJSON(arg.rev, 100)
+			if arg.rev < icmodule.RevisionUpdatePRepStats {
+				_, ok := jso["owner"]
+				assert.False(t, ok)
+			} else {
+				assert.True(t, jso["owner"].(module.Address).Equal(owner))
+			}
+		})
+	}
 }
