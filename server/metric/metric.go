@@ -41,7 +41,7 @@ var (
 func NewMetricKey(k string) tag.Key {
 	key, err := tag.NewKey(k)
 	if err != nil {
-		log.Fatalf("Fail tag.NewKey %s %+v", k, err)
+		log.Panicf("Fail tag.NewKey %s %+v", k, err)
 	}
 
 	mTags[&key] = make(map[string]tag.Mutator)
@@ -68,7 +68,7 @@ func RegisterMetricView(m stats.Measure, a *view.Aggregation, tks []tag.Key) *vi
 		TagKeys:     append(mKeys, tks...),
 	}
 	if err := view.Register(v); err != nil {
-		log.Fatalf("Fail RegisterMetricView view.Register %+v", err)
+		log.Panicf("Fail RegisterMetricView view.Register %+v", err)
 	}
 	mViews[v.Name] = v
 	return v
@@ -98,7 +98,7 @@ func GetMetricContext(p context.Context, mk *tag.Key, v string) context.Context 
 
 	ctx, err := tag.New(p, mt)
 	if err != nil {
-		log.Fatalf("Fail tag.New %+v", err)
+		log.Panicf("Fail tag.New %+v", err)
 	}
 	return ctx
 }
@@ -265,6 +265,6 @@ func ResetMetricViews() {
 	view.Unregister(vs...)
 
 	if err := view.Register(vs...); err != nil {
-		log.Fatalf("Fail ResetMetricViews view.Register %+v", err)
+		log.Panicf("Fail ResetMetricViews view.Register %+v", err)
 	}
 }

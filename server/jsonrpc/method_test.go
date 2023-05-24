@@ -105,6 +105,9 @@ func TestMethodRepository(t *testing.T) {
 	emptyMethod := `{"jsonrpc":"2.0","method":"","params":"bar","id":"1001"}`
 	invokeTest(t, mr, emptyMethod, methodNotFoundResp, http.StatusBadRequest)
 
+	invalidMethod := `{"jsonrpc":"2.0","method":"` + strings.Repeat("0", 256) + `","id":"1001"}`
+	invokeTest(t, mr, invalidMethod, methodNotFoundResp, http.StatusBadRequest)
+
 	invalidMethodType := `{"jsonrpc":"2.0","method":1,"id":"1001"}`
 	invalidMethodTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to unmarshal, 'method' must be string type"},"id":"1001"}`
 	invokeTest(t, mr, invalidMethodType, invalidMethodTypeResp, http.StatusBadRequest)
