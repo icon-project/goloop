@@ -382,6 +382,13 @@ public class BTP2APITest extends TestBase {
         checkMessage(height, nid, secondMsgs);
         LOG.infoExiting();
 
+        LOG.infoEntering("Send BTP message to closed network");
+        closeBTPNetwork(nid);
+        msg = getRandomBytes(20);
+        result = chainScore.sendBTPMessage(wallet, nid, msg);
+        assertEquals(Constants.STATUS_FAILURE, result.getStatus());
+        LOG.infoExiting();
+
         LOG.infoExiting();
     }
 
