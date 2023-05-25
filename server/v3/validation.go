@@ -111,9 +111,12 @@ func validateCallDataParam(sl validator.StructLevel, field interface{}, data map
 	}
 	// data.params : optional
 	if params, ok := data["params"]; ok {
-		paramsMap := params.(map[string]interface{})
-		for k, pv := range paramsMap {
-			validateRPCData(sl, "Data.params."+k, pv)
+		if paramsMap, ok := params.(map[string]interface{}); ok {
+			for k, pv := range paramsMap {
+				validateRPCData(sl, "Data.params."+k, pv)
+			}
+		} else {
+			sl.ReportError(field, "Data", "", "data.params", "")
 		}
 	}
 }
@@ -154,9 +157,12 @@ func validateDeployDataParam(sl validator.StructLevel, field interface{}, data m
 	}
 	// data.params : optional
 	if params, ok := data["params"]; ok {
-		paramsMap := params.(map[string]interface{})
-		for k, pv := range paramsMap {
-			validateRPCData(sl, "Data.params."+k, pv)
+		if paramsMap, ok := params.(map[string]interface{}); ok {
+			for k, pv := range paramsMap {
+				validateRPCData(sl, "Data.params."+k, pv)
+			}
+		} else {
+			sl.ReportError(field, "Data", "", "data.params", "")
 		}
 	}
 }

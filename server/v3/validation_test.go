@@ -42,6 +42,27 @@ func TestCallParamValidator(t *testing.T) {
 	if err := validator.Validate(&callParam); err != nil {
 		assert.Fail(t, "validate fail", err.Error())
 	}
+
+	var invalidCallParam CallParam
+	invalidCallParams := []byte(`
+		{
+			"to": "cx0000000000000000000000000000000000000000",
+			"dataType": "call",
+			"data": {
+				"method": "balanceOf",
+				"params": 2
+			}
+		}
+	`)
+	if err := json.Unmarshal(invalidCallParams, &invalidCallParam); err != nil {
+		// fmt.Printf("unmarshal error: %s\n", err.Error())
+		assert.Fail(t, "unmarshal fail", err.Error())
+	}
+
+	bs, _ = json.MarshalIndent(&invalidCallParam, "", "\t")
+	fmt.Println(string(bs))
+
+	assert.Error(t, validator.Validate(&invalidCallParam))
 }
 
 func TestTransactionParamValidator(t *testing.T) {
