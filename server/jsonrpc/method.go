@@ -154,16 +154,30 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 			mr.mtr.OnHandle(ctx.MetricContext(), "", time.Now(), resp.Error)
 			return c.JSON(http.StatusServiceUnavailable, resp)
 		}
-		var wg sync.WaitGroup
-		wg.Add(n)
+		ch := make(chan interface{}, len(raws))
 		rs := make([]*Response, len(raws))
 		for i, r := range raws {
 			go func(r json.RawMessage, rs []*Response, i int) {
+				defer func() {
+					ch <- recover()
+				}()
 				rs[i] = mr.handle(ctx, r)
-				wg.Done()
 			}(r, rs, i)
 		}
-		wg.Wait()
+		completed := 0
+	waitLoop:
+		for {
+			select {
+			case re := <-ch:
+				if re != nil {
+					panic(re)
+				}
+				completed++
+				if completed == len(raws) {
+					break waitLoop
+				}
+			}
+		}
 
 		resps := make([]*Response, 0)
 		for _, r := range rs {
