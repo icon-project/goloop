@@ -21,7 +21,11 @@ endif
 GOBUILD = go build
 GOBUILD_TAGS ?= rocksdb
 GOBUILD_ENVS ?= $(GOBUILD_ENVS_$(shell go env GOOS))
+ifeq ($(BUILD_STATIC),TRUE)
+GOBUILD_LDFLAGS = -extldflags "-static"
+else 
 GOBUILD_LDFLAGS =
+endif
 GOBUILD_FLAGS = -tags "$(GOBUILD_TAGS)" -ldflags "$(GOBUILD_LDFLAGS)"
 
 GOTEST = go test
