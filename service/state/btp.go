@@ -560,6 +560,9 @@ func (bs *BTPStateImpl) HandleMessage(bc BTPContext, from module.Address, nid in
 		return 0, scoreresult.InvalidParameterError.Errorf("There is no network for %d", nid)
 	}
 	nw := NewNetworkFromBytes(nwValue.Bytes())
+	if nw.Open() == false {
+		return 0, scoreresult.InvalidParameterError.Errorf("NID %d was closed", nid)
+	}
 	if !from.Equal(nw.Owner()) {
 		return 0, scoreresult.AccessDeniedError.Errorf("Only owner can send BTP message")
 	}

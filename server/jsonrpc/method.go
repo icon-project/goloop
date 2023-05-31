@@ -72,16 +72,17 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 	resp := &Response{Version: Version}
 	req := new(Request)
 	start := time.Now()
+	var method Handler
 	defer func() {
-		method := ""
-		if req.Method != nil {
-			method = *req.Method
+		methodName := ""
+		if method != nil {
+			methodName = *req.Method
 		}
 		var err error
 		if resp.Error != nil {
 			err = resp.Error
 		}
-		mr.mtr.OnHandle(ctx.MetricContext(), method, start, err)
+		mr.mtr.OnHandle(ctx.MetricContext(), methodName, start, err)
 	}()
 	if err := UnmarshalWithValidate(raw, req, mr.v); err != nil {
 		resp.ID = req.ID
@@ -94,7 +95,7 @@ func (mr *MethodRepository) handle(ctx *Context, raw json.RawMessage) *Response 
 		resp.Error = ErrorCodeInvalidRequest.Wrap(err, debug)
 		return resp
 	}
-	method := mr.GetMethod(*req.Method)
+	method = mr.GetMethod(*req.Method)
 	if method == nil {
 		resp.Error = ErrMethodNotFound()
 		return resp
@@ -153,16 +154,30 @@ func (mr *MethodRepository) Handle(c echo.Context) error {
 			mr.mtr.OnHandle(ctx.MetricContext(), "", time.Now(), resp.Error)
 			return c.JSON(http.StatusServiceUnavailable, resp)
 		}
-		var wg sync.WaitGroup
-		wg.Add(n)
+		ch := make(chan interface{}, len(raws))
 		rs := make([]*Response, len(raws))
 		for i, r := range raws {
 			go func(r json.RawMessage, rs []*Response, i int) {
+				defer func() {
+					ch <- recover()
+				}()
 				rs[i] = mr.handle(ctx, r)
-				wg.Done()
 			}(r, rs, i)
 		}
-		wg.Wait()
+		completed := 0
+	waitLoop:
+		for {
+			select {
+			case re := <-ch:
+				if re != nil {
+					panic(re)
+				}
+				completed++
+				if completed == len(raws) {
+					break waitLoop
+				}
+			}
+		}
 
 		resps := make([]*Response, 0)
 		for _, r := range rs {

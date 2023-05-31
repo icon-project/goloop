@@ -105,6 +105,9 @@ func TestMethodRepository(t *testing.T) {
 	emptyMethod := `{"jsonrpc":"2.0","method":"","params":"bar","id":"1001"}`
 	invokeTest(t, mr, emptyMethod, methodNotFoundResp, http.StatusBadRequest)
 
+	invalidMethod := `{"jsonrpc":"2.0","method":"` + strings.Repeat("0", 256) + `","id":"1001"}`
+	invokeTest(t, mr, invalidMethod, methodNotFoundResp, http.StatusBadRequest)
+
 	invalidMethodType := `{"jsonrpc":"2.0","method":1,"id":"1001"}`
 	invalidMethodTypeResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest: fail to unmarshal, 'method' must be string type"},"id":"1001"}`
 	invokeTest(t, mr, invalidMethodType, invalidMethodTypeResp, http.StatusBadRequest)
@@ -193,6 +196,16 @@ func TestMethodRepository(t *testing.T) {
 	exceedLimitBatch := "[" + strings.Repeat(","+notification, DefaultBatchLimit+1)[1:] + "]"
 	exceedLimitBatchResp := `{"jsonrpc":"2.0","error":{"code":-32600,"message":"InvalidRequest","data":"too many request"},"id":null}`
 	invokeTest(t, mr, exceedLimitBatch, exceedLimitBatchResp, http.StatusServiceUnavailable)
+
+	assert.Panics(t, func() {
+		mr.RegisterMethod("panicFunc", func(*Context, *Params) (interface{}, error) {
+			panic("panic")
+		})
+		panicBatch := []string{
+			`{"jsonrpc":"2.0","method":"panicFunc","params":0,"id":"1001"}`,
+		}
+		invokeBatchTest(t, mr, panicBatch, nil)
+	})
 }
 
 type HelloParam struct {
