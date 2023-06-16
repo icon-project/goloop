@@ -58,6 +58,7 @@ var (
 		"icx_getProofForResult":      msRetrieve,
 		"icx_getProofForEvents":      msRetrieve,
 		"icx_getScoreStatus":         msRetrieve,
+		"icx_getNetworkInfo":         msRetrieve,
 		"btp_getNetworkInfo":         msRetrieve,
 		"btp_getNetworkTypeInfo":     msRetrieve,
 		"btp_getMessages":            msRetrieve,

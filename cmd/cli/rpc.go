@@ -479,6 +479,20 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 	flags = scoreStatusCmd.Flags()
 	flags.Int("height", -1, "BlockHeight")
 
+	networkInfoCmd := &cobra.Command{
+		Use: "networkinfo",
+		Short: "Get network info of the endpoint",
+		Args: cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args[]string) error {
+			info, err := rpcClient.GetNetworkInfo()
+			if err != nil {
+				return err
+			}
+			return JsonPrettyPrintln(os.Stdout, info)
+		},
+	}
+	rootCmd.AddCommand(networkInfoCmd)
+
 	rootCmd.AddCommand(
 		&cobra.Command{
 			Use:   "btpnetwork ID [HEIGHT]",

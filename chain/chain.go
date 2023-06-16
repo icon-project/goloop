@@ -703,6 +703,14 @@ func (c *singleChain) DoDBTask(task func(database db.Database)) {
 	task(c.database)
 }
 
+func (c *singleChain) PlatformName() string {
+	if len(c.cfg.Platform) > 0 {
+		return c.cfg.Platform
+	} else {
+		return "basic"
+	}
+}
+
 func NewChain(
 	wallet module.Wallet,
 	transport module.NetworkTransport,

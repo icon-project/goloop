@@ -42,6 +42,7 @@ type Chain interface {
 	GenesisStorage() GenesisStorage
 	CommitVoteSetDecoder() CommitVoteSetDecoder
 	PatchDecoder() PatchDecoder
+	PlatformName() string
 
 	BlockManager() BlockManager
 	Consensus() Consensus
