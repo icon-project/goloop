@@ -273,6 +273,19 @@ public final class Converters {
         }
     };
 
+    public static final RpcConverter<NetworkInfo> NETWORK_INFO
+            = new RpcConverter<NetworkInfo>() {
+        @Override
+        public NetworkInfo convertTo(RpcItem object) {
+            return new NetworkInfo(object.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(NetworkInfo object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
     public static final RpcConverter<BTPNetworkInfo> BTP_NETWORK_INFO
             = new RpcConverter<BTPNetworkInfo>() {
 
