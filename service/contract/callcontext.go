@@ -594,6 +594,9 @@ func (cc *callContext) GetReturnEID() int {
 }
 
 func (cc *callContext) SetFeeProportion(addr module.Address, portion int) {
+	if !cc.FeeSharingEnabled() {
+		return
+	}
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
