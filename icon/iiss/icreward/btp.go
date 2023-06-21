@@ -57,7 +57,7 @@ func (d *DSA) Updated(index int) *DSA {
 	if d == nil {
 		n.mask = 1 << index
 	} else {
-		n.mask = d.mask & (1 << index)
+		n.mask = d.mask | (1 << index)
 	}
 	return n
 }
@@ -111,7 +111,7 @@ func (p *PublicKey) Updated(index int) *PublicKey {
 	if p == nil {
 		n.mask = 1 << index
 	} else {
-		n.mask = p.mask & (1 << index)
+		n.mask = p.mask | (1 << index)
 	}
 	return n
 }
