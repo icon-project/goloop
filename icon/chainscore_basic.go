@@ -323,6 +323,9 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			}
 		}
 	}
+	if r1 < icmodule.Revision21 && r2 >= icmodule.Revision21 && s.cc.ChainID() == CIDForMainNet {
+		s.blockAccounts2()
+	}
 	return nil
 }
 
@@ -348,6 +351,17 @@ func (s *chainScore) blockAccounts() {
 		"hx061b01c59bd9fc1282e7494ff03d75d0e7187f47",
 		"hx10d12d5726f50e4cf92c5fad090637b403516a41",
 		"hx10e8a7289c3989eac07828a840905344d8ed559b",
+	}
+	for _, target := range targets {
+		addr := common.MustNewAddressFromString(target)
+		as := s.cc.GetAccountState(addr.ID())
+		as.SetBlock(true)
+	}
+}
+
+func (s *chainScore) blockAccounts2() {
+	targets := []string{
+		"hxb8edf10e2d415f49d8598187e53f146111f549cf",
 	}
 	for _, target := range targets {
 		addr := common.MustNewAddressFromString(target)
