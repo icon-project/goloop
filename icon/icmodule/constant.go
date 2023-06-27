@@ -20,7 +20,6 @@ import (
 	"math/big"
 )
 
-// From iiss.calculator.go
 const (
 	DayBlock     = 24 * 60 * 60 / 2
 	DayPerMonth  = 30
@@ -28,12 +27,14 @@ const (
 	MonthPerYear = 12
 	YearBlock    = MonthBlock * MonthPerYear
 
-	/*
-		MinRrep        = 200
-		RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
-		RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
-		MinDelegation  = YearBlock / IScoreICXRatio * (RrepDivider / MinRrep)
-	*/
+	MinRrep        = 200
+	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
+	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
+	MinDelegation  = YearBlock / IScoreICXRatio * (RrepDivider / MinRrep)
+)
+
+var (
+	BigIntMinDelegation = big.NewInt(int64(MinDelegation))
 )
 
 const (
@@ -70,10 +71,10 @@ const (
 	DefaultValidationPenaltyCondition            = 660
 	DefaultConsistentValidationPenaltyCondition  = 5
 	DefaultConsistentValidationPenaltyMask       = 30
-	DefaultConsistentValidationPenaltySlashRatio = 0  // 0%
+	DefaultConsistentValidationPenaltySlashRatio = 0 // 0%
 	DefaultDelegationSlotMax                     = 100
 	DefaultExtraMainPRepCount                    = 3
-	DefaultNonVotePenaltySlashRatio              = 0  // 0%
+	DefaultNonVotePenaltySlashRatio              = 0 // 0%
 )
 
 // The following variables are read-only

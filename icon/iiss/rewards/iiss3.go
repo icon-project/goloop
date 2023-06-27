@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 ICON Foundation
+ * Copyright 2023 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-package iiss
+package rewards
 
 import (
 	"bytes"
 	"math/big"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -37,160 +35,10 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
 )
 
-type RewardType int
-
-const (
-	TypeBlockProduce RewardType = iota
-	TypeVoted
-	TypeVoting
-)
-
-const (
-	DayBlock     = 24 * 60 * 60 / 2
-	DayPerMonth  = 30
-	MonthBlock   = DayBlock * DayPerMonth
-	MonthPerYear = 12
-	YearBlock    = MonthBlock * MonthPerYear
-
-	MinRrep        = 200
-	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
-	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
-	MinDelegation  = YearBlock / icmodule.IScoreICXRatio * (RrepDivider / MinRrep)
-)
-
-var (
-	BigIntMinDelegation = big.NewInt(int64(MinDelegation))
-)
-
-type Calculator struct {
-	log log.Logger
-
-	startHeight int64
-	database    db.Database
-	back        *icstage.Snapshot
-	base        *icreward.Snapshot
-	global      icstage.Global
-	temp        *icreward.State
-	stats       *statistics
-
-	lock    sync.Mutex
-	waiters []*sync.Cond
-	err     error
-	result  *icreward.Snapshot
-}
-
-func (c *Calculator) Result() *icreward.Snapshot {
-	return c.result
-}
-
-func (c *Calculator) StartHeight() int64 {
-	return c.startHeight
-}
-
-func (c *Calculator) TotalReward() *big.Int {
-	return c.stats.TotalReward()
-}
-
-func (c *Calculator) Back() *icstage.Snapshot {
-	return c.back
-}
-
-func (c *Calculator) Base() *icreward.Snapshot {
-	return c.base
-}
-
-func (c *Calculator) Temp() *icreward.State {
-	return c.temp
-}
-
-func (c *Calculator) Error() error {
-	return c.err
-}
-
-func (c *Calculator) WaitResult(blockHeight int64) error {
-	if c.startHeight == InitBlockHeight {
-		return nil
-	}
-	if c.startHeight != blockHeight {
-		return errors.InvalidStateError.Errorf("Calculator(height=%d,exp=%d)",
-			c.startHeight, blockHeight)
-	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.err == nil && c.result == nil {
-		cond := sync.NewCond(&c.lock)
-		c.waiters = append(c.waiters, cond)
-		cond.Wait()
-	}
-	return c.err
-}
-
-func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
-	if result == nil && err == nil {
-		c.log.Panicf("InvalidParameters(result=%+v, err=%+v)")
-	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	// it's already interrupted.
-	if c.err != nil {
-		return
-	}
-
-	c.result = result
-	c.err = err
-	for _, cond := range c.waiters {
-		cond.Signal()
-	}
-	c.waiters = nil
-}
-
-func (c *Calculator) Stop() {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.err == nil && c.result == nil {
-		c.err = errors.ErrInterrupted
-		for _, w := range c.waiters {
-			w.Signal()
-		}
-		c.waiters = nil
-	}
-}
-
-func UpdateCalculator(c *Calculator, ess state.ExtensionSnapshot, logger log.Logger) *Calculator {
-	essi := ess.(*ExtensionSnapshotImpl)
-	back := essi.Back2()
-	reward := essi.Reward()
-	if c != nil {
-		if c.database == essi.database &&
-			bytes.Equal(c.back.Bytes(), back.Bytes()) &&
-			bytes.Equal(c.base.Bytes(), reward.Bytes()) {
-			return c
-		}
-		c.Stop()
-	}
-	return NewCalculator(essi.database, back, reward, logger)
-}
-
-func (c *Calculator) run() (err error) {
-	defer func() {
-		if err != nil {
-			c.setResult(nil, err)
-		}
-	}()
-
+func (c *Calculator) calculateRewardV3() (err error) {
 	startTS := time.Now()
-	if err = c.prepare(); err != nil {
-		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
-		return
-	}
-	prepareTS := time.Now()
-
 	if err = c.calculateBlockProduce(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate block produce reward")
 		return
@@ -207,73 +55,11 @@ func (c *Calculator) run() (err error) {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate ICONist voting reward")
 		return
 	}
-	votingTS := time.Now()
-
-	if err = c.postWork(); err != nil {
-		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
-		return
-	}
 	finalTS := time.Now()
 
-	c.log.Infof("Calculation time: total=%s prepare=%s blockProduce=%s voted=%s voting=%s postwork=%s",
-		finalTS.Sub(startTS), prepareTS.Sub(startTS), bpTS.Sub(prepareTS),
-		votedTS.Sub(bpTS), votingTS.Sub(votedTS), finalTS.Sub(votingTS),
+	c.log.Infof("Calculation time: total=%s blockProduce=%s voted=%s voting=%s",
+		finalTS.Sub(startTS), bpTS.Sub(startTS), votedTS.Sub(bpTS), finalTS.Sub(votedTS),
 	)
-	c.log.Infof("Calculation statistics: Total=%d BlockProduce=%s Voted=%s Voting=%s",
-		c.stats.TotalReward(), c.stats.BlockProduce(), c.stats.Voted(), c.stats.Voting())
-
-	c.setResult(c.temp.GetSnapshot(), nil)
-	return nil
-}
-
-func (c *Calculator) prepare() error {
-	var err error
-	c.log.Infof("Start calculation %d", c.startHeight)
-	c.log.Infof("Global Option: %+v", c.global)
-
-	// write claim data to temp
-	if err = c.processClaim(); err != nil {
-		return err
-	}
-
-	// replay BugDisabledPRep
-	if err = c.replayBugDisabledPRep(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Calculator) processClaim() error {
-	for iter := c.back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-		obj := o.(*icobject.Object)
-		if obj.Tag().Type() == icstage.TypeIScoreClaim {
-			claim := icstage.ToIScoreClaim(o)
-			keySplit, err := containerdb.SplitKeys(key)
-			if err != nil {
-				return nil
-			}
-			addr, err := common.NewAddress(keySplit[1])
-			if err != nil {
-				return nil
-			}
-			iScore, err := c.temp.GetIScore(addr)
-			if err != nil {
-				return nil
-			}
-			nIScore := iScore.Subtracted(claim.Value())
-			if nIScore.Value().Sign() == -1 {
-				return errors.Errorf("Invalid negative I-Score for %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
-			}
-			c.log.Tracef("Claim %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
-			if err = c.temp.SetIScore(addr, nIScore); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
@@ -307,34 +93,12 @@ func (c *Calculator) replayBugDisabledPRep() error {
 	return nil
 }
 
-func (c *Calculator) updateIScore(addr module.Address, reward *big.Int, t RewardType) error {
-	iScore, err := c.temp.GetIScore(addr)
-	if err != nil {
-		return err
-	}
-	nIScore := iScore.Added(reward)
-	if err = c.temp.SetIScore(addr, nIScore); err != nil {
-		return err
-	}
-	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
-
-	switch t {
-	case TypeBlockProduce:
-		c.stats.IncreaseBlockProduce(reward)
-	case TypeVoted:
-		c.stats.IncreaseVoted(reward)
-	case TypeVoting:
-		c.stats.IncreaseVoting(reward)
-	}
-	return nil
-}
-
 // varForBlockProduceReward return variable for block produce reward
 // return (((irep * MonthPerYear) / (YearBlock * 2)) * mainPRepCount * IScoreICXRatio) / 2
 func varForBlockProduceReward(irep *big.Int, mainPRepCount int) *big.Int {
 	v := new(big.Int)
-	v.Mul(irep, big.NewInt(MonthPerYear))
-	v.Div(v, big.NewInt(int64(YearBlock*2)))
+	v.Mul(irep, big.NewInt(icmodule.MonthPerYear))
+	v.Div(v, big.NewInt(int64(icmodule.YearBlock*2)))
 	v.Mul(v, big.NewInt(int64(mainPRepCount)*icmodule.IScoreICXRatio))
 	v.Div(v, big.NewInt(int64(2)))
 	return v
@@ -429,10 +193,13 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 
 // varForVotedReward return variable for P-Rep voted reward
 // IISS 2.0
+//
 //	multiplier = (((irep * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio) / 2
 //	divider = 1
+//
 // IISS 3.1
-// 	multiplier = iglobal * iprep * IScoreICXRatio
+//
+//	multiplier = iglobal * iprep * IScoreICXRatio
 //	divider = 100 * MonthBlock
 func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
@@ -441,8 +208,8 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion2 {
 		g := global.GetV1()
-		multiplier.Mul(g.GetIRep(), big.NewInt(MonthPerYear))
-		multiplier.Div(multiplier, big.NewInt(int64(YearBlock*2)))
+		multiplier.Mul(g.GetIRep(), big.NewInt(icmodule.MonthPerYear))
+		multiplier.Div(multiplier, big.NewInt(int64(icmodule.YearBlock*2)))
 		multiplier.Mul(multiplier, big.NewInt(int64(icmodule.VotedRewardMultiplier*icmodule.IScoreICXRatio)))
 	} else {
 		g := global.GetV2()
@@ -451,7 +218,7 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 		}
 		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * MonthBlock))
+		divider.SetInt64(int64(100 * icmodule.MonthBlock))
 	}
 	return
 }
@@ -605,10 +372,13 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 
 // varForPRepDelegatingReward return variables for ICONist delegating reward
 // IISS 2.0
-// 	multiplier = Rrep * IScoreICXRatio
+//
+//	multiplier = Rrep * IScoreICXRatio
 //	divider = YearBlock * RrepDivider
+//
 // IISS 3.1
-// 	multiplier = Iglobal * Ivoter * IScoreICXRatio
+//
+//	multiplier = Iglobal * Ivoter * IScoreICXRatio
 //	divider = 100 * MonthBlock * total voting amount
 func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
@@ -620,8 +390,8 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 		if g.GetRRep().Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(icmodule.IScoreICXRatio*RrepMultiplier))
-		divider.SetInt64(int64(YearBlock * RrepDivider))
+		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(icmodule.IScoreICXRatio*icmodule.RrepMultiplier))
+		divider.SetInt64(int64(icmodule.YearBlock * icmodule.RrepDivider))
 	} else {
 		g := global.GetV2()
 		if g.GetTermPeriod() == 0 || totalVotingAmount.Sign() == 0 {
@@ -629,7 +399,7 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 		}
 		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * MonthBlock))
+		divider.SetInt64(int64(100 * icmodule.MonthBlock))
 		divider.Mul(divider, totalVotingAmount)
 	}
 	return
@@ -886,13 +656,17 @@ func (c *Calculator) processVoting(
 
 // votingReward calculate voting reward with a single voting data
 // IISS 2.0
-//   reward = Rrep * delegations * period * IScoreICXRatio / YearBlock
-//   multiplier = Rrep * IScoreICXRatio
-//   divider = YearBlock
+//
+//	reward = Rrep * delegations * period * IScoreICXRatio / YearBlock
+//	multiplier = Rrep * IScoreICXRatio
+//	divider = YearBlock
+//
 // IISS 3.1
-//   reward = Iglobal * Ivoter * voting amount * period * IScoreICXRatio / (100 * Term period * total voting amount)
-//   multiplier = Iglobal * Ivoter * IScoreICXRatio
-//   divider = 100 * Term period * total voting amount
+//
+//	reward = Iglobal * Ivoter * voting amount * period * IScoreICXRatio / (100 * Term period * total voting amount)
+//	multiplier = Iglobal * Ivoter * IScoreICXRatio
+//	divider = 100 * Term period * total voting amount
+//
 // reward = multiplier * voting amount * period / divider
 func (c *Calculator) votingReward(
 	multiplier *big.Int,
@@ -908,7 +682,7 @@ func (c *Calculator) votingReward(
 		if voting, err := iter.Get(); err != nil {
 			c.log.Errorf("Failed to iterate votings err=%+v", err)
 		} else {
-			if checkMinVoting && voting.Amount().Cmp(BigIntMinDelegation) < 0 {
+			if checkMinVoting && voting.Amount().Cmp(icmodule.BigIntMinDelegation) < 0 {
 				continue
 			}
 			s := from
@@ -1112,66 +886,6 @@ func (c *Calculator) processBTP() error {
 		}
 	}
 	return nil
-}
-
-const InitBlockHeight = -1
-
-func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
-	var err error
-	var global icstage.Global
-	var startHeight int64
-
-	global, err = back.GetGlobal()
-	if err != nil {
-		logger.Errorf("Failed to get Global values for calculator. %+v", err)
-		return nil
-	}
-	if global == nil {
-		// back has no global at first term
-		startHeight = InitBlockHeight
-	} else {
-		startHeight = global.GetStartHeight()
-	}
-	c := &Calculator{
-		database:    database,
-		back:        back,
-		base:        reward,
-		temp:        icreward.NewStateFromSnapshot(reward),
-		log:         logger,
-		global:      global,
-		startHeight: startHeight,
-		stats:       newStatistics(),
-	}
-	if startHeight != InitBlockHeight {
-		go c.run()
-	}
-	return c
-}
-
-type CalculatorHolder struct {
-	lock   sync.Mutex
-	runner *Calculator
-}
-
-func (h *CalculatorHolder) Start(ess state.ExtensionSnapshot, logger log.Logger) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	if ess != nil {
-		h.runner = UpdateCalculator(h.runner, ess, logger)
-	} else {
-		if h.runner != nil {
-			h.runner.Stop()
-			h.runner = nil
-		}
-	}
-}
-
-func (h *CalculatorHolder) Get() *Calculator {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	return h.runner
 }
 
 type validator struct {
@@ -1527,65 +1241,4 @@ func (p *pRepEnable) SetStartOffset(value int) {
 
 func (p *pRepEnable) SetEndOffset(value int) {
 	p.endOffset = value
-}
-
-type statistics struct {
-	blockProduce *big.Int
-	voted        *big.Int
-	voting       *big.Int
-}
-
-func (s *statistics) BlockProduce() *big.Int {
-	return s.blockProduce
-}
-
-func (s *statistics) Voted() *big.Int {
-	return s.voted
-}
-
-func (s *statistics) Voting() *big.Int {
-	return s.voting
-}
-
-func increaseStats(src *big.Int, amount *big.Int) *big.Int {
-	n := new(big.Int)
-	if src == nil {
-		n.Set(amount)
-	} else {
-		n.Add(src, amount)
-	}
-	return n
-}
-
-func (s *statistics) IncreaseBlockProduce(amount *big.Int) {
-	s.blockProduce = increaseStats(s.blockProduce, amount)
-}
-
-func (s *statistics) IncreaseVoted(amount *big.Int) {
-	s.voted = increaseStats(s.voted, amount)
-}
-
-func (s *statistics) IncreaseVoting(amount *big.Int) {
-	s.voting = increaseStats(s.voting, amount)
-}
-
-func (s *statistics) TotalReward() *big.Int {
-	reward := new(big.Int)
-	reward.Add(s.blockProduce, s.voted)
-	reward.Add(reward, s.voting)
-	return reward
-}
-
-func (s *statistics) Clear() {
-	s.blockProduce = new(big.Int)
-	s.voted = new(big.Int)
-	s.voting = new(big.Int)
-}
-
-func newStatistics() *statistics {
-	return &statistics{
-		new(big.Int),
-		new(big.Int),
-		new(big.Int),
-	}
 }
