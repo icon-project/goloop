@@ -75,8 +75,8 @@ func (c *Calculator) Temp() *icreward.State {
 	return c.temp
 }
 
-func (c *Calculator) Error() error {
-	return c.err
+func (c *Calculator) Global() icstage.Global {
+	return c.global
 }
 
 func (c *Calculator) WaitResult(blockHeight int64) error {
@@ -221,7 +221,7 @@ func (c *Calculator) processClaim() error {
 	return nil
 }
 
-func (c *Calculator) updateIScore(addr module.Address, reward *big.Int, t RewardType) error {
+func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error {
 	iScore, err := c.temp.GetIScore(addr)
 	if err != nil {
 		return err

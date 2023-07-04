@@ -83,7 +83,7 @@ func (c *Calculator) replayBugDisabledPRep() error {
 			return err
 		}
 		obj := icreward.ToBugDisabledPRep(o)
-		if err = c.updateIScore(addr, obj.Value(), TypeVoting); err != nil {
+		if err = c.UpdateIScore(addr, obj.Value(), TypeVoting); err != nil {
 			return err
 		}
 		if err = c.temp.DeleteBugDisabledPRep(addr); err != nil {
@@ -131,7 +131,7 @@ func (c *Calculator) calculateBlockProduce() error {
 	}
 
 	for _, v := range validators {
-		if err = c.updateIScore(v.Address(), v.IScore(), TypeBlockProduce); err != nil {
+		if err = c.UpdateIScore(v.Address(), v.IScore(), TypeBlockProduce); err != nil {
 			return err
 		}
 	}
@@ -294,7 +294,7 @@ func (c *Calculator) calculateVotedReward() error {
 			continue
 		}
 
-		if err = c.updateIScore(addr, prep.IScore(), TypeVoted); err != nil {
+		if err = c.UpdateIScore(addr, prep.IScore(), TypeVoted); err != nil {
 			return err
 		}
 	}
@@ -646,7 +646,7 @@ func (c *Calculator) processVoting(
 			}
 			reward = c.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
 		}
-		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
+		if err = c.UpdateIScore(addr, reward, TypeVoting); err != nil {
 			return err
 		}
 	}
@@ -772,7 +772,7 @@ func (c *Calculator) processVotingEvent(
 		if err = c.writeVoting(addr, voting); err != nil {
 			return nil
 		}
-		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
+		if err = c.UpdateIScore(addr, reward, TypeVoting); err != nil {
 			return err
 		}
 	}
