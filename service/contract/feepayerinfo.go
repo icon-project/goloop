@@ -180,7 +180,7 @@ func addBigInt(v1, v2 *big.Int) *big.Int {
 	if v1 == nil {
 		return v2
 	} else if v2 == nil {
-		return nil
+		return v1
 	} else {
 		return new(big.Int).Add(v1, v2)
 	}
@@ -196,7 +196,7 @@ func (p *FeePayerInfo) GetLogs(r txresult.Receipt) bool {
 		if p2, ok := m[key]; ok {
 			m[key] = &FeePayer{
 				payer:     p1.payer,
-				paidSteps: new(big.Int).Add(p1.paidSteps, p2.paidSteps),
+				paidSteps: addBigInt(p1.paidSteps, p2.paidSteps),
 				feeSteps:  addBigInt(p1.feeSteps, p2.feeSteps),
 			}
 		} else {
@@ -208,7 +208,7 @@ func (p *FeePayerInfo) GetLogs(r txresult.Receipt) bool {
 	}
 	paymentCount := 0
 	for _, p1 := range m {
-		if p1.paidSteps.Sign() == 0 {
+		if p1.paidSteps == nil || p1.paidSteps.Sign() == 0 {
 			continue
 		}
 		r.AddPayment(p1.payer, p1.paidSteps, p1.feeSteps)

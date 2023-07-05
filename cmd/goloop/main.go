@@ -21,6 +21,7 @@ type ErrorWithResponse interface {
 
 func main() {
 	rootCmd, rootVc := cli.NewCommand(nil, nil, "goloop", "Goloop CLI")
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print goloop version",

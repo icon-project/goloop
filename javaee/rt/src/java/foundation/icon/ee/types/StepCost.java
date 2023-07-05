@@ -39,63 +39,63 @@ public class StepCost {
         return costMap.containsKey(key);
     }
 
-    public int value(String key) {
-        return costMap.getOrDefault(key, BigInteger.ZERO).intValue();
+    public long value(String key) {
+        return costMap.getOrDefault(key, BigInteger.ZERO).longValue();
     }
 
-    public int get() {
+    public long get() {
         return value(GET);
     }
 
-    public int set() {
+    public long set() {
         return value(SET);
     }
 
-    public int delete() {
+    public long delete() {
         return value(DELETE);
     }
 
-    public int log() {
+    public long log() {
         return value(LOG);
     }
 
-    public int getBase() {
+    public long getBase() {
         return value(GET_BASE);
     }
 
-    public int setBase() {
+    public long setBase() {
         return value(SET_BASE);
     }
 
-    public int deleteBase() {
+    public long deleteBase() {
         return value(DELETE_BASE);
     }
 
-    public int logBase() {
+    public long logBase() {
         return value(LOG_BASE);
     }
 
-    public int replaceBase() {
+    public long replaceBase() {
         return (setBase() + deleteBase()) / 2;
     }
 
-    public int getStorage(int prevLen) {
+    public long getStorage(int prevLen) {
         return getBase() + prevLen * get();
     }
 
-    public int setStorageSet(int newLen) {
+    public long setStorageSet(int newLen) {
         return setBase() + newLen * set();
     }
 
-    public int setStorageReplace(int prevLen, int newLen) {
+    public long setStorageReplace(int prevLen, int newLen) {
         return replaceBase() + prevLen * delete() + newLen * set();
     }
 
-    public int setStorageDelete(int prevLen) {
+    public long setStorageDelete(int prevLen) {
         return deleteBase() + prevLen * delete();
     }
 
-    public int eventLog(int len) {
+    public long eventLog(int len) {
         return logBase() + len * log();
     }
 }

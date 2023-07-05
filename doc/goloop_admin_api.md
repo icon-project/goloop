@@ -45,8 +45,8 @@ Return system information.
 
 ```json
 {
-  "buildVersion": "v0.1.7",
-  "buildTags": "linux/amd64 tags()-2019-08-20-09:39:15",
+  "buildVersion": "v1.3.7",
+  "buildTags": "linux/amd64 tags(rocksdb)-2023-05-31-05:27:48",
   "setting": {
     "address": "hx4208599c8f58fed475db747504a80a311a3af63b",
     "p2p": "localhost:8080",
@@ -56,9 +56,11 @@ Return system information.
   },
   "config": {
     "eeInstances": 1,
+    "rpcBatchLimit": 10,
     "rpcDefaultChannel": "",
     "rpcIncludeDebug": false,
-    "rpcBatchLimit": 10
+    "rpcRosetta": false,
+    "wsMaxSession": 10
   }
 }
 ```
@@ -91,9 +93,11 @@ Return system configuration.
 ```json
 {
   "eeInstances": 1,
+  "rpcBatchLimit": 10,
   "rpcDefaultChannel": "",
   "rpcIncludeDebug": false,
-  "rpcBatchLimit": 10
+  "rpcRosetta": false,
+  "wsMaxSession": 10
 }
 ```
 
@@ -602,11 +606,21 @@ This operation does not require authentication
 
 Reset Chain.
 
+> Body parameter
+
+```json
+{
+  "height": 1,
+  "blockHash": "0x77ae0f77a345b3e5e8b65f6084cee34d04f037b1b6213134a463781b84006fcc"
+}
+```
+
 <h3 id="reset-chain-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
+|body|body|[ChainResetParam](#schemachainresetparam)|true|none|
 
 <h3 id="reset-chain-responses">Responses</h3>
 
@@ -1030,6 +1044,25 @@ This operation does not require authentication
 |nodeCache|small|
 |nodeCache|large|
 
+<h2 id="tocSchainresetparam">ChainResetParam</h2>
+
+<a id="schemachainresetparam"></a>
+
+```json
+{
+  "height": 1,
+  "blockHash": "0x77ae0f77a345b3e5e8b65f6084cee34d04f037b1b6213134a463781b84006fcc"
+}
+
+```
+
+### Properties
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|height|int64|false|none|Block Height|
+|blockHash|string("0x" + lowercase HEX string)|false|none|Block Hash|
+
 <h2 id="tocSchainimportparam">ChainImportParam</h2>
 
 <a id="schemachainimportparam"></a>
@@ -1055,8 +1088,8 @@ This operation does not require authentication
 
 ```json
 {
-  "buildVersion": "v0.1.7",
-  "buildTags": "linux/amd64 tags()-2019-08-20-09:39:15",
+  "buildVersion": "v1.3.7",
+  "buildTags": "linux/amd64 tags(rocksdb)-2023-05-31-05:27:48",
   "setting": {
     "address": "hx4208599c8f58fed475db747504a80a311a3af63b",
     "p2p": "localhost:8080",
@@ -1066,9 +1099,11 @@ This operation does not require authentication
   },
   "config": {
     "eeInstances": 1,
+    "rpcBatchLimit": 10,
     "rpcDefaultChannel": "",
     "rpcIncludeDebug": false,
-    "rpcBatchLimit": 10
+    "rpcRosetta": false,
+    "wsMaxSession": 10
   }
 }
 
@@ -1095,9 +1130,11 @@ This operation does not require authentication
 ```json
 {
   "eeInstances": 1,
+  "rpcBatchLimit": 10,
   "rpcDefaultChannel": "",
   "rpcIncludeDebug": false,
-  "rpcBatchLimit": 10
+  "rpcRosetta": false,
+  "wsMaxSession": 10
 }
 
 ```
@@ -1106,10 +1143,12 @@ This operation does not require authentication
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|eeInstances|integer|false|none|eeInstances|
-|rpcDefaultChannel|string|false|none|default channel for legacy api|
-|rpcIncludeDebug|boolean|false|none|JSON-RPC Response with detail information|
+|eeInstances|integer|false|none|Number of execution engines|
 |rpcBatchLimit|integer|false|none|JSON-RPC batch limit|
+|rpcDefaultChannel|string|false|none|default channel for legacy api|
+|rpcIncludeDebug|boolean|false|none|Enable JSON-RPC for debug APIs|
+|rpcRosetta|boolean|false|none|Enable JSON-RPC for Rosetta|
+|wsMaxSession|integer|false|none|Websocket session limit|
 
 <h2 id="tocSconfigureparam">ConfigureParam</h2>
 
@@ -1186,7 +1225,14 @@ This operation does not require authentication
 
 ### Properties
 
-*None*
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|name|string|false|none|name of the backup|
+|cid|string("0x" + lowercase HEX string)|false|none|chain-id of chain|
+|nid|string|false|none|Network ID of the backup|
+|height|integer|false|none|Last block height of the backup|
+|size|integer|false|none|Size of the backup in bytes|
+|codec|string|false|none|codec name|
 
 <h2 id="tocSrestorestatus">RestoreStatus</h2>
 

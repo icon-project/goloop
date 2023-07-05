@@ -359,7 +359,10 @@ type ServiceManager interface {
 	// GetRoundLimit returns round limit
 	GetRoundLimit(result []byte, vl int) int64
 
-	// GetMinimizeEmptyBlock returns minimize empty block generation flag
+	// GetStepPrice returns the step price of the state
+	GetStepPrice(result []byte) (*big.Int, error)
+
+	// GetMinimizeBlockGen returns minimize empty block generation flag
 	GetMinimizeBlockGen(result []byte) bool
 
 	// GetNextBlockVersion returns version of next block

@@ -1049,6 +1049,41 @@ It returns status information of the smart contract.
 | depositRemain | [T_INT](#T_INT) | Available deposit amount |
 
 
+### icx_getNetworkInfo
+
+It returns basic network information
+
+>Request
+```json
+{
+  "id": 1002,
+  "jsonrpc": "2.0",
+  "method": "icx_getNetworkInfo"
+}
+```
+
+#### Response
+
+| Status | Meaning | Description | Schema                                 |
+|:-------|:--------|:------------|:---------------------------------------|
+| 200    | OK      | Success     | [Network Information](#T_NETWORK_INFO) |
+
+* [Network Information](#T_NETWORK_INFO) as result on success
+* Error code, message and data on failure
+
+
+<a id="T_NETWORK_INFO">Network Information</a>
+
+| KEY       | VALUE type            | Description                          |
+|:----------|:----------------------|:-------------------------------------|
+| platform  | [T_STRING](#T_STRING) | Name of the platform                 |
+| nid       | [T_INT](#T_INT)       | Network ID of the current channel    |
+| channel   | [T_STRING](#T_STRING) | Name of the current channel          |
+| earliest  | [T_INT](#T_INT)       | Height of the earliest block         |
+| latest    | [T_INT](#T_INT)       | Height of the latest finalized block |
+| stepPrice | [T_INT](#T_INT)       | Price of the step                    |
+
+
 ## JSON-RPC Debug
 
 The debug end point is `http://<host>:<port>/api/v3d/<channel>`

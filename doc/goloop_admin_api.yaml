@@ -669,8 +669,8 @@ components:
         config:
           $ref: "#/components/schemas/SystemConfig"
       example:
-        buildVersion: "v0.1.7"
-        buildTags: "linux/amd64 tags()-2019-08-20-09:39:15"
+        buildVersion: "v1.3.7"
+        buildTags: "linux/amd64 tags(rocksdb)-2023-05-31-05:27:48"
         setting:
           address: "hx4208599c8f58fed475db747504a80a311a3af63b"
           p2p: "localhost:8080"
@@ -679,29 +679,39 @@ components:
           rpcDump: false
         config:
           eeInstances: 1
+          rpcBatchLimit: 10
           rpcDefaultChannel: ""
           rpcIncludeDebug: false
-          rpcBatchLimit: 10
+          rpcRosetta: false
+          wsMaxSession: 10
     SystemConfig:
       type: object
       properties:
         eeInstances:
           type: integer
-          description: "eeInstances"
+          description: "Number of execution engines"
+        rpcBatchLimit:
+          type: integer
+          description: "JSON-RPC batch limit"
         rpcDefaultChannel:
           type: string
           description: "default channel for legacy api"
         rpcIncludeDebug:
           type: boolean
-          description: "JSON-RPC Response with detail information"
-        rpcBatchLimit:
+          description: "Enable JSON-RPC for debug APIs"
+        rpcRosetta:
+          type: boolean
+          description: "Enable JSON-RPC for Rosetta"
+        wsMaxSession:
           type: integer
-          description: "JSON-RPC batch limit"
+          description: "Websocket session limit"
       example:
         eeInstances: 1
+        rpcBatchLimit: 10
         rpcDefaultChannel: ""
         rpcIncludeDebug: false
-        rpcBatchLimit: 10
+        rpcRosetta: false
+        wsMaxSession: 10
     ConfigureParam:
       type: object
       properties:
@@ -743,7 +753,7 @@ components:
       type: array
       items:
         type: object
-        propertis:
+        properties:
           name:
             type: string
             description: "name of the backup"
@@ -763,7 +773,7 @@ components:
             description: "Size of the backup in bytes"
           codec:
             type: string
-            description: "Size of the backup in bytes"
+            description: "codec name"
       example:
         - name: "0x178977_0x1_1_20200715-111057.zip"
           cid: "0x178977"

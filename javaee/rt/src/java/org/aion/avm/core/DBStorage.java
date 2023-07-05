@@ -45,15 +45,15 @@ public class DBStorage implements IDBStorage {
         return new BigInteger(bs).intValue();
     }
 
-    private void charge(int cost) {
+    private void charge(long cost) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 
-    private void chargeImmediately(int cost) {
+    private void chargeImmediately(long cost) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergyImmediately(cost);
     }
 
-    private boolean tryCharge(int cost) {
+    private boolean tryCharge(long cost) {
         return IInstrumentation.attachedThreadInstrumentation.get().tryChargeEnergy(cost);
     }
 
