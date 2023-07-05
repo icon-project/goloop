@@ -35,7 +35,7 @@ public abstract class Array extends Object implements Cloneable, IArray {
      * @param perElementFee energy to be charged per element depending on type.
      */
     static protected void chargeEnergyInitArray(int length, int perElementFee) {
-        int cost = EnergyCalculator.multiply(length, perElementFee);
+        long cost = EnergyCalculator.multiply(length, perElementFee);
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 
@@ -49,7 +49,7 @@ public abstract class Array extends Object implements Cloneable, IArray {
      * @param length  length of array
      */
     static protected void chargeEnergyClone(int baseFee, int length) {
-        int cost = EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(baseFee, length);
+        long cost = EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(baseFee, length);
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 }

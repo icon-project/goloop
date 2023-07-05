@@ -107,7 +107,7 @@ public class StepTest extends SimpleTest {
                 + ba1.length * (stepCost.set() + stepCost.delete())
                 + hashCost, step);
 
-        var ba_rb = new byte[stepCost.replaceBase()];
+        var ba_rb = new byte[(int) stepCost.replaceBase()];
         baseStep = score.invoke("emptyBody1", (Object) ba_rb)
                 .getStepUsed().intValue();
         step = score.invoke("set", (Object) ba_rb).getStepUsed().intValue()
@@ -117,7 +117,7 @@ public class StepTest extends SimpleTest {
                 + ba1.length * stepCost.delete()
                 + hashCost, step);
 
-        var ba_rbPlus1 = new byte[stepCost.replaceBase() + 1];
+        var ba_rbPlus1 = new byte[(int) stepCost.replaceBase() + 1];
         baseStep = score.invoke("emptyBody1",
                 (Object) ba_rbPlus1).getStepUsed().intValue();
         step = score.invoke("set", (Object) ba_rbPlus1).getStepUsed().intValue()

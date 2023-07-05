@@ -158,21 +158,14 @@ public class CommonInstrumentation implements IInstrumentation {
     }
 
     @Override
-    public void chargeEnergy(int cost) throws OutOfEnergyException {
-        charge(cost, false);
-    }
-
-    @Override
-    public void chargeEnergyImmediately(int cost) throws OutOfEnergyException {
+    public void chargeEnergyImmediately(long cost) throws OutOfEnergyException {
         charge(cost, true);
     }
 
-    public boolean tryChargeEnergy(int cost) {
+    public boolean tryChargeEnergy(long cost) {
         if (null != this.currentFrame.forceExitState) {
             throw this.currentFrame.forceExitState;
         }
-
-        RuntimeAssertionError.assertTrue(cost < Math.pow(2, 30));
 
         while (this.currentFrame.energyLeft < cost) {
             if (!this.currentFrame.frameContext.waitForRefund()) {
