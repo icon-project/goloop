@@ -268,30 +268,39 @@ func (c *ClientV3) GetTransactionByHash(param *v3.TransactionHashParam) (*Transa
 
 var txSerializeExcludes = map[string]bool{"signature": true}
 
-func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
-	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+func SignTransaction(w module.Wallet, param *v3.TransactionParam) error {
 	js, err := json.Marshal(param)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	bs, err := transaction.SerializeJSON(js, nil, txSerializeExcludes)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	bs = append([]byte("icx_sendTransaction."), bs...)
 	sig, err := w.Sign(crypto.SHA3Sum256(bs))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	param.Signature = base64.StdEncoding.EncodeToString(sig)
+	return nil
+}
 
+func (c *ClientV3) SendSignedTransaction(param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
 	var result jsonrpc.HexBytes
-	if _, err = c.Do("icx_sendTransaction", param, &result); err != nil {
+	if _, err := c.Do("icx_sendTransaction", param, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
+	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+	if err := SignTransaction(w, param); err != nil {
+		return  nil, err
+	}
+	return c.SendSignedTransaction(param)
 }
 
 func (c *ClientV3) SendRawTransaction(w module.Wallet, param map[string]interface{}) (*jsonrpc.HexBytes, error) {
