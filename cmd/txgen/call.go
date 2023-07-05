@@ -118,6 +118,10 @@ func (m *CallMaker) MakeOne() (interface{}, error) {
 	return makeCallTx(m.NID, m.owner, m.contract, m.Method, params)
 }
 
+func (m *CallMaker) Dispose(tx interface{}) {
+	// do nothing
+}
+
 func makeCallTx(nid int64, from module.Wallet,
 	contract module.Address, method string, params map[string]string,
 ) (interface{}, error) {

@@ -121,6 +121,10 @@ func (m *TokenTransferMaker) MakeOne() (interface{}, error) {
 	return makeTokenTransfer(m.NID, m.contract, m.Method, from, to.Address(), tokenValueForTransfer)
 }
 
+func (m *TokenTransferMaker) Dispose(tx interface{}) {
+	// do nothing
+}
+
 func makeTokenTransfer(nid int64, contract module.Address, method string, from module.Wallet, to module.Address, value *big.Int) (interface{}, error) {
 	tx := map[string]interface{}{
 		"version":   "0x3",
