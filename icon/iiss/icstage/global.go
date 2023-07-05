@@ -28,12 +28,14 @@ import (
 const (
 	GlobalVersion1 int = iota
 	GlobalVersion2
+	GlobalVersion3
 )
 
 type Global interface {
 	icobject.Impl
 	GetV1() *GlobalV1
 	GetV2() *GlobalV2
+	GetV3() *GlobalV3
 	GetIISSVersion() int
 	GetStartHeight() int64
 	GetOffsetLimit() int
@@ -44,14 +46,16 @@ type Global interface {
 	String() string
 }
 
-func NewGlobal(version int) (Global, error) {
-	switch version {
+func newGlobal(tag icobject.Tag) (Global, error) {
+	switch tag.Version() {
 	case GlobalVersion1:
 		return newGlobalV1(), nil
 	case GlobalVersion2:
 		return newGlobalV2(), nil
+	case GlobalVersion3:
+		return newGlobalV3(), nil
 	default:
-		return nil, errors.CriticalFormatError.Errorf("InvalidGlobalVersion(%d)", version)
+		return nil, errors.CriticalFormatError.Errorf("InvalidGlobalVersion(%d)", tag.Version())
 	}
 }
 
@@ -202,6 +206,10 @@ func (g *GlobalV1) GetV1() *GlobalV1 {
 }
 
 func (g *GlobalV1) GetV2() *GlobalV2 {
+	return nil
+}
+
+func (g *GlobalV1) GetV3() *GlobalV3 {
 	return nil
 }
 
@@ -413,6 +421,10 @@ func (g *GlobalV2) GetV2() *GlobalV2 {
 	return g
 }
 
+func (g *GlobalV2) GetV3() *GlobalV3 {
+	return nil
+}
+
 func newGlobalV2() *GlobalV2 {
 	return &GlobalV2{
 		iglobal: new(big.Int),
@@ -448,5 +460,193 @@ func NewGlobalV2(
 		irelay:           irelay,
 		electedPRepCount: electedPRepCount,
 		bondRequirement:  bondRequirement,
+	}
+}
+
+type GlobalV3 struct {
+	GlobalV2
+	minBond *big.Int
+}
+
+func (g *GlobalV3) Version() int {
+	return GlobalVersion3
+}
+
+func (g *GlobalV3) GetIVoter() *big.Int {
+	return new(big.Int)
+}
+
+func (g *GlobalV3) GetIWage() *big.Int {
+	// use ivoter as an iwage
+	return g.ivoter
+}
+
+func (g *GlobalV3) GetMinBond() *big.Int {
+	return g.minBond
+}
+
+func (g *GlobalV3) RLPDecodeFields(decoder codec.Decoder) error {
+	_, err := decoder.DecodeMulti(
+		&g.iissVersion,
+		&g.startHeight,
+		&g.offsetLimit,
+		&g.revision,
+		&g.iglobal,
+		&g.iprep,
+		&g.ivoter,
+		&g.icps,
+		&g.irelay,
+		&g.electedPRepCount,
+		&g.bondRequirement,
+		&g.minBond,
+	)
+	return err
+}
+
+func (g *GlobalV3) RLPEncodeFields(encoder codec.Encoder) error {
+	return encoder.EncodeMulti(
+		g.iissVersion,
+		g.startHeight,
+		g.offsetLimit,
+		g.revision,
+		g.iglobal,
+		g.iprep,
+		g.ivoter,
+		g.icps,
+		g.irelay,
+		g.electedPRepCount,
+		g.bondRequirement,
+		g.minBond,
+	)
+}
+
+func (g *GlobalV3) String() string {
+	return fmt.Sprintf("revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
+		"iprep=%s iwage=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d minBond=%d",
+		g.revision,
+		g.iissVersion,
+		g.startHeight,
+		g.offsetLimit,
+		g.iglobal,
+		g.iprep,
+		g.ivoter,
+		g.icps,
+		g.irelay,
+		g.electedPRepCount,
+		g.bondRequirement,
+		g.minBond,
+	)
+}
+
+func (g *GlobalV3) Format(f fmt.State, c rune) {
+	switch c {
+	case 'v':
+		if f.Flag('+') {
+			fmt.Fprintf(f, "GlobalV3{revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
+				"iprep=%s iwage=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d minBond=%d}",
+				g.revision,
+				g.iissVersion,
+				g.startHeight,
+				g.offsetLimit,
+				g.iglobal,
+				g.iprep,
+				g.ivoter,
+				g.icps,
+				g.irelay,
+				g.electedPRepCount,
+				g.bondRequirement,
+				g.minBond,
+			)
+		} else {
+			fmt.Fprintf(f, "GlobalV3{%d %d %d %d %s %s %d %d %d %d %d %d}",
+				g.revision,
+				g.iissVersion,
+				g.startHeight,
+				g.offsetLimit,
+				g.iglobal,
+				g.iprep,
+				g.ivoter,
+				g.icps,
+				g.irelay,
+				g.electedPRepCount,
+				g.bondRequirement,
+				g.minBond,
+			)
+		}
+	}
+}
+
+func (g *GlobalV3) Equal(impl icobject.Impl) bool {
+	if g2, ok := impl.(*GlobalV3); ok {
+		return g.iissVersion == g2.iissVersion &&
+			g.startHeight == g2.startHeight &&
+			g.offsetLimit == g2.offsetLimit &&
+			g.revision == g2.revision &&
+			g.iglobal.Cmp(g2.iglobal) == 0 &&
+			g.iprep.Cmp(g2.iprep) == 0 &&
+			g.ivoter.Cmp(g2.ivoter) == 0 &&
+			g.icps.Cmp(g2.icps) == 0 &&
+			g.irelay.Cmp(g2.irelay) == 0 &&
+			g.electedPRepCount == g2.electedPRepCount &&
+			g.bondRequirement == g2.bondRequirement &&
+			g.minBond.Cmp(g2.minBond) == 0
+	} else {
+		return false
+	}
+}
+
+func (g *GlobalV3) GetV1() *GlobalV1 {
+	return nil
+}
+
+func (g *GlobalV3) GetV2() *GlobalV2 {
+	return nil
+}
+
+func (g *GlobalV3) GetV3() *GlobalV3 {
+	return g
+}
+
+func newGlobalV3() *GlobalV3 {
+	return &GlobalV3{
+		GlobalV2: GlobalV2{
+			iglobal: new(big.Int),
+			iprep:   new(big.Int),
+			ivoter:  new(big.Int),
+			icps:    new(big.Int),
+			irelay:  new(big.Int),
+		},
+	}
+}
+
+func NewGlobalV3(
+	iissVersion int,
+	startHeight int64,
+	offsetLimit int,
+	revision int,
+	iglobal *big.Int,
+	iprep *big.Int,
+	iwage *big.Int,
+	icps *big.Int,
+	irelay *big.Int,
+	electedPRepCount int,
+	bondRequirement int,
+	minBond *big.Int,
+) *GlobalV3 {
+	return &GlobalV3{
+		GlobalV2: GlobalV2{
+			iissVersion:      iissVersion,
+			startHeight:      startHeight,
+			offsetLimit:      offsetLimit,
+			revision:         revision,
+			iglobal:          iglobal,
+			iprep:            iprep,
+			ivoter:           iwage,
+			icps:             icps,
+			irelay:           irelay,
+			electedPRepCount: electedPRepCount,
+			bondRequirement:  bondRequirement,
+		},
+		minBond: minBond,
 	}
 }

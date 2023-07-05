@@ -53,7 +53,7 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	case TypeBlockProduce:
 		return newBlockProduce(tag), nil
 	case TypeGlobal:
-		return NewGlobal(tag.Version())
+		return newGlobal(tag)
 	case TypeEventVotedReward:
 		return newEventVotedReward(tag), nil
 	case TypeBTPDSA:

@@ -17,6 +17,7 @@
 package icstage
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,9 +31,10 @@ func TestGlobalV1(t *testing.T) {
 
 	type_ := TypeGlobal
 	version := GlobalVersion1
+	tag := icobject.MakeTag(type_, version)
 	offsetLimit := 10
 
-	g, err := NewGlobal(version)
+	g, err := newGlobal(tag)
 	assert.NoError(t, err)
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV1()
@@ -63,9 +65,10 @@ func TestGlobalV2(t *testing.T) {
 
 	type_ := TypeGlobal
 	version := GlobalVersion2
+	tag := icobject.MakeTag(type_, version)
 	offsetLimit := 10
 
-	g, err := NewGlobal(version)
+	g, err := newGlobal(tag)
 	assert.NoError(t, err)
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV2()
@@ -89,4 +92,45 @@ func TestGlobalV2(t *testing.T) {
 	g2 := global.GetV2()
 	assert.Equal(t, true, g1.Equal(g2))
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
+}
+
+func TestGlobalV3(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+
+	type_ := TypeGlobal
+	version := GlobalVersion3
+	tag := icobject.MakeTag(type_, version)
+	offsetLimit := 10
+	iwage := big.NewInt(300)
+	minBond := big.NewInt(10000)
+
+	g, err := newGlobal(tag)
+	assert.NoError(t, err)
+	assert.Equal(t, version, g.Version())
+	g1 := g.GetV3()
+	assert.NotNil(t, g1)
+	g1.offsetLimit = offsetLimit
+	g1.ivoter = iwage
+	g1.minBond = minBond
+
+	o1 := icobject.New(type_, g)
+	serialized := o1.Bytes()
+
+	o2 := new(icobject.Object)
+	if err := o2.Reset(database, serialized); err != nil {
+		t.Errorf("Failed to get object from bytes. %v", err)
+		return
+	}
+
+	assert.Equal(t, serialized, o2.Bytes())
+	assert.Equal(t, type_, o2.Tag().Type())
+	assert.Equal(t, version, o2.Tag().Version())
+
+	global := ToGlobal(o2)
+	g2 := global.GetV3()
+	assert.Equal(t, true, g1.Equal(g2))
+	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
+	assert.Equal(t, 0, g2.GetIWage().Cmp(iwage))
+	assert.Equal(t, 0, g2.GetIVoter().Sign())
+	assert.Equal(t, 0, g2.GetMinBond().Cmp(minBond))
 }
