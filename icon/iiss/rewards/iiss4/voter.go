@@ -153,7 +153,7 @@ func (v *Voter) Owner() module.Address {
 func (v *Voter) addVoting(voting icstate.Voting, period *big.Int) {
 	key := icutils.ToKey(voting.To())
 	amount := new(big.Int).Mul(voting.Amount(), period)
-	if value, ok := v.votes[key]; !ok {
+	if value, ok := v.votes[key]; ok {
 		value.Add(value, amount)
 		v.votes[key] = value
 	} else {
