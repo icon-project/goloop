@@ -130,16 +130,17 @@ func TestState_AddEvent(t *testing.T) {
 	vote2 := NewVote(addr2, big.NewInt(v2))
 
 	type args struct {
-		type_         int
-		offset        int
-		address       *common.Address
-		votes         VoteList
-		enableFlag    EnableStatus
-		irep          *big.Int
-		rrep          *big.Int
-		mainPRepCount int64
-		pRepCount     int64
-		validators    []*common.Address
+		type_          int
+		offset         int
+		address        *common.Address
+		votes          VoteList
+		enableFlag     EnableStatus
+		irep           *big.Int
+		rrep           *big.Int
+		mainPRepCount  int64
+		pRepCount      int64
+		validators     []*common.Address
+		commissionRate int
 	}
 
 	tests := []struct {
@@ -173,6 +174,15 @@ func TestState_AddEvent(t *testing.T) {
 				enableFlag: ESDisablePermanent,
 			},
 		},
+		{
+			"CommissionRate",
+			args{
+				type_:          TypeEventCommissionRate,
+				offset:         offset2,
+				address:        addr2,
+				commissionRate: 10,
+			},
+		},
 	}
 	for _, tt := range tests {
 		a := tt.args
@@ -184,6 +194,8 @@ func TestState_AddEvent(t *testing.T) {
 				checkAddEventBond(t, s, a.offset, a.address, a.votes)
 			case TypeEventEnable:
 				checkAddEventEnable(t, s, a.offset, a.address, a.enableFlag)
+			case TypeEventCommissionRate:
+				checkAddEventCommissionRate(t, s, a.offset, a.address, a.commissionRate)
 			}
 		})
 	}
@@ -207,7 +219,6 @@ func TestState_AddEvent(t *testing.T) {
 		count += 1
 	}
 }
-
 
 func checkAddEventVote(t *testing.T, s *State, index int64, obj trie.Object, offset int, address *common.Address, votes VoteList) {
 	key := EventKey.Append(offset, index).Build()
@@ -243,6 +254,18 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	event := ToEventEnable(obj)
 	assert.True(t, address.Equal(event.Target()))
 	assert.Equal(t, flag, event.Status())
+}
+
+func checkAddEventCommissionRate(t *testing.T, s *State, offset int, address *common.Address, value int) {
+	index, err := s.AddEventCommissionRate(offset, address, value)
+	assert.NoError(t, err)
+
+	key := EventKey.Append(offset, index).Build()
+	obj, err := icobject.GetFromMutableForObject(s.store, key)
+	assert.NoError(t, err)
+	event := ToEventCommissionRate(obj)
+	assert.True(t, address.Equal(event.Target()))
+	assert.Equal(t, value, event.Value())
 }
 
 func TestState_AddBlockProduce(t *testing.T) {

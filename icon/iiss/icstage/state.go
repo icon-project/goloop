@@ -154,6 +154,18 @@ func (s *State) AddEventVotedReward(offset int) (int64, error) {
 	return index, s.setEventSize(index + 1)
 }
 
+func (s *State) AddEventCommissionRate(offset int, target module.Address, value int) (int64, error) {
+	index := s.getEventSize()
+	key := EventKey.Append(offset, index).Build()
+	obj := NewEventCommissionRate(common.AddressToPtr(target), value)
+	_, err := s.store.Set(key, icobject.New(TypeEventCommissionRate, obj))
+	if err != nil {
+		return 0, err
+	}
+
+	return index, s.setEventSize(index + 1)
+}
+
 func (s *State) getEventSize() int64 {
 	return containerdb.NewVarDB(s.store, EventSizeKey).Int64()
 }
