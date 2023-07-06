@@ -108,6 +108,7 @@ func makeCoinTransfer(nid int64, from module.Wallet, to module.Address, value *b
 		ToAddress:   jsonrpc.Address(to.String()),
 		NetworkID:   jsonrpc.HexIntFromInt64(nid),
 		Value:       jsonrpc.HexIntFromBigInt(value),
+		StepLimit:   jsonrpc.HexIntFromInt64(stepLimitForCoinTransfer),
 		Timestamp:   jsonrpc.HexInt(TimeStampNow()),
 	}
 	if err := client.SignTransaction(from, tx); err != nil {
