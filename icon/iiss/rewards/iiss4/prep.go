@@ -41,7 +41,7 @@ type PRep struct {
 	accumulatedBonded *big.Int
 	accumulatedVoted  *big.Int
 	accumulatedPower  *big.Int
-	reward            *big.Int // in IScore
+	commission        *big.Int // in IScore
 	voterReward       *big.Int // in IScore
 }
 
@@ -137,12 +137,8 @@ func (p *PRep) ApplyVote(vType VoteType, amount *big.Int, period int) {
 	p.accumulatedVoted = new(big.Int).Add(p.accumulatedVoted, accumulated)
 }
 
-func (p *PRep) Reward() *big.Int {
-	return p.reward
-}
-
-func (p *PRep) SetReward(value *big.Int) {
-	p.reward = value
+func (p *PRep) SetCommission(value *big.Int) {
+	p.commission = value
 }
 
 func (p *PRep) VoterReward() *big.Int {
@@ -292,28 +288,27 @@ func (p *PRepInfo) UpdateAccumulatedPower() {
 }
 
 func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int, c *rewards.Calculator) error {
-	count := 0
 	minWage := new(big.Int).Mul(totalMinWage, big.NewInt(1000))
 	minWage.Div(minWage, big.NewInt(int64(p.electedPRepCount)))
-	for _, prep := range p.preps {
-		if count >= p.electedPRepCount {
+	for rank, key := range p.rank {
+		prep, _ := p.preps[key]
+		if rank >= p.electedPRepCount {
 			break
 		}
-		count += 1
 		if prep.Enable() == false {
 			continue
 		}
 
-		reward := new(big.Int).Mul(totalReward, prep.AccumulatedPower())
-		reward.Mul(reward, big.NewInt(1000))
-		reward.Div(reward, p.totalAccumulatedPower)
+		prepReward := new(big.Int).Mul(totalReward, prep.AccumulatedPower())
+		prepReward.Mul(prepReward, big.NewInt(1000))
+		prepReward.Div(prepReward, p.totalAccumulatedPower)
 
-		prepReward := new(big.Int).Mul(reward, big.NewInt(int64(prep.CommissionRate())))
-		prepReward.Div(prepReward, big.NewInt(100))
-		prep.SetReward(prepReward)
-		prep.SetVoterReward(new(big.Int).Sub(reward, prepReward))
+		commission := new(big.Int).Mul(prepReward, big.NewInt(int64(prep.CommissionRate())))
+		commission.Div(commission, big.NewInt(100))
+		prep.SetCommission(commission)
+		prep.SetVoterReward(new(big.Int).Sub(prepReward, commission))
 
-		iScore := new(big.Int).Set(prepReward)
+		iScore := new(big.Int).Set(commission)
 		if prep.Bonded().Cmp(minBond) >= 0 {
 			iScore.Add(iScore, minWage)
 		}
