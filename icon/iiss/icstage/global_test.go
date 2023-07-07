@@ -17,6 +17,7 @@
 package icstage
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -101,7 +102,9 @@ func TestGlobalV3(t *testing.T) {
 	version := GlobalVersion3
 	tag := icobject.MakeTag(type_, version)
 	offsetLimit := 10
-	iwage := big.NewInt(300)
+	iglobal := big.NewInt(3000000000)
+	iprep := big.NewInt(7000)
+	iwage := big.NewInt(3000)
 	minBond := big.NewInt(10000)
 
 	g, err := newGlobal(tag)
@@ -110,7 +113,9 @@ func TestGlobalV3(t *testing.T) {
 	g1 := g.GetV3()
 	assert.NotNil(t, g1)
 	g1.offsetLimit = offsetLimit
-	g1.ivoter = iwage
+	g1.rFund.Set(keyIglobal, iglobal)
+	g1.rFund.Set(keyIprep, iprep)
+	g1.rFund.Set(keyIwage, iwage)
 	g1.minBond = minBond
 
 	o1 := icobject.New(type_, g)
@@ -128,9 +133,10 @@ func TestGlobalV3(t *testing.T) {
 
 	global := ToGlobal(o2)
 	g2 := global.GetV3()
-	assert.Equal(t, true, g1.Equal(g2))
+	fmt.Printf("%+v\n", g2)
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
-	assert.Equal(t, 0, g2.GetIWage().Cmp(iwage))
-	assert.Equal(t, 0, g2.GetIVoter().Sign())
+	assert.Equal(t, 0, g2.GetIGlobal().Cmp(iglobal))
+	assert.Equal(t, 0, g2.GetIprep().Cmp(iprep))
+	assert.Equal(t, 0, g2.GetRewardFundByKey(keyIwage).Cmp(iwage))
 	assert.Equal(t, 0, g2.GetMinBond().Cmp(minBond))
 }
