@@ -32,8 +32,8 @@ type PRep struct {
 	enable          bool
 	delegated       *big.Int
 	bonded          *big.Int
-	commissionRate  int
-	nCommissionRate int
+	commissionRate  *big.Int
+	nCommissionRate *big.Int
 
 	owner             module.Address
 	power             *big.Int
@@ -58,11 +58,11 @@ func (p *PRep) Bonded() *big.Int {
 	return p.bonded
 }
 
-func (p *PRep) CommissionRate() int {
+func (p *PRep) CommissionRate() *big.Int {
 	return p.commissionRate
 }
 
-func (p *PRep) SetNCommissionRate(value int) {
+func (p *PRep) SetNCommissionRate(value *big.Int) {
 	p.nCommissionRate = value
 }
 
@@ -172,24 +172,23 @@ func (p *PRep) Bigger(p1 *PRep) bool {
 	return bytes.Compare(p.owner.Bytes(), p1.owner.Bytes()) > 0
 }
 
-// TODO with VotedV2
 func (p *PRep) ToVoted() *icreward.Voted {
 	voted := &icreward.Voted{}
 	voted.SetEnable(p.enable)
 	voted.SetBonded(p.bonded)
 	voted.SetDelegated(p.delegated)
-	//commissionRate: p.commissionRate,
+	voted.SetCommissionRate(p.commissionRate)
 	return voted
 }
 
-func NewPRep(owner module.Address, enable bool, delegated, bonded *big.Int, commissionRate int, pubkey bool) *PRep {
+func NewPRep(owner module.Address, enable bool, delegated, bonded, commissionRate *big.Int, pubkey bool) *PRep {
 	return &PRep{
 		owner:           owner,
 		enable:          enable,
 		delegated:       delegated,
 		bonded:          bonded,
-		commissionRate:  commissionRate,
-		nCommissionRate: commissionRate,
+		commissionRate:  new(big.Int).Set(commissionRate),
+		nCommissionRate: new(big.Int).Set(commissionRate),
 		pubkey:          pubkey,
 	}
 }
@@ -217,7 +216,7 @@ func (p *PRepInfo) OffsetLimit() int {
 	return p.offsetLimit
 }
 
-func (p *PRepInfo) Add(target module.Address, enable bool, delegated, bonded *big.Int, commissionRate int, pubkey bool) {
+func (p *PRepInfo) Add(target module.Address, enable bool, delegated, bonded, commissionRate *big.Int, pubkey bool) {
 	prep := NewPRep(target, enable, delegated, bonded, commissionRate, pubkey)
 	prep.UpdatePower(p.bondRequirement)
 	p.preps[icutils.ToKey(target)] = prep
@@ -228,14 +227,14 @@ func (p *PRepInfo) SetEnable(target module.Address, enable bool) {
 	if prep, ok := p.preps[key]; ok {
 		prep.SetEnable(enable)
 	} else {
-		p.Add(target, enable, nil, nil, 0, false)
+		p.Add(target, enable, nil, nil, new(big.Int), false)
 	}
 }
 
 func (p *PRepInfo) SetCommissionRate(target module.Address, value int) {
 	key := icutils.ToKey(target)
 	if prep, ok := p.preps[key]; ok {
-		prep.SetNCommissionRate(value)
+		prep.SetNCommissionRate(big.NewInt(int64(value)))
 	}
 }
 
@@ -313,7 +312,7 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		prepReward.Mul(prepReward, big.NewInt(1000))
 		prepReward.Div(prepReward, p.totalAccumulatedPower)
 
-		commission := new(big.Int).Mul(prepReward, big.NewInt(int64(prep.CommissionRate())))
+		commission := new(big.Int).Mul(prepReward, prep.CommissionRate())
 		commission.Div(commission, big.NewInt(100))
 		prep.SetCommission(commission)
 		prep.SetVoterReward(new(big.Int).Sub(prepReward, commission))
@@ -330,8 +329,8 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 }
 
 func (p *PRepInfo) Write(temp *icreward.State) error {
-	for _, p := range p.preps {
-		err := temp.SetVoted(p.Owner(), p.ToVoted())
+	for _, prep := range p.preps {
+		err := temp.SetVoted(prep.Owner(), prep.ToVoted())
 		if err != nil {
 			return err
 		}
