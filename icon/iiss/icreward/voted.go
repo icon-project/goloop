@@ -21,19 +21,27 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+)
+
+const (
+	votedVersion1 = iota
+	votedVersion2
 )
 
 type Voted struct {
 	icobject.NoDatabase
+	version          int
 	enable           bool     // update via ENABLE event
 	delegated        *big.Int // update via DELEGATE event
 	bonded           *big.Int // update via BOND event
 	bondedDelegation *big.Int // update when start calculation for P-Rep voted reward
+	commissionRate   *big.Int
 }
 
 func (v *Voted) Version() int {
-	return 0
+	return v.version
 }
 
 func (v *Voted) Enable() bool {
@@ -90,21 +98,46 @@ func (v *Voted) GetVotedAmount() *big.Int {
 	return new(big.Int).Add(v.bonded, v.delegated)
 }
 
+func (v *Voted) CommissionRate() *big.Int {
+	return v.commissionRate
+}
+
+func (v *Voted) SetCommissionRate(value *big.Int) {
+	v.commissionRate = value
+	v.version = votedVersion2
+}
+
 func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&v.enable, &v.delegated, &v.bonded, &v.bondedDelegation)
+	var err error
+	switch v.version {
+	case votedVersion1:
+		v.commissionRate = new(big.Int)
+		_, err = decoder.DecodeMulti(&v.enable, &v.delegated, &v.bonded, &v.bondedDelegation)
+	case votedVersion2:
+		v.bondedDelegation = new(big.Int)
+		_, err = decoder.DecodeMulti(&v.enable, &v.delegated, &v.bonded, &v.commissionRate)
+	}
 	return err
 }
 
 func (v *Voted) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(v.enable, v.delegated, v.bonded, v.bondedDelegation)
+	switch v.version {
+	case votedVersion1:
+		return encoder.EncodeMulti(v.enable, v.delegated, v.bonded, v.bondedDelegation)
+	case votedVersion2:
+		return encoder.EncodeMulti(v.enable, v.delegated, v.bonded, v.commissionRate)
+	default:
+		return errors.IllegalArgumentError.Errorf("illegal Voted version %d", v.version)
+	}
 }
 
 func (v *Voted) Equal(o icobject.Impl) bool {
-	if ic2, ok := o.(*Voted); ok {
-		return v.enable == ic2.enable &&
-			v.delegated.Cmp(ic2.delegated) == 0 &&
-			v.bonded.Cmp(ic2.bonded) == 0 &&
-			v.bondedDelegation.Cmp(ic2.bondedDelegation) == 0
+	if v2, ok := o.(*Voted); ok {
+		return v.enable == v2.enable &&
+			v.delegated.Cmp(v2.delegated) == 0 &&
+			v.bonded.Cmp(v2.bonded) == 0 &&
+			v.bondedDelegation.Cmp(v2.bondedDelegation) == 0 &&
+			v.commissionRate.Cmp(v2.commissionRate) == 0
 	} else {
 		return false
 	}
@@ -114,11 +147,13 @@ func (v *Voted) Clone() *Voted {
 	if v == nil {
 		return nil
 	}
-	nv := new(Voted)
+	nv := NewVoted()
+	nv.version = v.version
 	nv.enable = v.enable
-	nv.delegated = v.delegated
-	nv.bonded = v.bonded
-	nv.bondedDelegation = v.bondedDelegation
+	nv.delegated.Set(v.delegated)
+	nv.bonded.Set(v.bonded)
+	nv.bondedDelegation.Set(v.bondedDelegation)
+	nv.commissionRate.Set(v.commissionRate)
 	return nv
 }
 
@@ -130,20 +165,22 @@ func (v *Voted) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Voted{enable=%v delegated=%d bonded=%d bondedDelegation=%d}",
-				v.enable, v.delegated, v.bonded, v.bondedDelegation)
+			fmt.Fprintf(f, "Voted{version=%d enable=%v delegated=%d bonded=%d bondedDelegation=%d commissionRate=%d}",
+				v.version, v.enable, v.delegated, v.bonded, v.bondedDelegation, v.commissionRate)
 		} else {
-			fmt.Fprintf(f, "Voted{%v %d %d %d}",
-				v.enable, v.delegated, v.bonded, v.bondedDelegation)
+			fmt.Fprintf(f, "Voted{%d %v %d %d %d %d}",
+				v.version, v.enable, v.delegated, v.bonded, v.bondedDelegation, v.commissionRate)
 		}
 	case 's':
-		fmt.Fprintf(f, "enable=%v delegated=%d bonded=%d bondedDelegation=%d",
-			v.enable, v.delegated, v.bonded, v.bondedDelegation)
+		fmt.Fprintf(f, "version=%d enable=%v delegated=%d bonded=%d bondedDelegation=%d commissionRate=%d",
+			v.version, v.enable, v.delegated, v.bonded, v.bondedDelegation, v.commissionRate)
 	}
 }
 
-func newVoted(_ icobject.Tag) *Voted {
-	return new(Voted)
+func newVoted(tag icobject.Tag) *Voted {
+	v := NewVoted()
+	v.version = tag.Version()
+	return v
 }
 
 func NewVoted() *Voted {
@@ -151,5 +188,6 @@ func NewVoted() *Voted {
 		delegated:        new(big.Int),
 		bonded:           new(big.Int),
 		bondedDelegation: new(big.Int),
+		commissionRate:   new(big.Int),
 	}
 }
