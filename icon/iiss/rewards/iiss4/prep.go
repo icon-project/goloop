@@ -29,10 +29,11 @@ import (
 )
 
 type PRep struct {
-	enable         bool
-	delegated      *big.Int
-	bonded         *big.Int
-	commissionRate int
+	enable          bool
+	delegated       *big.Int
+	bonded          *big.Int
+	commissionRate  int
+	nCommissionRate int
 
 	owner             module.Address
 	power             *big.Int
@@ -61,8 +62,8 @@ func (p *PRep) CommissionRate() int {
 	return p.commissionRate
 }
 
-func (p *PRep) SetCommissionRate(value int) {
-	p.commissionRate = value
+func (p *PRep) SetNCommissionRate(value int) {
+	p.nCommissionRate = value
 }
 
 func (p *PRep) GetVoted() *big.Int {
@@ -181,13 +182,15 @@ func (p *PRep) ToVoted() *icreward.Voted {
 	return voted
 }
 
-func NewPRep(owner module.Address, enable bool, delegated, bonded *big.Int, pubkey bool) *PRep {
+func NewPRep(owner module.Address, enable bool, delegated, bonded *big.Int, commissionRate int, pubkey bool) *PRep {
 	return &PRep{
-		owner:     owner,
-		enable:    enable,
-		delegated: delegated,
-		bonded:    bonded,
-		pubkey:    pubkey,
+		owner:           owner,
+		enable:          enable,
+		delegated:       delegated,
+		bonded:          bonded,
+		commissionRate:  commissionRate,
+		nCommissionRate: commissionRate,
+		pubkey:          pubkey,
 	}
 }
 
@@ -214,8 +217,8 @@ func (p *PRepInfo) OffsetLimit() int {
 	return p.offsetLimit
 }
 
-func (p *PRepInfo) Add(target module.Address, enable bool, delegated, bonded *big.Int, pubkey bool) {
-	prep := NewPRep(target, enable, delegated, bonded, pubkey)
+func (p *PRepInfo) Add(target module.Address, enable bool, delegated, bonded *big.Int, commissionRate int, pubkey bool) {
+	prep := NewPRep(target, enable, delegated, bonded, commissionRate, pubkey)
 	prep.UpdatePower(p.bondRequirement)
 	p.preps[icutils.ToKey(target)] = prep
 }
@@ -225,7 +228,14 @@ func (p *PRepInfo) SetEnable(target module.Address, enable bool) {
 	if prep, ok := p.preps[key]; ok {
 		prep.SetEnable(enable)
 	} else {
-		p.Add(target, enable, nil, nil, false)
+		p.Add(target, enable, nil, nil, 0, false)
+	}
+}
+
+func (p *PRepInfo) SetCommissionRate(target module.Address, value int) {
+	key := icutils.ToKey(target)
+	if prep, ok := p.preps[key]; ok {
+		prep.SetNCommissionRate(value)
 	}
 }
 
