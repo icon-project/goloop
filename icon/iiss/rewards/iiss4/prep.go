@@ -173,7 +173,7 @@ func (p *PRep) Bigger(p1 *PRep) bool {
 }
 
 func (p *PRep) ToVoted() *icreward.Voted {
-	voted := &icreward.Voted{}
+	voted := icreward.NewVotedV2()
 	voted.SetEnable(p.enable)
 	voted.SetBonded(p.bonded)
 	voted.SetDelegated(p.delegated)

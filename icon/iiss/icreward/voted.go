@@ -44,6 +44,10 @@ func (v *Voted) Version() int {
 	return v.version
 }
 
+func (v *Voted) SetVersion(version int) {
+	v.version = version
+}
+
 func (v *Voted) Enable() bool {
 	return v.enable
 }
@@ -190,4 +194,10 @@ func NewVoted() *Voted {
 		bondedDelegation: new(big.Int),
 		commissionRate:   new(big.Int),
 	}
+}
+
+func NewVotedV2() *Voted {
+	v := NewVoted()
+	v.SetVersion(votedVersion2)
+	return v
 }
