@@ -272,6 +272,9 @@ func (c *Calculator) calculateVotedReward() error {
 		case icstage.TypeEventVotedReward:
 			vInfo.CalculateReward(multiplier, divider, keyOffset-from)
 			from = keyOffset
+		case icstage.TypeEventCommissionRate:
+			obj := icstage.ToEventCommissionRate(o)
+			vInfo.SetCommissionRate(obj.Target(), big.NewInt(int64(obj.Value())))
 		}
 	}
 	if from < c.global.GetOffsetLimit() {
@@ -975,6 +978,10 @@ func (vd *votedData) SetEnable(status icstage.EnableStatus) {
 	vd.status = status
 }
 
+func (vd *votedData) SetCommissionRate(value *big.Int) {
+	vd.voted.SetCommissionRate(value)
+}
+
 func (vd *votedData) GetDelegated() *big.Int {
 	return vd.voted.Delegated()
 }
@@ -1096,6 +1103,12 @@ func (vi *votedInfo) SetEnable(addr module.Address, status icstage.EnableStatus)
 		vData = newVotedData(voted)
 		vData.SetEnable(status)
 		vi.AddVotedData(addr, vData)
+	}
+}
+
+func (vi *votedInfo) SetCommissionRate(addr module.Address, value *big.Int) {
+	if vData, ok := vi.preps[icutils.ToKey(addr)]; ok {
+		vData.SetCommissionRate(value)
 	}
 }
 
