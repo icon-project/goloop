@@ -172,7 +172,7 @@ func TestIndependentTrasferInSequential(t *testing.T) {
 	log.Printf("Resuling Hash:[%x]", wss.StateHash())
 }
 
-func TestIndependentTrasferInPanrallel(t *testing.T) {
+func TestIndependentTransferInParallel(t *testing.T) {
 	database := db.NewMapDB()
 	ws := NewWorldState(database, nil, nil, nil, nil)
 	startBalance := big.NewInt(1000)
@@ -339,6 +339,6 @@ func TestSequentialExecutionDistributeWithRollbacks(t *testing.T) {
 	balance2 := ass.GetBalance()
 	if balance2.Cmp(remain) != 0 {
 		t.Errorf("Final balance is different exp=%s ret=%s",
-			v2.String(), balance2.String())
+			remain.String(), balance2.String())
 	}
 }

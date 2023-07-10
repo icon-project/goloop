@@ -146,8 +146,9 @@ func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	if c == nil {
 		return wc, nil
 	}
-	h.prepareContractStore(ctx, wc, c)
-
+	if err := h.prepareContractStore(ctx, wc, c); err != nil {
+		return nil, err
+	}
 	return wc, nil
 }
 
