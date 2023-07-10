@@ -29,7 +29,7 @@ import (
 )
 
 type PRep struct {
-	enable          bool
+	status          icstage.EnableStatus
 	delegated       *big.Int
 	bonded          *big.Int
 	commissionRate  *big.Int
@@ -46,12 +46,16 @@ type PRep struct {
 	voterReward       *big.Int // in IScore
 }
 
-func (p *PRep) Enable() bool {
-	return p.enable
+func (p *PRep) Electable() bool {
+	return p.status == icstage.ESEnable || p.status == icstage.ESUnjail
 }
 
-func (p *PRep) SetEnable(yn bool) {
-	p.enable = yn
+func (p *PRep) Rewardable(electedPRepCount int) bool {
+	return p.status == icstage.ESEnable && p.rank <= electedPRepCount
+}
+
+func (p *PRep) SetStatus(status icstage.EnableStatus) {
+	p.status = status
 }
 
 func (p *PRep) Bonded() *big.Int {
@@ -95,11 +99,6 @@ func (p *PRep) UpdatePower(bondRequirement int) *big.Int {
 
 func (p *PRep) SetRank(rank int) {
 	p.rank = rank
-}
-
-func (p *PRep) Payable(electedPRepCount int) bool {
-	// TODO check p.pubkey ?
-	return p.enable && p.rank <= electedPRepCount
 }
 
 func (p *PRep) AccumulatedPower() *big.Int {
@@ -155,8 +154,8 @@ func (p *PRep) AccumulatedVoted() *big.Int {
 }
 
 func (p *PRep) Bigger(p1 *PRep) bool {
-	if p.enable != p1.enable {
-		return p.enable
+	if p.Electable() != p1.Electable() {
+		return p.Electable()
 	}
 	if p.pubkey != p1.pubkey {
 		return p.pubkey
@@ -174,21 +173,21 @@ func (p *PRep) Bigger(p1 *PRep) bool {
 
 func (p *PRep) ToVoted() *icreward.Voted {
 	voted := icreward.NewVotedV2()
-	voted.SetEnable(p.enable)
+	voted.SetStatus(p.status)
 	voted.SetBonded(p.bonded)
 	voted.SetDelegated(p.delegated)
-	voted.SetCommissionRate(p.commissionRate)
+	voted.SetCommissionRate(p.nCommissionRate)
 	return voted
 }
 
-func NewPRep(owner module.Address, enable bool, delegated, bonded, commissionRate *big.Int, pubkey bool) *PRep {
+func NewPRep(owner module.Address, status icstage.EnableStatus, delegated, bonded, commissionRate *big.Int, pubkey bool) *PRep {
 	return &PRep{
 		owner:           owner,
-		enable:          enable,
+		status:          status,
 		delegated:       delegated,
 		bonded:          bonded,
-		commissionRate:  new(big.Int).Set(commissionRate),
-		nCommissionRate: new(big.Int).Set(commissionRate),
+		commissionRate:  commissionRate,
+		nCommissionRate: commissionRate,
 		pubkey:          pubkey,
 	}
 }
@@ -216,18 +215,18 @@ func (p *PRepInfo) OffsetLimit() int {
 	return p.offsetLimit
 }
 
-func (p *PRepInfo) Add(target module.Address, enable bool, delegated, bonded, commissionRate *big.Int, pubkey bool) {
-	prep := NewPRep(target, enable, delegated, bonded, commissionRate, pubkey)
+func (p *PRepInfo) Add(target module.Address, status icstage.EnableStatus, delegated, bonded, commissionRate *big.Int, pubkey bool) {
+	prep := NewPRep(target, status, delegated, bonded, commissionRate, pubkey)
 	prep.UpdatePower(p.bondRequirement)
 	p.preps[icutils.ToKey(target)] = prep
 }
 
-func (p *PRepInfo) SetEnable(target module.Address, enable bool) {
+func (p *PRepInfo) SetStatus(target module.Address, status icstage.EnableStatus) {
 	key := icutils.ToKey(target)
 	if prep, ok := p.preps[key]; ok {
-		prep.SetEnable(enable)
+		prep.SetStatus(status)
 	} else {
-		p.Add(target, enable, nil, nil, new(big.Int), false)
+		p.Add(target, status, new(big.Int), new(big.Int), new(big.Int), false)
 	}
 }
 
@@ -304,7 +303,7 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		if rank >= p.electedPRepCount {
 			break
 		}
-		if prep.Enable() == false {
+		if prep.Rewardable(p.electedPRepCount) {
 			continue
 		}
 

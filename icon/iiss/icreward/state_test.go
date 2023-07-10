@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
 )
 
 func TestState_NewState(t *testing.T) {
@@ -69,7 +70,7 @@ func TestState_SetVoted(t *testing.T) {
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	voted1 := NewVoted()
-	voted1.SetEnable(true)
+	voted1.SetStatus(icstage.ESEnable)
 	voted1.SetDelegated(big.NewInt(100))
 	voted1.SetBondedDelegation(big.NewInt(100))
 	err := s.SetVoted(addr1, voted1)
@@ -77,7 +78,7 @@ func TestState_SetVoted(t *testing.T) {
 
 	addr2 := common.MustNewAddressFromString("hx2")
 	voted2 := NewVoted()
-	voted2.SetEnable(false)
+	voted2.SetStatus(icstage.ESDisablePermanent)
 	voted2.SetDelegated(big.NewInt(200))
 	voted2.SetBondedDelegation(big.NewInt(200))
 	err = s.SetVoted(addr2, voted2)

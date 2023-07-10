@@ -185,7 +185,7 @@ func (v *Voter) CalculateReward(pInfo *PRepInfo) *big.Int {
 
 	for k, vote := range v.votes {
 		prep := pInfo.GetPRep(k)
-		if prep != nil && prep.Payable(pInfo.ElectedPRepCount()) {
+		if prep != nil && prep.Rewardable(pInfo.ElectedPRepCount()) {
 			reward := new(big.Int).Mul(vote, prep.VoterReward())
 			reward.Div(reward, prep.AccumulatedVoted())
 			iScore.Add(iScore, reward)

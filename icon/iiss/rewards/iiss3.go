@@ -918,7 +918,6 @@ func newValidator(addr *common.Address) *validator {
 type votedData struct {
 	voted  *icreward.Voted
 	iScore *big.Int
-	status icstage.EnableStatus
 	pubKey bool
 }
 
@@ -966,20 +965,20 @@ func (vd *votedData) SetIScore(value *big.Int) {
 }
 
 func (vd *votedData) Status() icstage.EnableStatus {
-	return vd.status
+	return vd.voted.Status()
 }
 
 func (vd *votedData) Enable() bool {
 	return vd.voted.Enable()
 }
 
-func (vd *votedData) SetEnable(status icstage.EnableStatus) {
-	vd.voted.SetEnable(status.IsEnabled())
-	vd.status = status
+func (vd *votedData) SetStatus(status icstage.EnableStatus) {
+	vd.voted.SetStatus(status)
 }
 
 func (vd *votedData) SetCommissionRate(value *big.Int) {
 	vd.voted.SetCommissionRate(value)
+	vd.voted.SetVersion(icreward.VotedVersion2)
 }
 
 func (vd *votedData) GetDelegated() *big.Int {
@@ -1011,8 +1010,8 @@ func (vd *votedData) IsEmpty() bool {
 }
 
 func (vd *votedData) UpdateToWrite() {
-	if vd.status.IsDisabledTemporarily() {
-		vd.voted.SetEnable(true)
+	if vd.voted.Status().IsDisabledTemporarily() {
+		vd.voted.SetStatus(icstage.ESEnable)
 	}
 }
 
@@ -1097,11 +1096,11 @@ func (vi *votedInfo) SetEnable(addr module.Address, status icstage.EnableStatus)
 				vi.updateTotalVoted(new(big.Int).Neg(vData.GetVotedAmount()))
 			}
 		}
-		vData.SetEnable(status)
+		vData.SetStatus(status)
 	} else {
 		voted := icreward.NewVoted()
 		vData = newVotedData(voted)
-		vData.SetEnable(status)
+		vData.SetStatus(status)
 		vi.AddVotedData(addr, vData)
 	}
 }

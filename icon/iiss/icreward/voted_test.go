@@ -52,14 +52,14 @@ func TestVoted(t *testing.T) {
 
 	t2 := ToVoted(o2)
 	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, votedVersion1, t2.Version())
+	assert.Equal(t, VotedVersion1, t2.Version())
 	assert.Equal(t, 0, t1.Delegated().Cmp(t2.Delegated()))
 	assert.Equal(t, 0, t1.BondedDelegation().Cmp(t2.BondedDelegation()))
 
 	// v1 -> v2
 	commissionRate := big.NewInt(1000)
+	t2.SetVersion(VotedVersion2)
 	t2.SetCommissionRate(commissionRate)
-	assert.True(t, t2.Version() == votedVersion2)
 
 	o2 = icobject.New(type_, t2)
 	o3 := new(icobject.Object)
@@ -70,7 +70,7 @@ func TestVoted(t *testing.T) {
 
 	t3 := ToVoted(o3)
 	assert.False(t, t3.Equal(t2))
-	assert.Equal(t, votedVersion2, t3.Version())
+	assert.Equal(t, VotedVersion2, t3.Version())
 	assert.Equal(t, 0, t3.Delegated().Cmp(t2.Delegated()))
 	assert.Equal(t, 0, t3.BondedDelegation().Sign())
 	assert.Equal(t, 0, t3.CommissionRate().Cmp(t2.CommissionRate()))

@@ -295,6 +295,8 @@ const (
 	ESEnable EnableStatus = iota
 	ESDisableTemp
 	ESDisablePermanent
+	ESJail
+	ESUnjail
 	ESMax
 )
 
@@ -310,6 +312,14 @@ func (ef EnableStatus) IsDisabledPermanently() bool {
 	return ef == ESDisablePermanent
 }
 
+func (ef EnableStatus) IsJail() bool {
+	return ef == ESUnjail
+}
+
+func (ef EnableStatus) IsUnjail() bool {
+	return ef == ESUnjail
+}
+
 func (ef EnableStatus) String() string {
 	switch ef {
 	case ESEnable:
@@ -318,6 +328,10 @@ func (ef EnableStatus) String() string {
 		return "DisabledTemporarily"
 	case ESDisablePermanent:
 		return "DisabledPermanently"
+	case ESJail:
+		return "Jail"
+	case ESUnjail:
+		return "Unjail"
 	default:
 		return "Unknown"
 	}
