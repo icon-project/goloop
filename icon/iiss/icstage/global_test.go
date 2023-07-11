@@ -136,7 +136,7 @@ func TestGlobalV3(t *testing.T) {
 	fmt.Printf("%+v\n", g2)
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
 	assert.Equal(t, 0, g2.GetIGlobal().Cmp(iglobal))
-	assert.Equal(t, 0, g2.GetIprep().Cmp(iprep))
+	assert.Equal(t, 0, g2.GetIPRep().Cmp(iprep))
 	assert.Equal(t, 0, g2.GetRewardFundByKey(keyIwage).Cmp(iwage))
-	assert.Equal(t, 0, g2.GetMinBond().Cmp(minBond))
+	assert.Equal(t, 0, g2.MinBond().Cmp(minBond))
 }

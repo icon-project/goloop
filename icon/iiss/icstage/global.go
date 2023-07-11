@@ -461,15 +461,15 @@ func (g *GlobalV3) GetIGlobal() *big.Int {
 	return g.rFund.Get(keyIglobal)
 }
 
-func (g *GlobalV3) GetIprep() *big.Int {
+func (g *GlobalV3) GetIPRep() *big.Int {
 	return g.rFund.Get(keyIprep)
 }
 
-func (g *GlobalV3) GetIcps() *big.Int {
+func (g *GlobalV3) GetICps() *big.Int {
 	return g.rFund.Get(keyIcps)
 }
 
-func (g *GlobalV3) GetIrelay() *big.Int {
+func (g *GlobalV3) GetIRelay() *big.Int {
 	return g.rFund.Get(keyIrelay)
 }
 
@@ -477,7 +477,7 @@ func (g *GlobalV3) GetIWage() *big.Int {
 	return g.rFund.Get(keyIwage)
 }
 
-func (g *GlobalV3) GetMinBond() *big.Int {
+func (g *GlobalV3) MinBond() *big.Int {
 	return g.minBond
 }
 
