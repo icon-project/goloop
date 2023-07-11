@@ -58,22 +58,22 @@ const (
 	DefaultSubPRepCount                          = 78
 	DefaultIRep                                  = 0
 	DefaultRRep                                  = 1200
-	DefaultBondRequirement                       = 5
+	DefaultBondRequirement                       = 5 // 5%
 	DefaultLockMinMultiplier                     = 5
 	DefaultLockMaxMultiplier                     = 20
 	DefaultIglobal                               = YearBlock * IScoreICXRatio
-	DefaultIprep                                 = 50
-	DefaultIcps                                  = 0
-	DefaultIrelay                                = 0
-	DefaultIvoter                                = 50
+	DefaultIprep                                 = 50 // 50%
+	DefaultIcps                                  = 0  // 0%
+	DefaultIrelay                                = 0  // 0%
+	DefaultIvoter                                = 50 // 50%
 	DefaultUnbondingMax                          = 100
 	DefaultValidationPenaltyCondition            = 660
 	DefaultConsistentValidationPenaltyCondition  = 5
 	DefaultConsistentValidationPenaltyMask       = 30
-	DefaultConsistentValidationPenaltySlashRatio = 0  // 0%
+	DefaultConsistentValidationPenaltySlashRatio = 0 // 0%
 	DefaultDelegationSlotMax                     = 100
 	DefaultExtraMainPRepCount                    = 3
-	DefaultNonVotePenaltySlashRatio              = 0  // 0%
+	DefaultNonVotePenaltySlashRatio              = 0 // 0%
 )
 
 // The following variables are read-only
