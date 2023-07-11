@@ -221,6 +221,65 @@ func (c *Calculator) processClaim() error {
 	return nil
 }
 
+func (c *Calculator) postWork() (err error) {
+	// check result
+	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
+		if c.stats.blockProduce.Sign() != 0 {
+			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.blockProduce)
+		}
+		g := c.global.GetV2()
+		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
+		maxVotedReward.Mul(maxVotedReward, icmodule.BigIntIScoreICXRatio)
+		if c.stats.voted.Cmp(maxVotedReward) == 1 {
+			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.voted)
+		}
+		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
+		maxVotingReward.Mul(maxVotingReward, icmodule.BigIntIScoreICXRatio)
+		if c.stats.voting.Cmp(maxVotingReward) == 1 {
+			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
+		}
+	}
+
+	// write BTP data to temp. Use BTP data in the next term
+	if err = c.processBTP(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Calculator) processBTP() error {
+	for iter := c.back.Filter(icstage.BTPKey.Build()); iter.Has(); iter.Next() {
+		o, _, err := iter.Get()
+		if err != nil {
+			return err
+		}
+		obj := o.(*icobject.Object)
+		switch obj.Tag().Type() {
+		case icstage.TypeBTPDSA:
+			value := icstage.ToBTPDSA(o)
+			dsa, err := c.temp.GetDSA()
+			if err != nil {
+				return err
+			}
+			nDSA := dsa.Updated(value.Index())
+			if err = c.temp.SetDSA(nDSA); err != nil {
+				return err
+			}
+		case icstage.TypeBTPPublicKey:
+			value := icstage.ToBTPPublicKey(o)
+			pubKey, err := c.temp.GetPublicKey(value.From())
+			if err != nil {
+				return nil
+			}
+			nPubKey := pubKey.Updated(value.Index())
+			if err = c.temp.SetPublicKey(value.From(), nPubKey); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error {
 	iScore, err := c.temp.GetIScore(addr)
 	if err != nil {
