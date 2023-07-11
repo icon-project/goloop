@@ -113,6 +113,13 @@ func Min(value1, value2 int) int {
 	}
 }
 
+func MinBigInt(v0, v1 *big.Int) *big.Int {
+	if v0.Cmp(v1) < 0 {
+		return v0
+	}
+	return v1
+}
+
 func BigInt2HexInt(value *big.Int) *common.HexInt {
 	h := new(common.HexInt)
 	h.Set(value)
@@ -233,4 +240,26 @@ func IScoreToICX(iScore *big.Int) *big.Int {
 
 func IsNil(i interface{}) bool {
 	return i == nil || reflect.ValueOf(i).IsNil()
+}
+
+func ValidateBondRequirement(br icmodule.Rate) bool {
+	num := br.Num()
+	return num >= 0 && num <= br.Denom()
+}
+
+// CalcPower calculates the amount of power with bondRequirement, bonded and voted (= bonded + delegated)
+func CalcPower(br icmodule.Rate, bonded, voted *big.Int) *big.Int {
+	if br == 0 {
+		// when bondRequirement is 0, it means no threshold for BondedRequirement,
+		// so it returns 100% of totalVoted.
+		// And it should not be divided by 0 in the following code that could occurs Panic.
+		return voted
+	}
+	power := new(big.Int).Mul(bonded, br.BigIntDenom())
+	power.Div(power, br.BigIntNum())
+	return MinBigInt(power, voted)
+}
+
+func PercentToRate(percent int64) icmodule.Rate {
+	return icmodule.Rate(percent * 100)
 }

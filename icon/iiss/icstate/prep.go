@@ -39,7 +39,7 @@ func (p *PRep) NodeAddress() module.Address {
 	return pb.GetNode(p.owner)
 }
 
-func (p *PRep) ToJSON(blockHeight int64, bondRequirement int64, activeDSAMask int64) map[string]interface{} {
+func (p *PRep) ToJSON(blockHeight int64, bondRequirement icmodule.Rate, activeDSAMask int64) map[string]interface{} {
 	pb := p.getPRepBaseState()
 	jso := icutils.MergeMaps(pb.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement, activeDSAMask))
 	jso["address"] = p.owner
@@ -81,24 +81,24 @@ func NewPRep(owner module.Address, state *State) *PRep {
 // ===============================================================
 
 type PRepSet interface {
-	OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br int64) error
+	OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error
 	GetPRepSize(grade Grade) int
 	GetElectedPRepSize() int
 	Size() int
 	TotalBonded() *big.Int
 	TotalDelegated() *big.Int
-	GetTotalPower(br int64) *big.Int
+	GetTotalPower(br icmodule.Rate) *big.Int
 	GetByIndex(i int) PRepSetEntry
-	ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapshots
-	Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br int64, revision int)
-	SortForQuery(br int64, revision int)
+	ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PRepSnapshots
+	Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, revision int)
+	SortForQuery(br icmodule.Rate, revision int)
 }
 
 type PRepSetEntry interface {
 	PRep() *PRep
 	Status() Status
 	Grade() Grade
-	Power(br int64) *big.Int
+	Power(br icmodule.Rate) *big.Int
 	Delegated() *big.Int
 	Bonded() *big.Int
 	Owner() module.Address
@@ -122,7 +122,7 @@ func (p *prepSetEntry) Grade() Grade {
 	return p.prep.Grade()
 }
 
-func (p *prepSetEntry) Power(br int64) *big.Int {
+func (p *prepSetEntry) Power(br icmodule.Rate) *big.Int {
 	return p.prep.GetPower(br)
 }
 
@@ -158,7 +158,7 @@ type prepSetImpl struct {
 }
 
 // OnTermEnd initializes all prep status including grade on term end
-func (p *prepSetImpl) OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br int64) error {
+func (p *prepSetImpl) OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error {
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -225,7 +225,7 @@ func (p *prepSetImpl) TotalDelegated() *big.Int {
 	return p.totalDelegated
 }
 
-func (p *prepSetImpl) GetTotalPower(br int64) *big.Int {
+func (p *prepSetImpl) GetTotalPower(br icmodule.Rate) *big.Int {
 	totalPower := new(big.Int)
 	for _, entry := range p.entries {
 		totalPower.Add(totalPower, entry.Power(br))
@@ -240,7 +240,7 @@ func (p *prepSetImpl) GetByIndex(i int) PRepSetEntry {
 	return p.entries[i]
 }
 
-func (p *prepSetImpl) ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapshots {
+func (p *prepSetImpl) ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PRepSnapshots {
 	size := icutils.Min(len(p.entries), electedPRepCount)
 	if size == 0 {
 		return nil
@@ -254,7 +254,7 @@ func (p *prepSetImpl) ToPRepSnapshots(electedPRepCount int, br int64) PRepSnapsh
 	return ret
 }
 
-func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br int64, rev int) {
+func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, rev int) {
 	if rev < icmodule.RevisionExtraMainPReps {
 		p.sort(br, nil)
 	} else {
@@ -282,7 +282,7 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 	}
 }
 
-func (p *prepSetImpl) SortForQuery(br int64, revision int) {
+func (p *prepSetImpl) SortForQuery(br icmodule.Rate, revision int) {
 	if revision >= icmodule.RevisionBTP2 {
 		p.sort(br, cmpPubKey)
 	} else {
@@ -290,7 +290,7 @@ func (p *prepSetImpl) SortForQuery(br int64, revision int) {
 	}
 }
 
-func (p *prepSetImpl) sort(br int64, cmp func(i, j PRepSetEntry) int) {
+func (p *prepSetImpl) sort(br icmodule.Rate, cmp func(i, j PRepSetEntry) int) {
 	sort.Slice(p.entries, func(i, j int) bool {
 		p0, p1 := p.entries[i], p.entries[j]
 		return lessByPower(p0, p1, br, cmp)
@@ -307,7 +307,7 @@ func cmpPubKey(e0, e1 PRepSetEntry) int {
 	return 0
 }
 
-func lessByPower(e0, e1 PRepSetEntry, br int64, cmp func(i, j PRepSetEntry) int) bool {
+func lessByPower(e0, e1 PRepSetEntry, br icmodule.Rate, cmp func(i, j PRepSetEntry) int) bool {
 	if cmp != nil {
 		ret := cmp(e0, e1)
 		if ret > 0 {
@@ -334,7 +334,7 @@ func lessByPower(e0, e1 PRepSetEntry, br int64, cmp func(i, j PRepSetEntry) int)
 }
 
 func (p *prepSetImpl) sortForExtraMainPRep(
-	mainPRepCount, subPRepCount, extraMainPRepCount int, br int64) {
+	mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate) {
 	// All counts are configuration values; Default: 22, 78, 3
 	size := len(p.entries)
 	if size <= mainPRepCount || extraMainPRepCount == 0 {
@@ -395,13 +395,13 @@ func (p *prepSetImpl) visitAll(visit func(idx int, e1 PRepSetEntry) bool) {
 	}
 }
 
-func sortByLRU(prepSet []PRepSetEntry, br int64) {
+func sortByLRU(prepSet []PRepSetEntry, br icmodule.Rate) {
 	sort.Slice(prepSet, func(i, j int) bool {
 		return lessByLRU(prepSet[i].PRep(), prepSet[j].PRep(), br)
 	})
 }
 
-func lessByLRU(p0, p1 *PRep, br int64) bool {
+func lessByLRU(p0, p1 *PRep, br icmodule.Rate) bool {
 	// Sort by lastState
 	if p0.LastState() == None {
 		if p1.LastState() != None {

@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
@@ -68,7 +69,7 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 	if err := es.State.SetSubPRepCount(config.SubPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(config.BondRequirement); err != nil {
+	if err := es.State.SetBondRequirement(icutils.PercentToRate(config.BondRequirement)); err != nil {
 		return err
 	}
 	if err := es.State.SetLockVariables(big.NewInt(config.LockMinMultiplier), big.NewInt(config.LockMaxMultiplier)); err != nil {
@@ -175,7 +176,7 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 		return err
 	}
 	if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
-		if err := es.State.SetBondRequirement(icmodule.DefaultBondRequirement); err != nil {
+		if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.DefaultBondRequirement)); err != nil {
 			return err
 		}
 	}

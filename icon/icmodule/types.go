@@ -56,6 +56,10 @@ func (r Rate) MulBigInt(v *big.Int) *big.Int {
 	return ret.Quo(ret, r.BigIntDenom())
 }
 
+func (r Rate) Percent() int64 {
+	return r.Num() / 100
+}
+
 func (r Rate) String() string {
 	q := r.Num() / r.Denom()
 	rest := r.Num() % r.Denom()

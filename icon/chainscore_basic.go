@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -166,7 +167,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetBondRequirement(iconConfig.BondRequirement.Int64()); err != nil {
+		if err := es.State.SetBondRequirement(icutils.PercentToRate(iconConfig.BondRequirement.Int64())); err != nil {
 			return err
 		}
 		if err := es.State.SetLockVariables(iconConfig.LockMinMultiplier.Value(), iconConfig.LockMaxMultiplier.Value()); err != nil {
@@ -222,7 +223,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 				}
 			}
 			if br := es.State.GetBondRequirement(); br == icmodule.DefaultBondRequirement {
-				if err := es.State.SetBondRequirement(icmodule.IISS2BondRequirement); err != nil {
+				if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.IISS2BondRequirement)); err != nil {
 					return err
 				}
 			}
@@ -275,7 +276,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 				iissVersion = icstate.IISSVersion3
 			}
 			if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
-				if err := es.State.SetBondRequirement(icmodule.DefaultBondRequirement); err != nil {
+				if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.DefaultBondRequirement)); err != nil {
 					return err
 				}
 			}

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
 )
 
 func TestPow10(t *testing.T) {
@@ -422,6 +423,61 @@ func TestValidateCountryAlpha3(t *testing.T) {
 			} else {
 				assert.Error(t, err)
 			}
+		})
+	}
+}
+
+func TestValidateBondRequirement(t *testing.T) {
+	args := []struct{
+		br icmodule.Rate
+		valid bool
+	}{
+		{0, true},
+		{200, true},
+		{5000, true},
+		{10000, true},
+		{-1, false},
+		{-200, false},
+		{-5000, false},
+		{-10000, false},
+		{10001, false},
+		{20000, false},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			assert.True(t, ValidateBondRequirement(arg.br) == arg.valid)
+		})
+	}
+}
+
+func TestCalcPower(t *testing.T) {
+	args := []struct{
+		br icmodule.Rate
+		bonded int64
+		voted int64
+		power int64
+	}{
+		{0, 0, 0, 0},
+		{0, 1000, 1000, 1000},
+		{0, 1000, 3000, 3000},
+		{500, 1000, 3000, 3000},
+		{500, 100, 3000, 2000},
+		{500, 0, 3000, 0},
+		{10000, 100, 3000, 100},
+		{10000, 0, 3000, 0},
+		{10000, 10000, 20000, 10000},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			bonded := big.NewInt(arg.bonded)
+			voted := big.NewInt(arg.voted)
+			expPower := big.NewInt(arg.power)
+			power := CalcPower(icmodule.Rate(arg.br), bonded, voted)
+			assert.Zero(t, expPower.Cmp(power))
 		})
 	}
 }

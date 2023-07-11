@@ -19,14 +19,13 @@ package icstate
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/service/scoreresult"
-
-	"github.com/icon-project/goloop/module"
-
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -211,15 +210,16 @@ func (s *State) SetTotalStake(value *big.Int) error {
 	return setValue(s.store, VarTotalStake, value)
 }
 
-func (s *State) GetBondRequirement() int64 {
-	return getValue(s.store, VarBondRequirement).Int64()
+func (s *State) GetBondRequirement() icmodule.Rate {
+	v := getValue(s.store, VarBondRequirement).Int64()
+	return icutils.PercentToRate(v)
 }
 
-func (s *State) SetBondRequirement(value int64) error {
-	if value < 0 || value > 100 {
-		return errors.IllegalArgumentError.New("Bond Requirement should range from 0 to 100")
+func (s *State) SetBondRequirement(br icmodule.Rate) error {
+	if !icutils.ValidateBondRequirement(br) {
+		return errors.IllegalArgumentError.New("Bond Requirement should range from 0% to 100%")
 	}
-	return setValue(s.store, VarBondRequirement, value)
+	return setValue(s.store, VarBondRequirement, br.Percent())
 }
 
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {

@@ -26,6 +26,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -95,7 +96,7 @@ func (d *dummyPRepSetEntry) Grade() Grade {
 	return d.grade
 }
 
-func (d *dummyPRepSetEntry) Power(_ int64) *big.Int {
+func (d *dummyPRepSetEntry) Power(_ icmodule.Rate) *big.Int {
 	return d.power
 }
 
@@ -138,7 +139,7 @@ func newDummyPRepSet(size int) PRepSet {
 }
 
 func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
-	br := int64(5)
+	br := icutils.PercentToRate(5)
 	prep1 := newDummyPRep(1)
 	prep1.lastState = None
 	prep1.vPenaltyMask = (rand.Uint32() & uint32(0x3FFFFFFF)) | uint32(1)
@@ -326,7 +327,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 }
 
 func TestPRepSet_SortForQuery(t *testing.T) {
-	br := int64(5)
+	br := icutils.PercentToRate(5)
 	prep1 := newDummyPRep(1)
 	prep2 := newDummyPRep(1)
 	prep3 := newDummyPRep(1)

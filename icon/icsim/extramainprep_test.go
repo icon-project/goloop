@@ -7,6 +7,7 @@ import (
 
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -26,7 +27,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 	//var blockHeight int64
 	var csi module.ConsensusInfo
 	var vl []module.Validator
-	br := int64(5)
+	br := icutils.PercentToRate(5) // 5%
 	//var prep *icstate.PRepSet
 
 	c := NewConfig()

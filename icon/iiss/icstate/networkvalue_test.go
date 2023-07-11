@@ -28,6 +28,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -171,27 +172,27 @@ func setTotalStakeTest(t *testing.T, s *State) {
 }
 
 func setBondRequirementTest(t *testing.T, s *State) {
-	br := int64(0)
+	br := icutils.PercentToRate(0)
 	actual := s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	br = 5
+	br = icutils.PercentToRate(5)
 	assert.NoError(t, s.SetBondRequirement(br))
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	br = 0
+	br = icutils.PercentToRate(0)
 	err := s.SetBondRequirement(br)
 	assert.NoError(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(101)
+	err = s.SetBondRequirement(icutils.PercentToRate(101))
 	assert.Error(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(-1)
+	err = s.SetBondRequirement(icutils.PercentToRate(-1))
 	assert.Error(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)

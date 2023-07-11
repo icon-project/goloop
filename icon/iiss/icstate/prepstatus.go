@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -181,36 +182,19 @@ func (ps *prepStatusData) getVoted() *big.Int {
 //                  = bond * 100 / bondRequirement
 // if bondedDelegation > totalVoted
 //    bondedDelegation = totalVoted
-func (ps *prepStatusData) GetBondedDelegation(bondRequirement int64) *big.Int {
-	if bondRequirement < 0 || bondRequirement > 100 {
+func (ps *prepStatusData) GetBondedDelegation(bondRequirement icmodule.Rate) *big.Int {
+	if !icutils.ValidateBondRequirement(bondRequirement) {
 		// should not be negative or over 100 for bond requirement
 		return big.NewInt(0)
 	}
-	totalVoted := ps.getVoted() // bonded + delegated
-	if bondRequirement == 0 {
-		// when bondRequirement is 0, it means no threshold for BondedRequirement,
-		// so it returns 100% of totalVoted.
-		// And it should not be divided by 0 in the following code that could occurs Panic.
-		return totalVoted
-	}
-	multiplier := big.NewInt(100)
-	bondedDelegation := new(big.Int).Mul(ps.bonded, multiplier) // not divided by bond requirement yet
-
-	br := big.NewInt(bondRequirement)
-	bondedDelegation.Div(bondedDelegation, br)
-
-	if totalVoted.Cmp(bondedDelegation) > 0 {
-		return bondedDelegation
-	} else {
-		return totalVoted
-	}
+	return icutils.CalcPower(bondRequirement, ps.bonded, ps.getVoted())
 }
 
 // GetPower returns the power score of a PRep.
 // Power is the same as delegated of a given PRep before rev 14
 // and will be bondedDelegation since rev 14.
 // But the calculation formula for power can be changed in the future.
-func (ps *prepStatusData) GetPower(bondRequirement int64) *big.Int {
+func (ps *prepStatusData) GetPower(bondRequirement icmodule.Rate) *big.Int {
 	return ps.GetBondedDelegation(bondRequirement)
 }
 
@@ -294,7 +278,7 @@ func (ps *prepStatusData) clone() prepStatusData {
 	}
 }
 
-func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement int64, dsaMask int64) map[string]interface{} {
+func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement icmodule.Rate, dsaMask int64) map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
