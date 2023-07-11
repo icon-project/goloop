@@ -39,7 +39,6 @@ type Voted struct {
 	bonded           *big.Int // update via BOND event
 	bondedDelegation *big.Int // update when start calculation for P-Rep voted reward
 	commissionRate   *big.Int
-	unjail           bool
 }
 
 func (v *Voted) Version() int {
