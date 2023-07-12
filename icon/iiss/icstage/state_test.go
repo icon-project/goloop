@@ -29,6 +29,7 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -369,7 +370,7 @@ func TestState_AddGlobal(t *testing.T) {
 		ivoter           *big.Int
 		icps             *big.Int
 		irelay           *big.Int
-		bondRequirement  int
+		bondRequirement  icmodule.Rate
 	}
 
 	tests := []struct {
@@ -402,7 +403,7 @@ func TestState_AddGlobal(t *testing.T) {
 				icps:             big.NewInt(0),
 				irelay:           big.NewInt(0),
 				electedPRepCount: 100,
-				bondRequirement:  5,
+				bondRequirement:  icutils.PercentToRate(5),
 			},
 		},
 	}

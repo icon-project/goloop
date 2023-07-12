@@ -1,6 +1,7 @@
 package icstate
 
 import (
+	"bytes"
 	"math/big"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -207,4 +209,62 @@ func TestTerm_TotalBondedDelegation(t *testing.T) {
 		ps := term.GetPRepSnapshotByIndex(i)
 		assert.Equal(t, ps, prepSnapshots[i])
 	}
+}
+
+func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
+	const (
+		sequence = 1
+		startHeight = int64(100)
+		termPeriod = icmodule.DecentralizedTermPeriod
+		br = icmodule.Rate(1000)
+		revision = icmodule.RevisionBTP2
+		isDecentralized = true
+	)
+
+	totalSupply := icutils.ToLoop(10_000_000)
+	totalDelegated := icutils.ToLoop(1_000_000)
+	rf := &RewardFund{
+		Iglobal: icutils.ToLoop(3_000_000),
+		Icps: big.NewInt(10),
+		Iprep: big.NewInt(13),
+		Ivoter: big.NewInt(77),
+		Irelay: icmodule.BigIntZero,
+	}
+	prepSnapshots := newDummyPRepSnapshots(100)
+
+	termState := &TermState{
+		termData: termData{
+			sequence:        sequence,
+			startHeight:     startHeight,
+			period:          termPeriod,
+			irep:            icmodule.BigIntZero,
+			rrep:            icmodule.BigIntZero,
+			totalSupply:     totalSupply,
+			totalDelegated:  totalDelegated,
+			rewardFund: rf.Clone(),
+			bondRequirement: br,
+			revision:        revision,
+			prepSnapshots:   prepSnapshots.Clone(),
+			isDecentralized: isDecentralized,
+		},
+	}
+
+	termSnapshot := termState.GetSnapshot()
+	termObject := icobject.New(TypeTerm, termSnapshot)
+
+	buf := bytes.NewBuffer(nil)
+	e := codec.BC.NewEncoder(buf)
+
+	assert.NoError(t, e.Encode(termObject))
+	assert.NoError(t, e.Close())
+
+	bs := buf.Bytes()
+	termObject2 := &icobject.Object{}
+	d := codec.BC.NewDecoder(bytes.NewReader(bs))
+	assert.NoError(t, termObject2.RLPDecodeSelf(d, NewObjectImpl))
+
+	termSnapshot2 := ToTerm(termObject2)
+	assert.True(t, termObject.Equal(termObject2))
+	assert.True(t, termSnapshot.Equal(termSnapshot2))
+	assert.Equal(t, br, termSnapshot2.BondRequirement())
 }

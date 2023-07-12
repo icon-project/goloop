@@ -1295,7 +1295,7 @@ func (vd *votedData) UpdateToWrite() {
 	}
 }
 
-func (vd *votedData) UpdateBondedDelegation(bondRequirement int) {
+func (vd *votedData) UpdateBondedDelegation(bondRequirement icmodule.Rate) {
 	vd.voted.UpdateBondedDelegation(bondRequirement)
 }
 

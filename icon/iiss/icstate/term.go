@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -127,7 +128,7 @@ type termData struct {
 	totalSupply     *big.Int
 	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
 	rewardFund      *RewardFund
-	bondRequirement int
+	bondRequirement icmodule.Rate
 	mainPRepCount   int
 	// If the length of prepSnapshots is 0, prepSnapshots should be nil
 	prepSnapshots PRepSnapshots
@@ -185,7 +186,7 @@ func (term *termData) Ivoter() *big.Int {
 	return term.rewardFund.Ivoter
 }
 
-func (term *termData) BondRequirement() int {
+func (term *termData) BondRequirement() icmodule.Rate {
 	return term.bondRequirement
 }
 
@@ -289,7 +290,7 @@ func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interfa
 		"rrep":             term.rrep,
 		"period":           term.period,
 		"rewardFund":       term.rewardFund.ToJSON(),
-		"bondRequirement":  term.bondRequirement,
+		"bondRequirement":  term.bondRequirement.Percent(),
 		"revision":         term.revision,
 		"isDecentralized":  term.isDecentralized,
 		"mainPRepCount":    term.mainPRepCount,
@@ -382,7 +383,8 @@ func (term *TermSnapshot) Version() int {
 }
 
 func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	return decoder.DecodeAll(
+	var bondRequirement int64
+	err := decoder.DecodeAll(
 		&term.sequence,
 		&term.startHeight,
 		&term.period,
@@ -391,12 +393,16 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.totalSupply,
 		&term.totalDelegated,
 		&term.rewardFund,
-		&term.bondRequirement,
+		&bondRequirement,
 		&term.revision,
 		&term.isDecentralized,
 		&term.mainPRepCount,
 		&term.prepSnapshots,
 	)
+	if err == nil {
+		term.bondRequirement = icutils.PercentToRate(bondRequirement)
+	}
+	return err
 }
 
 func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
@@ -409,7 +415,7 @@ func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 		term.totalSupply,
 		term.totalDelegated,
 		term.rewardFund,
-		term.bondRequirement,
+		term.bondRequirement.Percent(),
 		term.revision,
 		term.isDecentralized,
 		term.mainPRepCount,
@@ -492,7 +498,7 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 			totalSupply:     totalSupply,
 			totalDelegated:  state.GetTotalDelegation(),
 			rewardFund:      state.GetRewardFund().Clone(),
-			bondRequirement: int(state.GetBondRequirement()),
+			bondRequirement: state.GetBondRequirement(),
 			revision:        revision,
 			prepSnapshots:   ts.prepSnapshots.Clone(),
 			isDecentralized: ts.IsDecentralized(),
@@ -511,7 +517,7 @@ func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
 			totalSupply:     new(big.Int),
 			totalDelegated:  new(big.Int),
 			rewardFund:      state.GetRewardFund().Clone(),
-			bondRequirement: int(state.GetBondRequirement()),
+			bondRequirement: state.GetBondRequirement(),
 			revision:        revision,
 			isDecentralized: false,
 		},

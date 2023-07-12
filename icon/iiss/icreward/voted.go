@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
@@ -68,22 +71,9 @@ func (v *Voted) SetBondedDelegation(value *big.Int) {
 	v.bondedDelegation = value
 }
 
-func (v *Voted) UpdateBondedDelegation(bondRequirement int) {
-	if bondRequirement == 0 {
-		// IISS 2: bondedDelegation = delegated
-		// IISS 3 and bondRequirement is disabled: bondedDelegation = delegated + bonded
-		v.bondedDelegation = new(big.Int).Add(v.delegated, v.bonded)
-	} else {
-		// IISS 3 and bondRequirement is enabled
-		voted := new(big.Int).Add(v.delegated, v.bonded)
-		bondedDelegation := new(big.Int).Mul(v.bonded, big.NewInt(100))
-		bondedDelegation.Div(bondedDelegation, big.NewInt(int64(bondRequirement)))
-		if voted.Cmp(bondedDelegation) > 0 {
-			v.bondedDelegation = bondedDelegation
-		} else {
-			v.bondedDelegation = voted
-		}
-	}
+func (v *Voted) UpdateBondedDelegation(bondRequirement icmodule.Rate) {
+	voted := new(big.Int).Add(v.delegated, v.bonded)
+	v.bondedDelegation = icutils.CalcPower(bondRequirement, v.bonded, voted)
 }
 
 func (v *Voted) GetVotedAmount() *big.Int {

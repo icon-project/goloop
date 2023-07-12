@@ -22,7 +22,9 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 const (
@@ -40,7 +42,7 @@ type Global interface {
 	GetTermPeriod() int
 	GetRevision() int
 	GetElectedPRepCount() int
-	GetBondRequirement() int
+	GetBondRequirement() icmodule.Rate
 	String() string
 }
 
@@ -107,7 +109,7 @@ func (g *GlobalV1) GetElectedPRepCount() int {
 	return g.electedPRepCount
 }
 
-func (g *GlobalV1) GetBondRequirement() int {
+func (g *GlobalV1) GetBondRequirement() icmodule.Rate {
 	return 0
 }
 
@@ -246,7 +248,7 @@ type GlobalV2 struct {
 	icps             *big.Int
 	irelay           *big.Int
 	electedPRepCount int
-	bondRequirement  int
+	bondRequirement  icmodule.Rate
 }
 
 func (g *GlobalV2) Version() int {
@@ -297,11 +299,12 @@ func (g *GlobalV2) GetElectedPRepCount() int {
 	return g.electedPRepCount
 }
 
-func (g *GlobalV2) GetBondRequirement() int {
+func (g *GlobalV2) GetBondRequirement() icmodule.Rate {
 	return g.bondRequirement
 }
 
 func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
+	var brInPercent int64
 	_, err := decoder.DecodeMulti(
 		&g.iissVersion,
 		&g.startHeight,
@@ -313,8 +316,11 @@ func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
 		&g.icps,
 		&g.irelay,
 		&g.electedPRepCount,
-		&g.bondRequirement,
+		&brInPercent,
 	)
+	if err == nil {
+		g.bondRequirement = icutils.PercentToRate(brInPercent)
+	}
 	return err
 }
 
@@ -330,7 +336,7 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 		g.icps,
 		g.irelay,
 		g.electedPRepCount,
-		g.bondRequirement,
+		g.bondRequirement.Percent(),
 	)
 }
 
@@ -347,7 +353,7 @@ func (g *GlobalV2) String() string {
 		g.icps,
 		g.irelay,
 		g.electedPRepCount,
-		g.bondRequirement,
+		g.bondRequirement.Percent(),
 	)
 }
 
@@ -367,7 +373,7 @@ func (g *GlobalV2) Format(f fmt.State, c rune) {
 				g.icps,
 				g.irelay,
 				g.electedPRepCount,
-				g.bondRequirement,
+				g.bondRequirement.Percent(),
 			)
 		} else {
 			fmt.Fprintf(f, "GlobalV2{%d %d %d %d %s %s %d %d %d %d %d}",
@@ -381,7 +387,7 @@ func (g *GlobalV2) Format(f fmt.State, c rune) {
 				g.icps,
 				g.irelay,
 				g.electedPRepCount,
-				g.bondRequirement,
+				g.bondRequirement.Percent(),
 			)
 		}
 	}
@@ -434,7 +440,7 @@ func NewGlobalV2(
 	icps *big.Int,
 	irelay *big.Int,
 	electedPRepCount int,
-	bondRequirement int,
+	bondRequirement icmodule.Rate,
 ) *GlobalV2 {
 	return &GlobalV2{
 		iissVersion:      iissVersion,

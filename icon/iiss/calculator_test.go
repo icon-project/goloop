@@ -32,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
@@ -318,7 +319,7 @@ func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequire
 	voted.SetBondedDelegation(big.NewInt(0))
 	data := newVotedData(voted)
 	data.SetIScore(big.NewInt(iScore))
-	data.UpdateBondedDelegation(bondRequirement)
+	data.UpdateBondedDelegation(icutils.PercentToRate(int64(bondRequirement)))
 	return data
 }
 
