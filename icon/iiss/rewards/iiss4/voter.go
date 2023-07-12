@@ -91,19 +91,25 @@ func (v *VotingEvents) AddEvent(vType VoteType, from module.Address, votes icsta
 	v.events[key] = append(v.events[key], NewVoteEvent(vType, votes, offset))
 }
 
-func (v *VotingEvents) Write(temp *icreward.State) error {
+func (v *VotingEvents) Write(base *icreward.Snapshot, temp *icreward.State) error {
 	for key, events := range v.events {
 		from, err := common.NewAddress([]byte(key))
 		if err != nil {
 			return err
 		}
-		d, err := temp.GetDelegating(from)
+		d, err := base.GetDelegating(from)
 		if err != nil {
 			return err
 		}
-		b, err := temp.GetBonding(from)
+		if d == nil {
+			d = icreward.NewDelegating()
+		}
+		b, err := base.GetBonding(from)
 		if err != nil {
 			return err
+		}
+		if b == nil {
+			b = icreward.NewBonding()
 		}
 
 		// update with events
