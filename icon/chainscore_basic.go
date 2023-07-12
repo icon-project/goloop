@@ -222,7 +222,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 					return err
 				}
 			}
-			if br := es.State.GetBondRequirement(); br == icmodule.DefaultBondRequirement {
+			if es.State.GetBondRequirement() == icutils.PercentToRate(icmodule.DefaultBondRequirement) {
 				if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.IISS2BondRequirement)); err != nil {
 					return err
 				}
@@ -275,7 +275,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
 			}
-			if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
+			if es.State.GetBondRequirement() == icutils.PercentToRate(icmodule.IISS2BondRequirement) {
 				if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.DefaultBondRequirement)); err != nil {
 					return err
 				}

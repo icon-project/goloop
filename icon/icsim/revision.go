@@ -175,7 +175,7 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 	if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
 		return err
 	}
-	if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
+	if es.State.GetBondRequirement() == icutils.PercentToRate(icmodule.IISS2BondRequirement) {
 		if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.DefaultBondRequirement)); err != nil {
 			return err
 		}

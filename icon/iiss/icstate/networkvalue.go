@@ -366,7 +366,7 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
 	jso["termPeriod"] = s.GetTermPeriod()
-	jso["bondRequirement"] = br
+	jso["bondRequirement"] = br.Percent()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
