@@ -34,6 +34,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+type RewardUpdater interface {
+	UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error
+}
+
 type Calculator struct {
 	log log.Logger
 
