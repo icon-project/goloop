@@ -254,7 +254,3 @@ func CalcPower(br icmodule.Rate, bonded, voted *big.Int) *big.Int {
 	power.Div(power, br.BigIntNum())
 	return MinBigInt(power, voted)
 }
-
-func PercentToRate(percent int64) icmodule.Rate {
-	return icmodule.Rate(percent * 100)
-}

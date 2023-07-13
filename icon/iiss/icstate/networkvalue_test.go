@@ -28,7 +28,6 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -172,27 +171,27 @@ func setTotalStakeTest(t *testing.T, s *State) {
 }
 
 func setBondRequirementTest(t *testing.T, s *State) {
-	br := icutils.PercentToRate(0)
+	br := icmodule.ToRate(0)
 	actual := s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	br = icutils.PercentToRate(5)
+	br = icmodule.ToRate(5)
 	assert.NoError(t, s.SetBondRequirement(br))
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	br = icutils.PercentToRate(0)
+	br = icmodule.ToRate(0)
 	err := s.SetBondRequirement(br)
 	assert.NoError(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(icutils.PercentToRate(101))
+	err = s.SetBondRequirement(icmodule.ToRate(101))
 	assert.Error(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(icutils.PercentToRate(-1))
+	err = s.SetBondRequirement(icmodule.ToRate(-1))
 	assert.Error(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
@@ -441,9 +440,9 @@ func TestState_SetConsistentValidationPenaltySlashRatio(t *testing.T) {
 	assert.Equal(t, icmodule.Rate(0), state.GetConsistentValidationPenaltySlashRatio())
 
 	ratios := []icmodule.Rate{
-		icutils.PercentToRate(0),
-		icutils.PercentToRate(50),
-		icutils.PercentToRate(100),
+		icmodule.ToRate(0),
+		icmodule.ToRate(50),
+		icmodule.ToRate(100),
 	}
 	for _, ratio := range ratios {
 		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
@@ -457,8 +456,8 @@ func TestState_SetConsistentValidationPenaltySlashRatio(t *testing.T) {
 
 	expRatio := ratios[2]
 	for _, ratio := range []icmodule.Rate{
-		icutils.PercentToRate(-10),
-		icutils.PercentToRate(101),
+		icmodule.ToRate(-10),
+		icmodule.ToRate(101),
 	} {
 		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
 		assert.Error(t, err)
@@ -490,8 +489,8 @@ func TestState_SetNonVotePenaltySlashRatio(t *testing.T) {
 	assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRatio())
 
 	for _, ratio := range []icmodule.Rate{
-		icutils.PercentToRate(-1),
-		icutils.PercentToRate(101),
+		icmodule.ToRate(-1),
+		icmodule.ToRate(101),
 	} {
 		err := state.SetNonVotePenaltySlashRatio(ratio)
 		assert.Error(t, err)
@@ -503,9 +502,9 @@ func TestState_SetNonVotePenaltySlashRatio(t *testing.T) {
 	}
 
 	for _, ratio := range []icmodule.Rate{
-		icutils.PercentToRate(100),
-		icutils.PercentToRate(50),
-		icutils.PercentToRate(0),
+		icmodule.ToRate(100),
+		icmodule.ToRate(50),
+		icmodule.ToRate(0),
 	} {
 		err := state.SetNonVotePenaltySlashRatio(ratio)
 		assert.NoError(t, err)

@@ -22,7 +22,6 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -212,7 +211,7 @@ func (s *State) SetTotalStake(value *big.Int) error {
 
 func (s *State) GetBondRequirement() icmodule.Rate {
 	v := getValue(s.store, VarBondRequirement).Int64()
-	return icutils.PercentToRate(v)
+	return icmodule.ToRate(v)
 }
 
 func (s *State) SetBondRequirement(br icmodule.Rate) error {
@@ -326,7 +325,7 @@ func (s *State) SetConsistentValidationPenaltyMask(value int64) error {
 
 func (s *State) GetConsistentValidationPenaltySlashRatio() icmodule.Rate {
 	v := getValue(s.store, VarConsistentValidationPenaltySlashRatio).Int64()
-	return icutils.PercentToRate(v)
+	return icmodule.ToRate(v)
 }
 
 func (s *State) SetConsistentValidationPenaltySlashRatio(value icmodule.Rate) error {
@@ -347,7 +346,7 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 
 func (s *State) GetNonVotePenaltySlashRatio() icmodule.Rate {
 	v := getValue(s.store, VarNonVotePenaltySlashRatio).Int64()
-	return icutils.PercentToRate(v)
+	return icmodule.ToRate(v)
 }
 
 func (s *State) SetNonVotePenaltySlashRatio(value icmodule.Rate) error {

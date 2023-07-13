@@ -24,7 +24,6 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -167,7 +166,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetBondRequirement(icutils.PercentToRate(iconConfig.BondRequirement.Int64())); err != nil {
+		if err := es.State.SetBondRequirement(icmodule.ToRate(iconConfig.BondRequirement.Int64())); err != nil {
 			return err
 		}
 		if err := es.State.SetLockVariables(iconConfig.LockMinMultiplier.Value(), iconConfig.LockMaxMultiplier.Value()); err != nil {
@@ -200,7 +199,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			return err
 		}
 		// 10% slashRatio is hardcoded for backward compatibility
-		if err := es.State.SetConsistentValidationPenaltySlashRatio(10); err != nil {
+		if err := es.State.SetConsistentValidationPenaltySlashRatio(icmodule.ToRate(10)); err != nil {
 			return err
 		}
 	}
@@ -222,8 +221,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 					return err
 				}
 			}
-			if es.State.GetBondRequirement() == icutils.PercentToRate(icmodule.DefaultBondRequirement) {
-				if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.IISS2BondRequirement)); err != nil {
+			if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.DefaultBondRequirement) {
+				if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.IISS2BondRequirement)); err != nil {
 					return err
 				}
 			}
@@ -275,8 +274,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
 			}
-			if es.State.GetBondRequirement() == icutils.PercentToRate(icmodule.IISS2BondRequirement) {
-				if err := es.State.SetBondRequirement(icutils.PercentToRate(icmodule.DefaultBondRequirement)); err != nil {
+			if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.IISS2BondRequirement) {
+				if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
 					return err
 				}
 			}
@@ -306,11 +305,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if r1 < icmodule.RevisionICON2R3 && r2 >= icmodule.RevisionICON2R3 {
 			iconConfig := s.loadIconConfig()
 			if err := es.State.SetConsistentValidationPenaltySlashRatio(
-				icutils.PercentToRate(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
+				icmodule.ToRate(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
 				return err
 			}
 			if err := es.State.SetNonVotePenaltySlashRatio(
-				icutils.PercentToRate(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
+				icmodule.ToRate(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
 				return err
 			}
 		}

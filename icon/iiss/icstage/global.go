@@ -24,7 +24,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 const (
@@ -319,7 +318,7 @@ func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
 		&brInPercent,
 	)
 	if err == nil {
-		g.bondRequirement = icutils.PercentToRate(brInPercent)
+		g.bondRequirement = icmodule.ToRate(brInPercent)
 	}
 	return err
 }

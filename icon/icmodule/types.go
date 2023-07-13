@@ -67,7 +67,7 @@ func (r Rate) String() string {
 	var sb strings.Builder
 	if r < 0 {
 		q *= -1
-		rest *= -1  // abs(rest)
+		rest *= -1 // abs(rest)
 		sb.WriteByte('-')
 	}
 	sb.WriteString("%d.")
@@ -75,13 +75,13 @@ func (r Rate) String() string {
 	if rest != 0 {
 		size := 0
 		for rest > 0 {
-			if rest % 10 != 0 {
+			if rest%10 != 0 {
 				break
 			}
 			size++
 			rest /= 10
 		}
-		sb.WriteString(fmt.Sprintf("%%0%cd", '4' - rune(size)))
+		sb.WriteString(fmt.Sprintf("%%0%cd", '4'-rune(size)))
 	} else {
 		sb.WriteString("%d")
 	}
@@ -92,4 +92,8 @@ func (r Rate) String() string {
 func (r Rate) IsValid() bool {
 	n := r.Num()
 	return n >= 0 && n <= r.Denom()
+}
+
+func ToRate(percent int64) Rate {
+	return Rate(percent * 100)
 }

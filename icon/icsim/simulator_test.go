@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -662,7 +661,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	var prep *icstate.PRep
 	var jso map[string]interface{}
 	var ok bool
-	var br = icutils.PercentToRate(5) // 5%
+	var br = icmodule.ToRate(5) // 5%
 
 	c := NewConfig()
 	c.MainPRepCount = mainPRepCount

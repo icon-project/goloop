@@ -91,7 +91,7 @@ func TestPRepSnapshot_Bytes(t *testing.T) {
 func TestPRepSnapshots_Equal(t *testing.T) {
 	size := 150
 	electedPRepCount := 100
-	br := icutils.PercentToRate(5)
+	br := icmodule.ToRate(5)
 	preps := newDummyPRepSet(size)
 	snapshots := preps.ToPRepSnapshots(electedPRepCount, br)
 
@@ -112,7 +112,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 }
 
 func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
-	br := icutils.PercentToRate(5)
+	br := icmodule.ToRate(5)
 
 	type args struct {
 		size             int
@@ -150,7 +150,7 @@ func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
 }
 
 func TestPRepSnapshot_RLP(t *testing.T) {
-	br := icutils.PercentToRate(5)
+	br := icmodule.ToRate(5)
 	size := 10
 	electedPRepCount := size
 	var pss0, pss1 PRepSnapshots

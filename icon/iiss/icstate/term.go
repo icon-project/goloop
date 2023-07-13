@@ -9,7 +9,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -400,7 +399,7 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 		&term.prepSnapshots,
 	)
 	if err == nil {
-		term.bondRequirement = icutils.PercentToRate(bondRequirement)
+		term.bondRequirement = icmodule.ToRate(bondRequirement)
 	}
 	return err
 }

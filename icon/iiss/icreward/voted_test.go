@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
 
 func TestVoted(t *testing.T) {
@@ -119,7 +119,7 @@ func TestVoted_UpdateBondedDelegation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			t1 := makeVotedFotTest(in.delegated, in.bonded)
-			t1.UpdateBondedDelegation(icutils.PercentToRate(int64(in.bondRequirement)))
+			t1.UpdateBondedDelegation(icmodule.ToRate(int64(in.bondRequirement)))
 
 			assert.Equal(t, tt.want, t1.BondedDelegation().Int64())
 		})

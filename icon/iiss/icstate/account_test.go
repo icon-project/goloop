@@ -257,14 +257,14 @@ func TestAccount_SlashStake(t *testing.T) {
 
 func TestAccount_SlashBond(t *testing.T) {
 	a := getTestAccount() //[{hx3, 10}, {hx4, 10}]
-	amount := a.SlashBond(common.MustNewAddressFromString("hx3"), icutils.PercentToRate(10))
+	amount := a.SlashBond(common.MustNewAddressFromString("hx3"), icmodule.ToRate(10))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	b1 := a.Bonds()[0]
 	assert.Equal(t, 0, b1.Amount().Cmp(big.NewInt(9)))
 	bl := len(a.Bonds())
 	assert.Equal(t, 2, bl)
 
-	amount = a.SlashBond(common.MustNewAddressFromString("hx4"), icutils.PercentToRate(100))
+	amount = a.SlashBond(common.MustNewAddressFromString("hx4"), icmodule.ToRate(100))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
 	bl = len(a.Bonds())
 	assert.Equal(t, 1, bl)
@@ -273,7 +273,7 @@ func TestAccount_SlashBond(t *testing.T) {
 func TestAccount_SlashUnbond(t *testing.T) {
 	a := getTestAccount() //[{hx5, value: 10, expire: 20}, {hx6, value: 10, expire: 30}]
 
-	amount, eh := a.SlashUnbond(common.MustNewAddressFromString("hx5"), icutils.PercentToRate(10))
+	amount, eh := a.SlashUnbond(common.MustNewAddressFromString("hx5"), icmodule.ToRate(10))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	assert.Equal(t, int64(-1), eh)
 	u1 := a.Unbonds()[0]
@@ -281,7 +281,7 @@ func TestAccount_SlashUnbond(t *testing.T) {
 	ul := len(a.Unbonds())
 	assert.Equal(t, 2, ul)
 
-	amount, eh = a.SlashUnbond(common.MustNewAddressFromString("hx6"), icutils.PercentToRate(100))
+	amount, eh = a.SlashUnbond(common.MustNewAddressFromString("hx6"), icmodule.ToRate(100))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
 	assert.Equal(t, int64(30), eh)
 	ul = len(a.Unbonds())

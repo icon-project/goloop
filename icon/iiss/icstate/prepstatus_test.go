@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -72,7 +71,7 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			br := icutils.PercentToRate(5)
+			br := icmodule.ToRate(5)
 			in := tt.args
 
 			ps := NewPRepStatus()

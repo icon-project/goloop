@@ -25,7 +25,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -245,7 +244,7 @@ func TestBonds_Slash(t *testing.T) {
 			"Invalid address",
 			values{
 				common.MustNewAddressFromString("hx321"),
-				icutils.PercentToRate(10),
+				icmodule.ToRate(10),
 			},
 			wants{
 				0,
@@ -256,7 +255,7 @@ func TestBonds_Slash(t *testing.T) {
 			"slash 10%",
 			values{
 				addr1,
-				icutils.PercentToRate(10),
+				icmodule.ToRate(10),
 			},
 			wants{
 				int64(10),
@@ -267,7 +266,7 @@ func TestBonds_Slash(t *testing.T) {
 			"slash 100%",
 			values{
 				addr1,
-				icutils.PercentToRate(100),
+				icmodule.ToRate(100),
 			},
 			wants{
 				int64(90),
@@ -278,7 +277,7 @@ func TestBonds_Slash(t *testing.T) {
 			"slash 10% last entry",
 			values{
 				addr2,
-				icutils.PercentToRate(10),
+				icmodule.ToRate(10),
 			},
 			wants{
 				int64(20),
@@ -289,7 +288,7 @@ func TestBonds_Slash(t *testing.T) {
 			"slash 100% last entry",
 			values{
 				addr2,
-				icutils.PercentToRate(100),
+				icmodule.ToRate(100),
 			},
 			wants{
 				int64(180),
