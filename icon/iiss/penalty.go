@@ -70,8 +70,8 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	return es.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
 }
 
-func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, ratio int) error {
-	if ratio < 0 || 100 < ratio {
+func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, ratio icmodule.Rate) error {
+	if !ratio.IsValid() {
 		return errors.Errorf("Invalid slash ratio %d", ratio)
 	}
 

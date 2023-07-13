@@ -306,11 +306,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if r1 < icmodule.RevisionICON2R3 && r2 >= icmodule.RevisionICON2R3 {
 			iconConfig := s.loadIconConfig()
 			if err := es.State.SetConsistentValidationPenaltySlashRatio(
-				int(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
+				icutils.PercentToRate(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
 				return err
 			}
 			if err := es.State.SetNonVotePenaltySlashRatio(
-				int(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
+				icutils.PercentToRate(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
 				return err
 			}
 		}

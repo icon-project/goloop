@@ -324,15 +324,16 @@ func (s *State) SetConsistentValidationPenaltyMask(value int64) error {
 	return setValue(s.store, VarConsistentValidationPenaltyMask, value)
 }
 
-func (s *State) GetConsistentValidationPenaltySlashRatio() int {
-	return int(getValue(s.store, VarConsistentValidationPenaltySlashRatio).Int64())
+func (s *State) GetConsistentValidationPenaltySlashRatio() icmodule.Rate {
+	v := getValue(s.store, VarConsistentValidationPenaltySlashRatio).Int64()
+	return icutils.PercentToRate(v)
 }
 
-func (s *State) SetConsistentValidationPenaltySlashRatio(value int) error {
-	if value < 0 || value > 100 {
+func (s *State) SetConsistentValidationPenaltySlashRatio(value icmodule.Rate) error {
+	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)
+	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value.Percent())
 }
 
 func (s *State) GetDelegationSlotMax() int {
@@ -344,15 +345,16 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func (s *State) GetNonVotePenaltySlashRatio() int {
-	return int(getValue(s.store, VarNonVotePenaltySlashRatio).Int64())
+func (s *State) GetNonVotePenaltySlashRatio() icmodule.Rate {
+	v := getValue(s.store, VarNonVotePenaltySlashRatio).Int64()
+	return icutils.PercentToRate(v)
 }
 
-func (s *State) SetNonVotePenaltySlashRatio(value int) error {
-	if value < 0 || value > 100 {
+func (s *State) SetNonVotePenaltySlashRatio(value icmodule.Rate) error {
+	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarNonVotePenaltySlashRatio, value)
+	return setValue(s.store, VarNonVotePenaltySlashRatio, value.Percent())
 }
 
 func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {

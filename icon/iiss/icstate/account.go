@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -452,7 +453,7 @@ func (a *AccountState) SlashStake(amount *big.Int) error {
 	return a.SetStake(stake)
 }
 
-func (a *AccountState) SlashBond(address module.Address, ratio int) *big.Int {
+func (a *AccountState) SlashBond(address module.Address, ratio icmodule.Rate) *big.Int {
 	newBonds, amount := a.bonds.Slash(address, ratio)
 	a.bonds = newBonds
 	a.totalBond = new(big.Int).Sub(a.totalBond, amount)
@@ -460,7 +461,7 @@ func (a *AccountState) SlashBond(address module.Address, ratio int) *big.Int {
 	return amount
 }
 
-func (a *AccountState) SlashUnbond(address module.Address, ratio int) (*big.Int, int64) {
+func (a *AccountState) SlashUnbond(address module.Address, ratio icmodule.Rate) (*big.Int, int64) {
 	newUnbonds, amount, expire := a.unbonds.Slash(address, ratio)
 	a.unbonds = newUnbonds
 	a.totalUnbond = new(big.Int).Sub(a.totalUnbond, amount)

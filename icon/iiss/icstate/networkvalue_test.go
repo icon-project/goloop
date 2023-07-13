@@ -438,9 +438,13 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 
 func TestState_SetConsistentValidationPenaltySlashRatio(t *testing.T) {
 	state := newDummyState(false)
-	assert.Equal(t, 0, state.GetConsistentValidationPenaltySlashRatio())
+	assert.Equal(t, icmodule.Rate(0), state.GetConsistentValidationPenaltySlashRatio())
 
-	ratios := []int{0, 50, 100}
+	ratios := []icmodule.Rate{
+		icutils.PercentToRate(0),
+		icutils.PercentToRate(50),
+		icutils.PercentToRate(100),
+	}
 	for _, ratio := range ratios {
 		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
 		assert.NoError(t, err)
@@ -452,7 +456,10 @@ func TestState_SetConsistentValidationPenaltySlashRatio(t *testing.T) {
 	}
 
 	expRatio := ratios[2]
-	for _, ratio := range []int{-10, 101} {
+	for _, ratio := range []icmodule.Rate{
+		icutils.PercentToRate(-10),
+		icutils.PercentToRate(101),
+	} {
 		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
 		assert.Error(t, err)
 		assert.Equal(t, expRatio, state.GetConsistentValidationPenaltySlashRatio())
@@ -480,19 +487,26 @@ func TestState_SetDelegationSlotMax(t *testing.T) {
 
 func TestState_SetNonVotePenaltySlashRatio(t *testing.T) {
 	state := newDummyState(false)
-	assert.Equal(t, 0, state.GetNonVotePenaltySlashRatio())
+	assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRatio())
 
-	for _, ratio := range []int{-1, 101} {
+	for _, ratio := range []icmodule.Rate{
+		icutils.PercentToRate(-1),
+		icutils.PercentToRate(101),
+	} {
 		err := state.SetNonVotePenaltySlashRatio(ratio)
 		assert.Error(t, err)
-		assert.Equal(t, 0, state.GetNonVotePenaltySlashRatio())
+		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRatio())
 
 		state.Flush()
 		state.ClearCache()
-		assert.Equal(t, 0, state.GetNonVotePenaltySlashRatio())
+		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRatio())
 	}
 
-	for _, ratio := range []int{100, 50, 0} {
+	for _, ratio := range []icmodule.Rate{
+		icutils.PercentToRate(100),
+		icutils.PercentToRate(50),
+		icutils.PercentToRate(0),
+	} {
 		err := state.SetNonVotePenaltySlashRatio(ratio)
 		assert.NoError(t, err)
 		assert.Equal(t, ratio, state.GetNonVotePenaltySlashRatio())

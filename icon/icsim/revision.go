@@ -102,7 +102,7 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 		return err
 	}
 	if err := es.State.SetConsistentValidationPenaltySlashRatio(
-		config.ConsistentValidationPenaltySlashRatio); err != nil {
+		icutils.PercentToRate(int64(config.ConsistentValidationPenaltySlashRatio))); err != nil {
 		return err
 	}
 

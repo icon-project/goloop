@@ -18,6 +18,9 @@ package icstate
 
 import (
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
+
 	"math/big"
 	"testing"
 
@@ -50,7 +53,7 @@ func TestUnbonds_Slash(t *testing.T) {
 
 	type values struct {
 		target *common.Address
-		ratio  int
+		ratio  icmodule.Rate
 	}
 
 	type wants struct {
@@ -68,7 +71,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"Invalid address",
 			values{
 				common.MustNewAddressFromString("hx321"),
-				10,
+				icutils.PercentToRate(10),
 			},
 			wants{
 				0,
@@ -80,7 +83,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 10%",
 			values{
 				addr1,
-				10,
+				icutils.PercentToRate(10),
 			},
 			wants{
 				int64(10),
@@ -92,7 +95,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 100%",
 			values{
 				addr1,
-				100,
+				icutils.PercentToRate(100),
 			},
 			wants{
 				int64(90),
@@ -104,7 +107,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 10% last entry",
 			values{
 				addr2,
-				10,
+				icutils.PercentToRate(10),
 			},
 			wants{
 				int64(20),
@@ -116,7 +119,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 100% last entry",
 			values{
 				addr2,
-				100,
+				icutils.PercentToRate(100),
 			},
 			wants{
 				int64(180),

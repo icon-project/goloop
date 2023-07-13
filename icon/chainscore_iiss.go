@@ -802,13 +802,14 @@ func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common
 	if err != nil {
 		return err
 	}
-	if err = es.State.SetConsistentValidationPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+	rate := icutils.PercentToRate(slashingRate.Int64())
+	if err = es.State.SetConsistentValidationPenaltySlashRatio(rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
 		return err
 	}
-	s.onSlashingRateChangedEvent("ConsistentValidationPenalty", slashingRate.Int64())
+	s.onSlashingRateChangedEvent("ConsistentValidationPenalty", rate)
 	return nil
 }
 
@@ -823,20 +824,21 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	if err != nil {
 		return err
 	}
-	if err = es.State.SetNonVotePenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+	rate := icutils.PercentToRate(slashingRate.Int64())
+	if err = es.State.SetNonVotePenaltySlashRatio(rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
 		return err
 	}
-	s.onSlashingRateChangedEvent("NonVotePenalty", slashingRate.Int64())
+	s.onSlashingRateChangedEvent("NonVotePenalty", rate)
 	return nil
 }
 
-func (s *chainScore) onSlashingRateChangedEvent(name string, rate int64) {
+func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate) {
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
-		[][]byte{intconv.Int64ToBytes(rate)},
+		[][]byte{intconv.Int64ToBytes(rate.Percent())},
 	)
 }
 

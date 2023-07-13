@@ -86,9 +86,8 @@ func (b *Bond) Amount() *big.Int {
 	return b.Value.Value()
 }
 
-func (b *Bond) Slash(ratio int) *big.Int {
-	slashAmount := new(big.Int).Mul(b.Value.Value(), big.NewInt(int64(ratio)))
-	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
+func (b *Bond) Slash(ratio icmodule.Rate) *big.Int {
+	slashAmount := ratio.MulBigInt(b.Value.Value())
 	nBigInt := new(big.Int).Sub(b.Value.Value(), slashAmount)
 	b.Value = new(common.HexInt).SetValue(nBigInt)
 	return slashAmount
@@ -185,7 +184,7 @@ func (bs *Bonds) Delete(i int) error {
 	return nil
 }
 
-func (bs *Bonds) Slash(address module.Address, ratio int) (Bonds, *big.Int) {
+func (bs *Bonds) Slash(address module.Address, ratio icmodule.Rate) (Bonds, *big.Int) {
 	amount := big.NewInt(0)
 	newBonds := make(Bonds, 0)
 
@@ -194,7 +193,7 @@ func (bs *Bonds) Slash(address module.Address, ratio int) (Bonds, *big.Int) {
 			bond := b.Clone()
 			amount = bond.Slash(ratio)
 
-			if ratio < 100 {
+			if ratio.Percent() < 100 {
 				newBonds = append(newBonds, bond)
 			}
 		} else {
