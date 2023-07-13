@@ -102,7 +102,7 @@ func (env *Env) RegisterPReps() ([]Receipt, error) {
 		tx := sim.RegisterPRep(from, info)
 		block.AddTransaction(tx)
 	}
-	return env.sim.GoByBlock(block, nil)
+	return env.sim.GoByBlock(nil, block)
 }
 
 func (env *Env) SetStakesAll() ([]Receipt, error) {
@@ -128,7 +128,7 @@ func (env *Env) SetStakes(addrs []module.Address, amount *big.Int) ([]Receipt, e
 		tx := sim.SetStake(from, amount)
 		block.AddTransaction(tx)
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, block)
 }
 
 func (env *Env) SetDelegationsAll() error {
@@ -158,7 +158,7 @@ func (env *Env) SetDelegations(addrs []module.Address, amount *big.Int) ([]Recei
 		ds[0] = icstate.NewDelegation(common.AddressToPtr(prep), amount)
 		block.AddTransaction(sim.SetDelegation(from, ds))
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, block)
 }
 
 func (env *Env) SetBonderLists() ([]Receipt, error) {
@@ -176,7 +176,7 @@ func (env *Env) SetBonderLists() ([]Receipt, error) {
 		tx := sim.SetBonderList(from, bonderList)
 		block.AddTransaction(tx)
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, block)
 }
 
 func (env *Env) SetBonds() ([]Receipt, error) {
@@ -201,7 +201,7 @@ func (env *Env) SetBonds() ([]Receipt, error) {
 		tx := sim.SetBond(from, bonds)
 		block.AddTransaction(tx)
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, block)
 }
 
 func NewEnv(c *config, revision module.Revision) (*Env, error) {

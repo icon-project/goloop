@@ -225,7 +225,7 @@ func (sim *simulatorImpl) setStake(es *iiss.ExtensionStateImpl, tx Transaction) 
 }
 
 // Go generates as many blocks as the number passed as a parameter "blocks"
-func (sim *simulatorImpl) Go(blocks int64, csi module.ConsensusInfo) error {
+func (sim *simulatorImpl) Go(csi module.ConsensusInfo, blocks int64) error {
 	if blocks == 0 {
 		return nil
 	}
@@ -284,12 +284,12 @@ func (sim *simulatorImpl) onFinalize(wss state.WorldSnapshot) {
 	sim.plt.OnExtensionSnapshotFinalization(wss.GetExtensionSnapshot(), sim.logger)
 }
 
-func (sim *simulatorImpl) GoTo(blockHeight int64, csi module.ConsensusInfo) error {
+func (sim *simulatorImpl) GoTo(csi module.ConsensusInfo, blockHeight int64) error {
 	blocks := blockHeight - sim.blockHeight
 	if blocks <= 0 {
 		return errors.Errorf("Invalid blockHeight: cur=%d <= new=%d", sim.blockHeight, blockHeight)
 	}
-	return sim.Go(blocks, csi)
+	return sim.Go(csi, blocks)
 }
 
 func (sim *simulatorImpl) GoToTermEnd(csi module.ConsensusInfo) error {
@@ -297,10 +297,10 @@ func (sim *simulatorImpl) GoToTermEnd(csi module.ConsensusInfo) error {
 	tss := es.State.GetTermSnapshot()
 
 	blocks := tss.GetEndHeight() - sim.blockHeight
-	return sim.Go(blocks, csi)
+	return sim.Go(csi, blocks)
 }
 
-func (sim *simulatorImpl) GoByBlock(block Block, csi module.ConsensusInfo) ([]Receipt, error) {
+func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, block Block) ([]Receipt, error) {
 	var err error
 	wss := sim.wss
 	ws := newWorldState(wss, false)
@@ -331,11 +331,13 @@ func (sim *simulatorImpl) GoByBlock(block Block, csi module.ConsensusInfo) ([]Re
 	return receipts, nil
 }
 
-// GoByTransaction generates a block including a given tx
-func (sim *simulatorImpl) GoByTransaction(tx Transaction, csi module.ConsensusInfo) ([]Receipt, error) {
-	block := NewBlock()
-	block.AddTransaction(tx)
-	return sim.GoByBlock(block, csi)
+// GoByTransaction generates a block including given transactions and executes it
+func (sim *simulatorImpl) GoByTransaction(csi module.ConsensusInfo, txs ...Transaction) ([]Receipt, error) {
+	blk := NewBlock()
+	for _, tx := range txs {
+		blk.AddTransaction(tx)
+	}
+	return sim.GoByBlock(csi, blk)
 }
 
 func (sim *simulatorImpl) executeTx(csi module.ConsensusInfo, ws state.WorldState, tx Transaction) error {
