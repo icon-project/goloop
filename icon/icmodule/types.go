@@ -88,3 +88,8 @@ func (r Rate) String() string {
 
 	return fmt.Sprintf(sb.String(), q, rest)
 }
+
+func (r Rate) IsValid() bool {
+	n := r.Num()
+	return n >= 0 && n <= r.Denom()
+}

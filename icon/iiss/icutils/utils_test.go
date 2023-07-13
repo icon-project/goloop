@@ -427,31 +427,6 @@ func TestValidateCountryAlpha3(t *testing.T) {
 	}
 }
 
-func TestValidateBondRequirement(t *testing.T) {
-	args := []struct{
-		br icmodule.Rate
-		valid bool
-	}{
-		{0, true},
-		{200, true},
-		{5000, true},
-		{10000, true},
-		{-1, false},
-		{-200, false},
-		{-5000, false},
-		{-10000, false},
-		{10001, false},
-		{20000, false},
-	}
-
-	for i, arg := range args {
-		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T) {
-			assert.True(t, ValidateBondRequirement(arg.br) == arg.valid)
-		})
-	}
-}
-
 func TestCalcPower(t *testing.T) {
 	args := []struct{
 		br icmodule.Rate

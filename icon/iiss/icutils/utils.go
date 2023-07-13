@@ -242,11 +242,6 @@ func IsNil(i interface{}) bool {
 	return i == nil || reflect.ValueOf(i).IsNil()
 }
 
-func ValidateBondRequirement(br icmodule.Rate) bool {
-	num := br.Num()
-	return num >= 0 && num <= br.Denom()
-}
-
 // CalcPower calculates the amount of power with bondRequirement, bonded and voted (= bonded + delegated)
 func CalcPower(br icmodule.Rate, bonded, voted *big.Int) *big.Int {
 	if br == 0 {

@@ -182,12 +182,12 @@ func (ps *prepStatusData) getVoted() *big.Int {
 //                  = bond * 100 / bondRequirement
 // if bondedDelegation > totalVoted
 //    bondedDelegation = totalVoted
-func (ps *prepStatusData) GetBondedDelegation(bondRequirement icmodule.Rate) *big.Int {
-	if !icutils.ValidateBondRequirement(bondRequirement) {
+func (ps *prepStatusData) GetBondedDelegation(br icmodule.Rate) *big.Int {
+	if !br.IsValid() {
 		// should not be negative or over 100 for bond requirement
 		return big.NewInt(0)
 	}
-	return icutils.CalcPower(bondRequirement, ps.bonded, ps.getVoted())
+	return icutils.CalcPower(br, ps.bonded, ps.getVoted())
 }
 
 // GetPower returns the power score of a PRep.

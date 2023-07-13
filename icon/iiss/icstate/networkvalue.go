@@ -216,7 +216,7 @@ func (s *State) GetBondRequirement() icmodule.Rate {
 }
 
 func (s *State) SetBondRequirement(br icmodule.Rate) error {
-	if !icutils.ValidateBondRequirement(br) {
+	if !br.IsValid() {
 		return errors.IllegalArgumentError.New("Bond Requirement should range from 0% to 100%")
 	}
 	return setValue(s.store, VarBondRequirement, br.Percent())
