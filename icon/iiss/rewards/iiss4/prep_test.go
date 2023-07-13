@@ -286,6 +286,7 @@ func TestPRepInfo(t *testing.T) {
 	a3, _ := common.NewAddressFromString("hx3")
 	a4, _ := common.NewAddressFromString("hx4")
 	a5, _ := common.NewAddressFromString("hx5")
+	a6, _ := common.NewAddressFromString("hx6")
 	preps := []prep{
 		{a1, icstage.ESEnable, 100, 1000, true, 1},
 		{a2, icstage.ESJail, 200, 2000, true, 2},
@@ -338,6 +339,7 @@ func TestPRepInfo(t *testing.T) {
 				icstage.NewVote(a1, big.NewInt(1000)),
 				icstage.NewVote(a2, big.NewInt(2000)),
 				icstage.NewVote(a3, big.NewInt(3000)),
+				icstage.NewVote(a6, big.NewInt(6000)),
 			},
 			10,
 		},
@@ -367,7 +369,12 @@ func TestPRepInfo(t *testing.T) {
 	for _, vote := range votes {
 		for _, v := range vote.vl {
 			k := icutils.ToKey(v.To())
-			prev[k] = pInfo.GetPRep(k).Clone()
+			p := pInfo.GetPRep(k)
+			if p == nil {
+				continue
+			} else {
+				prev[k] = p.Clone()
+			}
 		}
 
 		pInfo.ApplyVote(vote.vType, vote.vl, vote.offset)
@@ -376,6 +383,9 @@ func TestPRepInfo(t *testing.T) {
 		for _, v := range vote.vl {
 			k := icutils.ToKey(v.To())
 			p := pInfo.GetPRep(k)
+			if p == nil {
+				continue
+			}
 			accuAmount := new(big.Int).Mul(v.Amount(), period)
 			if vote.vType == vtBond {
 				e := new(big.Int).Add(prev[k].Bonded(), v.Amount())
@@ -400,11 +410,20 @@ func TestPRepInfo(t *testing.T) {
 		{a3, icstage.ESEnable},
 		{a5, icstage.ESJail},
 		{a4, icstage.ESJail},
+		{a6, icstage.ESEnable}, // will add new PRep
 	}
 	for _, s := range status {
+		old := pInfo.GetPRep(icutils.ToKey(s.target))
 		pInfo.SetStatus(s.target, s.es)
 		p := pInfo.GetPRep(icutils.ToKey(s.target))
 		assert.Equal(t, s.es, p.Status())
+		if old == nil {
+			bigZero := new(big.Int)
+			assert.Equal(t, bigZero, p.Bonded())
+			assert.Equal(t, bigZero, p.Delegated())
+			assert.Equal(t, bigZero, p.Power())
+			assert.False(t, p.Pubkey())
+		}
 	}
 
 	pInfo.UpdateAccumulatedPower()
@@ -422,6 +441,14 @@ func TestPRepInfo(t *testing.T) {
 		}
 	}
 	assert.Equal(t, totalPower, pInfo.TotalAccumulatedPower())
+
+	// SetCommissionRate()
+	ocr := pInfo.GetPRep(icutils.ToKey(a1)).CommissionRate()
+	ncr := int(ocr.Int64() + 1)
+	pInfo.SetCommissionRate(a1, ncr)
+	prep1 := pInfo.GetPRep(icutils.ToKey(a1))
+	assert.Equal(t, ocr, prep1.CommissionRate())
+	assert.Equal(t, big.NewInt(int64(ncr)), prep1.NCommissionRate())
 
 	// DistributeReward
 	tru := newTestRewardUpdater()

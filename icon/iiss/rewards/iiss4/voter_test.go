@@ -142,6 +142,7 @@ func TestVoter(t *testing.T) {
 	}
 
 	voter := NewVoter(a1)
+	assert.Equal(t, a1, voter.Owner())
 
 	// AddVoting()
 	votings := []icreward.Voting{

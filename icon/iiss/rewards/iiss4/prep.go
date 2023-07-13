@@ -75,6 +75,10 @@ func (p *PRep) CommissionRate() *big.Int {
 	return p.commissionRate
 }
 
+func (p *PRep) NCommissionRate() *big.Int {
+	return p.nCommissionRate
+}
+
 func (p *PRep) SetNCommissionRate(value *big.Int) {
 	p.nCommissionRate = value
 }
@@ -89,6 +93,10 @@ func (p *PRep) Owner() module.Address {
 
 func (p *PRep) Power() *big.Int {
 	return p.power
+}
+
+func (p *PRep) Pubkey() bool {
+	return p.pubkey
 }
 
 func getPower(bonded, voted *big.Int, br int) *big.Int {
