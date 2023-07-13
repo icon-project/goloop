@@ -31,12 +31,9 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
-
-type RewardUpdater interface {
-	UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error
-}
 
 type Calculator struct {
 	log log.Logger
@@ -47,7 +44,7 @@ type Calculator struct {
 	base        *icreward.Snapshot
 	global      icstage.Global
 	temp        *icreward.State
-	stats       *statistics
+	stats       *rc.Stats
 
 	lock    sync.Mutex
 	waiters []*sync.Cond
@@ -166,10 +163,7 @@ func (c *Calculator) run() (err error) {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
 		return
 	}
-
-	c.log.Infof("Calculation statistics: Total=%d BlockProduce=%s Voted=%s Voting=%s",
-		c.stats.TotalReward(), c.stats.BlockProduce(), c.stats.Voted(), c.stats.Voting())
-
+	c.log.Infof("Calculation statistics: %s", c.stats)
 	c.setResult(c.temp.GetSnapshot(), nil)
 	return nil
 }
@@ -228,19 +222,19 @@ func (c *Calculator) processClaim() error {
 func (c *Calculator) postWork() (err error) {
 	// check result
 	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
-		if c.stats.blockProduce.Sign() != 0 {
-			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.blockProduce)
+		if c.stats.BlockProduce().Sign() != 0 {
+			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.BlockProduce())
 		}
 		g := c.global.GetV2()
 		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
 		maxVotedReward.Mul(maxVotedReward, icmodule.BigIntIScoreICXRatio)
-		if c.stats.voted.Cmp(maxVotedReward) == 1 {
-			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.voted)
+		if c.stats.Voted().Cmp(maxVotedReward) == 1 {
+			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.Voted())
 		}
 		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
 		maxVotingReward.Mul(maxVotingReward, icmodule.BigIntIScoreICXRatio)
-		if c.stats.voting.Cmp(maxVotingReward) == 1 {
-			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
+		if c.stats.Voting().Cmp(maxVotingReward) == 1 {
+			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.Voting())
 		}
 	}
 
@@ -284,7 +278,7 @@ func (c *Calculator) processBTP() error {
 	return nil
 }
 
-func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error {
+func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
 	iScore, err := c.temp.GetIScore(addr)
 	if err != nil {
 		return err
@@ -296,12 +290,14 @@ func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t Reward
 	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
 
 	switch t {
-	case TypeBlockProduce:
+	case rc.RTBlockProduce:
 		c.stats.IncreaseBlockProduce(reward)
-	case TypeVoted:
+	case rc.RTPRep:
 		c.stats.IncreaseVoted(reward)
-	case TypeVoting:
+	case rc.RTVoter:
 		c.stats.IncreaseVoting(reward)
+	default:
+		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
 	}
 	return nil
 }
@@ -332,7 +328,7 @@ func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icrewar
 		log:         logger,
 		global:      global,
 		startHeight: startHeight,
-		stats:       newStatistics(),
+		stats:       rc.NewStats(),
 	}
 	if startHeight != InitBlockHeight {
 		go c.run()

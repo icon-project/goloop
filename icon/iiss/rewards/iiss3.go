@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -83,7 +84,7 @@ func (c *Calculator) replayBugDisabledPRep() error {
 			return err
 		}
 		obj := icreward.ToBugDisabledPRep(o)
-		if err = c.UpdateIScore(addr, obj.Value(), TypeVoting); err != nil {
+		if err = c.UpdateIScore(addr, obj.Value(), rc.RTVoter); err != nil {
 			return err
 		}
 		if err = c.temp.DeleteBugDisabledPRep(addr); err != nil {
@@ -131,7 +132,7 @@ func (c *Calculator) calculateBlockProduce() error {
 	}
 
 	for _, v := range validators {
-		if err = c.UpdateIScore(v.Address(), v.IScore(), TypeBlockProduce); err != nil {
+		if err = c.UpdateIScore(v.Address(), v.IScore(), rc.RTBlockProduce); err != nil {
 			return err
 		}
 	}
@@ -281,7 +282,7 @@ func (c *Calculator) calculateVotedReward() error {
 		vInfo.CalculateReward(multiplier, divider, c.global.GetOffsetLimit()-from)
 	}
 
-	// write result to temp and update statistics
+	// write result to temp and update common
 	for key, prep := range vInfo.PReps() {
 		var addr *common.Address
 		addr, err = common.NewAddress([]byte(key))
@@ -297,7 +298,7 @@ func (c *Calculator) calculateVotedReward() error {
 			continue
 		}
 
-		if err = c.UpdateIScore(addr, prep.IScore(), TypeVoted); err != nil {
+		if err = c.UpdateIScore(addr, prep.IScore(), rc.RTPRep); err != nil {
 			return err
 		}
 	}
@@ -649,7 +650,7 @@ func (c *Calculator) processVoting(
 			}
 			reward = c.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
 		}
-		if err = c.UpdateIScore(addr, reward, TypeVoting); err != nil {
+		if err = c.UpdateIScore(addr, reward, rc.RTVoter); err != nil {
 			return err
 		}
 	}
@@ -775,7 +776,7 @@ func (c *Calculator) processVotingEvent(
 		if err = c.writeVoting(addr, voting); err != nil {
 			return nil
 		}
-		if err = c.UpdateIScore(addr, reward, TypeVoting); err != nil {
+		if err = c.UpdateIScore(addr, reward, rc.RTVoter); err != nil {
 			return err
 		}
 	}

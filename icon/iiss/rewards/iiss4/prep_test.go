@@ -17,16 +17,16 @@
 package iiss4
 
 import (
-	"github.com/icon-project/goloop/icon/iiss/icreward"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
-	"github.com/icon-project/goloop/icon/iiss/rewards"
 	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
+	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -250,16 +250,16 @@ func newTestPRepInfo(preps []prep, br, offsetLimit, electedPRepCount int) *PRepI
 }
 
 type testRewardUpdater struct {
-	iScore map[rewards.RewardType]map[string]*big.Int
+	iScore map[rc.RewardType]map[string]*big.Int
 }
 
 func newTestRewardUpdater() *testRewardUpdater {
 	return &testRewardUpdater{
-		iScore: make(map[rewards.RewardType]map[string]*big.Int),
+		iScore: make(map[rc.RewardType]map[string]*big.Int),
 	}
 }
 
-func (tru *testRewardUpdater) UpdateIScore(addr module.Address, reward *big.Int, t rewards.RewardType) error {
+func (tru *testRewardUpdater) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
 	key := icutils.ToKey(addr)
 	if tru.iScore[t] == nil {
 		tru.iScore[t] = make(map[string]*big.Int)
@@ -272,7 +272,7 @@ func (tru *testRewardUpdater) UpdateIScore(addr module.Address, reward *big.Int,
 	return nil
 }
 
-func (tru *testRewardUpdater) GetIScore(addr module.Address, t rewards.RewardType) *big.Int {
+func (tru *testRewardUpdater) GetIScore(addr module.Address, t rc.RewardType) *big.Int {
 	if is, ok := tru.iScore[t][icutils.ToKey(addr)]; ok {
 		return is
 	} else {
@@ -452,7 +452,7 @@ func TestPRepInfo(t *testing.T) {
 		p := pInfo.GetPRep(icutils.ToKey(is.target))
 		assert.Equal(t, is.commission, p.Commission(), p)
 		assert.Equal(t, is.voterReward, p.VoterReward(), p)
-		assert.Equal(t, new(big.Int).Add(is.commission, is.minWage), tru.GetIScore(is.target, rewards.TypeVoted), p)
+		assert.Equal(t, new(big.Int).Add(is.commission, is.minWage), tru.GetIScore(is.target, rc.RTPRep), p)
 	}
 }
 

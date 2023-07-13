@@ -25,7 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
-	"github.com/icon-project/goloop/icon/iiss/rewards"
+	"github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -378,7 +378,7 @@ func (p *PRepInfo) UpdateAccumulatedPower() {
 	}
 }
 
-func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int, c rewards.RewardUpdater) error {
+func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int, ru common.RewardUpdater) error {
 	minWage := new(big.Int).Mul(totalMinWage, big.NewInt(1000))
 	minWage.Div(minWage, big.NewInt(int64(p.electedPRepCount)))
 	for rank, key := range p.rank {
@@ -403,7 +403,7 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		if prep.Bonded().Cmp(minBond) >= 0 {
 			iScore.Add(iScore, minWage)
 		}
-		if err := c.UpdateIScore(prep.Owner(), iScore, rewards.TypeVoted); err != nil {
+		if err := ru.UpdateIScore(prep.Owner(), iScore, common.RTPRep); err != nil {
 			return err
 		}
 	}
