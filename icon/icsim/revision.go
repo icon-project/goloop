@@ -111,10 +111,10 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 func applyRewardFund(config *config, s *icstate.State) error {
 	rf := &icstate.RewardFund{
 		Iglobal: big.NewInt(config.RewardFund.Iglobal),
-		Iprep:   big.NewInt(config.RewardFund.Iprep),
-		Icps:    big.NewInt(config.RewardFund.Icps),
-		Irelay:  big.NewInt(config.RewardFund.Irelay),
-		Ivoter:  big.NewInt(config.RewardFund.Ivoter),
+		Iprep:   icmodule.ToRate(config.RewardFund.Iprep),
+		Icps:    icmodule.ToRate(config.RewardFund.Icps),
+		Irelay:  icmodule.ToRate(config.RewardFund.Irelay),
+		Ivoter:  icmodule.ToRate(config.RewardFund.Ivoter),
 	}
 	if err := s.SetRewardFund(rf); err != nil {
 		return err

@@ -934,17 +934,18 @@ func (r rewardFund) Format(f fmt.State, c rune) {
 }
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {
-	rf := &icstate.RewardFund{
-		Iglobal: new(big.Int).Set(iconConfig.RewardFund.Iglobal.Value()),
-		Iprep:   new(big.Int).Set(iconConfig.RewardFund.Iprep.Value()),
-		Icps:    new(big.Int).Set(iconConfig.RewardFund.Icps.Value()),
-		Irelay:  new(big.Int).Set(iconConfig.RewardFund.Irelay.Value()),
-		Ivoter:  new(big.Int).Set(iconConfig.RewardFund.Ivoter.Value()),
+	cfgRewardFund := &iconConfig.RewardFund
+	rf, err := icstate.NewSafeRewardFund(
+		new(big.Int).Set(cfgRewardFund.Iglobal.Value()),
+		icmodule.ToRate(cfgRewardFund.Iprep.Int64()),
+		icmodule.ToRate(cfgRewardFund.Icps.Int64()),
+		icmodule.ToRate(cfgRewardFund.Irelay.Int64()),
+		icmodule.ToRate(cfgRewardFund.Ivoter.Int64()),
+	)
+	if err == nil {
+		err = s.SetRewardFund(rf)
 	}
-	if err := s.SetRewardFund(rf); err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 type FeeConfig struct {

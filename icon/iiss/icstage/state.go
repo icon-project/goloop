@@ -234,8 +234,9 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 	return err
 }
 
-func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
-	ivoter *big.Int, icps *big.Int, irelay *big.Int, electedPRepCount int, bondRequirement icmodule.Rate,
+func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int,
+	iprep, ivoter, icps, irelay icmodule.Rate,
+	electedPRepCount int, bondRequirement icmodule.Rate,
 ) error {
 	g := NewGlobalV2(
 		icstate.IISSVersion3,

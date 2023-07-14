@@ -169,19 +169,19 @@ func (term *termData) Iglobal() *big.Int {
 	return term.rewardFund.Iglobal
 }
 
-func (term *termData) Iprep() *big.Int {
+func (term *termData) Iprep() icmodule.Rate {
 	return term.rewardFund.Iprep
 }
 
-func (term *termData) Icps() *big.Int {
+func (term *termData) Icps() icmodule.Rate {
 	return term.rewardFund.Icps
 }
 
-func (term *termData) Irelay() *big.Int {
+func (term *termData) Irelay() icmodule.Rate {
 	return term.rewardFund.Irelay
 }
 
-func (term *termData) Ivoter() *big.Int {
+func (term *termData) Ivoter() icmodule.Rate {
 	return term.rewardFund.Ivoter
 }
 

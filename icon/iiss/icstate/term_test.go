@@ -225,10 +225,10 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 	totalDelegated := icutils.ToLoop(1_000_000)
 	rf := &RewardFund{
 		Iglobal: icutils.ToLoop(3_000_000),
-		Icps: big.NewInt(10),
-		Iprep: big.NewInt(13),
-		Ivoter: big.NewInt(77),
-		Irelay: icmodule.BigIntZero,
+		Icps: icmodule.ToRate(10),
+		Iprep: icmodule.ToRate(13),
+		Ivoter: icmodule.ToRate(77),
+		Irelay: icmodule.ToRate(0),
 	}
 	prepSnapshots := newDummyPRepSnapshots(100)
 

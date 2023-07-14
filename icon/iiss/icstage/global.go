@@ -242,10 +242,10 @@ type GlobalV2 struct {
 	offsetLimit      int
 	revision         int
 	iglobal          *big.Int
-	iprep            *big.Int
-	ivoter           *big.Int
-	icps             *big.Int
-	irelay           *big.Int
+	iprep            icmodule.Rate
+	ivoter           icmodule.Rate
+	icps             icmodule.Rate
+	irelay           icmodule.Rate
 	electedPRepCount int
 	bondRequirement  icmodule.Rate
 }
@@ -278,19 +278,19 @@ func (g *GlobalV2) GetIGlobal() *big.Int {
 	return g.iglobal
 }
 
-func (g *GlobalV2) GetIPRep() *big.Int {
+func (g *GlobalV2) GetIPRep() icmodule.Rate {
 	return g.iprep
 }
 
-func (g *GlobalV2) GetIVoter() *big.Int {
+func (g *GlobalV2) GetIVoter() icmodule.Rate {
 	return g.ivoter
 }
 
-func (g *GlobalV2) GetICps() *big.Int {
+func (g *GlobalV2) GetICps() icmodule.Rate {
 	return g.icps
 }
 
-func (g *GlobalV2) GetIRelay() *big.Int {
+func (g *GlobalV2) GetIRelay() icmodule.Rate {
 	return g.irelay
 }
 
@@ -303,22 +303,26 @@ func (g *GlobalV2) GetBondRequirement() icmodule.Rate {
 }
 
 func (g *GlobalV2) RLPDecodeFields(decoder codec.Decoder) error {
-	var brInPercent int64
+	var iprep, ivoter, icps, irelay, br int64 // unit: percent
 	_, err := decoder.DecodeMulti(
 		&g.iissVersion,
 		&g.startHeight,
 		&g.offsetLimit,
 		&g.revision,
 		&g.iglobal,
-		&g.iprep,
-		&g.ivoter,
-		&g.icps,
-		&g.irelay,
+		&iprep,
+		&ivoter,
+		&icps,
+		&irelay,
 		&g.electedPRepCount,
-		&brInPercent,
+		&br,
 	)
 	if err == nil {
-		g.bondRequirement = icmodule.ToRate(brInPercent)
+		g.iprep = icmodule.ToRate(iprep)
+		g.ivoter = icmodule.ToRate(ivoter)
+		g.icps = icmodule.ToRate(icps)
+		g.irelay = icmodule.ToRate(irelay)
+		g.bondRequirement = icmodule.ToRate(br)
 	}
 	return err
 }
@@ -330,10 +334,10 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 		g.offsetLimit,
 		g.revision,
 		g.iglobal,
-		g.iprep,
-		g.ivoter,
-		g.icps,
-		g.irelay,
+		g.iprep.Percent(),
+		g.ivoter.Percent(),
+		g.icps.Percent(),
+		g.irelay.Percent(),
 		g.electedPRepCount,
 		g.bondRequirement.Percent(),
 	)
@@ -399,10 +403,10 @@ func (g *GlobalV2) Equal(impl icobject.Impl) bool {
 			g.offsetLimit == g2.offsetLimit &&
 			g.revision == g2.revision &&
 			g.iglobal.Cmp(g2.iglobal) == 0 &&
-			g.iprep.Cmp(g2.iprep) == 0 &&
-			g.ivoter.Cmp(g2.ivoter) == 0 &&
-			g.icps.Cmp(g2.icps) == 0 &&
-			g.irelay.Cmp(g2.irelay) == 0 &&
+			g.iprep == g2.iprep &&
+			g.ivoter == g2.ivoter &&
+			g.icps == g2.icps &&
+			g.irelay == g2.irelay &&
 			g.electedPRepCount == g2.electedPRepCount &&
 			g.bondRequirement == g2.bondRequirement
 	} else {
@@ -421,10 +425,6 @@ func (g *GlobalV2) GetV2() *GlobalV2 {
 func newGlobalV2() *GlobalV2 {
 	return &GlobalV2{
 		iglobal: new(big.Int),
-		iprep:   new(big.Int),
-		ivoter:  new(big.Int),
-		icps:    new(big.Int),
-		irelay:  new(big.Int),
 	}
 }
 
@@ -434,10 +434,10 @@ func NewGlobalV2(
 	offsetLimit int,
 	revision int,
 	iglobal *big.Int,
-	iprep *big.Int,
-	ivoter *big.Int,
-	icps *big.Int,
-	irelay *big.Int,
+	iprep,
+	ivoter,
+	icps,
+	irelay icmodule.Rate,
 	electedPRepCount int,
 	bondRequirement icmodule.Rate,
 ) *GlobalV2 {

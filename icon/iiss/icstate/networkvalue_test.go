@@ -245,8 +245,8 @@ func setRewardFundTest(t *testing.T, s *State) {
 	assert.Equal(t, rf, actual)
 
 	rf.Iglobal.SetInt64(100000)
-	rf.Iprep.SetInt64(50)
-	rf.Ivoter.SetInt64(50)
+	rf.Iprep = icmodule.ToRate(50)
+	rf.Ivoter = icmodule.ToRate(50)
 	err := s.SetRewardFund(rf)
 	assert.NoError(t, err)
 	actual = s.GetRewardFund()

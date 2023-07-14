@@ -686,10 +686,10 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 		return err
 	}
 	rf := es.State.GetRewardFund()
-	rf.Iprep = &iprep.Int
-	rf.Icps = &icps.Int
-	rf.Irelay = &irelay.Int
-	rf.Ivoter = &ivoter.Int
+	rf.Iprep = icmodule.ToRate(iprep.Int64())
+	rf.Icps = icmodule.ToRate(icps.Int64())
+	rf.Irelay = icmodule.ToRate(irelay.Int64())
+	rf.Ivoter = icmodule.ToRate(ivoter.Int64())
 	return es.State.SetRewardFund(rf)
 }
 
