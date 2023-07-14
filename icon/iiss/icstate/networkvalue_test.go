@@ -435,37 +435,37 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 	}
 }
 
-func TestState_SetConsistentValidationPenaltySlashRatio(t *testing.T) {
+func TestState_SetConsistentValidationPenaltySlashRate(t *testing.T) {
 	state := newDummyState(false)
-	assert.Equal(t, icmodule.Rate(0), state.GetConsistentValidationPenaltySlashRatio())
+	assert.Equal(t, icmodule.Rate(0), state.GetConsistentValidationPenaltySlashRate())
 
-	ratios := []icmodule.Rate{
+	rates := []icmodule.Rate{
 		icmodule.ToRate(0),
 		icmodule.ToRate(50),
 		icmodule.ToRate(100),
 	}
-	for _, ratio := range ratios {
-		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
+	for _, rate := range rates {
+		err := state.SetConsistentValidationPenaltySlashRate(rate)
 		assert.NoError(t, err)
-		assert.Equal(t, ratio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, rate, state.GetConsistentValidationPenaltySlashRate())
 
 		state.Flush()
 		state.ClearCache()
-		assert.Equal(t, ratio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, rate, state.GetConsistentValidationPenaltySlashRate())
 	}
 
-	expRatio := ratios[2]
-	for _, ratio := range []icmodule.Rate{
+	expRate := rates[2]
+	for _, rate := range []icmodule.Rate{
 		icmodule.ToRate(-10),
 		icmodule.ToRate(101),
 	} {
-		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
+		err := state.SetConsistentValidationPenaltySlashRate(rate)
 		assert.Error(t, err)
-		assert.Equal(t, expRatio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, expRate, state.GetConsistentValidationPenaltySlashRate())
 
 		state.Flush()
 		state.ClearCache()
-		assert.Equal(t, expRatio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, expRate, state.GetConsistentValidationPenaltySlashRate())
 	}
 }
 
@@ -484,34 +484,34 @@ func TestState_SetDelegationSlotMax(t *testing.T) {
 	}
 }
 
-func TestState_SetNonVotePenaltySlashRatio(t *testing.T) {
+func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
 	state := newDummyState(false)
-	assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRatio())
+	assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate())
 
-	for _, ratio := range []icmodule.Rate{
+	for _, rate := range []icmodule.Rate{
 		icmodule.ToRate(-1),
 		icmodule.ToRate(101),
 	} {
-		err := state.SetNonVotePenaltySlashRatio(ratio)
+		err := state.SetNonVotePenaltySlashRate(rate)
 		assert.Error(t, err)
-		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRatio())
+		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate())
 
 		state.Flush()
 		state.ClearCache()
-		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRatio())
+		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate())
 	}
 
-	for _, ratio := range []icmodule.Rate{
+	for _, rate := range []icmodule.Rate{
 		icmodule.ToRate(100),
 		icmodule.ToRate(50),
 		icmodule.ToRate(0),
 	} {
-		err := state.SetNonVotePenaltySlashRatio(ratio)
+		err := state.SetNonVotePenaltySlashRate(rate)
 		assert.NoError(t, err)
-		assert.Equal(t, ratio, state.GetNonVotePenaltySlashRatio())
+		assert.Equal(t, rate, state.GetNonVotePenaltySlashRate())
 
 		state.Flush()
 		state.ClearCache()
-		assert.Equal(t, ratio, state.GetNonVotePenaltySlashRatio())
+		assert.Equal(t, rate, state.GetNonVotePenaltySlashRate())
 	}
 }

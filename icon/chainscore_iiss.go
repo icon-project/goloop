@@ -803,7 +803,7 @@ func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common
 		return err
 	}
 	rate := icmodule.ToRate(slashingRate.Int64())
-	if err = es.State.SetConsistentValidationPenaltySlashRatio(rate); err != nil {
+	if err = es.State.SetConsistentValidationPenaltySlashRate(rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
@@ -825,7 +825,7 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 		return err
 	}
 	rate := icmodule.ToRate(slashingRate.Int64())
-	if err = es.State.SetNonVotePenaltySlashRatio(rate); err != nil {
+	if err = es.State.SetNonVotePenaltySlashRate(rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}

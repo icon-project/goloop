@@ -60,8 +60,8 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	// Slashing
 	revision := cc.Revision().Value()
 	if es.State.CheckConsistentValidationPenalty(revision, ps) {
-		slashRatio := es.State.GetConsistentValidationPenaltySlashRatio()
-		if err = es.slash(cc, owner, slashRatio); err != nil {
+		slashRate := es.State.GetConsistentValidationPenaltySlashRate()
+		if err = es.slash(cc, owner, slashRate); err != nil {
 			return err
 		}
 	}
@@ -70,13 +70,13 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	return es.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
 }
 
-func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, ratio icmodule.Rate) error {
-	if !ratio.IsValid() {
-		return errors.Errorf("Invalid slash ratio %d", ratio)
+func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) error {
+	if !rate.IsValid() {
+		return errors.Errorf("Invalid slashRate %d", rate)
 	}
 
 	logger := cc.FrameLogger()
-	logger.TSystemf("IISS slash start owner=%s ratio=%d", owner, ratio)
+	logger.TSystemf("IISS slash start owner=%s rate=%d", owner, rate)
 
 	pb := es.State.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
@@ -96,13 +96,13 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		slashedStake := new(big.Int)
 		account := es.State.GetAccountState(bonder)
 
-		if ratio > 0 {
+		if rate > 0 {
 			// bond
-			slashedBond = account.SlashBond(owner, ratio)
+			slashedBond = account.SlashBond(owner, rate)
 			slashedBondSum.Add(slashedBondSum, slashedBond)
 
 			// unbond
-			slashedUnbond, expire = account.SlashUnbond(owner, ratio)
+			slashedUnbond, expire = account.SlashUnbond(owner, rate)
 			if expire != -1 {
 				timer := es.State.GetUnbondingTimerState(expire)
 				if timer != nil {

@@ -11,44 +11,44 @@ type RewardFund struct {
 }
 
 type config struct {
-	TermPeriod                            int64
-	MainPRepCount                         int64
-	SubPRepCount                          int64
-	Irep                                  int64
-	Rrep                                  int64
-	BondRequirement                       int64
-	UnbondingPeriodMultiplier             int64
-	UnstakeSlotMax                        int64
-	LockMinMultiplier                     int64
-	LockMaxMultiplier                     int64
-	UnbondingMax                          int64
-	ValidationPenaltyCondition            int
-	ConsistentValidationPenaltyCondition  int64
-	ConsistentValidationPenaltyMask       int64
-	ConsistentValidationPenaltySlashRatio int
-	DelegationSlotMax                     int64
+	TermPeriod                           int64
+	MainPRepCount                        int64
+	SubPRepCount                         int64
+	Irep                                 int64
+	Rrep                                 int64
+	BondRequirement                      int64
+	UnbondingPeriodMultiplier            int64
+	UnstakeSlotMax                       int64
+	LockMinMultiplier                    int64
+	LockMaxMultiplier                    int64
+	UnbondingMax                         int64
+	ValidationPenaltyCondition           int
+	ConsistentValidationPenaltyCondition int64
+	ConsistentValidationPenaltyMask      int64
+	ConsistentValidationPenaltySlashRate int
+	DelegationSlotMax                    int64
 	RewardFund
 	BondedPRepCount int
 }
 
 func NewConfig() *config {
 	return &config{
-		TermPeriod:                            icmodule.DecentralizedTermPeriod,
-		MainPRepCount:                         icmodule.DefaultMainPRepCount,
-		SubPRepCount:                          icmodule.DefaultSubPRepCount,
-		Irep:                                  icmodule.InitialIRep,
-		Rrep:                                  0,
-		BondRequirement:                       0,
-		UnbondingPeriodMultiplier:             icmodule.DefaultUnbondingPeriodMultiplier,
-		UnstakeSlotMax:                        icmodule.InitialUnstakeSlotMax,
-		LockMinMultiplier:                     icmodule.DefaultLockMinMultiplier,
-		LockMaxMultiplier:                     icmodule.DefaultLockMaxMultiplier,
-		UnbondingMax:                          icmodule.DefaultUnbondingMax,
-		ValidationPenaltyCondition:            icmodule.DefaultValidationPenaltyCondition,
-		ConsistentValidationPenaltyCondition:  icmodule.DefaultConsistentValidationPenaltyCondition,
-		ConsistentValidationPenaltyMask:       icmodule.DefaultConsistentValidationPenaltyMask,
-		ConsistentValidationPenaltySlashRatio: icmodule.DefaultConsistentValidationPenaltySlashRatio,
-		DelegationSlotMax:                     icmodule.DefaultDelegationSlotMax,
+		TermPeriod:                           icmodule.DecentralizedTermPeriod,
+		MainPRepCount:                        icmodule.DefaultMainPRepCount,
+		SubPRepCount:                         icmodule.DefaultSubPRepCount,
+		Irep:                                 icmodule.InitialIRep,
+		Rrep:                                 0,
+		BondRequirement:                      0,
+		UnbondingPeriodMultiplier:            icmodule.DefaultUnbondingPeriodMultiplier,
+		UnstakeSlotMax:                       icmodule.InitialUnstakeSlotMax,
+		LockMinMultiplier:                    icmodule.DefaultLockMinMultiplier,
+		LockMaxMultiplier:                    icmodule.DefaultLockMaxMultiplier,
+		UnbondingMax:                         icmodule.DefaultUnbondingMax,
+		ValidationPenaltyCondition:           icmodule.DefaultValidationPenaltyCondition,
+		ConsistentValidationPenaltyCondition: icmodule.DefaultConsistentValidationPenaltyCondition,
+		ConsistentValidationPenaltyMask:      icmodule.DefaultConsistentValidationPenaltyMask,
+		ConsistentValidationPenaltySlashRate: icmodule.DefaultConsistentValidationPenaltySlashRate,
+		DelegationSlotMax:                    icmodule.DefaultDelegationSlotMax,
 		RewardFund: RewardFund{
 			Iglobal: icmodule.DefaultIglobal,
 			Iprep:   icmodule.DefaultIprep,

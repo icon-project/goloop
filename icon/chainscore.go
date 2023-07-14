@@ -806,25 +806,25 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 }
 
 type config struct {
-	TermPeriod                            *common.HexInt `json:"termPeriod"`
-	MainPRepCount                         *common.HexInt `json:"mainPRepCount"`
-	SubPRepCount                          *common.HexInt `json:"subPRepCount"`
-	ExtraMainPRepCount                    *common.HexInt `json:"extraMainPRepCount"`
-	Irep                                  *common.HexInt `json:"irep,omitempty"`
-	Rrep                                  *common.HexInt `json:"rrep,omitempty"`
-	BondRequirement                       *common.HexInt `json:"bondRequirement,omitempty"`
-	UnbondingPeriodMultiplier             *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
-	UnstakeSlotMax                        *common.HexInt `json:"unstakeSlotMax,omitempty"`
-	LockMinMultiplier                     *common.HexInt `json:"lockMinMultiplier,omitempty"`
-	LockMaxMultiplier                     *common.HexInt `json:"lockMaxMultiplier,omitempty"`
-	RewardFund                            rewardFund     `json:"rewardFund"`
-	UnbondingMax                          *common.HexInt `json:"unbondingMax"`
-	ValidationPenaltyCondition            *common.HexInt `json:"validationPenaltyCondition"`
-	ConsistentValidationPenaltyCondition  *common.HexInt `json:"consistentValidationPenaltyCondition"`
-	ConsistentValidationPenaltyMask       *common.HexInt `json:"consistentValidationPenaltyMask"`
-	ConsistentValidationPenaltySlashRatio *common.HexInt `json:"consistentValidationPenaltySlashRatio"`
-	DelegationSlotMax                     *common.HexInt `json:"delegationSlotMax"`
-	NonVotePenaltySlashRatio              *common.HexInt `json:"nonVotePenaltySlashRatio"`
+	TermPeriod                           *common.HexInt `json:"termPeriod"`
+	MainPRepCount                        *common.HexInt `json:"mainPRepCount"`
+	SubPRepCount                         *common.HexInt `json:"subPRepCount"`
+	ExtraMainPRepCount                   *common.HexInt `json:"extraMainPRepCount"`
+	Irep                                 *common.HexInt `json:"irep,omitempty"`
+	Rrep                                 *common.HexInt `json:"rrep,omitempty"`
+	BondRequirement                      *common.HexInt `json:"bondRequirement,omitempty"`
+	UnbondingPeriodMultiplier            *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
+	UnstakeSlotMax                       *common.HexInt `json:"unstakeSlotMax,omitempty"`
+	LockMinMultiplier                    *common.HexInt `json:"lockMinMultiplier,omitempty"`
+	LockMaxMultiplier                    *common.HexInt `json:"lockMaxMultiplier,omitempty"`
+	RewardFund                           rewardFund     `json:"rewardFund"`
+	UnbondingMax                         *common.HexInt `json:"unbondingMax"`
+	ValidationPenaltyCondition           *common.HexInt `json:"validationPenaltyCondition"`
+	ConsistentValidationPenaltyCondition *common.HexInt `json:"consistentValidationPenaltyCondition"`
+	ConsistentValidationPenaltyMask      *common.HexInt `json:"consistentValidationPenaltyMask"`
+	ConsistentValidationPenaltySlashRate *common.HexInt `json:"consistentValidationPenaltySlashRatio"`
+	DelegationSlotMax                    *common.HexInt `json:"delegationSlotMax"`
+	NonVotePenaltySlashRate              *common.HexInt `json:"nonVotePenaltySlashRatio"`
 }
 
 func (c *config) String() string {
@@ -845,8 +845,8 @@ func (c *config) String() string {
 		c.ValidationPenaltyCondition,
 		c.ConsistentValidationPenaltyCondition,
 		c.ConsistentValidationPenaltyMask,
-		c.ConsistentValidationPenaltySlashRatio,
-		c.NonVotePenaltySlashRatio,
+		c.ConsistentValidationPenaltySlashRate,
+		c.NonVotePenaltySlashRate,
 		c.RewardFund,
 	)
 }
@@ -873,8 +873,8 @@ func (c *config) Format(f fmt.State, r rune) {
 				c.ValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyMask,
-				c.ConsistentValidationPenaltySlashRatio,
-				c.NonVotePenaltySlashRatio,
+				c.ConsistentValidationPenaltySlashRate,
+				c.NonVotePenaltySlashRate,
 				c.RewardFund,
 			)
 		} else {
@@ -893,8 +893,8 @@ func (c *config) Format(f fmt.State, r rune) {
 				c.ValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyMask,
-				c.ConsistentValidationPenaltySlashRatio,
-				c.NonVotePenaltySlashRatio,
+				c.ConsistentValidationPenaltySlashRate,
+				c.NonVotePenaltySlashRate,
 				c.RewardFund,
 			)
 		}
@@ -968,24 +968,24 @@ type ChainConfig struct {
 
 func newIconConfig() *config {
 	return &config{
-		TermPeriod:                            common.NewHexInt(icmodule.DefaultTermPeriod),
-		MainPRepCount:                         common.NewHexInt(icmodule.DefaultMainPRepCount),
-		SubPRepCount:                          common.NewHexInt(icmodule.DefaultSubPRepCount),
-		ExtraMainPRepCount:                    common.NewHexInt(icmodule.DefaultExtraMainPRepCount),
-		Irep:                                  common.NewHexInt(icmodule.DefaultIRep),
-		Rrep:                                  common.NewHexInt(icmodule.DefaultRRep),
-		BondRequirement:                       common.NewHexInt(icmodule.DefaultBondRequirement),
-		LockMinMultiplier:                     common.NewHexInt(icmodule.DefaultLockMinMultiplier),
-		LockMaxMultiplier:                     common.NewHexInt(icmodule.DefaultLockMaxMultiplier),
-		UnbondingPeriodMultiplier:             common.NewHexInt(icmodule.DefaultUnbondingPeriodMultiplier),
-		UnstakeSlotMax:                        common.NewHexInt(icmodule.DefaultUnstakeSlotMax),
-		UnbondingMax:                          common.NewHexInt(icmodule.DefaultUnbondingMax),
-		ValidationPenaltyCondition:            common.NewHexInt(icmodule.DefaultValidationPenaltyCondition),
-		ConsistentValidationPenaltyCondition:  common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyCondition),
-		ConsistentValidationPenaltyMask:       common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyMask),
-		ConsistentValidationPenaltySlashRatio: common.NewHexInt(icmodule.DefaultConsistentValidationPenaltySlashRatio),
-		DelegationSlotMax:                     common.NewHexInt(icmodule.DefaultDelegationSlotMax),
-		NonVotePenaltySlashRatio:              common.NewHexInt(icmodule.DefaultNonVotePenaltySlashRatio),
+		TermPeriod:                           common.NewHexInt(icmodule.DefaultTermPeriod),
+		MainPRepCount:                        common.NewHexInt(icmodule.DefaultMainPRepCount),
+		SubPRepCount:                         common.NewHexInt(icmodule.DefaultSubPRepCount),
+		ExtraMainPRepCount:                   common.NewHexInt(icmodule.DefaultExtraMainPRepCount),
+		Irep:                                 common.NewHexInt(icmodule.DefaultIRep),
+		Rrep:                                 common.NewHexInt(icmodule.DefaultRRep),
+		BondRequirement:                      common.NewHexInt(icmodule.DefaultBondRequirement),
+		LockMinMultiplier:                    common.NewHexInt(icmodule.DefaultLockMinMultiplier),
+		LockMaxMultiplier:                    common.NewHexInt(icmodule.DefaultLockMaxMultiplier),
+		UnbondingPeriodMultiplier:            common.NewHexInt(icmodule.DefaultUnbondingPeriodMultiplier),
+		UnstakeSlotMax:                       common.NewHexInt(icmodule.DefaultUnstakeSlotMax),
+		UnbondingMax:                         common.NewHexInt(icmodule.DefaultUnbondingMax),
+		ValidationPenaltyCondition:           common.NewHexInt(icmodule.DefaultValidationPenaltyCondition),
+		ConsistentValidationPenaltyCondition: common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyCondition),
+		ConsistentValidationPenaltyMask:      common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyMask),
+		ConsistentValidationPenaltySlashRate: common.NewHexInt(icmodule.DefaultConsistentValidationPenaltySlashRate),
+		DelegationSlotMax:                    common.NewHexInt(icmodule.DefaultDelegationSlotMax),
+		NonVotePenaltySlashRate:              common.NewHexInt(icmodule.DefaultNonVotePenaltySlashRate),
 		RewardFund: rewardFund{
 			Iglobal: common.NewHexInt(icmodule.DefaultIglobal),
 			Iprep:   common.NewHexInt(icmodule.DefaultIprep),

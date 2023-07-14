@@ -227,7 +227,7 @@ func TestBonds_Slash(t *testing.T) {
 
 	type values struct {
 		target *common.Address
-		ratio  icmodule.Rate
+		rate   icmodule.Rate
 	}
 
 	type wants struct {
@@ -301,7 +301,7 @@ func TestBonds_Slash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
-			newBl, slashAmount := bl1.Slash(in.target, in.ratio)
+			newBl, slashAmount := bl1.Slash(in.target, in.rate)
 			bl1 = newBl
 
 			assert.Equal(t, out.slashAmount, slashAmount.Int64())

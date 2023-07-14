@@ -52,7 +52,7 @@ func TestUnbonds_Slash(t *testing.T) {
 
 	type values struct {
 		target *common.Address
-		ratio  icmodule.Rate
+		rate   icmodule.Rate
 	}
 
 	type wants struct {
@@ -132,7 +132,7 @@ func TestUnbonds_Slash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
-			newUbs, slashAmount, expire := ubl1.Slash(in.target, in.ratio)
+			newUbs, slashAmount, expire := ubl1.Slash(in.target, in.rate)
 			ubl1 = newUbs
 
 			assert.Equal(t, out.slashAmount, slashAmount.Int64())

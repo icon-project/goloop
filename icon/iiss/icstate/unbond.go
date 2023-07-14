@@ -82,8 +82,8 @@ func (u *Unbond) Expire() int64 {
 	return u.expire
 }
 
-func (u *Unbond) Slash(ratio icmodule.Rate) *big.Int {
-	slashAmount := ratio.MulBigInt(u.value)
+func (u *Unbond) Slash(rate icmodule.Rate) *big.Int {
+	slashAmount := rate.MulBigInt(u.value)
 	u.value = new(big.Int).Sub(u.value, slashAmount)
 	return slashAmount
 }
@@ -206,7 +206,7 @@ func (ul *Unbonds) DeleteByAddress(address module.Address) error {
 	return ul.Delete(idx)
 }
 
-func (ul *Unbonds) Slash(address module.Address, ratio icmodule.Rate) (Unbonds, *big.Int, int64) {
+func (ul *Unbonds) Slash(address module.Address, rate icmodule.Rate) (Unbonds, *big.Int, int64) {
 	expire := int64(-1)
 	amount := big.NewInt(0)
 	newUnbonds := make(Unbonds, 0)
@@ -214,9 +214,9 @@ func (ul *Unbonds) Slash(address module.Address, ratio icmodule.Rate) (Unbonds, 
 	for _, u := range *ul {
 		if u.Address().Equal(address) {
 			unbond := u.Clone()
-			amount = unbond.Slash(ratio)
+			amount = unbond.Slash(rate)
 
-			percent := ratio.Percent()
+			percent := rate.Percent()
 			if percent < 100 {
 				newUnbonds = append(newUnbonds, unbond)
 			} else if percent == 100 {

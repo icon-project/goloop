@@ -100,8 +100,8 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 		config.ConsistentValidationPenaltyMask); err != nil {
 		return err
 	}
-	if err := es.State.SetConsistentValidationPenaltySlashRatio(
-		icmodule.ToRate(int64(config.ConsistentValidationPenaltySlashRatio))); err != nil {
+	if err := es.State.SetConsistentValidationPenaltySlashRate(
+		icmodule.ToRate(int64(config.ConsistentValidationPenaltySlashRate))); err != nil {
 		return err
 	}
 

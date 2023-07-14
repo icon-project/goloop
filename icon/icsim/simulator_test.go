@@ -96,8 +96,8 @@ func checkValidatorList(vl0, vl1 []module.Validator) bool {
 	return true
 }
 
-func estimateSlashed(slashRatio icmodule.Rate, oldBonded *big.Int) *big.Int {
-	return slashRatio.MulBigInt(oldBonded)
+func estimateSlashed(slashRate icmodule.Rate, oldBonded *big.Int) *big.Int {
+	return slashRate.MulBigInt(oldBonded)
 }
 
 func assertPower(t *testing.T, p map[string]interface{}) bool {
@@ -225,7 +225,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	//var prep *icstate.PRep
 	var receipts []Receipt
 	var oldBonded, bonded, slashed *big.Int
-	var slashRatio = icmodule.ToRate(5) // 5%
+	var slashRate = icmodule.ToRate(5) // 5%
 	var tx Transaction
 
 	c := NewConfig()
@@ -233,7 +233,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
 	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
-	c.ConsistentValidationPenaltySlashRatio = int(slashRatio.Percent())
+	c.ConsistentValidationPenaltySlashRate = int(slashRate.Percent())
 
 	voted = make([]bool, mainPRepCount)
 	for i := 0; i < len(voted); i++ {
@@ -345,10 +345,10 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// Check if the bond of prep0 is slashed by default ratio
+	// Check if the bond of prep0 is slashed by default rate
 	prep = sim.GetPRep(env.preps[0])
 	bonded = prep.Bonded()
-	slashed = estimateSlashed(slashRatio, oldBonded)
+	slashed = estimateSlashed(slashRate, oldBonded)
 	assert.Zero(t, bonded.Cmp(new(big.Int).Sub(oldBonded, slashed)))
 
 	// Check if totalBond is reduced by slashed amount
@@ -385,7 +385,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		prep = sim.GetPRep(vl[0].Address())
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, penaltyCount, prep.GetVPenaltyCount())
-		slashed = estimateSlashed(slashRatio, oldBonded)
+		slashed = estimateSlashed(slashRate, oldBonded)
 		assert.Zero(t, prep.Bonded().Cmp(new(big.Int).Sub(oldBonded, slashed)))
 
 		// Check if prep22 acts as a validator instead of prep0
