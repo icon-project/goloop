@@ -72,11 +72,11 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 
 func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) error {
 	if !rate.IsValid() {
-		return errors.Errorf("Invalid slashRate %d", rate)
+		return errors.Errorf("Invalid slashRate %d", rate.Percent())
 	}
 
 	logger := cc.FrameLogger()
-	logger.TSystemf("IISS slash start owner=%s rate=%d", owner, rate)
+	logger.TSystemf("IISS slash start owner=%s ratio=%d", owner, rate.Percent())
 
 	pb := es.State.GetPRepBaseByOwner(owner, false)
 	if pb == nil {

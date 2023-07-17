@@ -46,13 +46,13 @@ func NewSafeRewardFund(iglobal *big.Int, iprep, icps, irelay, ivoter icmodule.Ra
 	if !(iprep.IsValid() && icps.IsValid() && irelay.IsValid() && ivoter.IsValid()) {
 		return nil, scoreresult.InvalidParameterError.Errorf(
 			"InvalidInflationRate(prep=%d,cps=%d,relay=%d,voter=%d)",
-			iprep, icps, irelay, ivoter)
+			iprep.Percent(), icps.Percent(), irelay.Percent(), ivoter.Percent())
 	}
 	isum := iprep + icps + irelay + ivoter
 	if int64(isum) != icmodule.DenomInRate {
 		return nil, icmodule.IllegalArgumentError.Errorf(
 			"IllegalInflationRate(prep=%d,cps=%d,relay=%d,voter=%d)",
-			iprep, icps, irelay, ivoter)
+			iprep.Percent(), icps.Percent(), irelay.Percent(), ivoter.Percent())
 	}
 	return &RewardFund{
 		Iglobal: iglobal,
@@ -149,11 +149,11 @@ func (rf *RewardFund) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "RewardFund{Iglobal=%s Iprep=%s Icps=%s Irelay=%s Ivoter=%s}",
-				rf.Iglobal, rf.Iprep, rf.Icps, rf.Irelay, rf.Ivoter)
+			fmt.Fprintf(f, "RewardFund{Iglobal=%d Iprep=%d Icps=%d Irelay=%d Ivoter=%d}",
+				rf.Iglobal, rf.Iprep.Percent(), rf.Icps.Percent(), rf.Irelay.Percent(), rf.Ivoter.Percent())
 		} else {
-			fmt.Fprintf(f, "RewardFund{%s %s %s %s %s}",
-				rf.Iglobal, rf.Iprep, rf.Icps, rf.Irelay, rf.Ivoter)
+			fmt.Fprintf(f, "RewardFund{%d %d %d %d %d}",
+				rf.Iglobal, rf.Iprep.Percent(), rf.Icps.Percent(), rf.Irelay.Percent(), rf.Ivoter.Percent())
 		}
 	}
 }

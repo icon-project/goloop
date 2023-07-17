@@ -427,6 +427,34 @@ func TestValidateCountryAlpha3(t *testing.T) {
 	}
 }
 
+func TestMinBigInt(t *testing.T) {
+	args := []struct{
+		v0, v1, min int64
+	}{
+		{0, 0, 0},
+		{0, 100, 0},
+		{100, 0, 0},
+		{100, 200, 100},
+		{100, 100, 100},
+		{200, 100, 100},
+		{-200, 0, -200},
+		{0, -200, -200},
+		{-100, -100, -100},
+		{-100, -200, -200},
+		{-200, -100, -200},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			v0 := big.NewInt(arg.v0)
+			v1 := big.NewInt(arg.v1)
+			min := big.NewInt(arg.min)
+			assert.Equal(t, min.Int64(), MinBigInt(v0, v1).Int64())
+		})
+	}
+}
+
 func TestCalcPower(t *testing.T) {
 	args := []struct{
 		br icmodule.Rate

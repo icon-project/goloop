@@ -20,12 +20,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/icon-project/goloop/icon/icmodule"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
