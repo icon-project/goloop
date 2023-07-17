@@ -17,6 +17,9 @@
 package iiss4
 
 import (
+	"math/big"
+	"testing"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -24,8 +27,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
 func TestVotingEvents(t *testing.T) {
@@ -113,6 +114,236 @@ func TestVotingEvents(t *testing.T) {
 	assert.False(t, ve.IsCalculated(key))
 	ve.SetCalculated(a1)
 	assert.True(t, ve.IsCalculated(key))
+}
+
+type testRW struct {
+	voted      map[string]*icreward.Voted
+	bonding    map[string]*icreward.Bonding
+	delegating map[string]*icreward.Delegating
+}
+
+func (t *testRW) GetDelegating(addr module.Address) (*icreward.Delegating, error) {
+	if d, ok := t.delegating[icutils.ToKey(addr)]; ok {
+		return d, nil
+	}
+	return nil, nil
+}
+
+func (t *testRW) GetBonding(addr module.Address) (*icreward.Bonding, error) {
+	if b, ok := t.bonding[icutils.ToKey(addr)]; ok {
+		return b, nil
+	}
+	return nil, nil
+}
+
+func (t *testRW) GetVoted(addr module.Address) (*icreward.Voted, error) {
+	if v, ok := t.voted[icutils.ToKey(addr)]; ok {
+		return v, nil
+	}
+	return nil, nil
+}
+
+func (t *testRW) SetVoted(addr module.Address, voted *icreward.Voted) error {
+	key := icutils.ToKey(addr)
+	if voted.IsEmpty() {
+		delete(t.voted, key)
+	} else {
+		t.voted[key] = voted
+	}
+	return nil
+}
+
+func (t *testRW) SetDelegating(addr module.Address, delegating *icreward.Delegating) error {
+	key := icutils.ToKey(addr)
+	if delegating.IsEmpty() {
+		delete(t.delegating, key)
+	} else {
+		t.delegating[key] = delegating
+	}
+	return nil
+}
+
+func (t *testRW) SetBonding(addr module.Address, bonding *icreward.Bonding) error {
+	key := icutils.ToKey(addr)
+	if bonding.IsEmpty() {
+		delete(t.bonding, key)
+	} else {
+		t.bonding[key] = bonding
+	}
+	return nil
+}
+
+func TestVotingEvents_Write(t *testing.T) {
+	a1, _ := common.NewAddressFromString("hx1")
+	a2, _ := common.NewAddressFromString("hx2")
+	a3, _ := common.NewAddressFromString("hx3")
+
+	rw := &testRW{
+		bonding: map[string]*icreward.Bonding{
+			icutils.ToKey(a2): {
+				Bonds: icstate.Bonds{
+					icstate.NewBond(a1, big.NewInt(1000)),
+				},
+			},
+			icutils.ToKey(a3): {
+				Bonds: icstate.Bonds{
+					icstate.NewBond(a1, big.NewInt(2000)),
+				},
+			},
+		},
+		delegating: map[string]*icreward.Delegating{
+			icutils.ToKey(a2): {
+				Delegations: icstate.Delegations{
+					icstate.NewDelegation(a1, big.NewInt(1000)),
+					icstate.NewDelegation(a2, big.NewInt(2000)),
+				},
+			},
+			icutils.ToKey(a3): {
+				Delegations: icstate.Delegations{
+					icstate.NewDelegation(a1, big.NewInt(1000)),
+					icstate.NewDelegation(a2, big.NewInt(2000)),
+				},
+			},
+		},
+	}
+
+	ve := &VotingEvents{
+		events: map[string][]*VoteEvent{
+			icutils.ToKey(a1): {
+				{
+					vtDelegate,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(1000)),
+						icstage.NewVote(a2, big.NewInt(2000)),
+						icstage.NewVote(a3, big.NewInt(3000)),
+					},
+					10,
+				},
+				{
+					vtBond,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(1000)),
+					},
+					20,
+				},
+				{
+					vtDelegate,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(-10)),
+						icstage.NewVote(a2, big.NewInt(2000)),
+						icstage.NewVote(a3, big.NewInt(-3000)),
+					},
+					30,
+				},
+			},
+			icutils.ToKey(a2): {
+				{
+					vtDelegate,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(-1000)),
+						icstage.NewVote(a2, big.NewInt(2000)),
+						icstage.NewVote(a3, big.NewInt(3000)),
+					},
+					10,
+				},
+				{
+					vtBond,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(-1000)),
+					},
+					20,
+				},
+				{
+					vtBond,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(1000)),
+					},
+					30,
+				},
+			},
+			icutils.ToKey(a3): {
+				{
+					vtBond,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(-2000)),
+					},
+					10,
+				},
+				{
+					vtDelegate,
+					icstage.VoteList{
+						icstage.NewVote(a1, big.NewInt(-1000)),
+						icstage.NewVote(a2, big.NewInt(-2000)),
+					},
+					30,
+				},
+			},
+		},
+		calculated: nil,
+	}
+
+	err := ve.Write(rw, rw)
+	assert.NoError(t, err)
+
+	expects := []struct {
+		name       string
+		owner      module.Address
+		delegating *icreward.Delegating
+		bonding    *icreward.Bonding
+	}{
+		{
+			"New entry",
+			a1,
+			&icreward.Delegating{
+				Delegations: icstate.Delegations{
+					icstate.NewDelegation(a1, big.NewInt(990)),
+					icstate.NewDelegation(a2, big.NewInt(4000)),
+				}},
+			&icreward.Bonding{
+				Bonds: icstate.Bonds{
+					icstate.NewBond(a1, big.NewInt(1000)),
+				}},
+		},
+		{
+			"Update",
+			a2,
+			&icreward.Delegating{
+				Delegations: icstate.Delegations{
+					icstate.NewDelegation(a2, big.NewInt(4000)),
+					icstate.NewDelegation(a3, big.NewInt(3000)),
+				}},
+			&icreward.Bonding{
+				Bonds: icstate.Bonds{
+					icstate.NewBond(a1, big.NewInt(1000)),
+				}},
+		},
+		{
+			"Delete",
+			a3,
+			nil,
+			nil,
+		},
+	}
+
+	for _, e := range expects {
+		t.Run(e.name, func(t *testing.T) {
+			b, err := rw.GetBonding(e.owner)
+			assert.NoError(t, err)
+			if e.bonding != nil {
+				assert.True(t, b.Equal(e.bonding))
+			} else {
+				assert.Nil(t, b)
+			}
+
+			d, err := rw.GetDelegating(e.owner)
+			assert.NoError(t, err)
+			if e.delegating != nil {
+				assert.True(t, d.Equal(e.delegating))
+			} else {
+				assert.Nil(t, d)
+			}
+		})
+	}
 }
 
 func TestVoter(t *testing.T) {
@@ -220,6 +451,6 @@ func TestVoter(t *testing.T) {
 	key := icutils.ToKey(a1)
 	prep1 := pInfo.GetPRep(key)
 	expectReward := big.NewInt(prep1.VoterReward().Int64() * voter.votes[key].Int64() / prep1.AccumulatedVoted().Int64())
-	reward := voter.CalculateReward(pInfo)
-	assert.Equal(t, expectReward, reward)
+	r := voter.CalculateReward(pInfo)
+	assert.Equal(t, expectReward, r)
 }
