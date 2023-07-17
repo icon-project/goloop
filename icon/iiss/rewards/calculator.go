@@ -33,7 +33,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/icon/iiss/rewards/iiss4"
-	"github.com/icon-project/goloop/module"
 )
 
 type Calculator struct {
@@ -118,6 +117,10 @@ func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
 		cond.Signal()
 	}
 	c.waiters = nil
+}
+
+func (c *Calculator) Stats() *rc.Stats {
+	return c.stats
 }
 
 func (c *Calculator) Stop() {
@@ -286,30 +289,6 @@ func (c *Calculator) processBTP() error {
 				return err
 			}
 		}
-	}
-	return nil
-}
-
-func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
-	iScore, err := c.temp.GetIScore(addr)
-	if err != nil {
-		return err
-	}
-	nIScore := iScore.Added(reward)
-	if err = c.temp.SetIScore(addr, nIScore); err != nil {
-		return err
-	}
-	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
-
-	switch t {
-	case rc.RTBlockProduce:
-		c.stats.IncreaseBlockProduce(reward)
-	case rc.RTPRep:
-		c.stats.IncreaseVoted(reward)
-	case rc.RTVoter:
-		c.stats.IncreaseVoting(reward)
-	default:
-		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
 	}
 	return nil
 }

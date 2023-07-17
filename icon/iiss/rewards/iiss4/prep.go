@@ -418,9 +418,10 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 	return nil
 }
 
-func (p *PRepInfo) Write(temp *icreward.State) error {
+// Write writes updated Voted to database
+func (p *PRepInfo) Write(writer common.Writer) error {
 	for _, prep := range p.preps {
-		err := temp.SetVoted(prep.Owner(), prep.ToVoted())
+		err := writer.SetVoted(prep.Owner(), prep.ToVoted())
 		if err != nil {
 			return err
 		}

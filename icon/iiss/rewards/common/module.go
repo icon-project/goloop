@@ -28,7 +28,18 @@ type Calculator interface {
 	Back() *icstage.Snapshot
 	Base() *icreward.Snapshot
 	Temp() *icreward.State
-	RewardUpdater
+	Stats() *Stats
+}
+
+type Reader interface {
+	GetDelegating(addr module.Address) (*icreward.Delegating, error)
+	GetBonding(addr module.Address) (*icreward.Bonding, error)
+}
+
+type Writer interface {
+	SetVoted(addr module.Address, voted *icreward.Voted) error
+	SetDelegating(addr module.Address, delegating *icreward.Delegating) error
+	SetBonding(addr module.Address, bonding *icreward.Bonding) error
 }
 
 type RewardUpdater interface {

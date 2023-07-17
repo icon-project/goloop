@@ -64,6 +64,30 @@ func (c *Calculator) calculateRewardV3() (err error) {
 	return nil
 }
 
+func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
+	iScore, err := c.temp.GetIScore(addr)
+	if err != nil {
+		return err
+	}
+	nIScore := iScore.Added(reward)
+	if err = c.temp.SetIScore(addr, nIScore); err != nil {
+		return err
+	}
+	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
+
+	switch t {
+	case rc.RTBlockProduce:
+		c.stats.IncreaseBlockProduce(reward)
+	case rc.RTPRep:
+		c.stats.IncreaseVoted(reward)
+	case rc.RTVoter:
+		c.stats.IncreaseVoting(reward)
+	default:
+		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
+	}
+	return nil
+}
+
 func (c *Calculator) replayBugDisabledPRep() error {
 	revision := c.global.GetRevision()
 	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||

@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -91,20 +92,21 @@ func (v *VotingEvents) AddEvent(vType VoteType, from module.Address, votes icsta
 	v.events[key] = append(v.events[key], NewVoteEvent(vType, votes, offset))
 }
 
-func (v *VotingEvents) Write(base *icreward.Snapshot, temp *icreward.State) error {
+// Write writes updated Bonding and Delegating to database
+func (v *VotingEvents) Write(reader rc.Reader, writer rc.Writer) error {
 	for key, events := range v.events {
 		from, err := common.NewAddress([]byte(key))
 		if err != nil {
 			return err
 		}
-		d, err := base.GetDelegating(from)
+		d, err := reader.GetDelegating(from)
 		if err != nil {
 			return err
 		}
 		if d == nil {
 			d = icreward.NewDelegating()
 		}
-		b, err := base.GetBonding(from)
+		b, err := reader.GetBonding(from)
 		if err != nil {
 			return err
 		}
@@ -127,11 +129,11 @@ func (v *VotingEvents) Write(base *icreward.Snapshot, temp *icreward.State) erro
 		}
 
 		// write final value
-		err = temp.SetBonding(from, b)
+		err = writer.SetBonding(from, b)
 		if err != nil {
 			return err
 		}
-		err = temp.SetDelegating(from, d)
+		err = writer.SetDelegating(from, d)
 		if err != nil {
 			return err
 		}

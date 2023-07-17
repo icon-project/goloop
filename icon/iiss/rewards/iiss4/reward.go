@@ -21,11 +21,13 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
+	"github.com/icon-project/goloop/module"
 )
 
 type reward struct {
@@ -43,26 +45,26 @@ func NewReward(c rc.Calculator) (rc.Reward, error) {
 	return &reward{c: c, g: global}, nil
 }
 
-func (i *reward) Calculate() error {
+func (r *reward) Calculate() error {
 	var err error
 
-	if err = i.loadPRepInfo(); err != nil {
+	if err = r.loadPRepInfo(); err != nil {
 		return err
 	}
 
-	if err = i.processEvents(); err != nil {
+	if err = r.processEvents(); err != nil {
 		return err
 	}
 
-	if err = i.write(); err != nil {
+	if err = r.write(); err != nil {
 		return err
 	}
 
-	if err = i.prepReward(); err != nil {
+	if err = r.prepReward(); err != nil {
 		return err
 	}
 
-	if err = i.voterReward(); err != nil {
+	if err = r.voterReward(); err != nil {
 		return err
 	}
 
@@ -70,16 +72,16 @@ func (i *reward) Calculate() error {
 }
 
 // loadPRepInfo make new PRepInfo and load data from base.VotedV1
-func (i *reward) loadPRepInfo() error {
+func (r *reward) loadPRepInfo() error {
 	var err error
 	var dsa *icreward.DSA
-	base := i.c.Base()
+	base := r.c.Base()
 
 	if dsa, err = base.GetDSA(); err != nil {
 		return err
 	}
 
-	pi := NewPRepInfo(i.g.GetBondRequirement(), i.g.GetElectedPRepCount(), i.g.GetOffsetLimit())
+	pi := NewPRepInfo(r.g.GetBondRequirement(), r.g.GetElectedPRepCount(), r.g.GetOffsetLimit())
 
 	prefix := icreward.VotedKey.Build()
 	for iter := base.Filter(prefix); iter.Has(); iter.Next() {
@@ -105,14 +107,14 @@ func (i *reward) loadPRepInfo() error {
 	pi.Sort()
 	pi.InitAccumulated()
 
-	i.pi = pi
+	r.pi = pi
 
 	return nil
 }
 
-func (i *reward) processEvents() error {
+func (r *reward) processEvents() error {
 	ve := NewVotingEvents()
-	back := i.c.Back()
+	back := r.c.Back()
 	eventPrefix := icstage.EventKey.Build()
 	for iter := back.Filter(eventPrefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
@@ -128,50 +130,76 @@ func (i *reward) processEvents() error {
 		switch type_ {
 		case icstage.TypeEventEnable:
 			obj := icstage.ToEventEnable(o)
-			i.pi.SetStatus(obj.Target(), obj.Status())
+			r.pi.SetStatus(obj.Target(), obj.Status())
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
 			vType := vtDelegate
 			if type_ == icstage.TypeEventBond {
 				vType = vtBond
 			}
-			i.pi.ApplyVote(vType, obj.Votes(), i.pi.OffsetLimit()-keyOffset)
+			r.pi.ApplyVote(vType, obj.Votes(), r.pi.OffsetLimit()-keyOffset)
 			ve.AddEvent(vType, obj.From(), obj.Votes(), keyOffset)
 		case icstage.TypeEventCommissionRate:
 			obj := icstage.ToEventCommissionRate(o)
-			i.pi.SetCommissionRate(obj.Target(), obj.Value())
+			r.pi.SetCommissionRate(obj.Target(), obj.Value())
 		}
 	}
-	i.pi.UpdateAccumulatedPower()
-	i.ve = ve
+	r.pi.UpdateAccumulatedPower()
+	r.ve = ve
 	return nil
 }
 
-// write set Voted, Delegating and Bonding to temp
-func (i *reward) write() error {
-	base := i.c.Base()
-	temp := i.c.Temp()
-	if err := i.pi.Write(temp); err != nil {
+func (r *reward) UpdateIScore(addr module.Address, amount *big.Int, t rc.RewardType) error {
+	temp := r.c.Temp()
+	iScore, err := temp.GetIScore(addr)
+	if err != nil {
 		return err
 	}
-	if err := i.ve.Write(base, temp); err != nil {
+	nIScore := iScore.Added(amount)
+	if err = temp.SetIScore(addr, nIScore); err != nil {
+		return err
+	}
+	//r.c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
+
+	stats := r.c.Stats()
+	switch t {
+	case rc.RTBlockProduce:
+		stats.IncreaseBlockProduce(amount)
+	case rc.RTPRep:
+		stats.IncreaseVoted(amount)
+	case rc.RTVoter:
+		stats.IncreaseVoting(amount)
+	default:
+		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
+	}
+	return nil
+}
+
+// write writes Voted, Delegating and Bonding to temp
+func (r *reward) write() error {
+	base := r.c.Base()
+	temp := r.c.Temp()
+	if err := r.pi.Write(temp); err != nil {
+		return err
+	}
+	if err := r.ve.Write(base, temp); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (i *reward) prepReward() error {
-	global := i.g.GetV3()
-	return i.pi.DistributeReward(
+func (r *reward) prepReward() error {
+	global := r.g.GetV3()
+	return r.pi.DistributeReward(
 		new(big.Int).Mul(global.GetIGlobal(), global.GetIPRep()),
 		new(big.Int).Mul(global.GetIGlobal(), global.GetIWage()),
 		global.MinBond(),
-		i.c,
+		r,
 	)
 }
 
-func (i *reward) voterReward() error {
-	base := i.c.Base()
+func (r *reward) voterReward() error {
+	base := r.c.Base()
 
 	prefix := icreward.DelegatingKey.Build()
 	for iter := base.Filter(prefix); iter.Has(); iter.Next() {
@@ -190,26 +218,26 @@ func (i *reward) voterReward() error {
 			return err
 		}
 		voter := NewVoter(addr)
-		voter.AddVoting(icreward.ToDelegating(o), i.pi.OffsetLimit())
+		voter.AddVoting(icreward.ToDelegating(o), r.pi.OffsetLimit())
 
 		b, err := base.GetBonding(addr)
 		if err != nil {
 			return err
 		}
 		if b != nil && b.IsEmpty() == false {
-			voter.AddVoting(b, i.pi.OffsetLimit())
+			voter.AddVoting(b, r.pi.OffsetLimit())
 		}
 
-		events := i.ve.Get(addr)
+		events := r.ve.Get(addr)
 		if events != nil {
 			for _, event := range events {
-				voter.AddEvent(event, i.pi.OffsetLimit()-event.Offset())
+				voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
 			}
-			i.ve.SetCalculated(addr)
+			r.ve.SetCalculated(addr)
 		}
 
-		reward := voter.CalculateReward(i.pi)
-		if err = i.c.UpdateIScore(voter.Owner(), reward, rc.RTVoter); err != nil {
+		amount := voter.CalculateReward(r.pi)
+		if err = r.UpdateIScore(voter.Owner(), amount, rc.RTVoter); err != nil {
 			return err
 		}
 	}
@@ -240,24 +268,24 @@ func (i *reward) voterReward() error {
 		}
 
 		voter := NewVoter(addr)
-		voter.AddVoting(icreward.ToBonding(o), i.pi.OffsetLimit())
+		voter.AddVoting(icreward.ToBonding(o), r.pi.OffsetLimit())
 
-		events := i.ve.Get(addr)
+		events := r.ve.Get(addr)
 		if events != nil {
 			for _, event := range events {
-				voter.AddEvent(event, i.pi.OffsetLimit()-event.Offset())
+				voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
 			}
-			i.ve.SetCalculated(addr)
+			r.ve.SetCalculated(addr)
 		}
 
-		reward := voter.CalculateReward(i.pi)
-		if err = i.c.UpdateIScore(voter.Owner(), reward, rc.RTVoter); err != nil {
+		reward := voter.CalculateReward(r.pi)
+		if err = r.UpdateIScore(voter.Owner(), reward, rc.RTVoter); err != nil {
 			return err
 		}
 	}
 
-	for key, events := range i.ve.Events() {
-		if i.ve.IsCalculated(key) {
+	for key, events := range r.ve.Events() {
+		if r.ve.IsCalculated(key) {
 			continue
 		}
 		addr, err := common.NewAddress([]byte(key))
@@ -266,12 +294,12 @@ func (i *reward) voterReward() error {
 		}
 		voter := NewVoter(addr)
 		for _, event := range events {
-			voter.AddEvent(event, i.pi.OffsetLimit()-event.Offset())
+			voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
 		}
-		i.ve.SetCalculated(addr)
+		r.ve.SetCalculated(addr)
 
-		reward := voter.CalculateReward(i.pi)
-		if err = i.c.UpdateIScore(voter.Owner(), reward, rc.RTVoter); err != nil {
+		reward := voter.CalculateReward(r.pi)
+		if err = r.UpdateIScore(voter.Owner(), reward, rc.RTVoter); err != nil {
 			return err
 		}
 	}

@@ -249,31 +249,31 @@ func newTestPRepInfo(preps []prep, br, offsetLimit, electedPRepCount int) *PRepI
 	return pInfo
 }
 
-type testRewardUpdater struct {
+type testIScoreUpdater struct {
 	iScore map[rc.RewardType]map[string]*big.Int
 }
 
-func newTestRewardUpdater() *testRewardUpdater {
-	return &testRewardUpdater{
+func newTestIScoreUpdater() *testIScoreUpdater {
+	return &testIScoreUpdater{
 		iScore: make(map[rc.RewardType]map[string]*big.Int),
 	}
 }
 
-func (tru *testRewardUpdater) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
+func (tiu *testIScoreUpdater) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
 	key := icutils.ToKey(addr)
-	if tru.iScore[t] == nil {
-		tru.iScore[t] = make(map[string]*big.Int)
+	if tiu.iScore[t] == nil {
+		tiu.iScore[t] = make(map[string]*big.Int)
 	}
-	if is, ok := tru.iScore[t][key]; ok {
+	if is, ok := tiu.iScore[t][key]; ok {
 		is.Add(is, reward)
 	} else {
-		tru.iScore[t][key] = reward
+		tiu.iScore[t][key] = reward
 	}
 	return nil
 }
 
-func (tru *testRewardUpdater) GetIScore(addr module.Address, t rc.RewardType) *big.Int {
-	if is, ok := tru.iScore[t][icutils.ToKey(addr)]; ok {
+func (tiu *testIScoreUpdater) GetIScore(addr module.Address, t rc.RewardType) *big.Int {
+	if is, ok := tiu.iScore[t][icutils.ToKey(addr)]; ok {
 		return is
 	} else {
 		return new(big.Int)
@@ -451,7 +451,7 @@ func TestPRepInfo(t *testing.T) {
 	assert.Equal(t, big.NewInt(int64(ncr)), prep1.NCommissionRate())
 
 	// DistributeReward
-	tru := newTestRewardUpdater()
+	tiu := newTestIScoreUpdater()
 	totalReward := int64(1_000_000_000)
 	minWage := int64(10_000)
 	totalMinWage := int64(pInfo.ElectedPRepCount()) * minWage
@@ -473,13 +473,13 @@ func TestPRepInfo(t *testing.T) {
 		{a5, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
 	}
 
-	err := pInfo.DistributeReward(big.NewInt(totalReward), big.NewInt(totalMinWage), big.NewInt(minBond), tru)
+	err := pInfo.DistributeReward(big.NewInt(totalReward), big.NewInt(totalMinWage), big.NewInt(minBond), tiu)
 	assert.NoError(t, err)
 	for _, is := range iScores {
 		p := pInfo.GetPRep(icutils.ToKey(is.target))
 		assert.Equal(t, is.commission, p.Commission(), p)
 		assert.Equal(t, is.voterReward, p.VoterReward(), p)
-		assert.Equal(t, new(big.Int).Add(is.commission, is.minWage), tru.GetIScore(is.target, rc.RTPRep), p)
+		assert.Equal(t, new(big.Int).Add(is.commission, is.minWage), tiu.GetIScore(is.target, rc.RTPRep), p)
 	}
 }
 
