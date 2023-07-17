@@ -920,7 +920,7 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 	if prevGlobal != nil && icstate.IISSVersion3 == prevGlobal.GetIISSVersion() {
 		pg := prevGlobal.GetV2()
 		multiplier := big.NewInt(int64(prevGlobal.GetTermPeriod() * icmodule.IScoreICXRatio))
-		divider := big.NewInt(MonthBlock * icmodule.DenomInRate())
+		divider := big.NewInt(MonthBlock * icmodule.DenomInRate)
 		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().BigIntNum())
 		rewardCPS.Mul(rewardCPS, multiplier)
 		rewardCPS.Div(rewardCPS, divider)
@@ -1728,7 +1728,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 		{icstate.RelayKey, rf.Irelay},
 	}
 	ns := es.State.GetNetworkScores(cc)
-	div := big.NewInt(icmodule.DenomInRate() * MonthBlock)
+	div := big.NewInt(icmodule.DenomInRate * MonthBlock)
 	base := new(big.Int).Mul(rf.Iglobal, new(big.Int).SetInt64(term.Period()))
 	from := cc.Treasury()
 	for _, k := range fs {

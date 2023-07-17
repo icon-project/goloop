@@ -280,7 +280,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 			),
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
 			10000 * icmodule.ToRate(50).Num() * icmodule.IScoreICXRatio,
-			icmodule.DenomInRate() * MonthBlock,
+			icmodule.DenomInRate * MonthBlock,
 		},
 		{
 			"Global Version2 - disabled",
@@ -607,7 +607,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			// 	multiplier = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod, totalVotingAmount)
 			want{
 				10000 * icmodule.ToRate(50).Num() * icmodule.IScoreICXRatio,
-				icmodule.DenomInRate() * MonthBlock * 10,
+				icmodule.DenomInRate * MonthBlock * 10,
 			},
 		},
 		{

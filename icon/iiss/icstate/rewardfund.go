@@ -49,7 +49,7 @@ func NewSafeRewardFund(iglobal *big.Int, iprep, icps, irelay, ivoter icmodule.Ra
 			iprep, icps, irelay, ivoter)
 	}
 	isum := iprep + icps + irelay + ivoter
-	if int64(isum) != icmodule.DenomInRate() {
+	if int64(isum) != icmodule.DenomInRate {
 		return nil, icmodule.IllegalArgumentError.Errorf(
 			"IllegalInflationRate(prep=%d,cps=%d,relay=%d,voter=%d)",
 			iprep, icps, irelay, ivoter)

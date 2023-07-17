@@ -23,15 +23,15 @@ import (
 )
 
 const (
-	denom = int64(10_000)
+	DenomInRate = int64(10_000)
 )
 
 type Rate int64
 
-var bigIntDenom = big.NewInt(denom)
+var bigIntDenom = big.NewInt(DenomInRate)
 
 func (r Rate) Denom() int64 {
-	return denom
+	return DenomInRate
 }
 
 func (r Rate) BigIntDenom() *big.Int {
@@ -96,8 +96,4 @@ func (r Rate) IsValid() bool {
 
 func ToRate(percent int64) Rate {
 	return Rate(percent * 100)
-}
-
-func DenomInRate() int64 {
-	return denom
 }
