@@ -344,17 +344,17 @@ func (g *GlobalV2) RLPEncodeFields(encoder codec.Encoder) error {
 }
 
 func (g *GlobalV2) String() string {
-	return fmt.Sprintf("revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
-		"iprep=%s ivoter=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d",
+	return fmt.Sprintf("revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%d "+
+		"iprep=%d ivoter=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d",
 		g.revision,
 		g.iissVersion,
 		g.startHeight,
 		g.offsetLimit,
 		g.iglobal,
-		g.iprep,
-		g.ivoter,
-		g.icps,
-		g.irelay,
+		g.iprep.Percent(),
+		g.ivoter.Percent(),
+		g.icps.Percent(),
+		g.irelay.Percent(),
 		g.electedPRepCount,
 		g.bondRequirement.Percent(),
 	)
@@ -364,31 +364,31 @@ func (g *GlobalV2) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "GlobalV2{revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%s "+
-				"iprep=%s ivoter=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d}",
+			fmt.Fprintf(f, "GlobalV2{revision=%d iissVersion=%d startHeight=%d offsetLimit=%d iglobal=%d "+
+				"iprep=%d ivoter=%d icps=%d irelay=%d electedPRepCount=%d bondRequirement=%d}",
 				g.revision,
 				g.iissVersion,
 				g.startHeight,
 				g.offsetLimit,
 				g.iglobal,
-				g.iprep,
-				g.ivoter,
-				g.icps,
-				g.irelay,
+				g.iprep.Percent(),
+				g.ivoter.Percent(),
+				g.icps.Percent(),
+				g.irelay.Percent(),
 				g.electedPRepCount,
 				g.bondRequirement.Percent(),
 			)
 		} else {
-			fmt.Fprintf(f, "GlobalV2{%d %d %d %d %s %s %d %d %d %d %d}",
+			fmt.Fprintf(f, "GlobalV2{%d %d %d %d %d %d %d %d %d %d %d}",
 				g.revision,
 				g.iissVersion,
 				g.startHeight,
 				g.offsetLimit,
 				g.iglobal,
-				g.iprep,
-				g.ivoter,
-				g.icps,
-				g.irelay,
+				g.iprep.Percent(),
+				g.ivoter.Percent(),
+				g.icps.Percent(),
+				g.irelay.Percent(),
 				g.electedPRepCount,
 				g.bondRequirement.Percent(),
 			)
