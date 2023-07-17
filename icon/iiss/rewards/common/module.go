@@ -34,3 +34,7 @@ type Calculator interface {
 type RewardUpdater interface {
 	UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error
 }
+
+type Reward interface {
+	Calculate() error
+}

@@ -28,22 +28,22 @@ import (
 	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 )
 
-type IISS4 struct {
+type reward struct {
 	c  rc.Calculator
 	g  icstage.Global
 	pi *PRepInfo
 	ve *VotingEvents
 }
 
-func NewIISS4(c rc.Calculator) (*IISS4, error) {
+func NewReward(c rc.Calculator) (rc.Reward, error) {
 	global, err := c.Back().GetGlobal()
 	if err != nil {
 		return nil, err
 	}
-	return &IISS4{c: c, g: global}, nil
+	return &reward{c: c, g: global}, nil
 }
 
-func (i *IISS4) CalculateReward() error {
+func (i *reward) Calculate() error {
 	var err error
 
 	if err = i.loadPRepInfo(); err != nil {
@@ -70,7 +70,7 @@ func (i *IISS4) CalculateReward() error {
 }
 
 // loadPRepInfo make new PRepInfo and load data from base.VotedV1
-func (i *IISS4) loadPRepInfo() error {
+func (i *reward) loadPRepInfo() error {
 	var err error
 	var dsa *icreward.DSA
 	base := i.c.Base()
@@ -110,7 +110,7 @@ func (i *IISS4) loadPRepInfo() error {
 	return nil
 }
 
-func (i *IISS4) processEvents() error {
+func (i *reward) processEvents() error {
 	ve := NewVotingEvents()
 	back := i.c.Back()
 	eventPrefix := icstage.EventKey.Build()
@@ -148,7 +148,7 @@ func (i *IISS4) processEvents() error {
 }
 
 // write set Voted, Delegating and Bonding to temp
-func (i *IISS4) write() error {
+func (i *reward) write() error {
 	base := i.c.Base()
 	temp := i.c.Temp()
 	if err := i.pi.Write(temp); err != nil {
@@ -160,7 +160,7 @@ func (i *IISS4) write() error {
 	return nil
 }
 
-func (i *IISS4) prepReward() error {
+func (i *reward) prepReward() error {
 	global := i.g.GetV3()
 	return i.pi.DistributeReward(
 		new(big.Int).Mul(global.GetIGlobal(), global.GetIPRep()),
@@ -170,7 +170,7 @@ func (i *IISS4) prepReward() error {
 	)
 }
 
-func (i *IISS4) voterReward() error {
+func (i *reward) voterReward() error {
 	base := i.c.Base()
 
 	prefix := icreward.DelegatingKey.Build()

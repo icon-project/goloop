@@ -22,10 +22,7 @@ import (
 )
 
 type Stats struct {
-	value        map[RewardType]*big.Int
-	blockProduce *big.Int
-	voted        *big.Int
-	voting       *big.Int
+	value map[RewardType]*big.Int
 }
 
 func (s *Stats) GetValue(t RewardType) *big.Int {

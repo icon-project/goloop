@@ -32,6 +32,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
+	"github.com/icon-project/goloop/icon/iiss/rewards/iiss4"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -138,7 +139,8 @@ func (c *Calculator) IsRunningFor(dbase db.Database, back, reward []byte) bool {
 		bytes.Equal(c.base.Bytes(), reward)
 }
 
-func (c *Calculator) run() (err error) {
+func (c *Calculator) run() error {
+	var err error
 	defer func() {
 		if err != nil {
 			c.setResult(nil, err)
@@ -146,23 +148,33 @@ func (c *Calculator) run() (err error) {
 	}()
 
 	if err = c.prepare(); err != nil {
-		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
-		return
+		return icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
 	}
 
-	switch c.global.GetIISSVersion() {
-	case icstate.IISSVersion2, icstate.IISSVersion3:
+	iv := c.global.GetIISSVersion()
+	if iv <= icstate.IISSVersion3 {
 		if err = c.calculateRewardV3(); err != nil {
-			return
+			return err
 		}
-	case icstate.IISSVersion4:
-		// TODO IISS4
+	} else {
+		var r rc.Reward
+		switch iv {
+		case icstate.IISSVersion4:
+			if r, err = iiss4.NewReward(c); err != nil {
+				return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
+			}
+		default:
+			return icmodule.CalculationFailedError.Wrapf(err, "invalid IISS version")
+		}
+		if err = r.Calculate(); err != nil {
+			return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
+		}
 	}
 
 	if err = c.postWork(); err != nil {
-		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
-		return
+		return icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
 	}
+
 	c.log.Infof("Calculation statistics: %s", c.stats)
 	c.setResult(c.temp.GetSnapshot(), nil)
 	return nil
