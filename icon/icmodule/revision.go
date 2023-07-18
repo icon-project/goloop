@@ -41,13 +41,14 @@ const (
 	Revision20
 	Revision21
 	Revision22
+	Revision23
 	RevisionReserved
 )
 
 const (
 	DefaultRevision = Revision1
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision22
+	LatestRevision  = MaxRevision
 )
 
 const (
@@ -108,6 +109,8 @@ const (
 	RevisionBTP2 = Revision21
 
 	RevisionUpdatePRepStats = Revision22
+
+	RevisionPreIISS4 = Revision23
 )
 
 var revisionFlags = []module.Revision{
@@ -156,6 +159,8 @@ var revisionFlags = []module.Revision{
 	// Revision21
 	module.MultipleFeePayers,
 	// Revision22
+	0,
+	// Revision23
 	0,
 }
 
