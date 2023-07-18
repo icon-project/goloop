@@ -223,7 +223,10 @@ func (wss *wsSession) RunLoop(ech chan<- error) {
 	}
 }
 
-const DefaultWSMaxSession = 10
+const (
+	DefaultWSMaxSession   = 10
+	DefaultWSMaxReadLimit = 16 * 1024 // 16kB
+)
 
 type WSResponse struct {
 	Code    int    `json:"code"`
@@ -236,7 +239,12 @@ type websocketUpgrader struct {
 }
 
 func (u *websocketUpgrader) Upgrade(ctx echo.Context) (WebSocketConn, error) {
-	return u.upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
+	conn, err := u.upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
+	if err != nil {
+		return nil, err
+	}
+	conn.SetReadLimit(DefaultWSMaxReadLimit)
+	return conn, nil
 }
 
 func NewWebSocketUpgrader() WebSocketUpgrader {
