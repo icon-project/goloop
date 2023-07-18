@@ -112,3 +112,14 @@ func TestRate_IsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestRate_Percent(t *testing.T) {
+	percents := []int64{0, 100, 50, -50, 17, -17}
+	for i, percent := range percents {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			rate := ToRate(percent)
+			assert.Equal(t, percent, rate.Percent())
+		})
+	}
+}
