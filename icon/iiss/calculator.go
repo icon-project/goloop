@@ -450,9 +450,9 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 			return
 		}
 		iprep := g.GetIPRep()
-		multiplier.Mul(g.GetIGlobal(), iprep.BigIntNum())
+		multiplier.Mul(g.GetIGlobal(), iprep.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(iprep.Denom() * MonthBlock)
+		divider.SetInt64(iprep.DenomInt64() * MonthBlock)
 	}
 	return
 }
@@ -629,9 +629,9 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 			return
 		}
 		ivoter := g.GetIVoter()
-		multiplier.Mul(g.GetIGlobal(), ivoter.BigIntNum())
+		multiplier.Mul(g.GetIGlobal(), ivoter.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(ivoter.Denom() * MonthBlock)
+		divider.SetInt64(ivoter.DenomInt64() * MonthBlock)
 		divider.Mul(divider, totalVotingAmount)
 	}
 	return
@@ -1066,14 +1066,14 @@ func (c *Calculator) postWork() (err error) {
 		// TODO: Need to fix existing bugs
 		g := c.global.GetV2()
 		iprep := g.GetIPRep()
-		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), iprep.BigIntNum())
+		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), iprep.NumBigInt())
 		maxVotedReward.Mul(maxVotedReward, icmodule.BigIntIScoreICXRatio)
 		maxVotedReward.Div(maxVotedReward, big.NewInt(100))
 		if c.stats.voted.Cmp(maxVotedReward) == 1 {
 			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.voted)
 		}
 		ivoter := g.GetIVoter()
-		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), ivoter.BigIntNum())
+		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), ivoter.NumBigInt())
 		maxVotingReward.Mul(maxVotingReward, icmodule.BigIntIScoreICXRatio)
 		maxVotingReward.Div(maxVotingReward, big.NewInt(100))
 		if c.stats.voting.Cmp(maxVotingReward) == 1 {

@@ -279,7 +279,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				icmodule.ToRate(5),
 			),
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
-			10000 * icmodule.ToRate(50).Num() * icmodule.IScoreICXRatio,
+			10000 * icmodule.ToRate(50).NumInt64() * icmodule.IScoreICXRatio,
 			icmodule.DenomInRate * MonthBlock,
 		},
 		{
@@ -606,7 +606,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			},
 			// 	multiplier = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod, totalVotingAmount)
 			want{
-				10000 * icmodule.ToRate(50).Num() * icmodule.IScoreICXRatio,
+				10000 * icmodule.ToRate(50).NumInt64() * icmodule.IScoreICXRatio,
 				icmodule.DenomInRate * MonthBlock * 10,
 			},
 		},

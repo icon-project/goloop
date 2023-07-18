@@ -17,52 +17,53 @@
 package icmodule
 
 import (
-	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 )
 
 const (
-	DenomInRate = int64(10_000)
+	DenomInRate  = int64(10_000)
+	decimalPlace = 4
 )
 
 type Rate int64
 
 var bigIntDenom = big.NewInt(DenomInRate)
 
-func (r Rate) Denom() int64 {
+// DenomInt64 returns denominator in int64
+func (r Rate) DenomInt64() int64 {
 	return DenomInRate
 }
 
-func (r Rate) BigIntDenom() *big.Int {
+// DenomBigInt returns denominator in *BigInt
+func (r Rate) DenomBigInt() *big.Int {
 	return bigIntDenom
 }
 
-func (r Rate) Num() int64 {
+// NumInt64 returns numerator in int64
+func (r Rate) NumInt64() int64 {
 	return int64(r)
 }
 
-func (r Rate) BigIntNum() *big.Int {
-	return big.NewInt(r.Num())
-}
-
-func (r Rate) MulInt64(v int64) int64 {
-	return v * r.Num() / r.Denom()
+// NumBigInt returns numerator in *big.Int
+func (r Rate) NumBigInt() *big.Int {
+	return big.NewInt(r.NumInt64())
 }
 
 func (r Rate) MulBigInt(v *big.Int) *big.Int {
 	ret := new(big.Int).Set(v)
-	ret = ret.Mul(ret, r.BigIntNum())
-	return ret.Quo(ret, r.BigIntDenom())
+	ret = ret.Mul(ret, r.NumBigInt())
+	return ret.Quo(ret, r.DenomBigInt())
 }
 
 func (r Rate) Percent() int64 {
-	return r.Num() / 100
+	return r.NumInt64() * 100 / r.DenomInt64()
 }
 
 func (r Rate) String() string {
-	q := r.Num() / r.Denom()
-	rest := r.Num() % r.Denom()
+	q := r.NumInt64() / r.DenomInt64()
+	rest := r.NumInt64() % r.DenomInt64()
 
 	var sb strings.Builder
 	if r < 0 {
@@ -70,30 +71,32 @@ func (r Rate) String() string {
 		rest *= -1 // abs(rest)
 		sb.WriteByte('-')
 	}
-	sb.WriteString("%d.")
+	sb.WriteString(strconv.FormatInt(q, 10))
+	sb.WriteByte('.')
 
 	if rest != 0 {
-		size := 0
-		for rest > 0 {
-			if rest%10 != 0 {
-				break
+		digits := make([]byte, 0, decimalPlace)
+		for i := 0; i < decimalPlace; i++ {
+			digit := rest % 10
+			if digit != 0 || len(digits) > 0 {
+				digits = append(digits, byte(digit))
 			}
-			size++
 			rest /= 10
 		}
-		sb.WriteString(fmt.Sprintf("%%0%cd", '4'-rune(size)))
+		for i := len(digits) - 1; i >= 0; i-- {
+			sb.WriteByte(byte('0') + digits[i])
+		}
 	} else {
-		sb.WriteString("%d")
+		sb.WriteByte('0')
 	}
-
-	return fmt.Sprintf(sb.String(), q, rest)
+	return sb.String()
 }
 
 func (r Rate) IsValid() bool {
-	n := r.Num()
-	return n >= 0 && n <= r.Denom()
+	n := r.NumInt64()
+	return n >= 0 && n <= r.DenomInt64()
 }
 
 func ToRate(percent int64) Rate {
-	return Rate(percent * 100)
+	return Rate(percent * DenomInRate / 100)
 }

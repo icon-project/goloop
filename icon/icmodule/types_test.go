@@ -24,36 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRate_MulInt64(t *testing.T) {
-	args := []struct{
-		v int64
-		r int64
-		result int64
-	}{
-		{0, 0, 0},
-		{100, 0, 0},
-		{-100, 0, 0},
-		{100, 5000, 50},
-		{100, 2000, 20},
-		{ 100, 100, 1},
-		{ -100, 5000, -50},
-		{ 100, 150, 1},
-		{ -100, 150, -1},
-		{ 1000, 150, 15},
-		{ -1000, 150, -15},
-		{1000, 10000, 1000},
-		{ -1000, 10000, -1000},
-	}
-
-	for i, arg := range args {
-		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T){
-			rate := Rate(arg.r)
-			assert.Equal(t, arg.result, rate.MulInt64(arg.v))
-		})
-	}
-}
-
 func TestRate_MulBigInt(t *testing.T) {
 	args := []struct{
 		v int64

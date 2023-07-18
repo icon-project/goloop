@@ -250,7 +250,7 @@ func CalcPower(br icmodule.Rate, bonded, voted *big.Int) *big.Int {
 		// And it should not be divided by 0 in the following code that could occurs Panic.
 		return voted
 	}
-	power := new(big.Int).Mul(bonded, br.BigIntDenom())
-	power.Div(power, br.BigIntNum())
+	power := new(big.Int).Mul(bonded, br.DenomBigInt())
+	power.Div(power, br.NumBigInt())
 	return MinBigInt(power, voted)
 }

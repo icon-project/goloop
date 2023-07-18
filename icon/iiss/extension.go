@@ -921,11 +921,11 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 		pg := prevGlobal.GetV2()
 		multiplier := big.NewInt(int64(prevGlobal.GetTermPeriod() * icmodule.IScoreICXRatio))
 		divider := big.NewInt(MonthBlock * icmodule.DenomInRate)
-		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().BigIntNum())
+		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().NumBigInt())
 		rewardCPS.Mul(rewardCPS, multiplier)
 		rewardCPS.Div(rewardCPS, divider)
 		reward.Add(reward, rewardCPS)
-		rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().BigIntNum())
+		rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().NumBigInt())
 		rewardRelay.Mul(rewardRelay, multiplier)
 		rewardRelay.Div(rewardRelay, divider)
 		reward.Add(reward, rewardRelay)
@@ -1096,10 +1096,10 @@ func (es *ExtensionStateImpl) applyCalculationResult(calculator *Calculator, blo
 			pg := g2.GetV2()
 			// 0.1 = IScoreICXRation / 10000
 			divider := big.NewInt(10)
-			rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().BigIntNum())
+			rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().NumBigInt())
 			rewardCPS.Div(rewardCPS, divider)
 			reward.Add(reward, rewardCPS)
-			rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().BigIntNum())
+			rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().NumBigInt())
 			rewardRelay.Mul(rewardCPS, big.NewInt(10))
 			reward.Add(reward, rewardRelay)
 		}
@@ -1740,7 +1740,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			es.logger.Panicf("InvalidInflationRate(key=%s,rate=%d)", k.key, k.rate)
 		}
 		to, ok := ns[k.key]
-		amount := new(big.Int).Mul(base, k.rate.BigIntNum())
+		amount := new(big.Int).Mul(base, k.rate.NumBigInt())
 		amount.Div(amount, div)
 		if ok {
 			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {
