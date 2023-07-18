@@ -449,9 +449,10 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 		if g.GetTermPeriod() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
+		iprep := g.GetIPRep()
+		multiplier.Mul(g.GetIGlobal(), iprep.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * MonthBlock))
+		divider.SetInt64(iprep.DenomInt64() * MonthBlock)
 	}
 	return
 }
@@ -627,9 +628,10 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 		if g.GetTermPeriod() == 0 || totalVotingAmount.Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
+		ivoter := g.GetIVoter()
+		multiplier.Mul(g.GetIGlobal(), ivoter.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * MonthBlock))
+		divider.SetInt64(ivoter.DenomInt64() * MonthBlock)
 		divider.Mul(divider, totalVotingAmount)
 	}
 	return
@@ -1061,14 +1063,19 @@ func (c *Calculator) postWork() (err error) {
 		if c.stats.blockProduce.Sign() != 0 {
 			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.blockProduce)
 		}
+		// TODO: Need to fix existing bugs
 		g := c.global.GetV2()
-		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
+		iprep := g.GetIPRep()
+		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), iprep.NumBigInt())
 		maxVotedReward.Mul(maxVotedReward, icmodule.BigIntIScoreICXRatio)
+		maxVotedReward.Div(maxVotedReward, big.NewInt(100))
 		if c.stats.voted.Cmp(maxVotedReward) == 1 {
 			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.voted)
 		}
-		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
+		ivoter := g.GetIVoter()
+		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), ivoter.NumBigInt())
 		maxVotingReward.Mul(maxVotingReward, icmodule.BigIntIScoreICXRatio)
+		maxVotingReward.Div(maxVotingReward, big.NewInt(100))
 		if c.stats.voting.Cmp(maxVotingReward) == 1 {
 			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
 		}
@@ -1295,7 +1302,7 @@ func (vd *votedData) UpdateToWrite() {
 	}
 }
 
-func (vd *votedData) UpdateBondedDelegation(bondRequirement int) {
+func (vd *votedData) UpdateBondedDelegation(bondRequirement icmodule.Rate) {
 	vd.voted.UpdateBondedDelegation(bondRequirement)
 }
 

@@ -446,7 +446,7 @@ func (s *State) GetPRepStatsList() ([]*PRepStats, error) {
 	return statsList, nil
 }
 
-func sortPRepStatsList(statsList []*PRepStats, br int64) {
+func sortPRepStatsList(statsList []*PRepStats, br icmodule.Rate) {
 	sort.Slice(statsList, func(i, j int) bool {
 		ret := statsList[i].GetBondedDelegation(br).Cmp(statsList[j].GetBondedDelegation(br))
 		if ret > 0 {

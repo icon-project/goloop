@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
@@ -233,8 +234,9 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 	return err
 }
 
-func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
-	ivoter *big.Int, icps *big.Int, irelay *big.Int, electedPRepCount int, bondRequirement int,
+func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int,
+	iprep, ivoter, icps, irelay icmodule.Rate,
+	electedPRepCount int, bondRequirement icmodule.Rate,
 ) error {
 	g := NewGlobalV2(
 		icstate.IISSVersion3,

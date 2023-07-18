@@ -271,16 +271,16 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				1000-1,
 				icmodule.RevisionEnableIISS3,
 				big.NewInt(10000),
-				big.NewInt(50),
-				big.NewInt(50),
-				big.NewInt(0),
-				big.NewInt(0),
+				icmodule.ToRate(50),
+				icmodule.ToRate(50),
+				icmodule.ToRate(0),
+				icmodule.ToRate(0),
 				100,
-				5,
+				icmodule.ToRate(5),
 			),
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
-			10000 * 50 * icmodule.IScoreICXRatio,
-			100 * MonthBlock,
+			10000 * icmodule.ToRate(50).NumInt64() * icmodule.IScoreICXRatio,
+			icmodule.DenomInRate * MonthBlock,
 		},
 		{
 			"Global Version2 - disabled",
@@ -290,12 +290,12 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				-1,
 				icmodule.RevisionEnableIISS3,
 				big.NewInt(0),
-				big.NewInt(0),
-				big.NewInt(0),
-				big.NewInt(0),
-				big.NewInt(0),
+				icmodule.ToRate(0),
+				icmodule.ToRate(0),
+				icmodule.ToRate(0),
+				icmodule.ToRate(0),
 				0,
-				0,
+				icmodule.ToRate(0),
 			),
 			0,
 			1,
@@ -310,7 +310,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 	}
 }
 
-func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequirement int, iScore int64) *votedData {
+func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequirement int64, iScore int64) *votedData {
 	voted := icreward.NewVoted()
 	voted.SetEnable(enable)
 	voted.SetDelegated(big.NewInt(delegated))
@@ -318,7 +318,7 @@ func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequire
 	voted.SetBondedDelegation(big.NewInt(0))
 	data := newVotedData(voted)
 	data.SetIScore(big.NewInt(iScore))
-	data.UpdateBondedDelegation(bondRequirement)
+	data.UpdateBondedDelegation(icmodule.ToRate(bondRequirement))
 	return data
 }
 
@@ -595,19 +595,19 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 					1000-1,
 					icmodule.RevisionEnableIISS3,
 					big.NewInt(10000),
-					big.NewInt(50),
-					big.NewInt(50),
-					big.NewInt(0),
-					big.NewInt(0),
+					icmodule.ToRate(50),
+					icmodule.ToRate(50),
+					icmodule.ToRate(0),
+					icmodule.ToRate(0),
 					100,
-					5,
+					icmodule.ToRate(5),
 				),
 				big.NewInt(10),
 			},
 			// 	multiplier = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod, totalVotingAmount)
 			want{
-				10000 * 50 * icmodule.IScoreICXRatio,
-				100 * MonthBlock * 10,
+				10000 * icmodule.ToRate(50).NumInt64() * icmodule.IScoreICXRatio,
+				icmodule.DenomInRate * MonthBlock * 10,
 			},
 		},
 		{
@@ -619,12 +619,12 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 					0-1,
 					icmodule.RevisionIISS,
 					big.NewInt(0),
-					big.NewInt(0),
-					big.NewInt(0),
-					big.NewInt(0),
-					big.NewInt(0),
+					icmodule.ToRate(0),
+					icmodule.ToRate(0),
+					icmodule.ToRate(0),
+					icmodule.ToRate(0),
 					0,
-					0,
+					icmodule.ToRate(0),
 				),
 				big.NewInt(10),
 			},

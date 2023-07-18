@@ -68,7 +68,7 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 	if err := es.State.SetSubPRepCount(config.SubPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(config.BondRequirement); err != nil {
+	if err := es.State.SetBondRequirement(icmodule.ToRate(config.BondRequirement)); err != nil {
 		return err
 	}
 	if err := es.State.SetLockVariables(big.NewInt(config.LockMinMultiplier), big.NewInt(config.LockMaxMultiplier)); err != nil {
@@ -100,8 +100,8 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 		config.ConsistentValidationPenaltyMask); err != nil {
 		return err
 	}
-	if err := es.State.SetConsistentValidationPenaltySlashRatio(
-		config.ConsistentValidationPenaltySlashRatio); err != nil {
+	if err := es.State.SetConsistentValidationPenaltySlashRate(
+		icmodule.ToRate(int64(config.ConsistentValidationPenaltySlashRate))); err != nil {
 		return err
 	}
 
@@ -111,10 +111,10 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 func applyRewardFund(config *config, s *icstate.State) error {
 	rf := &icstate.RewardFund{
 		Iglobal: big.NewInt(config.RewardFund.Iglobal),
-		Iprep:   big.NewInt(config.RewardFund.Iprep),
-		Icps:    big.NewInt(config.RewardFund.Icps),
-		Irelay:  big.NewInt(config.RewardFund.Irelay),
-		Ivoter:  big.NewInt(config.RewardFund.Ivoter),
+		Iprep:   icmodule.ToRate(config.RewardFund.Iprep),
+		Icps:    icmodule.ToRate(config.RewardFund.Icps),
+		Irelay:  icmodule.ToRate(config.RewardFund.Irelay),
+		Ivoter:  icmodule.ToRate(config.RewardFund.Ivoter),
 	}
 	if err := s.SetRewardFund(rf); err != nil {
 		return err
@@ -174,8 +174,8 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 	if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
 		return err
 	}
-	if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
-		if err := es.State.SetBondRequirement(icmodule.DefaultBondRequirement); err != nil {
+	if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.IISS2BondRequirement) {
+		if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
 			return err
 		}
 	}

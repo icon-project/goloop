@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
@@ -81,9 +82,8 @@ func (u *Unbond) Expire() int64 {
 	return u.expire
 }
 
-func (u *Unbond) Slash(ratio int) *big.Int {
-	slashAmount := new(big.Int).Mul(u.value, big.NewInt(int64(ratio)))
-	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
+func (u *Unbond) Slash(rate icmodule.Rate) *big.Int {
+	slashAmount := rate.MulBigInt(u.value)
 	u.value = new(big.Int).Sub(u.value, slashAmount)
 	return slashAmount
 }
@@ -206,7 +206,7 @@ func (ul *Unbonds) DeleteByAddress(address module.Address) error {
 	return ul.Delete(idx)
 }
 
-func (ul *Unbonds) Slash(address module.Address, ratio int) (Unbonds, *big.Int, int64) {
+func (ul *Unbonds) Slash(address module.Address, rate icmodule.Rate) (Unbonds, *big.Int, int64) {
 	expire := int64(-1)
 	amount := big.NewInt(0)
 	newUnbonds := make(Unbonds, 0)
@@ -214,11 +214,12 @@ func (ul *Unbonds) Slash(address module.Address, ratio int) (Unbonds, *big.Int, 
 	for _, u := range *ul {
 		if u.Address().Equal(address) {
 			unbond := u.Clone()
-			amount = unbond.Slash(ratio)
+			amount = unbond.Slash(rate)
 
-			if ratio < 100 {
+			percent := rate.Percent()
+			if percent < 100 {
 				newUnbonds = append(newUnbonds, unbond)
-			} else if ratio == 100 {
+			} else if percent == 100 {
 				expire = unbond.Expire()
 			}
 		} else {

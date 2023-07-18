@@ -166,7 +166,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 		if err := es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
 			return err
 		}
-		if err := es.State.SetBondRequirement(iconConfig.BondRequirement.Int64()); err != nil {
+		if err := es.State.SetBondRequirement(icmodule.ToRate(iconConfig.BondRequirement.Int64())); err != nil {
 			return err
 		}
 		if err := es.State.SetLockVariables(iconConfig.LockMinMultiplier.Value(), iconConfig.LockMaxMultiplier.Value()); err != nil {
@@ -198,8 +198,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			iconConfig.ConsistentValidationPenaltyMask.Int64()); err != nil {
 			return err
 		}
-		// 10% slashRatio is hardcoded for backward compatibility
-		if err := es.State.SetConsistentValidationPenaltySlashRatio(10); err != nil {
+		// 10% slashRate is hardcoded for backward compatibility
+		if err := es.State.SetConsistentValidationPenaltySlashRate(icmodule.ToRate(10)); err != nil {
 			return err
 		}
 	}
@@ -221,8 +221,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 					return err
 				}
 			}
-			if br := es.State.GetBondRequirement(); br == icmodule.DefaultBondRequirement {
-				if err := es.State.SetBondRequirement(icmodule.IISS2BondRequirement); err != nil {
+			if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.DefaultBondRequirement) {
+				if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.IISS2BondRequirement)); err != nil {
 					return err
 				}
 			}
@@ -274,8 +274,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if iissVersion < icstate.IISSVersion3 {
 				iissVersion = icstate.IISSVersion3
 			}
-			if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
-				if err := es.State.SetBondRequirement(icmodule.DefaultBondRequirement); err != nil {
+			if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.IISS2BondRequirement) {
+				if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
 					return err
 				}
 			}
@@ -301,15 +301,15 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			}
 		}
 
-		// Set slash ratio of Non Vote Penalty
+		// Set slash rate of Non Vote Penalty
 		if r1 < icmodule.RevisionICON2R3 && r2 >= icmodule.RevisionICON2R3 {
 			iconConfig := s.loadIconConfig()
-			if err := es.State.SetConsistentValidationPenaltySlashRatio(
-				int(iconConfig.ConsistentValidationPenaltySlashRatio.Int64())); err != nil {
+			if err := es.State.SetConsistentValidationPenaltySlashRate(
+				icmodule.ToRate(iconConfig.ConsistentValidationPenaltySlashRate.Int64())); err != nil {
 				return err
 			}
-			if err := es.State.SetNonVotePenaltySlashRatio(
-				int(iconConfig.NonVotePenaltySlashRatio.Int64())); err != nil {
+			if err := es.State.SetNonVotePenaltySlashRate(
+				icmodule.ToRate(iconConfig.NonVotePenaltySlashRate.Int64())); err != nil {
 				return err
 			}
 		}
