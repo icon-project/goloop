@@ -22,7 +22,11 @@ import (
 )
 
 const (
-	IllegalArgumentError = scoreresult.RevertedError + iota
+	IllegalArgumentError errors.Code = scoreresult.RevertedError + iota
+	DuplicateError
+	InvalidStateError
+	NotFoundError
+	NotReadyError
 )
 
 const (
@@ -31,5 +35,4 @@ const (
 
 const (
 	CalculationFailedError = CodeIISS + iota
-	CalculationNotFinishedError
 )
