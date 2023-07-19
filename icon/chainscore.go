@@ -785,6 +785,14 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionPreIISS4, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setCommissionRate",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"rate", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionPreIISS4, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
