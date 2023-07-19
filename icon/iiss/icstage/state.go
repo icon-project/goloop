@@ -265,6 +265,18 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 	return err
 }
 
+func (s *State) AddGlobalV3(startHeight int64, revision, offsetLimit, electedPRepCount, bondRequirement int,
+	iglobal, iprep, iwage, icps, irelay, minBond *big.Int,
+) error {
+	g := NewGlobalV3(
+		icstate.IISSVersion4, startHeight, revision,
+		offsetLimit, electedPRepCount, bondRequirement,
+		iglobal, iprep, iwage, icps, irelay, minBond,
+	)
+	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
+	return err
+}
+
 func (s *State) AddBTPDSA(offset int, index int, value int) error {
 	key := BTPKey.Append(offset, index).Build()
 	obj := NewBTPDSA(value)
