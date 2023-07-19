@@ -61,7 +61,7 @@ func (c *Calculator) StartHeight() int64 {
 }
 
 func (c *Calculator) TotalReward() *big.Int {
-	return c.stats.TotalReward()
+	return c.stats.Total()
 }
 
 func (c *Calculator) Back() *icstage.Snapshot {

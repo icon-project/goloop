@@ -67,7 +67,7 @@ func (s *Stats) IncreaseVoting(amount *big.Int) {
 	s.IncreaseValue(RTVoter, amount)
 }
 
-func (s *Stats) TotalReward() *big.Int {
+func (s *Stats) Total() *big.Int {
 	reward := new(big.Int)
 	for _, v := range s.value {
 		reward.Add(reward, v)
@@ -76,17 +76,11 @@ func (s *Stats) TotalReward() *big.Int {
 }
 
 func (s *Stats) String() string {
-	ret := ""
-	total := new(big.Int)
+	ret := fmt.Sprintf("Total=%d", s.Total())
 	for k, v := range s.value {
-		total.Add(total, v)
-		if len(ret) == 0 {
-			ret = fmt.Sprintf("%s=%d", k, v)
-		} else {
-			ret = fmt.Sprintf("%s %s=%d", ret, k, v)
-		}
+		ret = fmt.Sprintf("%s %s=%d", ret, k, v)
 	}
-	return fmt.Sprintf("Total=%d %s", total, ret)
+	return ret
 }
 
 func NewStats() *Stats {
