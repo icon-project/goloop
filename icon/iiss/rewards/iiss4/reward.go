@@ -45,6 +45,10 @@ func NewReward(c rc.Calculator) (rc.Reward, error) {
 	return &reward{c: c, g: global}, nil
 }
 
+func (r *reward) Global() icstage.Global {
+	return r.g
+}
+
 func (r *reward) Calculate() error {
 	var err error
 
@@ -159,12 +163,9 @@ func (r *reward) UpdateIScore(addr module.Address, amount *big.Int, t rc.RewardT
 	if err = temp.SetIScore(addr, nIScore); err != nil {
 		return err
 	}
-	//r.c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
 
 	stats := r.c.Stats()
 	switch t {
-	case rc.RTBlockProduce:
-		stats.IncreaseBlockProduce(amount)
 	case rc.RTPRep:
 		stats.IncreaseVoted(amount)
 	case rc.RTVoter:

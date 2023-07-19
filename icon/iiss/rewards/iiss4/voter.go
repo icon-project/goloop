@@ -53,6 +53,10 @@ func (v *VoteEvent) Offset() int {
 	return v.offset
 }
 
+func (v *VoteEvent) Equal(v1 *VoteEvent) bool {
+	return v.vType == v1.vType && v.offset == v1.offset && v.votes.Equal(v1.votes)
+}
+
 func NewVoteEvent(vType VoteType, votes icstage.VoteList, offset int) *VoteEvent {
 	return &VoteEvent{
 		vType:  vType,

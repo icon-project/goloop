@@ -592,17 +592,9 @@ func newGlobalV3() *GlobalV3 {
 }
 
 func NewGlobalV3(
-	iissVersion int,
-	startHeight int64,
-	offsetLimit int,
-	revision int,
-	electedPRepCount int,
-	bondRequirement int,
-	iglobal *big.Int,
-	iprep *big.Int,
-	iwage *big.Int,
-	icps *big.Int,
-	irelay *big.Int,
+	iissVersion int, startHeight int64, revision int,
+	offsetLimit, electedPRepCount, bondRequirement int,
+	iglobal, iprep, iwage, icps, irelay *big.Int,
 	minBond *big.Int,
 ) *GlobalV3 {
 	g := &GlobalV3{
