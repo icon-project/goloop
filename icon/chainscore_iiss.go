@@ -999,3 +999,14 @@ func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate *common.
 		icmodule.Rate(maxRate.Int64()),
 		icmodule.Rate(maxChangeRate.Int64()))
 }
+
+func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.State.SetCommissionRate(s.from, icmodule.Rate(rate.Int64()))
+}
