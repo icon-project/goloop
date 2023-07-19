@@ -19,6 +19,7 @@ package iiss4
 import (
 	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"math/big"
 	"sort"
 
@@ -33,9 +34,9 @@ type PRep struct {
 	status         icstage.EnableStatus
 	delegated      *big.Int
 	bonded         *big.Int
-	commissionRate *big.Int
+	commissionRate icmodule.Rate
 
-	nCommissionRate   *big.Int
+	nCommissionRate   icmodule.Rate
 	owner             module.Address
 	power             *big.Int
 	pubkey            bool
@@ -71,19 +72,19 @@ func (p *PRep) Delegated() *big.Int {
 	return p.delegated
 }
 
-func (p *PRep) CommissionRate() *big.Int {
+func (p *PRep) CommissionRate() icmodule.Rate {
 	return p.commissionRate
 }
 
-func (p *PRep) SetCommissionRate(value *big.Int) {
+func (p *PRep) SetCommissionRate(value icmodule.Rate) {
 	p.commissionRate = value
 }
 
-func (p *PRep) NCommissionRate() *big.Int {
+func (p *PRep) NCommissionRate() icmodule.Rate {
 	return p.nCommissionRate
 }
 
-func (p *PRep) SetNCommissionRate(value *big.Int) {
+func (p *PRep) SetNCommissionRate(value icmodule.Rate) {
 	p.nCommissionRate = value
 }
 
@@ -112,11 +113,11 @@ func getPower(bonded, voted *big.Int, br int) *big.Int {
 	return power
 }
 
-func (p *PRep) GetPower(bondRequirement int) *big.Int {
-	return getPower(p.bonded, p.GetVoted(), bondRequirement)
+func (p *PRep) GetPower(bondRequirement icmodule.Rate) *big.Int {
+	return icutils.CalcPower(bondRequirement, p.bonded, p.GetVoted())
 }
 
-func (p *PRep) UpdatePower(bondRequirement int) *big.Int {
+func (p *PRep) UpdatePower(bondRequirement icmodule.Rate) *big.Int {
 	p.power = p.GetPower(bondRequirement)
 	return p.power
 }
@@ -133,11 +134,11 @@ func (p *PRep) AccumulatedPower() *big.Int {
 	return p.accumulatedPower
 }
 
-func (p *PRep) GetAccumulatedPower(bondRequirement int) *big.Int {
-	return getPower(p.accumulatedBonded, p.accumulatedVoted, bondRequirement)
+func (p *PRep) GetAccumulatedPower(bondRequirement icmodule.Rate) *big.Int {
+	return icutils.CalcPower(bondRequirement, p.accumulatedBonded, p.accumulatedVoted)
 }
 
-func (p *PRep) UpdateAccumulatedPower(bondRequirement int) *big.Int {
+func (p *PRep) UpdateAccumulatedPower(bondRequirement icmodule.Rate) *big.Int {
 	p.accumulatedPower = p.GetAccumulatedPower(bondRequirement)
 	return p.accumulatedPower
 }
@@ -212,8 +213,8 @@ func (p *PRep) Equal(p1 *PRep) bool {
 	return p.status == p1.status &&
 		p.delegated.Cmp(p1.delegated) == 0 &&
 		p.bonded.Cmp(p1.bonded) == 0 &&
-		p.commissionRate.Cmp(p1.commissionRate) == 0 &&
-		p.nCommissionRate.Cmp(p1.nCommissionRate) == 0 &&
+		p.commissionRate == p1.commissionRate &&
+		p.nCommissionRate == p1.nCommissionRate &&
 		p.owner.Equal(p1.owner) &&
 		p.power.Cmp(p1.power) == 0 &&
 		p.pubkey == p1.pubkey &&
@@ -231,8 +232,8 @@ func (p *PRep) Clone() *PRep {
 		status:            p.status,
 		delegated:         new(big.Int).Set(p.delegated),
 		bonded:            new(big.Int).Set(p.bonded),
-		commissionRate:    new(big.Int).Set(p.commissionRate),
-		nCommissionRate:   new(big.Int).Set(p.nCommissionRate),
+		commissionRate:    p.commissionRate,
+		nCommissionRate:   p.nCommissionRate,
 		pubkey:            p.pubkey,
 		power:             new(big.Int).Set(p.power),
 		accumulatedBonded: new(big.Int).Set(p.accumulatedBonded),
@@ -263,7 +264,8 @@ func (p *PRep) Format(f fmt.State, c rune) {
 	}
 }
 
-func NewPRep(owner module.Address, status icstage.EnableStatus, delegated, bonded, commissionRate *big.Int, pubkey bool) *PRep {
+func NewPRep(owner module.Address, status icstage.EnableStatus, delegated, bonded *big.Int,
+	commissionRate icmodule.Rate, pubkey bool) *PRep {
 	return &PRep{
 		owner:             owner,
 		status:            status,
@@ -286,7 +288,7 @@ type PRepInfo struct {
 	totalAccumulatedPower *big.Int
 
 	electedPRepCount int
-	bondRequirement  int
+	bondRequirement  icmodule.Rate
 	offsetLimit      int
 	rank             []string
 }
@@ -308,11 +310,12 @@ func (p *PRepInfo) OffsetLimit() int {
 	return p.offsetLimit
 }
 
-func (p *PRepInfo) BondRequirement() int {
+func (p *PRepInfo) BondRequirement() icmodule.Rate {
 	return p.bondRequirement
 }
 
-func (p *PRepInfo) Add(target module.Address, status icstage.EnableStatus, delegated, bonded, commissionRate *big.Int, pubkey bool) {
+func (p *PRepInfo) Add(target module.Address, status icstage.EnableStatus, delegated, bonded *big.Int,
+	commissionRate icmodule.Rate, pubkey bool) {
 	prep := NewPRep(target, status, delegated, bonded, commissionRate, pubkey)
 	prep.UpdatePower(p.bondRequirement)
 	p.preps[icutils.ToKey(target)] = prep
@@ -323,14 +326,14 @@ func (p *PRepInfo) SetStatus(target module.Address, status icstage.EnableStatus)
 	if prep, ok := p.preps[key]; ok {
 		prep.SetStatus(status)
 	} else {
-		p.Add(target, status, new(big.Int), new(big.Int), new(big.Int), false)
+		p.Add(target, status, new(big.Int), new(big.Int), 0, false)
 	}
 }
 
-func (p *PRepInfo) SetCommissionRate(target module.Address, value int) {
+func (p *PRepInfo) SetCommissionRate(target module.Address, value icmodule.Rate) {
 	key := icutils.ToKey(target)
 	if prep, ok := p.preps[key]; ok {
-		prep.SetNCommissionRate(big.NewInt(int64(value)))
+		prep.SetNCommissionRate(value)
 	}
 }
 
@@ -391,7 +394,7 @@ func (p *PRepInfo) UpdateAccumulatedPower() {
 }
 
 func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int, ru common.RewardUpdater) error {
-	minWage := new(big.Int).Mul(totalMinWage, big.NewInt(1000))
+	minWage := new(big.Int).Mul(totalMinWage, big.NewInt(icmodule.IScoreICXRatio))
 	minWage.Div(minWage, big.NewInt(int64(p.electedPRepCount)))
 	for rank, key := range p.rank {
 		prep, _ := p.preps[key]
@@ -403,11 +406,10 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		}
 
 		prepReward := new(big.Int).Mul(totalReward, prep.AccumulatedPower())
-		prepReward.Mul(prepReward, big.NewInt(1000))
+		prepReward.Mul(prepReward, big.NewInt(icmodule.IScoreICXRatio))
 		prepReward.Div(prepReward, p.totalAccumulatedPower)
 
-		commission := new(big.Int).Mul(prepReward, prep.CommissionRate())
-		commission.Div(commission, big.NewInt(100))
+		commission := prep.CommissionRate().MulBigInt(prepReward)
 		prep.SetCommission(commission)
 		prep.SetVoterReward(new(big.Int).Sub(prepReward, commission))
 
@@ -434,7 +436,7 @@ func (p *PRepInfo) Write(writer common.Writer) error {
 	return nil
 }
 
-func NewPRepInfo(bondRequirement, electedPRepCount, offsetLimit int) *PRepInfo {
+func NewPRepInfo(bondRequirement icmodule.Rate, electedPRepCount, offsetLimit int) *PRepInfo {
 	return &PRepInfo{
 		preps:                 make(map[string]*PRep),
 		totalAccumulatedPower: new(big.Int),

@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -103,8 +104,8 @@ func TestGlobalV3(t *testing.T) {
 	tag := icobject.MakeTag(type_, version)
 	offsetLimit := 10
 	iglobal := big.NewInt(3000000000)
-	iprep := big.NewInt(7000)
-	iwage := big.NewInt(3000)
+	iprep := icmodule.Rate(7000)
+	iwage := icmodule.Rate(3000)
 	minBond := big.NewInt(10000)
 
 	g, err := newGlobal(tag)
@@ -113,7 +114,7 @@ func TestGlobalV3(t *testing.T) {
 	g1 := g.GetV3()
 	assert.NotNil(t, g1)
 	g1.offsetLimit = offsetLimit
-	g1.rFund.Set(keyIglobal, iglobal)
+	g1.iGlobal = iglobal
 	g1.rFund.Set(keyIprep, iprep)
 	g1.rFund.Set(keyIwage, iwage)
 	g1.minBond = minBond
@@ -136,7 +137,7 @@ func TestGlobalV3(t *testing.T) {
 	fmt.Printf("%+v\n", g2)
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
 	assert.Equal(t, 0, g2.GetIGlobal().Cmp(iglobal))
-	assert.Equal(t, 0, g2.GetIPRep().Cmp(iprep))
-	assert.Equal(t, 0, g2.GetRewardFundByKey(keyIwage).Cmp(iwage))
+	assert.Equal(t, iprep, g2.GetIPRep())
+	assert.Equal(t, iwage, g2.GetRewardFundByKey(keyIwage))
 	assert.Equal(t, 0, g2.MinBond().Cmp(minBond))
 }

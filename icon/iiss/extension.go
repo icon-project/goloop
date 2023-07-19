@@ -610,7 +610,7 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 		},
 	)
 
-	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRatio())
+	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate())
 }
 
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
@@ -924,12 +924,12 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 	if prevGlobal != nil && icstate.IISSVersion3 == prevGlobal.GetIISSVersion() {
 		pg := prevGlobal.GetV2()
 		multiplier := big.NewInt(int64(prevGlobal.GetTermPeriod() * icmodule.IScoreICXRatio))
-		divider := big.NewInt(icmodule.MonthBlock * 100)
-		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps())
+		divider := big.NewInt(icmodule.MonthBlock * icmodule.DenomInRate)
+		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().NumBigInt())
 		rewardCPS.Mul(rewardCPS, multiplier)
 		rewardCPS.Div(rewardCPS, divider)
 		reward.Add(reward, rewardCPS)
-		rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay())
+		rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().NumBigInt())
 		rewardRelay.Mul(rewardRelay, multiplier)
 		rewardRelay.Div(rewardRelay, divider)
 		reward.Add(reward, rewardRelay)
@@ -1098,10 +1098,12 @@ func (es *ExtensionStateImpl) applyCalculationResult(calculator Calculator, bloc
 
 		if icstate.IISSVersion3 == g2.GetIISSVersion() {
 			pg := g2.GetV2()
-			rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps())
-			rewardCPS.Mul(rewardCPS, big.NewInt(10)) // 10 = IScoreICXRation / 100
+			// 0.1 = IScoreICXRation / 10000
+			divider := big.NewInt(10)
+			rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().NumBigInt())
+			rewardCPS.Div(rewardCPS, divider)
 			reward.Add(reward, rewardCPS)
-			rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay())
+			rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().NumBigInt())
 			rewardRelay.Mul(rewardCPS, big.NewInt(10))
 			reward.Add(reward, rewardRelay)
 		}
@@ -1724,22 +1726,25 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 	}
 	fs := []struct {
 		key  string
-		rate *big.Int
+		rate icmodule.Rate
 	}{
 		{icstate.CPSKey, rf.Icps},
 		{icstate.RelayKey, rf.Irelay},
 	}
 	ns := es.State.GetNetworkScores(cc)
-	div := big.NewInt(100 * icmodule.MonthBlock)
+	div := big.NewInt(icmodule.DenomInRate * icmodule.MonthBlock)
 	base := new(big.Int).Mul(rf.Iglobal, new(big.Int).SetInt64(term.Period()))
 	from := cc.Treasury()
 	for _, k := range fs {
-		if k.rate.Sign() != 1 {
+		if k.rate == 0 {
 			es.logger.Warnf("There is no reward fund for %s", k.key)
 			continue
 		}
+		if !k.rate.IsValid() {
+			es.logger.Panicf("InvalidInflationRate(key=%s,rate=%d)", k.key, k.rate)
+		}
 		to, ok := ns[k.key]
-		amount := new(big.Int).Mul(base, k.rate)
+		amount := new(big.Int).Mul(base, k.rate.NumBigInt())
 		amount.Div(amount, div)
 		if ok {
 			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {

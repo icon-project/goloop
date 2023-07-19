@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -57,7 +58,7 @@ func TestVoted(t *testing.T) {
 	assert.Equal(t, 0, t1.BondedDelegation().Cmp(t2.BondedDelegation()))
 
 	// v1 -> v2
-	commissionRate := big.NewInt(1000)
+	commissionRate := icmodule.Rate(1000)
 	t2.SetVersion(VotedVersion2)
 	t2.SetCommissionRate(commissionRate)
 
@@ -73,7 +74,7 @@ func TestVoted(t *testing.T) {
 	assert.Equal(t, VotedVersion2, t3.Version())
 	assert.Equal(t, 0, t3.Delegated().Cmp(t2.Delegated()))
 	assert.Equal(t, 0, t3.BondedDelegation().Sign())
-	assert.Equal(t, 0, t3.CommissionRate().Cmp(t2.CommissionRate()))
+	assert.Equal(t, t2.CommissionRate(), t3.CommissionRate())
 }
 
 func makeVotedFotTest(delegated int64, bonded int64) *Voted {
@@ -137,7 +138,7 @@ func TestVoted_UpdateBondedDelegation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			t1 := makeVotedFotTest(in.delegated, in.bonded)
-			t1.UpdateBondedDelegation(in.bondRequirement)
+			t1.UpdateBondedDelegation(icmodule.ToRate(int64(in.bondRequirement)))
 
 			assert.Equal(t, tt.want, t1.BondedDelegation().Int64())
 		})

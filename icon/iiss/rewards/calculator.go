@@ -235,24 +235,6 @@ func (c *Calculator) processClaim() error {
 }
 
 func (c *Calculator) postWork() (err error) {
-	// check result
-	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
-		if c.stats.BlockProduce().Sign() != 0 {
-			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.BlockProduce())
-		}
-		g := c.global.GetV2()
-		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
-		maxVotedReward.Mul(maxVotedReward, icmodule.BigIntIScoreICXRatio)
-		if c.stats.Voted().Cmp(maxVotedReward) == 1 {
-			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.Voted())
-		}
-		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
-		maxVotingReward.Mul(maxVotingReward, icmodule.BigIntIScoreICXRatio)
-		if c.stats.Voting().Cmp(maxVotingReward) == 1 {
-			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.Voting())
-		}
-	}
-
 	// write BTP data to temp. Use BTP data in the next term
 	if err = c.processBTP(); err != nil {
 		return err

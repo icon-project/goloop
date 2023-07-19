@@ -17,9 +17,12 @@
 package icstate
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/icon/icmodule"
 )
 
 func TestRewardFund(t *testing.T) {
@@ -27,9 +30,9 @@ func TestRewardFund(t *testing.T) {
 	iprep := int64(50)
 	ivoter := int64(50)
 	rf := NewRewardFund()
-	rf.Iglobal.SetInt64(iglobal)
-	rf.Iprep.SetInt64(iprep)
-	rf.Ivoter.SetInt64(ivoter)
+	rf.Iglobal = big.NewInt(iglobal)
+	rf.Iprep = icmodule.ToRate(iprep)
+	rf.Ivoter = icmodule.ToRate(ivoter)
 
 	bs := rf.Bytes()
 
@@ -42,6 +45,6 @@ func TestRewardFund(t *testing.T) {
 	rf3 := rf.Clone()
 	assert.True(t, rf.Equal(rf3))
 
-	assert.Equal(t, int64(iglobal*iprep/100), rf.GetPRepFund().Int64())
-	assert.Equal(t, int64(iglobal*ivoter/100), rf.GetVoterFund().Int64())
+	assert.Equal(t, iglobal*iprep/100, rf.GetPRepFund().Int64())
+	assert.Equal(t, iglobal*ivoter/100, rf.GetVoterFund().Int64())
 }

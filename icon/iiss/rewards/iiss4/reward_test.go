@@ -18,6 +18,7 @@ package iiss4
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 	"testing"
@@ -61,8 +62,10 @@ func (t *testCalculator) Stats() *rc.Stats {
 }
 
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
-	return t.stage.AddGlobalV3(0, 0, 100, electedPRepCount, 5,
-		big.NewInt(1_000_000), big.NewInt(77), big.NewInt(13), big.NewInt(10), big.NewInt(0), big.NewInt(100))
+	return t.stage.AddGlobalV3(0, 0, 100, electedPRepCount, icmodule.ToRate(5),
+		big.NewInt(1_000_000),
+		icmodule.ToRate(77), icmodule.ToRate(13), icmodule.ToRate(10), icmodule.ToRate(0),
+		big.NewInt(100))
 }
 
 func (t *testCalculator) GetGlobalFromBack() (icstage.Global, error) {
@@ -109,7 +112,7 @@ func (t *testCalculator) AddEventBond(offset int, from module.Address, votes ics
 	return t.stage.AddEventBond(offset, from, votes)
 }
 
-func (t *testCalculator) AddEventCommissionRate(offset int, from module.Address, value int) (int64, error) {
+func (t *testCalculator) AddEventCommissionRate(offset int, from module.Address, value icmodule.Rate) (int64, error) {
 	return t.stage.AddEventCommissionRate(offset, from, value)
 }
 
@@ -204,10 +207,10 @@ func TestReward(t *testing.T) {
 
 	v1 := icreward.NewVotedV2()
 	v1.SetStatus(icstage.ESEnable)
-	v1.SetCommissionRate(big.NewInt(10))
+	v1.SetCommissionRate(icmodule.ToRate(10))
 	v2 := icreward.NewVotedV2()
 	v2.SetStatus(icstage.ESEnable)
-	v2.SetCommissionRate(big.NewInt(5))
+	v2.SetCommissionRate(icmodule.ToRate(5))
 	v2.SetBonded(big.NewInt(20))
 	v2.SetDelegated(big.NewInt(20))
 	v3 := icreward.NewVotedV2()
@@ -400,12 +403,12 @@ func TestReward(t *testing.T) {
 	commissionRate := []struct {
 		offset int
 		from   module.Address
-		rate   int
+		rate   icmodule.Rate
 	}{
-		{20, a1, 5},
-		{30, a1, 10},
-		{40, a1, 80},
-		{40, a2, 10},
+		{20, a1, icmodule.ToRate(5)},
+		{30, a1, icmodule.ToRate(10)},
+		{40, a1, icmodule.ToRate(80)},
+		{40, a2, icmodule.ToRate(10)},
 	}
 	for _, cr := range commissionRate {
 		_, err = tc.AddEventCommissionRate(cr.offset, cr.from, cr.rate)
@@ -508,11 +511,11 @@ func TestReward(t *testing.T) {
 
 	crExpects := []struct {
 		addr  module.Address
-		rate  int64
-		nRate int64
+		rate  icmodule.Rate
+		nRate icmodule.Rate
 	}{
-		{a1, 10, 80},
-		{a2, 5, 10},
+		{a1, icmodule.ToRate(10), icmodule.ToRate(80)},
+		{a2, icmodule.ToRate(5), icmodule.ToRate(10)},
 		{a3, 0, 0},
 		{a4, 0, 0},
 		{a5, 0, 0},
@@ -521,8 +524,8 @@ func TestReward(t *testing.T) {
 		t.Run(fmt.Sprintf("processEvent-CommissionRate-%s", e.addr), func(t *testing.T) {
 			key := icutils.ToKey(e.addr)
 			p := rr.pi.GetPRep(key)
-			assert.Equal(t, e.rate, p.CommissionRate().Int64())
-			assert.Equal(t, e.nRate, p.NCommissionRate().Int64())
+			assert.Equal(t, e.rate, p.CommissionRate())
+			assert.Equal(t, e.nRate, p.NCommissionRate())
 		})
 	}
 
@@ -580,7 +583,7 @@ func TestReward(t *testing.T) {
 	for _, p := range rr.pi.preps {
 		t.Run(fmt.Sprintf("prepReward-%s", p.Owner()), func(t *testing.T) {
 			rewardable := p.Rank() <= rr.pi.ElectedPRepCount() && p.Status() == icstage.ESEnable && p.AccumulatedPower().Sign() == 1
-			if p.CommissionRate().Sign() == 0 {
+			if p.CommissionRate() == 0 {
 				assert.Equal(t, 0, p.Commission().Sign())
 			} else {
 				assert.Equal(t, rewardable, p.Commission().Sign() == 1, p)
@@ -588,7 +591,7 @@ func TestReward(t *testing.T) {
 			assert.Equal(t, rewardable, p.VoterReward().Sign() == 1)
 			iScore, err := tc.GetIScoreFromTemp(p.Owner())
 			assert.NoError(t, err)
-			if rewardable && (p.CommissionRate().Sign() == 1 || p.Bonded().Cmp(rr.g.GetV3().MinBond()) >= 0) {
+			if rewardable && (p.CommissionRate() > 0 || p.Bonded().Cmp(rr.g.GetV3().MinBond()) >= 0) {
 				assert.Equal(t, rewardable, iScore.Value().Sign() == 1)
 			} else {
 				assert.Nil(t, iScore)

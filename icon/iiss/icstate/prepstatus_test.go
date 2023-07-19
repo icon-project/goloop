@@ -71,7 +71,7 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			br := int64(5)
+			br := icmodule.ToRate(5)
 			in := tt.args
 
 			ps := NewPRepStatus()

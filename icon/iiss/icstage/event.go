@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -435,7 +436,7 @@ func NewEventVotedReward() *EventVotedReward {
 type EventCommissionRate struct {
 	icobject.NoDatabase
 	target *common.Address
-	value  int
+	value  icmodule.Rate
 }
 
 func (e *EventCommissionRate) Version() int {
@@ -446,7 +447,7 @@ func (e *EventCommissionRate) Target() *common.Address {
 	return e.target
 }
 
-func (e *EventCommissionRate) Value() int {
+func (e *EventCommissionRate) Value() icmodule.Rate {
 	return e.value
 }
 
@@ -488,7 +489,7 @@ func newEventCommissionRate(_ icobject.Tag) *EventCommissionRate {
 	return new(EventCommissionRate)
 }
 
-func NewEventCommissionRate(target *common.Address, value int) *EventCommissionRate {
+func NewEventCommissionRate(target *common.Address, value icmodule.Rate) *EventCommissionRate {
 	return &EventCommissionRate{
 		target: target,
 		value:  value,

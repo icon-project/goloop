@@ -16,7 +16,7 @@ FROM ${IMAGE_ROCKSDB_DEPS} as rocksdb
 ARG BASE
 FROM ${BASE}
 LABEL MAINTAINER="t_arch@iconloop.com"
-RUN apk add --update --no-cache zlib bzip2-dev snappy lz4-dev zstd-dev libtbb gflags
+RUN apk add --update --no-cache zlib bzip2-dev snappy lz4-dev zstd-dev libtbb gflags libc6-compat
 COPY --from=rocksdb /work/rocksdb/lib /usr/lib/
 
 ARG GOLOOP_BASE_SHA

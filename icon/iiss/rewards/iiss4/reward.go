@@ -191,9 +191,10 @@ func (r *reward) write() error {
 
 func (r *reward) prepReward() error {
 	global := r.g.GetV3()
+	iglobal := global.GetIGlobal()
 	return r.pi.DistributeReward(
-		new(big.Int).Mul(global.GetIGlobal(), global.GetIPRep()),
-		new(big.Int).Mul(global.GetIGlobal(), global.GetIWage()),
+		global.GetIPRep().MulBigInt(iglobal),
+		global.GetIWage().MulBigInt(iglobal),
 		global.MinBond(),
 		r,
 	)

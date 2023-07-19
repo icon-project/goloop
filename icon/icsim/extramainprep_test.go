@@ -26,7 +26,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 	//var blockHeight int64
 	var csi module.ConsensusInfo
 	var vl []module.Validator
-	br := int64(5)
+	br := icmodule.ToRate(5) // 5%
 	//var prep *icstate.PRepSet
 
 	c := NewConfig()
@@ -48,7 +48,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 
 	// Set revision to 17 to activate extra main preps
 	tx := sim.SetRevision(icmodule.RevisionExtraMainPReps)
-	_, err = sim.GoByTransaction(tx, csi)
+	_, err = sim.GoByTransaction(csi, tx)
 	assert.NoError(t, err)
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
@@ -59,7 +59,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 	emptyBonds := make([]*icstate.Bond, 0, 0)
 	for i := 0; i < 3; i++ {
 		tx = sim.SetBond(env.bonders[i], emptyBonds)
-		_, err = sim.GoByTransaction(tx, csi)
+		_, err = sim.GoByTransaction(csi, tx)
 		assert.NoError(t, err)
 
 		err = sim.GoToTermEnd(csi)
@@ -122,7 +122,7 @@ func Test_PreventZeroPowerExtraMainPReps(t *testing.T) {
 
 	// Set revision to 17 to activate extra main preps
 	tx := sim.SetRevision(icmodule.RevisionExtraMainPReps)
-	_, err = sim.GoByTransaction(tx, csi)
+	_, err = sim.GoByTransaction(csi, tx)
 	assert.NoError(t, err)
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)

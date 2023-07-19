@@ -140,7 +140,7 @@ func TestState_AddEvent(t *testing.T) {
 		mainPRepCount  int64
 		pRepCount      int64
 		validators     []*common.Address
-		commissionRate int
+		commissionRate icmodule.Rate
 	}
 
 	tests := []struct {
@@ -180,7 +180,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:          TypeEventCommissionRate,
 				offset:         offset2,
 				address:        addr2,
-				commissionRate: 10,
+				commissionRate: icmodule.ToRate(10),
 			},
 		},
 	}
@@ -256,7 +256,7 @@ func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Add
 	assert.Equal(t, flag, event.Status())
 }
 
-func checkAddEventCommissionRate(t *testing.T, s *State, offset int, address *common.Address, value int) {
+func checkAddEventCommissionRate(t *testing.T, s *State, offset int, address *common.Address, value icmodule.Rate) {
 	index, err := s.AddEventCommissionRate(offset, address, value)
 	assert.NoError(t, err)
 
@@ -388,11 +388,11 @@ func TestState_AddGlobal(t *testing.T) {
 		electedPRepCount int
 		period           int
 		iglobal          *big.Int
-		iprep            *big.Int
-		ivoter           *big.Int
-		icps             *big.Int
-		irelay           *big.Int
-		bondRequirement  int
+		iprep            icmodule.Rate
+		ivoter           icmodule.Rate
+		icps             icmodule.Rate
+		irelay           icmodule.Rate
+		bondRequirement  icmodule.Rate
 	}
 
 	tests := []struct {
@@ -420,12 +420,12 @@ func TestState_AddGlobal(t *testing.T) {
 				startHeight:      0,
 				offsetLimit:      1000,
 				iglobal:          big.NewInt(100),
-				iprep:            big.NewInt(50),
-				ivoter:           big.NewInt(50),
-				icps:             big.NewInt(0),
-				irelay:           big.NewInt(0),
+				iprep:            icmodule.ToRate(50),
+				ivoter:           icmodule.ToRate(50),
+				icps:             icmodule.ToRate(0),
+				irelay:           icmodule.ToRate(0),
 				electedPRepCount: 100,
-				bondRequirement:  5,
+				bondRequirement:  icmodule.ToRate(5),
 			},
 		},
 	}
@@ -484,10 +484,10 @@ func TestState_AddGlobal(t *testing.T) {
 				assert.Equal(t, a.revision, global.GetRevision())
 				assert.Equal(t, a.offsetLimit, global.GetOffsetLimit())
 				assert.Equal(t, 0, a.iglobal.Cmp(global.GetIGlobal()))
-				assert.Equal(t, 0, a.iprep.Cmp(global.GetIPRep()))
-				assert.Equal(t, 0, a.ivoter.Cmp(global.GetIVoter()))
-				assert.Equal(t, 0, a.icps.Cmp(global.GetICps()))
-				assert.Equal(t, 0, a.irelay.Cmp(global.GetIRelay()))
+				assert.Equal(t, a.iprep, global.GetIPRep())
+				assert.Equal(t, a.ivoter, global.GetIVoter())
+				assert.Equal(t, a.icps, global.GetICps())
+				assert.Equal(t, a.irelay, global.GetIRelay())
 				assert.Equal(t, a.electedPRepCount, global.GetElectedPRepCount())
 				assert.Equal(t, a.bondRequirement, global.GetBondRequirement())
 			}

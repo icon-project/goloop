@@ -19,38 +19,36 @@ package icstate
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/service/scoreresult"
-
-	"github.com/icon-project/goloop/module"
-
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
-	VarIRep                                  = "irep"
-	VarRRep                                  = "rrep"
-	VarMainPRepCount                         = "main_prep_count"
-	VarSubPRepCount                          = "sub_prep_count"
-	VarExtraMainPRepCount                    = "extra_main_prep_count"
-	VarTotalStake                            = "total_stake"
-	VarIISSVersion                           = "iiss_version"
-	VarTermPeriod                            = "term_period"
-	VarBondRequirement                       = "bond_requirement"
-	VarUnbondingPeriodMultiplier             = "unbonding_period_multiplier"
-	VarLockMinMultiplier                     = "lockMinMultiplier"
-	VarLockMaxMultiplier                     = "lockMaxMultiplier"
-	VarRewardFund                            = "reward_fund"
-	VarUnbondingMax                          = "unbonding_max"
-	VarValidationPenaltyCondition            = "validation_penalty_condition"
-	VarConsistentValidationPenaltyCondition  = "consistent_validation_penalty_condition"
-	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
-	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
-	VarDelegationSlotMax                     = "delegation_slot_max"
-	DictNetworkScores                        = "network_scores"
-	VarNonVotePenaltySlashRatio              = "nonvote_penalty_slashRatio"
+	VarIRep                                 = "irep"
+	VarRRep                                 = "rrep"
+	VarMainPRepCount                        = "main_prep_count"
+	VarSubPRepCount                         = "sub_prep_count"
+	VarExtraMainPRepCount                   = "extra_main_prep_count"
+	VarTotalStake                           = "total_stake"
+	VarIISSVersion                          = "iiss_version"
+	VarTermPeriod                           = "term_period"
+	VarBondRequirement                      = "bond_requirement"
+	VarUnbondingPeriodMultiplier            = "unbonding_period_multiplier"
+	VarLockMinMultiplier                    = "lockMinMultiplier"
+	VarLockMaxMultiplier                    = "lockMaxMultiplier"
+	VarRewardFund                           = "reward_fund"
+	VarUnbondingMax                         = "unbonding_max"
+	VarValidationPenaltyCondition           = "validation_penalty_condition"
+	VarConsistentValidationPenaltyCondition = "consistent_validation_penalty_condition"
+	VarConsistentValidationPenaltyMask      = "consistent_validation_penalty_mask"
+	VarConsistentValidationPenaltySlashRate = "consistent_validation_penalty_slashRatio"
+	VarDelegationSlotMax                    = "delegation_slot_max"
+	DictNetworkScores                       = "network_scores"
+	VarNonVotePenaltySlashRate              = "nonvote_penalty_slashRatio"
 )
 
 const (
@@ -212,15 +210,16 @@ func (s *State) SetTotalStake(value *big.Int) error {
 	return setValue(s.store, VarTotalStake, value)
 }
 
-func (s *State) GetBondRequirement() int64 {
-	return getValue(s.store, VarBondRequirement).Int64()
+func (s *State) GetBondRequirement() icmodule.Rate {
+	v := getValue(s.store, VarBondRequirement).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetBondRequirement(value int64) error {
-	if value < 0 || value > 100 {
-		return errors.IllegalArgumentError.New("Bond Requirement should range from 0 to 100")
+func (s *State) SetBondRequirement(br icmodule.Rate) error {
+	if !br.IsValid() {
+		return errors.IllegalArgumentError.New("Bond Requirement should range from 0% to 100%")
 	}
-	return setValue(s.store, VarBondRequirement, value)
+	return setValue(s.store, VarBondRequirement, br.Percent())
 }
 
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
@@ -325,15 +324,16 @@ func (s *State) SetConsistentValidationPenaltyMask(value int64) error {
 	return setValue(s.store, VarConsistentValidationPenaltyMask, value)
 }
 
-func (s *State) GetConsistentValidationPenaltySlashRatio() int {
-	return int(getValue(s.store, VarConsistentValidationPenaltySlashRatio).Int64())
+func (s *State) GetConsistentValidationPenaltySlashRate() icmodule.Rate {
+	v := getValue(s.store, VarConsistentValidationPenaltySlashRate).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetConsistentValidationPenaltySlashRatio(value int) error {
-	if value < 0 || value > 100 {
+func (s *State) SetConsistentValidationPenaltySlashRate(value icmodule.Rate) error {
+	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)
+	return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
 }
 
 func (s *State) GetDelegationSlotMax() int {
@@ -345,15 +345,16 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func (s *State) GetNonVotePenaltySlashRatio() int {
-	return int(getValue(s.store, VarNonVotePenaltySlashRatio).Int64())
+func (s *State) GetNonVotePenaltySlashRate() icmodule.Rate {
+	v := getValue(s.store, VarNonVotePenaltySlashRate).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetNonVotePenaltySlashRatio(value int) error {
-	if value < 0 || value > 100 {
+func (s *State) SetNonVotePenaltySlashRate(value icmodule.Rate) error {
+	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarNonVotePenaltySlashRatio, value)
+	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
 }
 
 func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
@@ -367,7 +368,7 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
 	jso["termPeriod"] = s.GetTermPeriod()
-	jso["bondRequirement"] = br
+	jso["bondRequirement"] = br.Percent()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund().ToJSON()
@@ -376,10 +377,10 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()
 	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
-	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
+	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRate().Percent()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
-	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRatio()
+	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRate().Percent()
 
 	preps := s.GetPRepSet(nil, 0)
 	if preps != nil {

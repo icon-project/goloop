@@ -10,7 +10,7 @@ dependencies {
     implementation 'org.ow2.asm:asm-commons:7.0'
     implementation 'org.ow2.asm:asm-tree:7.0'
     implementation 'org.ow2.asm:asm-util:7.0'
-    implementation 'foundation.icon:blst-java:0.3.0'
+    implementation 'foundation.icon:blst-java:0.3.1'
 
     testImplementation(
         'junit:junit:4.13.2',

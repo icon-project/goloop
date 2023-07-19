@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -38,7 +41,7 @@ type Voted struct {
 	delegated        *big.Int // update via DELEGATE event
 	bonded           *big.Int // update via BOND event
 	bondedDelegation *big.Int // update when start calculation for P-Rep voted reward
-	commissionRate   *big.Int
+	commissionRate   icmodule.Rate
 }
 
 func (v *Voted) Version() int {
@@ -85,33 +88,20 @@ func (v *Voted) SetBondedDelegation(value *big.Int) {
 	v.bondedDelegation = value
 }
 
-func (v *Voted) UpdateBondedDelegation(bondRequirement int) {
-	if bondRequirement == 0 {
-		// IISS 2: bondedDelegation = delegated
-		// IISS 3 and bondRequirement is disabled: bondedDelegation = delegated + bonded
-		v.bondedDelegation = new(big.Int).Add(v.delegated, v.bonded)
-	} else {
-		// IISS 3 and bondRequirement is enabled
-		voted := new(big.Int).Add(v.delegated, v.bonded)
-		bondedDelegation := new(big.Int).Mul(v.bonded, big.NewInt(100))
-		bondedDelegation.Div(bondedDelegation, big.NewInt(int64(bondRequirement)))
-		if voted.Cmp(bondedDelegation) > 0 {
-			v.bondedDelegation = bondedDelegation
-		} else {
-			v.bondedDelegation = voted
-		}
-	}
+func (v *Voted) UpdateBondedDelegation(bondRequirement icmodule.Rate) {
+	voted := new(big.Int).Add(v.delegated, v.bonded)
+	v.bondedDelegation = icutils.CalcPower(bondRequirement, v.bonded, voted)
 }
 
 func (v *Voted) GetVotedAmount() *big.Int {
 	return new(big.Int).Add(v.bonded, v.delegated)
 }
 
-func (v *Voted) CommissionRate() *big.Int {
+func (v *Voted) CommissionRate() icmodule.Rate {
 	return v.commissionRate
 }
 
-func (v *Voted) SetCommissionRate(value *big.Int) {
+func (v *Voted) SetCommissionRate(value icmodule.Rate) {
 	v.commissionRate = value
 }
 
@@ -119,7 +109,7 @@ func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
 	var err error
 	switch v.version {
 	case VotedVersion1:
-		v.commissionRate = new(big.Int)
+		v.commissionRate = 0
 		var enable bool
 		_, err = decoder.DecodeMulti(&enable, &v.delegated, &v.bonded, &v.bondedDelegation)
 		if enable {
@@ -153,7 +143,7 @@ func (v *Voted) Equal(o icobject.Impl) bool {
 			v.delegated.Cmp(v2.delegated) == 0 &&
 			v.bonded.Cmp(v2.bonded) == 0 &&
 			v.bondedDelegation.Cmp(v2.bondedDelegation) == 0 &&
-			v.commissionRate.Cmp(v2.commissionRate) == 0
+			v.commissionRate == v2.commissionRate
 	} else {
 		return false
 	}
@@ -169,7 +159,7 @@ func (v *Voted) Clone() *Voted {
 	nv.delegated.Set(v.delegated)
 	nv.bonded.Set(v.bonded)
 	nv.bondedDelegation.Set(v.bondedDelegation)
-	nv.commissionRate.Set(v.commissionRate)
+	nv.commissionRate = v.commissionRate
 	return nv
 }
 
@@ -204,7 +194,6 @@ func NewVoted() *Voted {
 		delegated:        new(big.Int),
 		bonded:           new(big.Int),
 		bondedDelegation: new(big.Int),
-		commissionRate:   new(big.Int),
 	}
 }
 

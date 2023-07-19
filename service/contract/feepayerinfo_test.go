@@ -148,7 +148,12 @@ func TestFeePayerInfo_PaySteps(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, steps, paid)
 		rct := new(payReceipt)
-		base.GetLogs(rct)
+		hasLog := base.GetLogs(rct)
+		assert.True(t, hasLog)
+		expectedPayments := []*feePayment {
+			{ contract1, paid, paid },
+		}
+		assert.Equal(t, expectedPayments, rct.payments)
 	})
 
 	t.Run("no_set_in_middle", func(t *testing.T) {
@@ -186,7 +191,8 @@ func TestFeePayerInfo_PaySteps(t *testing.T) {
 		assert.True(t, big.NewInt(1576).Cmp(steps) == 0)
 
 		rct := new(payReceipt)
-		base.GetLogs(rct)
+		hasLog := base.GetLogs(rct)
+		assert.True(t, hasLog)
 
 		expectedPayments := []*feePayment{
 			{contract1, big.NewInt(564), big.NewInt(564)},
@@ -241,7 +247,8 @@ func TestFeePayerInfo_PaySteps(t *testing.T) {
 		assert.Equal(t, big.NewInt(759), steps)
 
 		rct := new(payReceipt)
-		base.GetLogs(rct)
+		hasLog := base.GetLogs(rct)
+		assert.True(t, hasLog)
 
 		expectedPayments := []*feePayment{
 			{state.SystemAddress, big.NewInt(659), nil},
@@ -303,7 +310,8 @@ func TestFeePayerInfo_PaySteps(t *testing.T) {
 		assert.True(t, big.NewInt(2280).Cmp(steps) == 0)
 
 		rct := new(payReceipt)
-		base.GetLogs(rct)
+		hasLog := base.GetLogs(rct)
+		assert.True(t, hasLog)
 
 		expectedPayments := []*feePayment{
 			{state.SystemAddress, big.NewInt(392), nil},
@@ -315,4 +323,51 @@ func TestFeePayerInfo_PaySteps(t *testing.T) {
 		})
 		assert.Equal(t, expectedPayments, rct.payments)
 	})
+}
+
+func TestFeePayerInfo_GetLogs(t *testing.T) {
+	contract1 := common.MustNewAddressFromString("cx12")
+	contract1IDStr := string(contract1.ID())
+	t.Run("no_entry_get_logs", func(t *testing.T) {
+		var base FeePayerInfo
+		rct := new(payReceipt)
+		hasLog := base.GetLogs(rct)
+		assert.False(t, hasLog)
+	});
+	t.Run("entry_no_pay_get_logs", func(t *testing.T) {
+		var base FeePayerInfo
+		err := base.SetFeeProportion(contract1, 100)
+		assert.NoError(t, err)
+
+		rct := new(payReceipt)
+		hasLog := base.GetLogs(rct)
+		assert.False(t, hasLog)
+	});
+	t.Run("entry_pay_get_logs", func(t *testing.T) {
+		var base FeePayerInfo
+		err := base.SetFeeProportion(contract1, 100)
+		assert.NoError(t, err)
+
+		cc := &payCallContext{
+			accounts: map[string]*payAccountState{
+				contract1IDStr: {
+					deposit: big.NewInt(100),
+				},
+			},
+			stepPrice: big.NewInt(10),
+		}
+		expSteps := big.NewInt(100)
+		steps := big.NewInt(1000)
+		paid, err := base.PaySteps(cc, steps)
+		assert.NoError(t, err)
+		assert.Equal(t, expSteps, paid)
+
+		rct := new(payReceipt)
+		hasLog := base.GetLogs(rct)
+		assert.True(t, hasLog)
+		expectedPayments := []*feePayment{
+			{contract1, expSteps, expSteps},
+		}
+		assert.Equal(t, expectedPayments, rct.payments)
+	});
 }

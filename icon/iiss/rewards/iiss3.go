@@ -241,9 +241,10 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 		if g.GetTermPeriod() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
+		iprep := g.GetIPRep()
+		multiplier.Mul(g.GetIGlobal(), iprep.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * icmodule.MonthBlock))
+		divider.SetInt64(iprep.DenomInt64() * icmodule.MonthBlock)
 	}
 	return
 }
@@ -299,7 +300,7 @@ func (c *Calculator) calculateVotedReward() error {
 			from = keyOffset
 		case icstage.TypeEventCommissionRate:
 			obj := icstage.ToEventCommissionRate(o)
-			vInfo.SetCommissionRate(obj.Target(), big.NewInt(int64(obj.Value())))
+			vInfo.SetCommissionRate(obj.Target(), obj.Value())
 		}
 	}
 	if from < c.global.GetOffsetLimit() {
@@ -425,9 +426,10 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 		if g.GetTermPeriod() == 0 || totalVotingAmount.Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
+		ivoter := g.GetIVoter()
+		multiplier.Mul(g.GetIGlobal(), ivoter.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * icmodule.MonthBlock))
+		divider.SetInt64(ivoter.DenomInt64() * icmodule.MonthBlock)
 		divider.Mul(divider, totalVotingAmount)
 	}
 	return
@@ -942,7 +944,7 @@ func (vd *votedData) SetStatus(status icstage.EnableStatus) {
 	vd.voted.SetStatus(status)
 }
 
-func (vd *votedData) SetCommissionRate(value *big.Int) {
+func (vd *votedData) SetCommissionRate(value icmodule.Rate) {
 	vd.voted.SetCommissionRate(value)
 	vd.voted.SetVersion(icreward.VotedVersion2)
 }
@@ -981,7 +983,7 @@ func (vd *votedData) UpdateToWrite() {
 	}
 }
 
-func (vd *votedData) UpdateBondedDelegation(bondRequirement int) {
+func (vd *votedData) UpdateBondedDelegation(bondRequirement icmodule.Rate) {
 	vd.voted.UpdateBondedDelegation(bondRequirement)
 }
 
@@ -1071,7 +1073,7 @@ func (vi *votedInfo) SetEnable(addr module.Address, status icstage.EnableStatus)
 	}
 }
 
-func (vi *votedInfo) SetCommissionRate(addr module.Address, value *big.Int) {
+func (vi *votedInfo) SetCommissionRate(addr module.Address, value icmodule.Rate) {
 	if vData, ok := vi.preps[icutils.ToKey(addr)]; ok {
 		vData.SetCommissionRate(value)
 	}

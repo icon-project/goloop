@@ -881,3 +881,16 @@ func (m *manager) ExecuteTransaction(result []byte, vh []byte, js []byte, bi mod
 func (m *manager) AddSyncRequest(id db.BucketID, key []byte) error {
 	return m.syncer.AddRequest(id, key)
 }
+
+func (m *manager) GetStepPrice(result []byte) (*big.Int, error) {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return nil, err
+	}
+	price := scoredb.NewVarDB(as, state.VarStepPrice)
+	if value := price.BigInt(); value != nil {
+		return value, nil
+	} else {
+		return new(big.Int), nil
+	}
+}

@@ -132,6 +132,15 @@ type Transaction struct {
 	TxIndex     jsonrpc.HexInt   `json:"txIndex" validate:"required,t_int"`
 }
 
+type NetworkInfo struct {
+	Platform  string         `json:"platform"`
+	NID       jsonrpc.HexInt `json:"nid"`
+	Channel   string         `json:"channel"`
+	Earliest  jsonrpc.HexInt `json:"earliest"`
+	Latest    jsonrpc.HexInt `json:"latest"`
+	StepPrice jsonrpc.HexInt `json:"stepPrice"`
+}
+
 //refer service/state/btp.go:887 network.ToJSON
 //refer server/v3/api_v3.go:692 getBTPNetworkInfo
 type BTPNetworkInfo struct {
@@ -407,6 +416,15 @@ func (c *ClientV3) GetBTPSourceInformation() (*BTPSourceInformation, error) {
 func (c *ClientV3) GetScoreStatus(param *v3.ScoreAddressParam) (interface{}, error) {
 	var result interface{}
 	_, err := c.Do("icx_getScoreStatus", param, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *ClientV3) GetNetworkInfo() (*NetworkInfo, error) {
+	var result *NetworkInfo
+	_, err := c.Do("icx_getNetworkInfo", nil, &result)
 	if err != nil {
 		return nil, err
 	}

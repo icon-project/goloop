@@ -686,10 +686,10 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 		return err
 	}
 	rf := es.State.GetRewardFund()
-	rf.Iprep = &iprep.Int
-	rf.Icps = &icps.Int
-	rf.Irelay = &irelay.Int
-	rf.Ivoter = &ivoter.Int
+	rf.Iprep = icmodule.ToRate(iprep.Int64())
+	rf.Icps = icmodule.ToRate(icps.Int64())
+	rf.Irelay = icmodule.ToRate(irelay.Int64())
+	rf.Ivoter = icmodule.ToRate(ivoter.Int64())
 	return es.State.SetRewardFund(rf)
 }
 
@@ -802,13 +802,14 @@ func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common
 	if err != nil {
 		return err
 	}
-	if err = es.State.SetConsistentValidationPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+	rate := icmodule.ToRate(slashingRate.Int64())
+	if err = es.State.SetConsistentValidationPenaltySlashRate(rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
 		return err
 	}
-	s.onSlashingRateChangedEvent("ConsistentValidationPenalty", slashingRate.Int64())
+	s.onSlashingRateChangedEvent("ConsistentValidationPenalty", rate)
 	return nil
 }
 
@@ -823,20 +824,21 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	if err != nil {
 		return err
 	}
-	if err = es.State.SetNonVotePenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+	rate := icmodule.ToRate(slashingRate.Int64())
+	if err = es.State.SetNonVotePenaltySlashRate(rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
 		return err
 	}
-	s.onSlashingRateChangedEvent("NonVotePenalty", slashingRate.Int64())
+	s.onSlashingRateChangedEvent("NonVotePenalty", rate)
 	return nil
 }
 
-func (s *chainScore) onSlashingRateChangedEvent(name string, rate int64) {
+func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate) {
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
-		[][]byte{intconv.Int64ToBytes(rate)},
+		[][]byte{intconv.Int64ToBytes(rate.Percent())},
 	)
 }
 

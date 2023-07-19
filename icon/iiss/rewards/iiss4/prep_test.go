@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -36,11 +37,11 @@ type prep struct {
 	bond           int64
 	delegate       int64
 	pubkey         bool
-	commissionRate int64
+	commissionRate icmodule.Rate
 }
 
 func newTestPRep(p prep) *PRep {
-	return NewPRep(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), big.NewInt(p.commissionRate), p.pubkey)
+	return NewPRep(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
 }
 
 func TestPRep_getPower(t *testing.T) {
@@ -209,7 +210,7 @@ func TestPRep_Bigger(t *testing.T) {
 			false,
 		},
 	}
-	br := 5
+	br := icmodule.ToRate(5)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -227,10 +228,10 @@ func TestPRep_ToVoted(t *testing.T) {
 	status := icstage.ESEnable
 	bond := int64(100)
 	delegate := int64(0)
-	cr := int64(500)
-	ncr := int64(250)
+	cr := icmodule.Rate(500)
+	ncr := icmodule.Rate(250)
 	p := newTestPRep(prep{a1, status, bond, delegate, true, cr})
-	p.SetNCommissionRate(big.NewInt(ncr))
+	p.SetNCommissionRate(ncr)
 
 	voted := p.ToVoted()
 	assert.Equal(t, icreward.VotedVersion2, voted.Version())
@@ -238,13 +239,13 @@ func TestPRep_ToVoted(t *testing.T) {
 	assert.Equal(t, bond, voted.Bonded().Int64())
 	assert.Equal(t, delegate, voted.Delegated().Int64())
 	assert.Equal(t, 0, voted.BondedDelegation().Sign())
-	assert.Equal(t, ncr, voted.CommissionRate().Int64())
+	assert.Equal(t, ncr, voted.CommissionRate())
 }
 
-func newTestPRepInfo(preps []prep, br, offsetLimit, electedPRepCount int) *PRepInfo {
+func newTestPRepInfo(preps []prep, br icmodule.Rate, offsetLimit, electedPRepCount int) *PRepInfo {
 	pInfo := NewPRepInfo(br, electedPRepCount, offsetLimit)
 	for _, p := range preps {
-		pInfo.Add(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), big.NewInt(p.commissionRate), p.pubkey)
+		pInfo.Add(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
 	}
 	return pInfo
 }
@@ -298,7 +299,7 @@ func TestPRepInfo(t *testing.T) {
 	ranks := []module.Address{a3, a1, a5, a4, a2}
 
 	// Add() and GetPRep()
-	pInfo := newTestPRepInfo(preps, 5, 100, 4)
+	pInfo := newTestPRepInfo(preps, icmodule.ToRate(5), 100, 4)
 	for _, p := range preps {
 		e := newTestPRep(p)
 		r := pInfo.GetPRep(icutils.ToKey(e.Owner()))
@@ -431,11 +432,7 @@ func TestPRepInfo(t *testing.T) {
 	for _, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
 		if p.rank <= pInfo.ElectedPRepCount() {
-			power := new(big.Int).Mul(p.AccumulatedBonded(), big.NewInt(100))
-			power.Div(power, big.NewInt(int64(pInfo.BondRequirement())))
-			if power.Cmp(p.AccumulatedVoted()) == 1 {
-				power.Set(p.AccumulatedVoted())
-			}
+			power := icutils.CalcPower(pInfo.BondRequirement(), p.AccumulatedBonded(), p.AccumulatedVoted())
 			assert.Equal(t, power, p.AccumulatedPower())
 			totalPower.Add(totalPower, p.AccumulatedPower())
 		}
@@ -444,11 +441,11 @@ func TestPRepInfo(t *testing.T) {
 
 	// SetCommissionRate()
 	ocr := pInfo.GetPRep(icutils.ToKey(a1)).CommissionRate()
-	ncr := int(ocr.Int64() + 1)
+	ncr := ocr + 1
 	pInfo.SetCommissionRate(a1, ncr)
 	prep1 := pInfo.GetPRep(icutils.ToKey(a1))
 	assert.Equal(t, ocr, prep1.CommissionRate())
-	assert.Equal(t, big.NewInt(int64(ncr)), prep1.NCommissionRate())
+	assert.Equal(t, ncr, prep1.NCommissionRate())
 
 	// DistributeReward
 	tiu := newTestIScoreUpdater()
@@ -485,6 +482,6 @@ func TestPRepInfo(t *testing.T) {
 
 func prepReward(prep *PRep, totalReward, totalPower int64) (reward, commission int64) {
 	reward = totalReward * prep.AccumulatedPower().Int64() * 1000 / totalPower
-	commission = reward * prep.CommissionRate().Int64() / 100
+	commission = prep.CommissionRate().MulInt64(reward)
 	return
 }

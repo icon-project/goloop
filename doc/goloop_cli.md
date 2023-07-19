@@ -478,7 +478,13 @@ Start to prune the database based on the height
 Chain data reset
 
 ### Usage
-` goloop chain reset CID `
+` goloop chain reset CID [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --block_hash |  | false |  |  Hash of the block at the given height, If height is zero, shall be empty |
+| --height |  | false | 0 |  Block Height |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -869,6 +875,8 @@ Keystore manipulation
 |Command | Description|
 |---|---|
 | [goloop ks gen](#goloop-ks-gen) |  Generate keystore |
+| [goloop ks pubkey](#goloop-ks-pubkey) |  Generate publickey from keystore |
+| [goloop ks verify](#goloop-ks-verify) |  Verify keystore with the password |
 
 ### Parent command
 |Command | Description|
@@ -913,6 +921,61 @@ Generate keystore
 |Command | Description|
 |---|---|
 | [goloop ks gen](#goloop-ks-gen) |  Generate keystore |
+| [goloop ks pubkey](#goloop-ks-pubkey) |  Generate publickey from keystore |
+| [goloop ks verify](#goloop-ks-verify) |  Verify keystore with the password |
+
+## goloop ks pubkey
+
+### Description
+Generate publickey from keystore
+
+### Usage
+` goloop ks pubkey `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --keystore, -k |  | false | keystore.json |  Keystore file path |
+| --password, -p |  | false | gochain |  Password for the keystore |
+| --secret, -s |  | false |  |  KeySecret file path |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop ks](#goloop-ks) |  Keystore manipulation |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop ks gen](#goloop-ks-gen) |  Generate keystore |
+| [goloop ks pubkey](#goloop-ks-pubkey) |  Generate publickey from keystore |
+| [goloop ks verify](#goloop-ks-verify) |  Verify keystore with the password |
+
+## goloop ks verify
+
+### Description
+Verify keystore with the password
+
+### Usage
+` goloop ks verify `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --password, -p |  | false | gochain |  Password for the keystore |
+| --secret, -s |  | false |  |  KeySecret file path |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop ks](#goloop-ks) |  Keystore manipulation |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop ks gen](#goloop-ks-gen) |  Generate keystore |
+| [goloop ks pubkey](#goloop-ks-pubkey) |  Generate publickey from keystore |
+| [goloop ks verify](#goloop-ks-verify) |  Verify keystore with the password |
 
 ## goloop rpc
 
@@ -936,6 +999,12 @@ JSON-RPC API
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -944,6 +1013,7 @@ JSON-RPC API
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -976,7 +1046,12 @@ JSON-RPC API
 GetBalance
 
 ### Usage
-` goloop rpc balance ADDRESS `
+` goloop rpc balance ADDRESS [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --height |  | false | -1 |  BlockHeight |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -997,6 +1072,12 @@ GetBalance
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1005,6 +1086,7 @@ GetBalance
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1038,6 +1120,12 @@ GetBlockByHash
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1046,6 +1134,7 @@ GetBlockByHash
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1079,6 +1168,12 @@ GetBlockByHeight
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1087,6 +1182,7 @@ GetBlockByHeight
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1120,6 +1216,12 @@ GetBlockHeaderByHeight
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1128,6 +1230,295 @@ GetBlockHeaderByHeight
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+| [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
+| [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
+| [goloop rpc txresult](#goloop-rpc-txresult) |  GetTransactionResult |
+| [goloop rpc votesbyheight](#goloop-rpc-votesbyheight) |  GetVotesByHeight |
+
+## goloop rpc btpheader
+
+### Description
+GetBTPHeader
+
+### Usage
+` goloop rpc btpheader NETWORK_ID HEIGHT `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc balance](#goloop-rpc-balance) |  GetBalance |
+| [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
+| [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
+| [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
+| [goloop rpc call](#goloop-rpc-call) |  Call |
+| [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
+| [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+| [goloop rpc proofforevents](#goloop-rpc-proofforevents) |  GetProofForEvents |
+| [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
+| [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
+| [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+| [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
+| [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
+| [goloop rpc txresult](#goloop-rpc-txresult) |  GetTransactionResult |
+| [goloop rpc votesbyheight](#goloop-rpc-votesbyheight) |  GetVotesByHeight |
+
+## goloop rpc btpmessages
+
+### Description
+GetBTPMessages
+
+### Usage
+` goloop rpc btpmessages NETWORK_ID HEIGHT `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc balance](#goloop-rpc-balance) |  GetBalance |
+| [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
+| [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
+| [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
+| [goloop rpc call](#goloop-rpc-call) |  Call |
+| [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
+| [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+| [goloop rpc proofforevents](#goloop-rpc-proofforevents) |  GetProofForEvents |
+| [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
+| [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
+| [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+| [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
+| [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
+| [goloop rpc txresult](#goloop-rpc-txresult) |  GetTransactionResult |
+| [goloop rpc votesbyheight](#goloop-rpc-votesbyheight) |  GetVotesByHeight |
+
+## goloop rpc btpnetwork
+
+### Description
+GetBTPNetworkInfo
+
+### Usage
+` goloop rpc btpnetwork ID [HEIGHT] `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc balance](#goloop-rpc-balance) |  GetBalance |
+| [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
+| [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
+| [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
+| [goloop rpc call](#goloop-rpc-call) |  Call |
+| [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
+| [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+| [goloop rpc proofforevents](#goloop-rpc-proofforevents) |  GetProofForEvents |
+| [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
+| [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
+| [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+| [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
+| [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
+| [goloop rpc txresult](#goloop-rpc-txresult) |  GetTransactionResult |
+| [goloop rpc votesbyheight](#goloop-rpc-votesbyheight) |  GetVotesByHeight |
+
+## goloop rpc btpnetworktype
+
+### Description
+GetBTPNetworkTypeInfo
+
+### Usage
+` goloop rpc btpnetworktype ID [HEIGHT] `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc balance](#goloop-rpc-balance) |  GetBalance |
+| [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
+| [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
+| [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
+| [goloop rpc call](#goloop-rpc-call) |  Call |
+| [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
+| [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+| [goloop rpc proofforevents](#goloop-rpc-proofforevents) |  GetProofForEvents |
+| [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
+| [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
+| [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+| [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
+| [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
+| [goloop rpc txresult](#goloop-rpc-txresult) |  GetTransactionResult |
+| [goloop rpc votesbyheight](#goloop-rpc-votesbyheight) |  GetVotesByHeight |
+
+## goloop rpc btpproof
+
+### Description
+GetBTPProof
+
+### Usage
+` goloop rpc btpproof NETWORK_ID HEIGHT `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc balance](#goloop-rpc-balance) |  GetBalance |
+| [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
+| [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
+| [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
+| [goloop rpc call](#goloop-rpc-call) |  Call |
+| [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
+| [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+| [goloop rpc proofforevents](#goloop-rpc-proofforevents) |  GetProofForEvents |
+| [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
+| [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
+| [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+| [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
+| [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
+| [goloop rpc txresult](#goloop-rpc-txresult) |  GetTransactionResult |
+| [goloop rpc votesbyheight](#goloop-rpc-votesbyheight) |  GetVotesByHeight |
+
+## goloop rpc btpsource
+
+### Description
+GetBTPSourceInformation
+
+### Usage
+` goloop rpc btpsource `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc balance](#goloop-rpc-balance) |  GetBalance |
+| [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
+| [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
+| [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
+| [goloop rpc call](#goloop-rpc-call) |  Call |
+| [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
+| [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+| [goloop rpc proofforevents](#goloop-rpc-proofforevents) |  GetProofForEvents |
+| [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
+| [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
+| [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1146,8 +1537,10 @@ Call
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --from |  | false |  |  FromAddress |
+| --height |  | false | -1 |  BlockHeight |
 | --method |  | false |  |  Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
 | --param |  | false | [] |  key=value, Function parameters, if '--raw' used, will overwrite |
+| --params |  | false | [] |  raw json string or '@<json file>' or '-' for stdin for parameter JSON. it overrides raw one  |
 | --raw |  | false |  |  call with 'data' using raw json file or json-string |
 | --to |  | true |  |  ToAddress |
 
@@ -1170,6 +1563,12 @@ Call
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1178,6 +1577,7 @@ Call
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1211,6 +1611,12 @@ GetDataByHash
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1219,6 +1625,7 @@ GetDataByHash
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1252,6 +1659,12 @@ GetLastBlock
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1260,6 +1673,7 @@ GetLastBlock
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1277,10 +1691,6 @@ Monitor
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
-
-### Inherited Options
-|Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|---|
 | --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
 | --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
@@ -1289,6 +1699,7 @@ Monitor
 |Command | Description|
 |---|---|
 | [goloop rpc monitor block](#goloop-rpc-monitor-block) |  MonitorBlock |
+| [goloop rpc monitor btp](#goloop-rpc-monitor-btp) |  MonitorBTP |
 | [goloop rpc monitor event](#goloop-rpc-monitor-event) |  MonitorEvent |
 
 ### Parent command
@@ -1303,6 +1714,12 @@ Monitor
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1311,6 +1728,7 @@ Monitor
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1329,6 +1747,7 @@ MonitorBlock
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
 | --filter |  | false | [] |  EventFilter raw json file or json string |
+| --logs |  | false | false |  Includes logs |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -1346,6 +1765,40 @@ MonitorBlock
 |Command | Description|
 |---|---|
 | [goloop rpc monitor block](#goloop-rpc-monitor-block) |  MonitorBlock |
+| [goloop rpc monitor btp](#goloop-rpc-monitor-btp) |  MonitorBTP |
+| [goloop rpc monitor event](#goloop-rpc-monitor-event) |  MonitorEvent |
+
+## goloop rpc monitor btp
+
+### Description
+MonitorBTP
+
+### Usage
+` goloop rpc monitor btp HEIGHT [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --networkId |  | false |  |  BTP Network ID |
+| --proof_flag |  | false | false |  Includes proof |
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc monitor block](#goloop-rpc-monitor-block) |  MonitorBlock |
+| [goloop rpc monitor btp](#goloop-rpc-monitor-btp) |  MonitorBTP |
 | [goloop rpc monitor event](#goloop-rpc-monitor-event) |  MonitorEvent |
 
 ## goloop rpc monitor event
@@ -1363,6 +1816,7 @@ MonitorEvent
 | --data |  | false | [] |  Not indexed Arguments of Event, comma-separated string |
 | --event |  | false |  |  Signature of Event |
 | --indexed |  | false | [] |  Indexed Arguments of Event, comma-separated string |
+| --logs |  | false | false |  Includes logs |
 | --raw |  | false |  |  EventFilter raw json file or json-string |
 
 ### Inherited Options
@@ -1381,6 +1835,7 @@ MonitorEvent
 |Command | Description|
 |---|---|
 | [goloop rpc monitor block](#goloop-rpc-monitor-block) |  MonitorBlock |
+| [goloop rpc monitor btp](#goloop-rpc-monitor-btp) |  MonitorBTP |
 | [goloop rpc monitor event](#goloop-rpc-monitor-event) |  MonitorEvent |
 
 ## goloop rpc proofforevents
@@ -1410,6 +1865,12 @@ GetProofForEvents
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1418,6 +1879,7 @@ GetProofForEvents
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1451,6 +1913,12 @@ GetProofForResult
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1459,6 +1927,7 @@ GetProofForResult
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1492,6 +1961,12 @@ Rpc with raw json file
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1500,6 +1975,7 @@ Rpc with raw json file
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1512,7 +1988,12 @@ Rpc with raw json file
 GetScoreApi
 
 ### Usage
-` goloop rpc scoreapi ADDRESS `
+` goloop rpc scoreapi ADDRESS [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --height |  | false | -1 |  BlockHeight |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -1533,6 +2014,12 @@ GetScoreApi
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1541,6 +2028,60 @@ GetScoreApi
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
+| [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
+| [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
+| [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
+| [goloop rpc txresult](#goloop-rpc-txresult) |  GetTransactionResult |
+| [goloop rpc votesbyheight](#goloop-rpc-votesbyheight) |  GetVotesByHeight |
+
+## goloop rpc scorestatus
+
+### Description
+Get status of the smart contract
+
+### Usage
+` goloop rpc scorestatus ADDRESS [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --height |  | false | -1 |  BlockHeight |
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
+| --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop rpc balance](#goloop-rpc-balance) |  GetBalance |
+| [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
+| [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
+| [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
+| [goloop rpc call](#goloop-rpc-call) |  Call |
+| [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
+| [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
+| [goloop rpc monitor](#goloop-rpc-monitor) |  Monitor |
+| [goloop rpc proofforevents](#goloop-rpc-proofforevents) |  GetProofForEvents |
+| [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
+| [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
+| [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1558,6 +2099,8 @@ SendTransaction
 ### Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
 |---|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
+| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --estimate | GOLOOP_RPC_ESTIMATE | false | false |  Just estimate steps for the tx |
 | --key_password | GOLOOP_RPC_KEY_PASSWORD | false |  |  Password for the KeyStore file |
 | --key_secret | GOLOOP_RPC_KEY_SECRET | false |  |  Secret(password) file for KeyStore |
@@ -1565,12 +2108,6 @@ SendTransaction
 | --nid | GOLOOP_RPC_NID | true |  |  Network ID |
 | --save | GOLOOP_RPC_SAVE | false |  |  Store transaction to the file |
 | --step_limit | GOLOOP_RPC_STEP_LIMIT | false | 0 |  StepLimit |
-
-### Inherited Options
-|Name,shorthand | Environment Variable | Required | Default | Description|
-|---|---|---|---|---|
-| --debug | GOLOOP_RPC_DEBUG | false | false |  JSON-RPC Response with detail information |
-| --debug_uri | GOLOOP_RPC_DEBUG_URI | false |  |  URI of JSON-RPC Debug API |
 | --uri | GOLOOP_RPC_URI | true |  |  URI of JSON-RPC API |
 
 ### Child commands
@@ -1595,6 +2132,12 @@ SendTransaction
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1603,6 +2146,7 @@ SendTransaction
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1622,6 +2166,7 @@ SmartContract Call Transaction
 |---|---|---|---|---|
 | --method |  | true |  |  Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
 | --param |  | false | [] |  key=value, Function parameters, if '--raw' used, will overwrite |
+| --params |  | false |  |  raw json string or '@<json file>' or '-' for stdin for parameter JSON, it overrides raw one |
 | --raw |  | false |  |  call with 'data' using raw json file or json-string |
 | --to |  | true |  |  ToAddress |
 | --value |  | false |  |  Value of transfer |
@@ -1668,6 +2213,7 @@ Deploy Transaction
 |---|---|---|---|---|
 | --content_type |  | false | application/zip |  Mime-type of the content |
 | --param |  | false | [] |  key=value, Function parameters will be delivered to on_install() or on_update() |
+| --params |  | false |  |  raw json string or '@<json file>' or '-' for stdin for parameter JSON |
 | --to |  | false | cx0000000000000000000000000000000000000000 |  ToAddress |
 
 ### Inherited Options
@@ -1860,7 +2406,12 @@ Coin Transfer Transaction
 GetTotalSupply
 
 ### Usage
-` goloop rpc totalsupply `
+` goloop rpc totalsupply [flags] `
+
+### Options
+|Name,shorthand | Environment Variable | Required | Default | Description|
+|---|---|---|---|---|
+| --height |  | false | -1 |  BlockHeight |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Required | Default | Description|
@@ -1881,6 +2432,12 @@ GetTotalSupply
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1889,6 +2446,7 @@ GetTotalSupply
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1922,6 +2480,12 @@ GetTransactionByHash
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1930,6 +2494,7 @@ GetTransactionByHash
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -1963,6 +2528,12 @@ GetTransactionResult
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -1971,6 +2542,7 @@ GetTransactionResult
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |
@@ -2004,6 +2576,12 @@ GetVotesByHeight
 | [goloop rpc blockbyhash](#goloop-rpc-blockbyhash) |  GetBlockByHash |
 | [goloop rpc blockbyheight](#goloop-rpc-blockbyheight) |  GetBlockByHeight |
 | [goloop rpc blockheaderbyheight](#goloop-rpc-blockheaderbyheight) |  GetBlockHeaderByHeight |
+| [goloop rpc btpheader](#goloop-rpc-btpheader) |  GetBTPHeader |
+| [goloop rpc btpmessages](#goloop-rpc-btpmessages) |  GetBTPMessages |
+| [goloop rpc btpnetwork](#goloop-rpc-btpnetwork) |  GetBTPNetworkInfo |
+| [goloop rpc btpnetworktype](#goloop-rpc-btpnetworktype) |  GetBTPNetworkTypeInfo |
+| [goloop rpc btpproof](#goloop-rpc-btpproof) |  GetBTPProof |
+| [goloop rpc btpsource](#goloop-rpc-btpsource) |  GetBTPSourceInformation |
 | [goloop rpc call](#goloop-rpc-call) |  Call |
 | [goloop rpc databyhash](#goloop-rpc-databyhash) |  GetDataByHash |
 | [goloop rpc lastblock](#goloop-rpc-lastblock) |  GetLastBlock |
@@ -2012,6 +2590,7 @@ GetVotesByHeight
 | [goloop rpc proofforresult](#goloop-rpc-proofforresult) |  GetProofForResult |
 | [goloop rpc raw](#goloop-rpc-raw) |  Rpc with raw json file |
 | [goloop rpc scoreapi](#goloop-rpc-scoreapi) |  GetScoreApi |
+| [goloop rpc scorestatus](#goloop-rpc-scorestatus) |  Get status of the smart contract |
 | [goloop rpc sendtx](#goloop-rpc-sendtx) |  SendTransaction |
 | [goloop rpc totalsupply](#goloop-rpc-totalsupply) |  GetTotalSupply |
 | [goloop rpc txbyhash](#goloop-rpc-txbyhash) |  GetTransactionByHash |

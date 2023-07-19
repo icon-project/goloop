@@ -83,12 +83,11 @@ type Simulator interface {
 	GetNetworkInfo() map[string]interface{}
 	TermSnapshot() *icstate.TermSnapshot
 
-	Go(blocks int64, csi module.ConsensusInfo) error
-	GoTo(blockHeight int64, csi module.ConsensusInfo) error
+	Go(csi module.ConsensusInfo, blocks int64) error
+	GoTo(csi module.ConsensusInfo, blockHeight int64) error
 	GoToTermEnd(csi module.ConsensusInfo) error
-	GoByBlock(block Block, csi module.ConsensusInfo) ([]Receipt, error)
-	GoByTransaction(tx Transaction, csi module.ConsensusInfo) ([]Receipt, error)
-
+	GoByBlock(csi module.ConsensusInfo, block Block) ([]Receipt, error)
+	GoByTransaction(csi module.ConsensusInfo, txs ...Transaction) ([]Receipt, error)
 	SetRevision(revision module.Revision) Transaction
 
 	GetStake(from module.Address) map[string]interface{}

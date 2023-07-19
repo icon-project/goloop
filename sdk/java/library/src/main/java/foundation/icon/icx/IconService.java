@@ -29,6 +29,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.Converters;
 import foundation.icon.icx.data.EventNotification;
+import foundation.icon.icx.data.NetworkInfo;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.ScoreStatus;
 import foundation.icon.icx.data.TransactionResult;
@@ -96,6 +97,7 @@ public class IconService {
         addConverterFactory(Converters.newFactory(BTPNetworkTypeInfo.class, Converters.BTP_NETWORK_TYPE_INFO));
         addConverterFactory(Converters.newFactory(BTPSourceInfo.class, Converters.BTP_SOURCE_INFO));
         addConverterFactory(Converters.newFactory(ScoreStatus.class, Converters.SCORE_STATUS));
+        addConverterFactory(Converters.newFactory(NetworkInfo.class, Converters.NETWORK_INFO));
     }
 
     public void setProvider(Provider provider) {
@@ -454,6 +456,18 @@ public class IconService {
         foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
                 requestId, "icx_getScoreStatus", params);
         return provider.request(request, findConverter(ScoreStatus.class));
+    }
+
+    /**
+     * Get network information
+     *
+     * @return a {@code Request} object that can execute the request
+     */
+    public Request<NetworkInfo> getNetworkInfo() {
+        long requestId = System.currentTimeMillis();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "icx_getNetworkInfo", null);
+        return provider.request(request, findConverter(NetworkInfo.class));
     }
 
     /**

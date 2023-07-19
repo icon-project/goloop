@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
@@ -154,7 +155,7 @@ func (s *State) AddEventVotedReward(offset int) (int64, error) {
 	return index, s.setEventSize(index + 1)
 }
 
-func (s *State) AddEventCommissionRate(offset int, target module.Address, value int) (int64, error) {
+func (s *State) AddEventCommissionRate(offset int, target module.Address, value icmodule.Rate) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
 	obj := NewEventCommissionRate(common.AddressToPtr(target), value)
@@ -245,8 +246,9 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 	return err
 }
 
-func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
-	ivoter *big.Int, icps *big.Int, irelay *big.Int, electedPRepCount int, bondRequirement int,
+func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int,
+	iprep, ivoter, icps, irelay icmodule.Rate,
+	electedPRepCount int, bondRequirement icmodule.Rate,
 ) error {
 	g := NewGlobalV2(
 		icstate.IISSVersion3,
@@ -265,8 +267,8 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 	return err
 }
 
-func (s *State) AddGlobalV3(startHeight int64, revision, offsetLimit, electedPRepCount, bondRequirement int,
-	iglobal, iprep, iwage, icps, irelay, minBond *big.Int,
+func (s *State) AddGlobalV3(startHeight int64, revision, offsetLimit, electedPRepCount int, bondRequirement icmodule.Rate,
+	iglobal *big.Int, iprep, iwage, icps, irelay icmodule.Rate, minBond *big.Int,
 ) error {
 	g := NewGlobalV3(
 		icstate.IISSVersion4, startHeight, revision,

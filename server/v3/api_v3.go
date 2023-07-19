@@ -52,6 +52,7 @@ func MethodRepository(mtr *metric.JsonrpcMetric) *jsonrpc.MethodRepository {
 	mr.RegisterMethod("icx_getProofForResult", getProofForResult)
 	mr.RegisterMethod("icx_getProofForEvents", getProofForEvents)
 	mr.RegisterMethod("icx_getScoreStatus", getScoreStatus)
+	mr.RegisterMethod("icx_getNetworkInfo", getNetworkInfo)
 
 	mr.RegisterMethod("btp_getNetworkInfo", getBTPNetworkInfo)
 	mr.RegisterMethod("btp_getNetworkTypeInfo", getBTPNetworkTypeInfo)
@@ -726,6 +727,39 @@ func getScoreStatus(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, c.debug)
 	}
 	return jso, nil
+}
+
+type NetworkInfo struct {
+	Platform  string         `json:"platform"`
+	NID       jsonrpc.HexInt `json:"nid"`
+	Channel   string         `json:"channel"`
+	Earliest  jsonrpc.HexInt `json:"earliest"`
+	Latest    jsonrpc.HexInt `json:"latest"`
+	StepPrice jsonrpc.HexInt `json:"stepPrice"`
+}
+
+func getNetworkInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	var c contextWithSM
+	if err := c.Init(ctx); err != nil {
+		return nil, err
+	}
+	blk, err := c.bm.GetLastBlock()
+	if err != nil {
+		return nil, c.AsRPCError(err)
+	}
+	price, err := c.sm.GetStepPrice(blk.Result())
+	if err != nil {
+		return nil, c.AsRPCError(err)
+	}
+	earliest := c.chain.GenesisStorage().Height()
+	return &NetworkInfo{
+		Platform:  c.chain.PlatformName(),
+		NID:       jsonrpc.HexInt(intconv.FormatInt(int64(c.chain.NID()))),
+		Channel:   c.chain.Channel(),
+		Earliest:  jsonrpc.HexInt(intconv.FormatInt(earliest)),
+		Latest:    jsonrpc.HexInt(intconv.FormatInt(blk.Height())),
+		StepPrice: jsonrpc.HexInt(intconv.FormatBigInt(price)),
+	}, nil
 }
 
 func getBTPNetworkInfo(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
