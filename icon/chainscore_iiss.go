@@ -936,3 +936,18 @@ func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate)
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
 	return iiss.NewCallContext(cc, s.from)
 }
+
+func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate *common.HexInt) error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.InitCommissionInfo(
+		s.newCallContext(s.cc),
+		icmodule.Rate(rate.Int64()),
+		icmodule.Rate(maxRate.Int64()),
+		icmodule.Rate(maxChangeRate.Int64()))
+}
