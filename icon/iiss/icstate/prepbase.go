@@ -520,13 +520,12 @@ func (p *PRepBaseState) Reset(snapshot *PRepBaseSnapshot) *PRepBaseState {
 	return p
 }
 
-func (p *PRepBaseState) InitCommissionInfo(rate, maxRate, maxChangeRate icmodule.Rate) error {
-	ci, err := NewCommissionInfo(rate, maxRate, maxChangeRate)
-	if err != nil {
-		return err
+func (p *PRepBaseState) InitCommissionInfo(ci *CommissionInfo) error {
+	if ci == nil {
+		return scoreresult.InvalidParameterError.New("InvalidCommissionInfo")
 	}
 	if p.ci != nil {
-		return icmodule.IllegalArgumentError.New("CommissionInfoAlreadyExists")
+		return icmodule.DuplicateError.New("CommissionInfoAlreadySet")
 	}
 	p.ci = ci
 	p.setDirty()

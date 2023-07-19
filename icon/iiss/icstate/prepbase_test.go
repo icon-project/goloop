@@ -218,7 +218,9 @@ func TestPRepBaseSnapshot_RLPEncodeFields(t *testing.T) {
 	)
 
 	pbs := NewPRepBaseState()
-	err := pbs.InitCommissionInfo(Rate, MaxRate, MaxChangeRate)
+	ci, err := NewCommissionInfo(Rate, MaxRate, MaxChangeRate)
+	assert.NoError(t, err)
+	err = pbs.InitCommissionInfo(ci)
 	assert.NoError(t, err)
 
 	buf := bytes.NewBuffer(nil)

@@ -1884,3 +1884,12 @@ func (es *ExtensionStateImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyTy
 	}
 	return jso, nil
 }
+
+func (es *ExtensionStateImpl) InitCommissionInfo(
+	cc icmodule.CallContext, rate, maxRate, maxChangeRate icmodule.Rate) error {
+	ci, err := icstate.NewCommissionInfo(rate, maxRate, maxChangeRate)
+	if err != nil {
+		return err
+	}
+	return es.State.InitCommissionInfo(cc.From(), ci)
+}

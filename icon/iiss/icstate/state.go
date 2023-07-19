@@ -765,3 +765,21 @@ func (s *State) SetPRepIllegalDelegated(address module.Address, value *big.Int) 
 		return s.pRepIllegalDelegatedDB.Set(address, value)
 	}
 }
+
+func (s *State) InitCommissionInfo(owner module.Address, ci *CommissionInfo) error {
+	if owner == nil || ci == nil {
+		return scoreresult.InvalidParameterError.Errorf("InvalidArgument(owner=%s,ci=%s)", owner, ci)
+	}
+	pb := s.GetPRepBaseByOwner(owner, false)
+	if pb == nil {
+		return icmodule.NotFoundError.Errorf("PRepBaseNotFound(%s)", owner)
+	}
+	ps := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
+	}
+	if !ps.IsActive() {
+		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
+	}
+	return pb.InitCommissionInfo(ci)
+}
