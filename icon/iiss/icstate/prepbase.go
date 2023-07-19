@@ -534,9 +534,13 @@ func (p *PRepBaseState) InitCommissionInfo(ci *CommissionInfo) error {
 
 func (p *PRepBaseState) SetCommissionRate(rate icmodule.Rate) error {
 	if p.ci == nil {
-		return icmodule.IllegalArgumentError.Errorf("CommissionInfoNotReady")
+		return icmodule.NotFoundError.New("CommissionInfoNotFound")
 	}
 	return p.ci.SetRate(rate)
+}
+
+func (p *PRepBaseState) CommissionInfoExists() bool {
+	return p.ci != nil
 }
 
 var emptyPRepBaseSnapshot = &PRepBaseSnapshot{

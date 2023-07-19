@@ -7,8 +7,69 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icreward"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
 )
+
+func newDummyPRepInfo(i int) *icstate.PRepInfo {
+	city := fmt.Sprintf("Seoul%d", i)
+	country := "KOR"
+	name := fmt.Sprintf("node%d", i)
+	email := fmt.Sprintf("%s@email.com", name)
+	website := fmt.Sprintf("https://%s.example.com/", name)
+	details := fmt.Sprintf("%sdetails/", website)
+	endpoint := fmt.Sprintf("%s.example.com:9080", name)
+	return &icstate.PRepInfo{
+		City:        &city,
+		Country:     &country,
+		Name:        &name,
+		Email:       &email,
+		WebSite:     &website,
+		Details:     &details,
+		P2PEndpoint: &endpoint,
+	}
+}
+
+func newDummyExtensionState(t *testing.T) *ExtensionStateImpl {
+	dbase := db.NewMapDB()
+	ess := NewExtensionSnapshot(dbase, nil)
+	es, ok := ess.NewState(false).(*ExtensionStateImpl)
+	assert.True(t, ok)
+	assert.NotNil(t, es)
+	return es
+}
+
+type callContext struct {
+	icmodule.CallContext
+	from module.Address
+	rev module.Revision
+	blockHeight int64
+}
+
+func (cc *callContext) From() module.Address {
+	return cc.from
+}
+
+func (cc *callContext) Revision() module.Revision {
+	return cc.rev
+}
+
+func (cc *callContext) BlockHeight() int64 {
+	return cc.blockHeight
+}
+
+func newDummyCallContext(from module.Address, rev module.Revision) icmodule.CallContext {
+	return &callContext{
+		from: from,
+		rev: rev,
+	}
+}
 
 func TestExtension_calculateRRep(t *testing.T) {
 	type test struct {
@@ -153,5 +214,133 @@ func TestExtension_validateRewardFund(t *testing.T) {
 				assert.Nil(t, err)
 			}
 		})
+	}
+}
+
+func TestExtensionStateImpl_getOldCommissionRate(t *testing.T) {
+	var err error
+	dbase := db.NewMapDB()
+	ess := NewExtensionSnapshot(dbase, nil)
+	es, ok := ess.NewState(false).(*ExtensionStateImpl)
+	assert.True(t, ok)
+	assert.NotNil(t, es)
+
+	// Case
+	// 0. No CommissionRate
+	// 1. CommissionRate in Reward
+	// 2. CommissionRate in Back2, Reward
+	// 3. CommissionRate in Back1, Back2, Reward
+	// 4. CommissionRate in Front, Back1, Back2, Reward
+
+	var rate icmodule.Rate
+	var expOldRate icmodule.Rate
+	owner := common.MustNewAddressFromString("hx1234")
+
+	for i := 0; i < 5; i++ {
+		rate = icmodule.Rate(i)
+		expOldRate = rate
+
+		switch i {
+		case 0: // None
+		case 1: // Reward
+			voted := icreward.NewVotedV2()
+			voted.SetCommissionRate(rate)
+			err = es.Reward.SetVoted(owner, voted)
+			assert.NoError(t, err)
+		case 2: // Back2
+			err = es.Back2.AddCommissionRate(owner, rate)
+			assert.NoError(t, err)
+		case 3: // Back1
+			err = es.Back1.AddCommissionRate(owner, rate)
+			assert.NoError(t, err)
+		case 4: // Front
+			err = es.Front.AddCommissionRate(owner, rate)
+			assert.NoError(t, err)
+			expOldRate = icmodule.Rate(i-1)
+		}
+
+		rate, err = es.getOldCommissionRate(owner)
+		if i == 0 {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+		assert.Equal(t, expOldRate, rate)
+	}
+}
+
+func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
+
+}
+
+func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
+	var err error
+	owner := common.MustNewAddressFromString("hx1234")
+	cc := newDummyCallContext(owner, icmodule.ValueToRevision(icmodule.RevisionPreIISS4))
+	es := newDummyExtensionState(t)
+
+	// Error: PRepBase Not Found
+	err = es.SetCommissionRate(cc, icmodule.Rate(1))
+	assert.Error(t, err)
+
+	pi := newDummyPRepInfo(1)
+	err = es.State.RegisterPRep(owner, pi, icmodule.BigIntZero, 0)
+	assert.NoError(t, err)
+
+	// Error: CommissionInfoNotFound
+	err = es.SetCommissionRate(cc, icmodule.Rate(1))
+	assert.Error(t, err)
+
+	err = es.InitCommissionInfo(cc, icmodule.Rate(0), icmodule.ToRate(100), icmodule.Rate(5))
+	assert.NoError(t, err)
+
+	es.Back1 = es.Front
+	es.Front = icstage.NewState(es.database)
+
+	args := []struct{
+		rate icmodule.Rate
+		success bool
+	}{
+		{icmodule.Rate(-1), false},
+		{icmodule.Rate(0), true},
+		{icmodule.Rate(1), true},
+		{icmodule.Rate(icmodule.DenomInRate), false},
+		{icmodule.Rate(icmodule.DenomInRate+1), false},
+	}
+
+	var cr *icstage.CommissionRate
+	var pb *icstate.PRepBaseState
+	var rateInFront icmodule.Rate
+	var oldRateInFront icmodule.Rate
+
+	for _, arg := range args {
+		pb = es.State.GetPRepBaseByOwner(owner, false)
+		oldRate := pb.CommissionRate()
+		cr, err = es.Front.GetCommissionRate(owner)
+		assert.NoError(t, err)
+		if cr != nil {
+			oldRateInFront = cr.Value()
+		}
+		assert.Equal(t, oldRate, oldRateInFront)
+
+		err = es.SetCommissionRate(cc, arg.rate)
+		if arg.success {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
+
+		pb = es.State.GetPRepBaseByOwner(owner, false)
+		cr, err = es.Front.GetCommissionRate(owner)
+		if cr != nil {
+			rateInFront = cr.Value()
+		}
+		if arg.success {
+			assert.Equal(t, arg.rate, pb.CommissionRate())
+			assert.Equal(t, arg.rate, rateInFront)
+		} else {
+			assert.Equal(t, oldRate, pb.CommissionRate())
+			assert.Equal(t, oldRateInFront, rateInFront)
+		}
 	}
 }

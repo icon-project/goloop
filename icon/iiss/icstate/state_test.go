@@ -788,3 +788,48 @@ func TestState_OnValidatorOut(t *testing.T) {
 		})
 	}
 }
+
+func TestState_InitCommissionInfo(t *testing.T) {
+	rate := icmodule.ToRate(10)
+	maxRate := icmodule.ToRate(30)
+	maxChangeRate := icmodule.ToRate(1)
+	owner := newDummyAddress(1)
+
+	state := newDummyState(false)
+
+	ci, err := NewCommissionInfo(rate, maxRate, maxChangeRate)
+	assert.NoError(t, err)
+	assert.NotNil(t, ci)
+
+	err = state.InitCommissionInfo(owner, ci)
+	assert.Error(t, err)
+
+	ri := newDummyPRepInfo(0)
+	err = state.RegisterPRep(owner, ri, nil, 0)
+	assert.NoError(t, err)
+
+	pb := state.GetPRepBaseByOwner(owner, false)
+	assert.NotNil(t, pb)
+	assert.Equal(t, icmodule.Rate(0), pb.CommissionRate())
+	assert.Equal(t, icmodule.Rate(0), pb.MaxCommissionRate())
+	assert.Equal(t, icmodule.Rate(0), pb.MaxCommissionChangeRate())
+
+	jso := pb.ToJSON(owner)
+	assert.Nil(t, jso["commissionRate"])
+	assert.Nil(t, jso["maxCommissionRate"])
+	assert.Nil(t, jso["maxCommissionChangeRate"])
+
+	err = state.InitCommissionInfo(owner, ci)
+	assert.NoError(t, err)
+
+	pb = state.GetPRepBaseByOwner(owner, false)
+	assert.NotNil(t, pb)
+	assert.Equal(t, rate, pb.CommissionRate())
+	assert.Equal(t, maxRate, pb.MaxCommissionRate())
+	assert.Equal(t, maxChangeRate, pb.MaxCommissionChangeRate())
+
+	jso = pb.ToJSON(owner)
+	assert.Equal(t, rate, jso["commissionRate"].(icmodule.Rate))
+	assert.Equal(t, maxRate, jso["maxCommissionRate"])
+	assert.Equal(t, maxChangeRate, jso["maxCommissionChangeRate"])
+}

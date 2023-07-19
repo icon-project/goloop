@@ -960,5 +960,5 @@ func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	return es.State.SetCommissionRate(s.from, icmodule.Rate(rate.Int64()))
+	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate.Int64()))
 }
