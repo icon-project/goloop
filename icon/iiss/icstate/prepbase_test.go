@@ -355,3 +355,28 @@ func TestPRepInfo_Validate1(t *testing.T) {
 		})
 	}
 }
+
+func TestPRepBaseState_SetCommissionRate(t *testing.T) {
+	rate := icmodule.ToRate(10)
+	maxRate := icmodule.ToRate(20)
+	maxChangeRate := icmodule.ToRate(2)
+
+	pbs := NewPRepBaseState()
+	err := pbs.SetCommissionRate(rate)
+	assert.Error(t, err)
+
+	ci, err := NewCommissionInfo(rate, maxRate, maxChangeRate)
+	assert.NoError(t, err)
+	err = pbs.InitCommissionInfo(ci)
+	assert.NoError(t, err)
+
+	newRate := rate + maxChangeRate
+	err = pbs.SetCommissionRate(newRate)
+	assert.NoError(t, err)
+	assert.Equal(t, newRate, pbs.CommissionRate())
+
+	invalidRate := maxRate + maxChangeRate
+	err = pbs.SetCommissionRate(invalidRate)
+	assert.Error(t, err)
+	assert.Equal(t, newRate, pbs.CommissionRate())
+}

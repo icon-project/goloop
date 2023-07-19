@@ -44,7 +44,8 @@ func (ci *CommissionInfo) MaxChangeRate() icmodule.Rate {
 
 func (ci *CommissionInfo) SetRate(rate icmodule.Rate) error {
 	if !(rate >= 0 && rate <= ci.maxRate) {
-		return scoreresult.InvalidParameterError.Errorf("InvalidCommissionInfo(rate=%d)", rate)
+		return scoreresult.InvalidParameterError.Errorf(
+			"InvalidCommissionRate(rate=%d,maxRate=%d)", rate, ci.maxRate)
 	}
 	ci.rate = rate
 	return nil

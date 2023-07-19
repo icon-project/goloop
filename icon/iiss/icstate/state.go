@@ -786,24 +786,3 @@ func (s *State) InitCommissionInfo(owner module.Address, ci *CommissionInfo) err
 	}
 	return pb.InitCommissionInfo(ci)
 }
-
-func (s *State) SetCommissionRate(owner module.Address, rate icmodule.Rate) error {
-	if owner == nil {
-		return scoreresult.InvalidParameterError.Errorf("InvalidOwner(%s)", owner)
-	}
-	if !rate.IsValid() {
-		return scoreresult.InvalidParameterError.Errorf("InvalidRate(%d)", rate)
-	}
-	pb := s.GetPRepBaseByOwner(owner, false)
-	if pb == nil {
-		return icmodule.NotFoundError.Errorf("PRepBaseNotFound(%s)", owner)
-	}
-	ps := s.GetPRepStatusByOwner(owner, false)
-	if ps == nil {
-		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
-	}
-	if !ps.IsActive() {
-		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
-	}
-	return pb.SetCommissionRate(rate)
-}
