@@ -446,8 +446,7 @@ func NewGlobalV2(
 
 type GlobalV3 struct {
 	globalBase
-	iGlobal *big.Int
-	rFund   *rFundAllocation
+	rFund   *rewardFund
 	minBond *big.Int
 }
 
@@ -455,28 +454,28 @@ func (g *GlobalV3) Version() int {
 	return GlobalVersion3
 }
 
-func (g *GlobalV3) GetRewardFundByKey(key rFundKey) icmodule.Rate {
-	return g.rFund.Get(key)
+func (g *GlobalV3) GetRewardFundRateByKey(key rFundKey) icmodule.Rate {
+	return g.rFund.GetAllocation(key)
 }
 
 func (g *GlobalV3) GetIGlobal() *big.Int {
-	return g.iGlobal
+	return g.rFund.IGlobal()
 }
 
 func (g *GlobalV3) GetIPRep() icmodule.Rate {
-	return g.rFund.Get(keyIprep)
+	return g.rFund.GetAllocation(keyIprep)
 }
 
 func (g *GlobalV3) GetICps() icmodule.Rate {
-	return g.rFund.Get(keyIcps)
+	return g.rFund.GetAllocation(keyIcps)
 }
 
 func (g *GlobalV3) GetIRelay() icmodule.Rate {
-	return g.rFund.Get(keyIrelay)
+	return g.rFund.GetAllocation(keyIrelay)
 }
 
 func (g *GlobalV3) GetIWage() icmodule.Rate {
-	return g.rFund.Get(keyIwage)
+	return g.rFund.GetAllocation(keyIwage)
 }
 
 func (g *GlobalV3) MinBond() *big.Int {
@@ -491,7 +490,6 @@ func (g *GlobalV3) RLPDecodeFields(decoder codec.Decoder) error {
 		&g.revision,
 		&g.electedPRepCount,
 		&g.bondRequirement,
-		&g.iGlobal,
 		&g.rFund,
 		&g.minBond,
 	)
@@ -506,7 +504,6 @@ func (g *GlobalV3) RLPEncodeFields(encoder codec.Encoder) error {
 		g.revision,
 		g.electedPRepCount,
 		g.bondRequirement,
-		g.iGlobal,
 		g.rFund,
 		g.minBond,
 	)
@@ -514,14 +511,13 @@ func (g *GlobalV3) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (g *GlobalV3) String() string {
 	return fmt.Sprintf("revision=%d iissVersion=%d startHeight=%d offsetLimit=%d electedPRepCount=%d "+
-		"bondRequirement=%d iGlobal=%d rFund=%s minBond=%d",
+		"bondRequirement=%d rFund=%s minBond=%d",
 		g.revision,
 		g.iissVersion,
 		g.startHeight,
 		g.offsetLimit,
 		g.electedPRepCount,
 		g.bondRequirement,
-		g.iGlobal,
 		g.rFund,
 		g.minBond,
 	)
@@ -532,26 +528,24 @@ func (g *GlobalV3) Format(f fmt.State, c rune) {
 	case 'v':
 		if f.Flag('+') {
 			fmt.Fprintf(f, "GlobalV3{revision=%d iissVersion=%d startHeight=%d offsetLimit=%d "+
-				"electedPRepCount=%d bondRequirement=%d iGlobal=%d rFund=%+v minBond=%d}",
+				"electedPRepCount=%d bondRequirement=%d rFund=%+v minBond=%d}",
 				g.revision,
 				g.iissVersion,
 				g.startHeight,
 				g.offsetLimit,
 				g.electedPRepCount,
 				g.bondRequirement,
-				g.iGlobal,
 				g.rFund,
 				g.minBond,
 			)
 		} else {
-			fmt.Fprintf(f, "GlobalV3{%d %d %d %d %d %d %d %v %d}",
+			fmt.Fprintf(f, "GlobalV3{%d %d %d %d %d %d %v %d}",
 				g.revision,
 				g.iissVersion,
 				g.startHeight,
 				g.offsetLimit,
 				g.electedPRepCount,
 				g.bondRequirement,
-				g.iGlobal,
 				g.rFund,
 				g.minBond,
 			)
@@ -567,7 +561,6 @@ func (g *GlobalV3) Equal(impl icobject.Impl) bool {
 			g.revision == g2.revision &&
 			g.electedPRepCount == g2.electedPRepCount &&
 			g.bondRequirement == g2.bondRequirement &&
-			g.iGlobal.Cmp(g2.iGlobal) == 0 &&
 			g.rFund.Equal(g2.rFund) &&
 			g.minBond.Cmp(g2.minBond) == 0
 	} else {
@@ -612,11 +605,11 @@ func NewGlobalV3(
 		rFund:   newRewardFund(),
 		minBond: minBond,
 	}
-	g.iGlobal = iglobal
-	g.rFund.Set(keyIprep, iprep)
-	g.rFund.Set(keyIwage, iwage)
-	g.rFund.Set(keyIcps, icps)
-	g.rFund.Set(keyIrelay, irelay)
+	g.rFund.SetIGlobal(iglobal)
+	g.rFund.SetAllocation(keyIprep, iprep)
+	g.rFund.SetAllocation(keyIwage, iwage)
+	g.rFund.SetAllocation(keyIcps, icps)
+	g.rFund.SetAllocation(keyIrelay, irelay)
 	return g
 }
 
@@ -644,25 +637,34 @@ func (r *rElem) RLPDecodeSelf(d codec.Decoder) error {
 	return d.DecodeListOf(&r.key, &r.value)
 }
 
-type rFundAllocation struct {
-	value map[rFundKey]icmodule.Rate
+type rewardFund struct {
+	iGlobal    *big.Int
+	allocation map[rFundKey]icmodule.Rate
 }
 
-func (r *rFundAllocation) Get(key rFundKey) icmodule.Rate {
-	if v, ok := r.value[key]; ok {
+func (r *rewardFund) IGlobal() *big.Int {
+	return r.iGlobal
+}
+
+func (r *rewardFund) SetIGlobal(value *big.Int) {
+	r.iGlobal = value
+}
+
+func (r *rewardFund) GetAllocation(key rFundKey) icmodule.Rate {
+	if v, ok := r.allocation[key]; ok {
 		return v
 	} else {
 		return 0
 	}
 }
 
-func (r *rFundAllocation) Set(key rFundKey, value icmodule.Rate) {
-	r.value[key] = value
+func (r *rewardFund) SetAllocation(key rFundKey, value icmodule.Rate) {
+	r.allocation[key] = value
 }
 
-func (r *rFundAllocation) toSlice() []*rElem {
+func (r *rewardFund) ratesToSlice() []*rElem {
 	elem := make([]*rElem, 0)
-	for k, v := range r.value {
+	for k, v := range r.allocation {
 		elem = append(elem, &rElem{k, v})
 	}
 	sort.Slice(elem, func(i, j int) bool {
@@ -671,13 +673,16 @@ func (r *rFundAllocation) toSlice() []*rElem {
 	return elem
 }
 
-func (r *rFundAllocation) Equal(r2 *rFundAllocation) bool {
-	if len(r.value) != len(r2.value) {
+func (r *rewardFund) Equal(r2 *rewardFund) bool {
+	if r.iGlobal.Cmp(r2.iGlobal) != 0 {
+		return false
+	}
+	if len(r.allocation) != len(r2.allocation) {
 		return false
 	}
 	for _, k := range rFundKeys {
-		v1, ok1 := r.value[k]
-		v2, ok2 := r2.value[k]
+		v1, ok1 := r.allocation[k]
+		v2, ok2 := r2.allocation[k]
 		if ok1 != ok2 {
 			return false
 		}
@@ -690,27 +695,27 @@ func (r *rFundAllocation) Equal(r2 *rFundAllocation) bool {
 	return true
 }
 
-func (r *rFundAllocation) RLPEncodeSelf(encoder codec.Encoder) error {
-	elem := r.toSlice()
-	return encoder.Encode(elem)
+func (r *rewardFund) RLPEncodeSelf(encoder codec.Encoder) error {
+	elem := r.ratesToSlice()
+	return encoder.EncodeMulti(r.iGlobal, elem)
 }
 
-func (r *rFundAllocation) RLPDecodeSelf(d codec.Decoder) error {
+func (r *rewardFund) RLPDecodeSelf(d codec.Decoder) error {
 	elem := make([]*rElem, 0)
-	if err := d.Decode(&elem); err != nil {
+	if _, err := d.DecodeMulti(&r.iGlobal, &elem); err != nil {
 		return err
 	}
-	r.value = make(map[rFundKey]icmodule.Rate)
+	r.allocation = make(map[rFundKey]icmodule.Rate)
 	for _, e := range elem {
-		r.value[e.key] = e.value
+		r.allocation[e.key] = e.value
 	}
 	return nil
 }
 
-func (r *rFundAllocation) string(withName bool) string {
-	ret := ""
+func (r *rewardFund) string(withName bool) string {
+	ret := fmt.Sprintf("iGlobal=%d", r.iGlobal)
 	for _, k := range rFundKeys {
-		if v, ok := r.value[k]; ok {
+		if v, ok := r.allocation[k]; ok {
 			if len(ret) == 0 {
 				if withName {
 					ret = fmt.Sprintf("%s=%d", k, v)
@@ -727,14 +732,14 @@ func (r *rFundAllocation) string(withName bool) string {
 		}
 	}
 	if withName {
-		ret = fmt.Sprintf("rFundAllocation{%s}", ret)
+		ret = fmt.Sprintf("rewardFund{%s}", ret)
 	} else {
 		ret = fmt.Sprintf("{%s}", ret)
 	}
 	return ret
 }
 
-func (r *rFundAllocation) Format(f fmt.State, c rune) {
+func (r *rewardFund) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
@@ -747,8 +752,8 @@ func (r *rFundAllocation) Format(f fmt.State, c rune) {
 	}
 }
 
-func newRewardFund() *rFundAllocation {
-	return &rFundAllocation{
-		value: make(map[rFundKey]icmodule.Rate),
+func newRewardFund() *rewardFund {
+	return &rewardFund{
+		allocation: make(map[rFundKey]icmodule.Rate),
 	}
 }

@@ -17,7 +17,6 @@
 package icstage
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -57,6 +56,8 @@ func TestGlobalV1(t *testing.T) {
 	assert.Equal(t, version, o2.Tag().Version())
 
 	global := ToGlobal(o2)
+	assert.Nil(t, global.GetV2())
+	assert.Nil(t, global.GetV3())
 	g2 := global.GetV1()
 	assert.Equal(t, true, g1.Equal(g2))
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
@@ -91,6 +92,8 @@ func TestGlobalV2(t *testing.T) {
 	assert.Equal(t, version, o2.Tag().Version())
 
 	global := ToGlobal(o2)
+	assert.Nil(t, global.GetV1())
+	assert.Nil(t, global.GetV3())
 	g2 := global.GetV2()
 	assert.Equal(t, true, g1.Equal(g2))
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
@@ -104,8 +107,10 @@ func TestGlobalV3(t *testing.T) {
 	tag := icobject.MakeTag(type_, version)
 	offsetLimit := 10
 	iglobal := big.NewInt(3000000000)
-	iprep := icmodule.Rate(7000)
-	iwage := icmodule.Rate(3000)
+	iprep := icmodule.Rate(7700)
+	iwage := icmodule.Rate(1300)
+	icps := icmodule.Rate(1000)
+	irelay := icmodule.Rate(0)
 	minBond := big.NewInt(10000)
 
 	g, err := newGlobal(tag)
@@ -114,9 +119,11 @@ func TestGlobalV3(t *testing.T) {
 	g1 := g.GetV3()
 	assert.NotNil(t, g1)
 	g1.offsetLimit = offsetLimit
-	g1.iGlobal = iglobal
-	g1.rFund.Set(keyIprep, iprep)
-	g1.rFund.Set(keyIwage, iwage)
+	g1.rFund.SetIGlobal(iglobal)
+	g1.rFund.SetAllocation(keyIprep, iprep)
+	g1.rFund.SetAllocation(keyIwage, iwage)
+	g1.rFund.SetAllocation(keyIcps, icps)
+	g1.rFund.SetAllocation(keyIrelay, irelay)
 	g1.minBond = minBond
 
 	o1 := icobject.New(type_, g)
@@ -133,11 +140,19 @@ func TestGlobalV3(t *testing.T) {
 	assert.Equal(t, version, o2.Tag().Version())
 
 	global := ToGlobal(o2)
+	assert.Nil(t, global.GetV1())
+	assert.Nil(t, global.GetV2())
 	g2 := global.GetV3()
-	fmt.Printf("%+v\n", g2)
+	assert.True(t, g1.Equal(g2))
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
 	assert.Equal(t, 0, g2.GetIGlobal().Cmp(iglobal))
 	assert.Equal(t, iprep, g2.GetIPRep())
-	assert.Equal(t, iwage, g2.GetRewardFundByKey(keyIwage))
+	assert.Equal(t, iprep, g2.GetRewardFundRateByKey(keyIprep))
+	assert.Equal(t, iwage, g2.GetIWage())
+	assert.Equal(t, iwage, g2.GetRewardFundRateByKey(keyIwage))
+	assert.Equal(t, icps, g2.GetICps())
+	assert.Equal(t, icps, g2.GetRewardFundRateByKey(keyIcps))
+	assert.Equal(t, irelay, g2.GetIRelay())
+	assert.Equal(t, irelay, g2.GetRewardFundRateByKey(keyIrelay))
 	assert.Equal(t, 0, g2.MinBond().Cmp(minBond))
 }
