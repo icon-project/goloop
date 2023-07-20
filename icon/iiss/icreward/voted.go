@@ -139,10 +139,10 @@ func (v *Voted) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (v *Voted) Equal(o icobject.Impl) bool {
 	if v2, ok := o.(*Voted); ok {
-		return v.status == v2.status &&
+		return v.version == v2.version &&
+			v.status == v2.status &&
 			v.delegated.Cmp(v2.delegated) == 0 &&
 			v.bonded.Cmp(v2.bonded) == 0 &&
-			v.bondedDelegation.Cmp(v2.bondedDelegation) == 0 &&
 			v.commissionRate == v2.commissionRate
 	} else {
 		return false
@@ -164,7 +164,7 @@ func (v *Voted) Clone() *Voted {
 }
 
 func (v *Voted) IsEmpty() bool {
-	return v.status.IsEnabled() == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0 && v.bondedDelegation.Sign() == 0
+	return v.status.IsEnabled() == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0
 }
 
 func (v *Voted) Format(f fmt.State, c rune) {
