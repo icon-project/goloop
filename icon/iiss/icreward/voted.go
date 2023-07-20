@@ -153,14 +153,14 @@ func (v *Voted) Clone() *Voted {
 	if v == nil {
 		return nil
 	}
-	nv := NewVoted()
-	nv.version = v.version
-	nv.status = v.status
-	nv.delegated.Set(v.delegated)
-	nv.bonded.Set(v.bonded)
-	nv.bondedDelegation.Set(v.bondedDelegation)
-	nv.commissionRate = v.commissionRate
-	return nv
+	return &Voted{
+		version:          v.version,
+		status:           v.status,
+		delegated:        v.delegated,
+		bonded:           v.bonded,
+		bondedDelegation: v.bondedDelegation,
+		commissionRate:   v.commissionRate,
+	}
 }
 
 func (v *Voted) IsEmpty() bool {
