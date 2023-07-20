@@ -239,6 +239,10 @@ func (c *Calculator) postWork() (err error) {
 	if err = c.processBTP(); err != nil {
 		return err
 	}
+	// update Voted.commissionRate of temp. Use updated commission rate in the next term
+	if err = c.processCommissionRate(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -269,6 +273,43 @@ func (c *Calculator) processBTP() error {
 			nPubKey := pubKey.Updated(value.Index())
 			if err = c.temp.SetPublicKey(value.From(), nPubKey); err != nil {
 				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Calculator) processCommissionRate() error {
+	prefix := icstage.CommissionRateKey.Build()
+	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
+		if err != nil {
+			return err
+		}
+
+		obj := o.(*icobject.Object)
+		if obj.Tag().Type() == icstage.TypeCommissionRate {
+			keySplit, err := containerdb.SplitKeys(key)
+			if err != nil {
+				return err
+			}
+			addr, err := common.NewAddress(keySplit[1])
+			if err != nil {
+				return nil
+			}
+			cr := icstage.ToCommissionRate(o)
+			voted, err := c.temp.GetVoted(addr)
+			if err != nil {
+				return nil
+			}
+			if voted == nil {
+				return nil
+			}
+			nVoted := voted.Clone()
+			nVoted.SetCommissionRate(cr.Value())
+			err = c.temp.SetVoted(addr, nVoted)
+			if err != nil {
+				return nil
 			}
 		}
 	}

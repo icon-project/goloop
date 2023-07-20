@@ -143,9 +143,6 @@ func (r *reward) processEvents() error {
 			}
 			r.pi.ApplyVote(vType, obj.Votes(), r.pi.OffsetLimit()-keyOffset)
 			ve.AddEvent(vType, obj.From(), obj.Votes(), keyOffset)
-		case icstage.TypeEventCommissionRate:
-			obj := icstage.ToEventCommissionRate(o)
-			r.pi.SetCommissionRate(obj.Target(), obj.Value())
 		}
 	}
 	r.pi.UpdateAccumulatedPower()

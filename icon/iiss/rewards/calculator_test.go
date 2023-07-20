@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 )
@@ -155,4 +156,72 @@ func TestCalculator_WaitResult(t *testing.T) {
 	assert.Equal(t, "done", <-toTC)
 
 	assert.True(t, c.Result() == rss)
+}
+
+func TestCalculator_processCommissionRate(t *testing.T) {
+	database := db.NewMapDB()
+	front := icstage.NewState(database)
+
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
+	v1 := icmodule.Rate(100)
+	v2 := icmodule.Rate(200)
+
+	type args struct {
+		addr  *common.Address
+		value icmodule.Rate
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want icmodule.Rate
+	}{
+		{
+			"Set 100",
+			args{
+				addr1,
+				v1,
+			},
+			v1,
+		},
+		{
+			"Address has no Voted",
+			args{
+				addr2,
+				v2,
+			},
+			icmodule.Rate(-1),
+		},
+	}
+
+	// initialize data
+	c := MakeCalculator(database, nil)
+	voted := icreward.NewVoted()
+	err := c.temp.SetVoted(addr1, voted)
+	assert.NoError(t, err)
+
+	for _, tt := range tests {
+		args := tt.args
+		err := front.AddCommissionRate(args.addr, args.value)
+		assert.NoError(t, err)
+	}
+	c.back = front.GetSnapshot()
+
+	err = c.processCommissionRate()
+	assert.NoError(t, err)
+
+	// check result
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := tt.args
+			voted, err = c.temp.GetVoted(args.addr)
+			assert.NoError(t, err)
+			if tt.want != icmodule.Rate(-1) {
+				assert.Equal(t, tt.want, voted.CommissionRate())
+			} else {
+				assert.Nil(t, voted)
+			}
+		})
+	}
 }

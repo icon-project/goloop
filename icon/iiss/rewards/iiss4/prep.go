@@ -36,7 +36,6 @@ type PRep struct {
 	bonded         *big.Int
 	commissionRate icmodule.Rate
 
-	nCommissionRate   icmodule.Rate
 	owner             module.Address
 	power             *big.Int
 	pubkey            bool
@@ -78,14 +77,6 @@ func (p *PRep) CommissionRate() icmodule.Rate {
 
 func (p *PRep) SetCommissionRate(value icmodule.Rate) {
 	p.commissionRate = value
-}
-
-func (p *PRep) NCommissionRate() icmodule.Rate {
-	return p.nCommissionRate
-}
-
-func (p *PRep) SetNCommissionRate(value icmodule.Rate) {
-	p.nCommissionRate = value
 }
 
 func (p *PRep) GetVoted() *big.Int {
@@ -205,7 +196,7 @@ func (p *PRep) ToVoted() *icreward.Voted {
 	voted.SetStatus(p.status)
 	voted.SetBonded(p.bonded)
 	voted.SetDelegated(p.delegated)
-	voted.SetCommissionRate(p.nCommissionRate)
+	voted.SetCommissionRate(p.commissionRate)
 	return voted
 }
 
@@ -214,7 +205,6 @@ func (p *PRep) Equal(p1 *PRep) bool {
 		p.delegated.Cmp(p1.delegated) == 0 &&
 		p.bonded.Cmp(p1.bonded) == 0 &&
 		p.commissionRate == p1.commissionRate &&
-		p.nCommissionRate == p1.nCommissionRate &&
 		p.owner.Equal(p1.owner) &&
 		p.power.Cmp(p1.power) == 0 &&
 		p.pubkey == p1.pubkey &&
@@ -233,7 +223,6 @@ func (p *PRep) Clone() *PRep {
 		delegated:         new(big.Int).Set(p.delegated),
 		bonded:            new(big.Int).Set(p.bonded),
 		commissionRate:    p.commissionRate,
-		nCommissionRate:   p.nCommissionRate,
 		pubkey:            p.pubkey,
 		power:             new(big.Int).Set(p.power),
 		accumulatedBonded: new(big.Int).Set(p.accumulatedBonded),
@@ -247,16 +236,16 @@ func (p *PRep) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "PRep{status=%s delegated=%d bonded=%d commissionRate=%d nCommissionRate=%d "+
+			fmt.Fprintf(f, "PRep{status=%s delegated=%d bonded=%d commissionRate=%d "+
 				"owner=%s power=%d pubkey=%v rank=%d accumulatedBonded=%d accumulatedVoted=%d accumulatedPower=%d "+
 				"commission=%d voterReward=%d}",
-				p.status, p.delegated, p.bonded, p.commissionRate, p.nCommissionRate,
+				p.status, p.delegated, p.bonded, p.commissionRate,
 				p.owner, p.power, p.pubkey, p.rank, p.accumulatedBonded, p.accumulatedVoted, p.accumulatedPower,
 				p.commission, p.voterReward,
 			)
 		} else {
-			fmt.Fprintf(f, "PRep{%s %d %d %d %d %s %d %v %d %d %d %d %d %d}",
-				p.status, p.delegated, p.bonded, p.commissionRate, p.nCommissionRate,
+			fmt.Fprintf(f, "PRep{%s %d %d %d %s %d %v %d %d %d %d %d %d}",
+				p.status, p.delegated, p.bonded, p.commissionRate,
 				p.owner, p.power, p.pubkey, p.rank, p.accumulatedBonded, p.accumulatedVoted, p.accumulatedPower,
 				p.commission, p.voterReward,
 			)
@@ -272,7 +261,6 @@ func NewPRep(owner module.Address, status icstage.EnableStatus, delegated, bonde
 		delegated:         delegated,
 		bonded:            bonded,
 		commissionRate:    commissionRate,
-		nCommissionRate:   commissionRate,
 		pubkey:            pubkey,
 		power:             new(big.Int),
 		accumulatedBonded: new(big.Int),
@@ -327,13 +315,6 @@ func (p *PRepInfo) SetStatus(target module.Address, status icstage.EnableStatus)
 		prep.SetStatus(status)
 	} else {
 		p.Add(target, status, new(big.Int), new(big.Int), 0, false)
-	}
-}
-
-func (p *PRepInfo) SetCommissionRate(target module.Address, value icmodule.Rate) {
-	key := icutils.ToKey(target)
-	if prep, ok := p.preps[key]; ok {
-		prep.SetNCommissionRate(value)
 	}
 }
 
@@ -427,7 +408,6 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 // Write writes updated Voted to database
 func (p *PRepInfo) Write(writer common.Writer) error {
 	for _, prep := range p.preps {
-		prep.SetCommissionRate(prep.NCommissionRate())
 		err := writer.SetVoted(prep.Owner(), prep.ToVoted())
 		if err != nil {
 			return err

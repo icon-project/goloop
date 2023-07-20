@@ -112,10 +112,6 @@ func (t *testCalculator) AddEventBond(offset int, from module.Address, votes ics
 	return t.stage.AddEventBond(offset, from, votes)
 }
 
-func (t *testCalculator) AddEventCommissionRate(offset int, from module.Address, value icmodule.Rate) (int64, error) {
-	return t.stage.AddEventCommissionRate(offset, from, value)
-}
-
 func (t *testCalculator) GetBondingFromTemp(addr module.Address) (*icreward.Bonding, error) {
 	return t.temp.GetBonding(addr)
 }
@@ -400,21 +396,6 @@ func TestReward(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	commissionRate := []struct {
-		offset int
-		from   module.Address
-		rate   icmodule.Rate
-	}{
-		{20, a1, icmodule.ToRate(5)},
-		{30, a1, icmodule.ToRate(10)},
-		{40, a1, icmodule.ToRate(80)},
-		{40, a2, icmodule.ToRate(10)},
-	}
-	for _, cr := range commissionRate {
-		_, err = tc.AddEventCommissionRate(cr.offset, cr.from, cr.rate)
-		assert.NoError(t, err)
-	}
-
 	tc.Build()
 
 	err = rr.processEvents()
@@ -509,26 +490,6 @@ func TestReward(t *testing.T) {
 		})
 	}
 
-	crExpects := []struct {
-		addr  module.Address
-		rate  icmodule.Rate
-		nRate icmodule.Rate
-	}{
-		{a1, icmodule.ToRate(10), icmodule.ToRate(80)},
-		{a2, icmodule.ToRate(5), icmodule.ToRate(10)},
-		{a3, 0, 0},
-		{a4, 0, 0},
-		{a5, 0, 0},
-	}
-	for _, e := range crExpects {
-		t.Run(fmt.Sprintf("processEvent-CommissionRate-%s", e.addr), func(t *testing.T) {
-			key := icutils.ToKey(e.addr)
-			p := rr.pi.GetPRep(key)
-			assert.Equal(t, e.rate, p.CommissionRate())
-			assert.Equal(t, e.nRate, p.NCommissionRate())
-		})
-	}
-
 	// write()
 	err = rr.write()
 	assert.NoError(t, err)
@@ -536,7 +497,6 @@ func TestReward(t *testing.T) {
 		for _, a := range addrs {
 			key := icutils.ToKey(a)
 			p := rr.pi.GetPRep(key)
-			assert.Equal(t, p.NCommissionRate(), p.CommissionRate())
 
 			voted, err := tc.GetVotedFromTemp(a)
 			assert.NoError(t, err)

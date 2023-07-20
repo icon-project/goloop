@@ -229,9 +229,7 @@ func TestPRep_ToVoted(t *testing.T) {
 	bond := int64(100)
 	delegate := int64(0)
 	cr := icmodule.Rate(500)
-	ncr := icmodule.Rate(250)
 	p := newTestPRep(prep{a1, status, bond, delegate, true, cr})
-	p.SetNCommissionRate(ncr)
 
 	voted := p.ToVoted()
 	assert.Equal(t, icreward.VotedVersion2, voted.Version())
@@ -239,7 +237,6 @@ func TestPRep_ToVoted(t *testing.T) {
 	assert.Equal(t, bond, voted.Bonded().Int64())
 	assert.Equal(t, delegate, voted.Delegated().Int64())
 	assert.Equal(t, 0, voted.BondedDelegation().Sign())
-	assert.Equal(t, ncr, voted.CommissionRate())
 }
 
 func newTestPRepInfo(preps []prep, br icmodule.Rate, offsetLimit, electedPRepCount int) *PRepInfo {
@@ -438,14 +435,6 @@ func TestPRepInfo(t *testing.T) {
 		}
 	}
 	assert.Equal(t, totalPower, pInfo.TotalAccumulatedPower())
-
-	// SetCommissionRate()
-	ocr := pInfo.GetPRep(icutils.ToKey(a1)).CommissionRate()
-	ncr := ocr + 1
-	pInfo.SetCommissionRate(a1, ncr)
-	prep1 := pInfo.GetPRep(icutils.ToKey(a1))
-	assert.Equal(t, ocr, prep1.CommissionRate())
-	assert.Equal(t, ncr, prep1.NCommissionRate())
 
 	// DistributeReward
 	tiu := newTestIScoreUpdater()

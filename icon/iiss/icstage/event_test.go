@@ -24,7 +24,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -86,35 +85,6 @@ func TestEvent_Bond(t *testing.T) {
 	assert.Equal(t, true, t1.Equal(t2))
 	assert.Equal(t, true, t1.From().Equal(t2.From()))
 	assert.Equal(t, true, t1.Votes().Equal(t2.Votes()))
-}
-
-func TestEvent_CommissionRate(t *testing.T) {
-	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-
-	type_ := TypeEventCommissionRate
-	version := 0
-	addr1 := "hx1"
-	value := icmodule.ToRate(10)
-
-	t1 := NewEventCommissionRate(common.MustNewAddressFromString(addr1), value)
-
-	o1 := icobject.New(type_, t1)
-	serialized := o1.Bytes()
-
-	o2 := new(icobject.Object)
-	if err := o2.Reset(database, serialized); err != nil {
-		t.Errorf("Failed to get object from bytes")
-		return
-	}
-
-	assert.Equal(t, serialized, o2.Bytes())
-	assert.Equal(t, type_, o2.Tag().Type())
-	assert.Equal(t, version, o2.Tag().Version())
-
-	t2 := ToEventCommissionRate(o2)
-	assert.Equal(t, true, t1.Equal(t2))
-	assert.Equal(t, true, t1.Target().Equal(t2.Target()))
-	assert.Equal(t, t1.Value(), t2.Value())
 }
 
 func TestEvent_Enable(t *testing.T) {

@@ -23,7 +23,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -431,67 +430,4 @@ func newEventVotedReward(_ icobject.Tag) *EventVotedReward {
 
 func NewEventVotedReward() *EventVotedReward {
 	return new(EventVotedReward)
-}
-
-type EventCommissionRate struct {
-	icobject.NoDatabase
-	target *common.Address
-	value  icmodule.Rate
-}
-
-func (e *EventCommissionRate) Version() int {
-	return 0
-}
-
-func (e *EventCommissionRate) Target() *common.Address {
-	return e.target
-}
-
-func (e *EventCommissionRate) Value() icmodule.Rate {
-	return e.value
-}
-
-func (e *EventCommissionRate) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(
-		&e.target,
-		&e.value,
-	)
-	return err
-}
-
-func (e *EventCommissionRate) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(
-		e.target,
-		e.value,
-	)
-}
-
-func (e *EventCommissionRate) Equal(o icobject.Impl) bool {
-	if ee2, ok := o.(*EventCommissionRate); ok {
-		return e.target.Equal(ee2.target) && e.value == ee2.value
-	} else {
-		return false
-	}
-}
-
-func (e *EventCommissionRate) Format(f fmt.State, c rune) {
-	switch c {
-	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(f, "EventCommissionRate{target=%s value=%d}", e.target, e.value)
-		} else {
-			fmt.Fprintf(f, "EventCommissionRate{%s %d}", e.target, e.value)
-		}
-	}
-}
-
-func newEventCommissionRate(_ icobject.Tag) *EventCommissionRate {
-	return new(EventCommissionRate)
-}
-
-func NewEventCommissionRate(target *common.Address, value icmodule.Rate) *EventCommissionRate {
-	return &EventCommissionRate{
-		target: target,
-		value:  value,
-	}
 }

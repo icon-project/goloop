@@ -37,15 +37,16 @@ const (
 )
 
 var (
-	IScoreClaimKey  = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
-	EventKey        = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
-	BlockProduceKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
-	ValidatorKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
-	BTPKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
-	HashKey         = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
-	GlobalKey       = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
-	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
-	ValidatorsKey   = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(validatorsKey).Build())
+	IScoreClaimKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
+	EventKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
+	BlockProduceKey   = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
+	ValidatorKey      = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
+	BTPKey            = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
+	CommissionRateKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x60})
+	HashKey           = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
+	GlobalKey         = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
+	EventSizeKey      = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
+	ValidatorsKey     = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(validatorsKey).Build())
 )
 
 type State struct {
@@ -155,16 +156,19 @@ func (s *State) AddEventVotedReward(offset int) (int64, error) {
 	return index, s.setEventSize(index + 1)
 }
 
-func (s *State) AddEventCommissionRate(offset int, target module.Address, value icmodule.Rate) (int64, error) {
-	index := s.getEventSize()
-	key := EventKey.Append(offset, index).Build()
-	obj := NewEventCommissionRate(common.AddressToPtr(target), value)
-	_, err := s.store.Set(key, icobject.New(TypeEventCommissionRate, obj))
+func (s *State) GetCommissionRate(addr module.Address) (*CommissionRate, error) {
+	key := CommissionRateKey.Append(addr).Build()
+	obj, err := s.store.Get(key)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
+	return ToCommissionRate(obj), nil
+}
 
-	return index, s.setEventSize(index + 1)
+func (s *State) AddCommissionRate(addr module.Address, value icmodule.Rate) error {
+	key := CommissionRateKey.Append(addr).Build()
+	_, err := s.store.Set(key, icobject.New(TypeCommissionRate, NewCommissionRate(value)))
+	return err
 }
 
 func (s *State) getEventSize() int64 {

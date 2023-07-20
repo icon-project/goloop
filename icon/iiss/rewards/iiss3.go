@@ -298,16 +298,13 @@ func (c *Calculator) calculateVotedReward() error {
 		case icstage.TypeEventVotedReward:
 			vInfo.CalculateReward(multiplier, divider, keyOffset-from)
 			from = keyOffset
-		case icstage.TypeEventCommissionRate:
-			obj := icstage.ToEventCommissionRate(o)
-			vInfo.SetCommissionRate(obj.Target(), obj.Value())
 		}
 	}
 	if from < c.global.GetOffsetLimit() {
 		vInfo.CalculateReward(multiplier, divider, c.global.GetOffsetLimit()-from)
 	}
 
-	// write result to temp and update common
+	// write result to temp and update statistics
 	for key, prep := range vInfo.PReps() {
 		var addr *common.Address
 		addr, err = common.NewAddress([]byte(key))
