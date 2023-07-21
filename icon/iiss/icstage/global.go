@@ -19,7 +19,6 @@ package icstage
 import (
 	"fmt"
 	"math/big"
-	"sort"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -630,11 +629,12 @@ type rElem struct {
 }
 
 func (r *rElem) RLPEncodeSelf(encoder codec.Encoder) error {
-	return encoder.EncodeListOf(r.key, r.value)
+	return encoder.EncodeMulti(r.key, r.value)
 }
 
 func (r *rElem) RLPDecodeSelf(d codec.Decoder) error {
-	return d.DecodeListOf(&r.key, &r.value)
+	_, err := d.DecodeMulti(&r.key, &r.value)
+	return err
 }
 
 type rewardFund struct {
@@ -662,17 +662,6 @@ func (r *rewardFund) SetAllocation(key rFundKey, value icmodule.Rate) {
 	r.allocation[key] = value
 }
 
-func (r *rewardFund) ratesToSlice() []*rElem {
-	elem := make([]*rElem, 0)
-	for k, v := range r.allocation {
-		elem = append(elem, &rElem{k, v})
-	}
-	sort.Slice(elem, func(i, j int) bool {
-		return elem[i].key < elem[j].key
-	})
-	return elem
-}
-
 func (r *rewardFund) Equal(r2 *rewardFund) bool {
 	if r.iGlobal.Cmp(r2.iGlobal) != 0 {
 		return false
@@ -696,20 +685,12 @@ func (r *rewardFund) Equal(r2 *rewardFund) bool {
 }
 
 func (r *rewardFund) RLPEncodeSelf(encoder codec.Encoder) error {
-	elem := r.ratesToSlice()
-	return encoder.EncodeMulti(r.iGlobal, elem)
+	return encoder.EncodeMulti(r.iGlobal, r.allocation)
 }
 
 func (r *rewardFund) RLPDecodeSelf(d codec.Decoder) error {
-	elem := make([]*rElem, 0)
-	if _, err := d.DecodeMulti(&r.iGlobal, &elem); err != nil {
-		return err
-	}
-	r.allocation = make(map[rFundKey]icmodule.Rate)
-	for _, e := range elem {
-		r.allocation[e.key] = e.value
-	}
-	return nil
+	_, err := d.DecodeMulti(&r.iGlobal, &r.allocation)
+	return err
 }
 
 func (r *rewardFund) string(withName bool) string {

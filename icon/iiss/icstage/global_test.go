@@ -130,7 +130,7 @@ func TestGlobalV3(t *testing.T) {
 	serialized := o1.Bytes()
 
 	o2 := new(icobject.Object)
-	if err := o2.Reset(database, serialized); err != nil {
+	if err = o2.Reset(database, serialized); err != nil {
 		t.Errorf("Failed to get object from bytes. %v", err)
 		return
 	}
