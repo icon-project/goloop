@@ -298,6 +298,10 @@ func (p *PRepInfo) OffsetLimit() int {
 	return p.offsetLimit
 }
 
+func (p *PRepInfo) GetTermPeriod() int64 {
+	return int64(p.offsetLimit + 1)
+}
+
 func (p *PRepInfo) BondRequirement() icmodule.Rate {
 	return p.bondRequirement
 }
@@ -374,8 +378,14 @@ func (p *PRepInfo) UpdateAccumulatedPower() {
 	}
 }
 
+func (p *PRepInfo) toTermIScore(reward *big.Int) *big.Int {
+	value := new(big.Int).Mul(reward, big.NewInt(p.GetTermPeriod()*icmodule.IScoreICXRatio))
+	return value.Div(value, big.NewInt(icmodule.MonthBlock))
+}
+
 func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int, ru common.RewardUpdater) error {
-	minWage := new(big.Int).Mul(totalMinWage, big.NewInt(icmodule.IScoreICXRatio))
+	tReward := p.toTermIScore(totalReward)
+	minWage := p.toTermIScore(totalMinWage)
 	minWage.Div(minWage, big.NewInt(int64(p.electedPRepCount)))
 	for rank, key := range p.rank {
 		prep, _ := p.preps[key]
@@ -386,8 +396,7 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 			continue
 		}
 
-		prepReward := new(big.Int).Mul(totalReward, prep.AccumulatedPower())
-		prepReward.Mul(prepReward, big.NewInt(icmodule.IScoreICXRatio))
+		prepReward := new(big.Int).Mul(tReward, prep.AccumulatedPower())
 		prepReward.Div(prepReward, p.totalAccumulatedPower)
 
 		commission := prep.CommissionRate().MulBigInt(prepReward)

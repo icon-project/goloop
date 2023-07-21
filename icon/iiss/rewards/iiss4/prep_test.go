@@ -286,11 +286,11 @@ func TestPRepInfo(t *testing.T) {
 	a5, _ := common.NewAddressFromString("hx5")
 	a6, _ := common.NewAddressFromString("hx6")
 	preps := []prep{
-		{a1, icstage.ESEnable, 100, 1000, true, 1},
-		{a2, icstage.ESJail, 200, 2000, true, 2},
-		{a3, icstage.ESUnjail, 300, 3000, true, 3},
-		{a4, icstage.ESEnable, 40, 4000, true, 4},
-		{a5, icstage.ESUnjail, 50, 5000, true, 5},
+		{a1, icstage.ESEnable, 100, 1000, true, 100},
+		{a2, icstage.ESJail, 200, 2000, true, 200},
+		{a3, icstage.ESUnjail, 300, 3000, true, 300},
+		{a4, icstage.ESEnable, 40, 4000, true, 400},
+		{a5, icstage.ESUnjail, 50, 5000, true, 500},
 	}
 
 	ranks := []module.Address{a3, a1, a5, a4, a2}
@@ -439,12 +439,13 @@ func TestPRepInfo(t *testing.T) {
 	// DistributeReward
 	tiu := newTestIScoreUpdater()
 	totalReward := int64(1_000_000_000)
-	minWage := int64(10_000)
-	totalMinWage := int64(pInfo.ElectedPRepCount()) * minWage
+	totalMinWage := int64(10_000_000)
+	minWage := totalMinWage * int64(pInfo.OffsetLimit()+1) * icmodule.IScoreICXRatio / icmodule.MonthBlock
+	minWage = minWage / int64(pInfo.ElectedPRepCount())
 	minBond := int64(300)
 
-	p1Reward, p1Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a1)), totalReward, pInfo.TotalAccumulatedPower().Int64())
-	p3Reward, p3Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a3)), totalReward, pInfo.TotalAccumulatedPower().Int64())
+	p1Reward, p1Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a1)), totalReward, pInfo.TotalAccumulatedPower().Int64(), pInfo.OffsetLimit())
+	p3Reward, p3Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a3)), totalReward, pInfo.TotalAccumulatedPower().Int64(), pInfo.OffsetLimit())
 
 	iScores := []struct {
 		target      module.Address
@@ -454,7 +455,7 @@ func TestPRepInfo(t *testing.T) {
 	}{
 		{a1, big.NewInt(p1Commission), big.NewInt(0), big.NewInt(p1Reward - p1Commission)},
 		{a2, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
-		{a3, big.NewInt(p3Commission), big.NewInt(minWage * 1000), big.NewInt(p3Reward - p3Commission)},
+		{a3, big.NewInt(p3Commission), big.NewInt(minWage), big.NewInt(p3Reward - p3Commission)},
 		{a4, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
 		{a5, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
 	}
@@ -469,8 +470,9 @@ func TestPRepInfo(t *testing.T) {
 	}
 }
 
-func prepReward(prep *PRep, totalReward, totalPower int64) (reward, commission int64) {
-	reward = totalReward * prep.AccumulatedPower().Int64() * 1000 / totalPower
+func prepReward(prep *PRep, totalReward, totalPower int64, offsetLimit int) (reward, commission int64) {
+	reward = totalReward * int64(offsetLimit+1) * icmodule.IScoreICXRatio / icmodule.MonthBlock
+	reward = reward * prep.AccumulatedPower().Int64() / totalPower
 	commission = prep.CommissionRate().MulInt64(reward)
 	return
 }

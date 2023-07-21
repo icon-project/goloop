@@ -120,10 +120,10 @@ func TestGlobalV3(t *testing.T) {
 	assert.NotNil(t, g1)
 	g1.offsetLimit = offsetLimit
 	g1.rFund.SetIGlobal(iglobal)
-	g1.rFund.SetAllocation(keyIprep, iprep)
-	g1.rFund.SetAllocation(keyIwage, iwage)
-	g1.rFund.SetAllocation(keyIcps, icps)
-	g1.rFund.SetAllocation(keyIrelay, irelay)
+	g1.rFund.SetAllocation(KeyIprep, iprep)
+	g1.rFund.SetAllocation(KeyIwage, iwage)
+	g1.rFund.SetAllocation(KeyIcps, icps)
+	g1.rFund.SetAllocation(KeyIrelay, irelay)
 	g1.minBond = minBond
 
 	o1 := icobject.New(type_, g)
@@ -147,12 +147,12 @@ func TestGlobalV3(t *testing.T) {
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
 	assert.Equal(t, 0, g2.GetIGlobal().Cmp(iglobal))
 	assert.Equal(t, iprep, g2.GetIPRep())
-	assert.Equal(t, iprep, g2.GetRewardFundRateByKey(keyIprep))
+	assert.Equal(t, iprep, g2.GetRewardFundRateByKey(KeyIprep))
 	assert.Equal(t, iwage, g2.GetIWage())
-	assert.Equal(t, iwage, g2.GetRewardFundRateByKey(keyIwage))
+	assert.Equal(t, iwage, g2.GetRewardFundRateByKey(KeyIwage))
 	assert.Equal(t, icps, g2.GetICps())
-	assert.Equal(t, icps, g2.GetRewardFundRateByKey(keyIcps))
+	assert.Equal(t, icps, g2.GetRewardFundRateByKey(KeyIcps))
 	assert.Equal(t, irelay, g2.GetIRelay())
-	assert.Equal(t, irelay, g2.GetRewardFundRateByKey(keyIrelay))
+	assert.Equal(t, irelay, g2.GetRewardFundRateByKey(KeyIrelay))
 	assert.Equal(t, 0, g2.MinBond().Cmp(minBond))
 }

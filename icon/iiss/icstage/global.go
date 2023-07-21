@@ -462,19 +462,23 @@ func (g *GlobalV3) GetIGlobal() *big.Int {
 }
 
 func (g *GlobalV3) GetIPRep() icmodule.Rate {
-	return g.rFund.GetAllocation(keyIprep)
+	return g.rFund.GetAllocation(KeyIprep)
 }
 
 func (g *GlobalV3) GetICps() icmodule.Rate {
-	return g.rFund.GetAllocation(keyIcps)
+	return g.rFund.GetAllocation(KeyIcps)
 }
 
 func (g *GlobalV3) GetIRelay() icmodule.Rate {
-	return g.rFund.GetAllocation(keyIrelay)
+	return g.rFund.GetAllocation(KeyIrelay)
 }
 
 func (g *GlobalV3) GetIWage() icmodule.Rate {
-	return g.rFund.GetAllocation(keyIwage)
+	return g.rFund.GetAllocation(KeyIwage)
+}
+
+func (g *GlobalV3) GetRewardFundAmountByKey(key rFundKey) *big.Int {
+	return g.rFund.GetAmount(key)
 }
 
 func (g *GlobalV3) MinBond() *big.Int {
@@ -605,37 +609,23 @@ func NewGlobalV3(
 		minBond: minBond,
 	}
 	g.rFund.SetIGlobal(iglobal)
-	g.rFund.SetAllocation(keyIprep, iprep)
-	g.rFund.SetAllocation(keyIwage, iwage)
-	g.rFund.SetAllocation(keyIcps, icps)
-	g.rFund.SetAllocation(keyIrelay, irelay)
+	g.rFund.SetAllocation(KeyIprep, iprep)
+	g.rFund.SetAllocation(KeyIwage, iwage)
+	g.rFund.SetAllocation(KeyIcps, icps)
+	g.rFund.SetAllocation(KeyIrelay, irelay)
 	return g
 }
 
 type rFundKey string
 
 const (
-	keyIprep  rFundKey = "iprep"
-	keyIwage           = "iwage"
-	keyIcps            = "icps"
-	keyIrelay          = "irelay"
+	KeyIprep  rFundKey = "iprep"
+	KeyIwage           = "iwage"
+	KeyIcps            = "icps"
+	KeyIrelay          = "irelay"
 )
 
-var rFundKeys = []rFundKey{keyIprep, keyIwage, keyIcps, keyIrelay}
-
-type rElem struct {
-	key   rFundKey
-	value icmodule.Rate
-}
-
-func (r *rElem) RLPEncodeSelf(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(r.key, r.value)
-}
-
-func (r *rElem) RLPDecodeSelf(d codec.Decoder) error {
-	_, err := d.DecodeMulti(&r.key, &r.value)
-	return err
-}
+var rFundKeys = []rFundKey{KeyIprep, KeyIwage, KeyIcps, KeyIrelay}
 
 type rewardFund struct {
 	iGlobal    *big.Int
@@ -660,6 +650,10 @@ func (r *rewardFund) GetAllocation(key rFundKey) icmodule.Rate {
 
 func (r *rewardFund) SetAllocation(key rFundKey, value icmodule.Rate) {
 	r.allocation[key] = value
+}
+
+func (r *rewardFund) GetAmount(key rFundKey) *big.Int {
+	return r.GetAllocation(key).MulBigInt(r.iGlobal)
 }
 
 func (r *rewardFund) Equal(r2 *rewardFund) bool {
