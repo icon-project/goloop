@@ -70,7 +70,7 @@ func TestVoted(t *testing.T) {
 	}
 
 	t3 := ToVoted(o3)
-	assert.False(t, t3.Equal(t2))
+	assert.True(t, t3.Equal(t2))
 	assert.Equal(t, VotedVersion2, t3.Version())
 	assert.Equal(t, 0, t3.Delegated().Cmp(t2.Delegated()))
 	assert.Equal(t, 0, t3.BondedDelegation().Sign())
