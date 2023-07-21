@@ -313,7 +313,7 @@ func (ef EnableStatus) IsDisabledPermanently() bool {
 }
 
 func (ef EnableStatus) IsJail() bool {
-	return ef == ESUnjail
+	return ef == ESJail
 }
 
 func (ef EnableStatus) IsUnjail() bool {
