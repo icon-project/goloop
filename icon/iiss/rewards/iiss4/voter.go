@@ -90,9 +90,6 @@ func (v *VotingEvents) IsCalculated(key string) bool {
 
 func (v *VotingEvents) AddEvent(vType VoteType, from module.Address, votes icstage.VoteList, offset int) {
 	key := icutils.ToKey(from)
-	if _, ok := v.events[key]; !ok {
-		v.events[key] = make([]*VoteEvent, 0)
-	}
 	v.events[key] = append(v.events[key], NewVoteEvent(vType, votes, offset))
 }
 
@@ -167,7 +164,6 @@ func (v *Voter) addVoting(voting icstate.Voting, period *big.Int) {
 	amount := new(big.Int).Mul(voting.Amount(), period)
 	if value, ok := v.votes[key]; ok {
 		value.Add(value, amount)
-		v.votes[key] = value
 	} else {
 		v.votes[key] = amount
 	}
