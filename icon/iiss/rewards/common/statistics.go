@@ -19,6 +19,7 @@ package common
 import (
 	"fmt"
 	"math/big"
+	"strings"
 )
 
 type Stats struct {
@@ -76,11 +77,12 @@ func (s *Stats) Total() *big.Int {
 }
 
 func (s *Stats) String() string {
-	ret := fmt.Sprintf("Total=%d", s.Total())
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Total=%d", s.Total())
 	for k, v := range s.value {
-		ret = fmt.Sprintf("%s %s=%d", ret, k, v)
+		fmt.Fprintf(&sb, " %s=%d", k, v)
 	}
-	return ret
+	return sb.String()
 }
 
 func NewStats() *Stats {
