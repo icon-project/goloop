@@ -44,37 +44,6 @@ func newTestPRep(p prep) *PRep {
 	return NewPRep(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
 }
 
-func TestPRep_getPower(t *testing.T) {
-	tests := []struct {
-		name          string
-		bonded, voted int64
-		br            int
-		want          int64
-	}{
-		{
-			"less bond",
-			10, 990, 5,
-			200,
-		},
-		{
-			"exact bond",
-			50, 950, 5,
-			1000,
-		},
-		{
-			"more bond",
-			500, 500, 5,
-			1000,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ret := getPower(big.NewInt(tt.bonded), big.NewInt(tt.bonded+tt.voted), tt.br)
-			assert.Equal(t, tt.want, ret.Int64())
-		})
-	}
-}
-
 func TestPRep_InitAccumulated(t *testing.T) {
 	a1, _ := common.NewAddressFromString("hx1")
 	bond := int64(100)

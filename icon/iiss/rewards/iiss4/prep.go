@@ -19,10 +19,10 @@ package iiss4
 import (
 	"bytes"
 	"fmt"
-	"github.com/icon-project/goloop/icon/icmodule"
 	"math/big"
 	"sort"
 
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -93,15 +93,6 @@ func (p *PRep) Power() *big.Int {
 
 func (p *PRep) Pubkey() bool {
 	return p.pubkey
-}
-
-func getPower(bonded, voted *big.Int, br int) *big.Int {
-	power := new(big.Int).Mul(bonded, big.NewInt(100))
-	power.Div(power, big.NewInt(int64(br)))
-	if voted.Cmp(power) == -1 {
-		power.Set(voted)
-	}
-	return power
 }
 
 func (p *PRep) GetPower(bondRequirement icmodule.Rate) *big.Int {
