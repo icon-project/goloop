@@ -618,7 +618,7 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyNonVote)),
+			intconv.Int64ToBytes(int64(icmodule.PenaltyMissingNetworkProposalVote)),
 		},
 	)
 
