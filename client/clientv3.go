@@ -15,7 +15,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -50,6 +49,14 @@ func guessDebugEndpoint(endpoint string) string {
 		}
 	}
 	return ""
+}
+
+func TimestampFromTime(tm time.Time) jsonrpc.HexInt {
+	return jsonrpc.HexIntFromInt64(tm.UnixNano() / int64(time.Microsecond))
+}
+
+func TimestampNow() jsonrpc.HexInt {
+	return TimestampFromTime(time.Now())
 }
 
 func NewClientV3(endpoint string) *ClientV3 {
@@ -296,7 +303,7 @@ func (c *ClientV3) SendSignedTransaction(param *v3.TransactionParam) (*jsonrpc.H
 }
 
 func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
-	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+	param.Timestamp = TimestampNow()
 	if err := SignTransaction(w, param); err != nil {
 		return  nil, err
 	}
@@ -304,7 +311,7 @@ func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) 
 }
 
 func (c *ClientV3) SendRawTransaction(w module.Wallet, param map[string]interface{}) (*jsonrpc.HexBytes, error) {
-	param["timestamp"] = intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond))
+	param["timestamp"] = TimestampNow()
 	bs, err := transaction.SerializeMap(param, nil, txSerializeExcludes)
 	if err != nil {
 		return nil, err
@@ -574,7 +581,7 @@ func (c *ClientV3) EstimateStep(param *v3.TransactionParamForEstimate) (*common.
 	if len(c.DebugEndPoint) == 0 {
 		return nil, errors.InvalidStateError.New("UnavailableDebugEndPoint")
 	}
-	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+	param.Timestamp = TimestampNow()
 	var result common.HexInt
 	if _, err := c.DoURL(c.DebugEndPoint,
 		"debug_estimateStep", param, &result); err != nil {
