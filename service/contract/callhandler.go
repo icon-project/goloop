@@ -537,7 +537,9 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error
 		// It's not allowed to send event message if it's in query mode.
 		// It means that the execution environment is in invalid state.
 		// Proxy need to be closed.
-		h.Log.Warnf("DROP EventLog(%s,%+v,%+v) in ReadOnlyMode",
+		h.Log.TSystemf("EVENT drop event=(%s,%+v,%+v) readonly",
+			addr, indexed, data)
+		h.Log.Debugf("DROP EventLog(%s,%+v,%+v) in ReadOnlyMode",
 			addr, indexed, data)
 		return errors.InvalidStateError.New("EventInReadOnlyMode")
 	}
@@ -547,7 +549,7 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) error
 		// them know the problem.
 		h.Log.TSystemf("EVENT drop event=(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
-		h.Log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
+		h.Log.Debugf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
 		return nil
 	}
