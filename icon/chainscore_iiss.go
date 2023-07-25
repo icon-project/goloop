@@ -862,6 +862,31 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	return nil
 }
 
+func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+
+	rates := make(map[string]icmodule.Rate)
+	for _, v := range values {
+		pair, ok := v.(map[string]interface{})
+		name, ok := pair["name"].(string)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidNameType")
+		}
+		value, ok := pair["value"].(*common.HexInt)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidRateType")
+		}
+		rates[name] = icmodule.Rate(value.Int64())
+	}
+	return es.SetSlashingRates(s.newCallContext(s.cc), rates)
+}
+
 func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate) {
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},

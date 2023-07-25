@@ -1838,3 +1838,16 @@ func (es *ExtensionStateImpl) OnSetPublicKey(cc icmodule.CallContext, from modul
 		dsaIndex,
 	)
 }
+
+func (es *ExtensionStateImpl) SetSlashingRates(_ icmodule.CallContext, values map[string]icmodule.Rate) error {
+	for name, rate := range values {
+		penaltyType := icmodule.ToPenaltyType(name)
+		if penaltyType == icmodule.PenaltyNone {
+			return scoreresult.InvalidParameterError.Errorf("InvalidPenaltyName(%s)", name)
+		}
+		if err := es.State.SetSlashingRate(penaltyType, rate); err != nil {
+			return err
+		}
+	}
+	return nil
+}

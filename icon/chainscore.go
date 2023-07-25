@@ -668,6 +668,19 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, icmodule.RevisionICON2R3, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "setSlashingRates",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"rates", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionPreIISS4, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "setUseSystemDeposit",
 		scoreapi.FlagExternal, 2,
 		[]scoreapi.Parameter{
