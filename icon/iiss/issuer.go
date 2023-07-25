@@ -177,8 +177,8 @@ func calcRewardPerBlock(
 	beta1 := new(big.Int)
 	beta2 := new(big.Int)
 	beta3 := new(big.Int)
-	base := new(big.Int).Mul(irep, new(big.Int).SetInt64(MonthPerYear))
-	base.Div(base, new(big.Int).SetInt64(YearBlock*2))
+	base := new(big.Int).Mul(irep, new(big.Int).SetInt64(icmodule.MonthPerYear))
+	base.Div(base, new(big.Int).SetInt64(icmodule.YearBlock*2))
 
 	beta1.Mul(base, mainPRepCount)
 
@@ -187,9 +187,9 @@ func calcRewardPerBlock(
 
 	if totalDelegated.Sign() != 0 {
 		// real rrep = rrep + eep + dbp = 3 * rrep
-		beta3.Mul(rrep, new(big.Int).SetInt64(RrepMultiplier))
+		beta3.Mul(rrep, new(big.Int).SetInt64(icmodule.RrepMultiplier))
 		beta3.Mul(beta3, totalDelegated)
-		beta3.Div(beta3, new(big.Int).SetInt64(YearBlock*RrepDivider))
+		beta3.Div(beta3, new(big.Int).SetInt64(icmodule.YearBlock*icmodule.RrepDivider))
 	}
 
 	reward := new(big.Int).Add(beta1, beta2)
@@ -228,7 +228,7 @@ func calcIssueAmount(reward *big.Int, i *icstate.Issue) (issue *big.Int, byOverI
 	return
 }
 
-//GetIssueData return issue information for base TX
+// GetIssueData return issue information for base TX
 func GetIssueData(es *ExtensionStateImpl) (*IssuePRepJSON, *IssueResultJSON) {
 	if !es.IsDecentralized() {
 		return nil, nil
@@ -278,7 +278,7 @@ func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.TermSnapshot) *Issue
 	if term.Revision() < icmodule.RevisionFixIGlobal {
 		reward, remains = new(big.Int).DivMod(term.Iglobal(), big.NewInt(term.Period()), new(big.Int))
 	} else {
-		reward, remains = new(big.Int).DivMod(term.Iglobal(), big.NewInt(MonthBlock), new(big.Int))
+		reward, remains = new(big.Int).DivMod(term.Iglobal(), big.NewInt(icmodule.MonthBlock), new(big.Int))
 	}
 	if remains.Sign() == 1 {
 		reward.Add(reward, intconv.BigIntOne)

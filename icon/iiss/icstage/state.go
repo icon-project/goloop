@@ -37,15 +37,16 @@ const (
 )
 
 var (
-	IScoreClaimKey  = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
-	EventKey        = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
-	BlockProduceKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
-	ValidatorKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
-	BTPKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
-	HashKey         = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
-	GlobalKey       = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
-	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
-	ValidatorsKey   = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(validatorsKey).Build())
+	IScoreClaimKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
+	EventKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
+	BlockProduceKey   = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
+	ValidatorKey      = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
+	BTPKey            = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
+	CommissionRateKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x60})
+	HashKey           = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
+	GlobalKey         = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
+	EventSizeKey      = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
+	ValidatorsKey     = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(validatorsKey).Build())
 )
 
 type State struct {
@@ -155,6 +156,21 @@ func (s *State) AddEventVotedReward(offset int) (int64, error) {
 	return index, s.setEventSize(index + 1)
 }
 
+func (s *State) GetCommissionRate(addr module.Address) (*CommissionRate, error) {
+	key := CommissionRateKey.Append(addr).Build()
+	obj, err := s.store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return ToCommissionRate(obj), nil
+}
+
+func (s *State) AddCommissionRate(addr module.Address, value icmodule.Rate) error {
+	key := CommissionRateKey.Append(addr).Build()
+	_, err := s.store.Set(key, icobject.New(TypeCommissionRate, NewCommissionRate(value)))
+	return err
+}
+
 func (s *State) getEventSize() int64 {
 	return containerdb.NewVarDB(s.store, EventSizeKey).Int64()
 }
@@ -250,6 +266,18 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 		irelay,
 		electedPRepCount,
 		bondRequirement,
+	)
+	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
+	return err
+}
+
+func (s *State) AddGlobalV3(startHeight int64, revision, offsetLimit, electedPRepCount int, bondRequirement icmodule.Rate,
+	iglobal *big.Int, iprep, iwage, icps, irelay icmodule.Rate, minBond *big.Int,
+) error {
+	g := NewGlobalV3(
+		icstate.IISSVersion4, startHeight, revision,
+		offsetLimit, electedPRepCount, bondRequirement,
+		iglobal, iprep, iwage, icps, irelay, minBond,
 	)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err

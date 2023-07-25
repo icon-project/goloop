@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 ICON Foundation
+ * Copyright 2023 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,16 @@
  * limitations under the License.
  */
 
-package iiss
+package rewards
 
 import (
 	"fmt"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
@@ -34,88 +31,12 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
-func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
-	c := new(Calculator)
-	c.back = back
-	c.base = icreward.NewSnapshot(database, nil)
-	c.temp = c.base.NewState()
-	c.log = log.New()
-
-	return c
-}
-
-func TestCalculator_processClaim(t *testing.T) {
-	database := db.NewMapDB()
-	front := icstage.NewState(database)
-
-	addr1 := common.MustNewAddressFromString("hx1")
-	addr2 := common.MustNewAddressFromString("hx2")
-	v1 := int64(100)
-	v2 := int64(200)
-
-	type args struct {
-		addr  *common.Address
-		value *big.Int
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want int64
-	}{
-		{
-			"Add Claim 100",
-			args{
-				addr1,
-				big.NewInt(v1),
-			},
-			v1,
-		},
-		{
-			"Add Claim 200",
-			args{
-				addr2,
-				big.NewInt(v2),
-			},
-			v2,
-		},
-	}
-
-	// initialize data
-	c := MakeCalculator(database, nil)
-	for _, tt := range tests {
-		args := tt.args
-		// temp IScore : args.value * 2
-		iScore := icreward.NewIScore(new(big.Int).Mul(args.value, big.NewInt(2)))
-		err := c.temp.SetIScore(args.addr, iScore)
-		assert.NoError(t, err)
-
-		// add Claim : args.value
-		_, err = front.AddIScoreClaim(args.addr, args.value)
-		assert.NoError(t, err)
-	}
-	c.back = front.GetSnapshot()
-
-	err := c.processClaim()
-	assert.NoError(t, err)
-
-	// check result
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			args := tt.args
-			iScore, err := c.temp.GetIScore(args.addr)
-			assert.NoError(t, err)
-			assert.Equal(t, 0, args.value.Cmp(iScore.Value()))
-		})
-	}
-}
-
 func TestCalculator_processBlockProduce(t *testing.T) {
 	addr0 := common.MustNewAddressFromString("hx0")
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
 	addr3 := common.MustNewAddressFromString("hx3")
-	variable := big.NewInt(int64(YearBlock * icmodule.IScoreICXRatio))
+	variable := big.NewInt(int64(icmodule.YearBlock * icmodule.IScoreICXRatio))
 	rewardGenerate := variable.Int64()
 	rewardValidate := variable.Int64()
 
@@ -239,13 +160,13 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 				0,
 				100-1,
 				icmodule.RevisionIISS,
-				big.NewInt(YearBlock),
+				big.NewInt(icmodule.YearBlock),
 				big.NewInt(200),
 				22,
 				100,
 			),
 			//	multiplier = ((irep * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio
-			((YearBlock * MonthPerYear) / (YearBlock * 2)) * 100 * icmodule.IScoreICXRatio,
+			((icmodule.YearBlock * icmodule.MonthPerYear) / (icmodule.YearBlock * 2)) * 100 * icmodule.IScoreICXRatio,
 			1,
 		},
 		{
@@ -280,7 +201,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 			),
 			// 	variable = iglobal * iprep * IScoreICXRatio / (100 * TermPeriod)
 			10000 * icmodule.ToRate(50).NumInt64() * icmodule.IScoreICXRatio,
-			icmodule.DenomInRate * MonthBlock,
+			icmodule.DenomInRate * icmodule.MonthBlock,
 		},
 		{
 			"Global Version2 - disabled",
@@ -310,9 +231,9 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 	}
 }
 
-func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequirement int64, iScore int64) *votedData {
+func newVotedDataForTest(status icstage.EnableStatus, delegated, bonded, bondRequirement int64, iScore int64) *votedData {
 	voted := icreward.NewVoted()
-	voted.SetEnable(enable)
+	voted.SetStatus(status)
 	voted.SetDelegated(big.NewInt(delegated))
 	voted.SetBonded(big.NewInt(bonded))
 	voted.SetBondedDelegation(big.NewInt(0))
@@ -323,11 +244,11 @@ func newVotedDataForTest(enable bool, delegated int64, bonded int64, bondRequire
 }
 
 func TestDelegatedData_compare(t *testing.T) {
-	d1 := newVotedDataForTest(true, 10, 0, 0, 10)
-	d2 := newVotedDataForTest(true, 20, 0, 0, 20)
-	d3 := newVotedDataForTest(true, 20, 0, 0, 21)
-	d4 := newVotedDataForTest(false, 30, 0, 0, 30)
-	d5 := newVotedDataForTest(false, 31, 0, 0, 31)
+	d1 := newVotedDataForTest(icstage.ESEnable, 10, 0, 0, 10)
+	d2 := newVotedDataForTest(icstage.ESEnable, 20, 0, 0, 20)
+	d3 := newVotedDataForTest(icstage.ESEnable, 20, 0, 0, 21)
+	d4 := newVotedDataForTest(icstage.ESDisablePermanent, 30, 0, 0, 30)
+	d5 := newVotedDataForTest(icstage.ESDisableTemp, 31, 0, 0, 31)
 	type args struct {
 		d1 *votedData
 		d2 *votedData
@@ -383,7 +304,7 @@ func TestVotedInfo_setEnable(t *testing.T) {
 	for i := int64(1); i < 6; i += 1 {
 		status = status % icstage.ESMax
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(status.IsEnabled(), i, i, 1, 0)
+		data := newVotedDataForTest(status, i, i, 1, 0)
 		vInfo.AddVotedData(addr, data)
 		if status.IsEnabled() {
 			totalVoted.Add(totalVoted, data.GetVotedAmount())
@@ -422,11 +343,11 @@ func TestVotedInfo_setEnable(t *testing.T) {
 func TestVotedInfo_updateDelegated(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	votes := make([]*icstage.Vote, 0)
-	enable := true
+	status := icstage.ESEnable
 	for i := int64(1); i < 6; i += 1 {
-		enable = !enable
+		status = status % icstage.ESDisablePermanent
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(enable, i, i, 1, 0)
+		data := newVotedDataForTest(status, i, i, 1, 0)
 		vInfo.AddVotedData(addr, data)
 
 		votes = append(votes, icstage.NewVote(addr, big.NewInt(i)))
@@ -454,11 +375,11 @@ func TestVotedInfo_updateDelegated(t *testing.T) {
 func TestVotedInfo_updateBonded(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	votes := make([]*icstage.Vote, 0)
-	enable := true
+	status := icstage.ESEnable
 	for i := int64(1); i < 6; i += 1 {
-		enable = !enable
+		status = status % icstage.ESDisableTemp
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(enable, i, i, 1, 0)
+		data := newVotedDataForTest(status, i, i, 1, 0)
 		vInfo.AddVotedData(addr, data)
 
 		votes = append(votes, icstage.NewVote(addr, big.NewInt(i)))
@@ -491,7 +412,7 @@ func TestVotedInfo_SortAndUpdateTotalBondedDelegationAndCalculateReward(t *testi
 	rankCount := 0
 	for i := int64(1); i <= maxIndex; i += 1 {
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(true, i, i, 5, 0)
+		data := newVotedDataForTest(icstage.ESEnable, i, i, 5, 0)
 		if rankCount < maxRank {
 			total += i * 2
 			rankCount++
@@ -503,7 +424,7 @@ func TestVotedInfo_SortAndUpdateTotalBondedDelegationAndCalculateReward(t *testi
 	vInfo.UpdateTotalBondedDelegation()
 	assert.Equal(t, total, vInfo.TotalBondedDelegation().Int64())
 
-	variable := big.NewInt(YearBlock)
+	variable := big.NewInt(icmodule.YearBlock)
 	divider := big.NewInt(1)
 	period := 10000
 	bigIntPeriod := big.NewInt(int64(period))
@@ -554,7 +475,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 					0,
 					100-1,
 					icmodule.RevisionIISS,
-					big.NewInt(MonthBlock),
+					big.NewInt(icmodule.MonthBlock),
 					big.NewInt(20000000),
 					22,
 					100,
@@ -562,8 +483,8 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 				nil,
 			},
 			want{
-				RrepMultiplier * 20000000 * icmodule.IScoreICXRatio,
-				YearBlock * RrepDivider,
+				icmodule.RrepMultiplier * 20000000 * icmodule.IScoreICXRatio,
+				icmodule.YearBlock * icmodule.RrepDivider,
 			},
 		},
 		{
@@ -574,7 +495,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 					0,
 					100-1,
 					icmodule.RevisionIISS,
-					big.NewInt(MonthBlock),
+					big.NewInt(icmodule.MonthBlock),
 					big.NewInt(0),
 					22,
 					100,
@@ -607,7 +528,7 @@ func TestCalculator_varForVotingReward(t *testing.T) {
 			// 	multiplier = iglobal * ivoter * IScoreICXRatio / (100 * TermPeriod, totalVotingAmount)
 			want{
 				10000 * icmodule.ToRate(50).NumInt64() * icmodule.IScoreICXRatio,
-				icmodule.DenomInRate * MonthBlock * 10,
+				icmodule.DenomInRate * icmodule.MonthBlock * 10,
 			},
 		},
 		{
@@ -663,11 +584,11 @@ func TestCalculator_VotingReward(t *testing.T) {
 		string(addr3.Bytes()): {100, 200},
 	}
 
-	d0 := icstate.NewDelegation(addr1, big.NewInt(MinDelegation-1))
-	d1 := icstate.NewDelegation(addr1, big.NewInt(MinDelegation))
-	d2 := icstate.NewDelegation(addr2, big.NewInt(MinDelegation))
-	d3 := icstate.NewDelegation(addr3, big.NewInt(MinDelegation))
-	d4 := icstate.NewDelegation(addr4, big.NewInt(MinDelegation))
+	d0 := icstate.NewDelegation(addr1, big.NewInt(icmodule.MinDelegation-1))
+	d1 := icstate.NewDelegation(addr1, big.NewInt(icmodule.MinDelegation))
+	d2 := icstate.NewDelegation(addr2, big.NewInt(icmodule.MinDelegation))
+	d3 := icstate.NewDelegation(addr3, big.NewInt(icmodule.MinDelegation))
+	d4 := icstate.NewDelegation(addr4, big.NewInt(icmodule.MinDelegation))
 	type args struct {
 		iissVersion int
 		multiplier  int
@@ -787,54 +708,4 @@ func TestCalculator_VotingReward(t *testing.T) {
 			assert.Equal(t, tt.want, reward.Int64())
 		})
 	}
-}
-
-func TestCalculator_WaitResult(t *testing.T) {
-	c := &Calculator{
-		startHeight: InitBlockHeight,
-	}
-	err := c.WaitResult(1234)
-	assert.NoError(t, err)
-
-	c = &Calculator{
-		startHeight: 3414,
-	}
-	err = c.WaitResult(1234)
-	assert.Error(t, err)
-
-	toTC := make(chan string, 2)
-
-	go func() {
-		err := c.WaitResult(3414)
-		assert.True(t, err == errors.ErrInvalidState)
-		toTC <- "done"
-	}()
-	time.Sleep(time.Millisecond * 10)
-
-	c.setResult(nil, errors.ErrInvalidState)
-	assert.Equal(t, "done", <-toTC)
-
-	c = &Calculator{
-		startHeight: 3414,
-	}
-	go func() {
-		err := c.WaitResult(3414)
-		assert.NoError(t, err)
-		toTC <- "done"
-	}()
-	go func() {
-		err := c.WaitResult(3414)
-		assert.NoError(t, err)
-		toTC <- "done"
-	}()
-	time.Sleep(time.Millisecond * 20)
-
-	mdb := db.NewMapDB()
-	rss := icreward.NewSnapshot(mdb, nil)
-	c.setResult(rss, nil)
-
-	assert.Equal(t, "done", <-toTC)
-	assert.Equal(t, "done", <-toTC)
-
-	assert.True(t, c.Result() == rss)
 }

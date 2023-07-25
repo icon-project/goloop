@@ -130,16 +130,17 @@ func TestState_AddEvent(t *testing.T) {
 	vote2 := NewVote(addr2, big.NewInt(v2))
 
 	type args struct {
-		type_         int
-		offset        int
-		address       *common.Address
-		votes         VoteList
-		enableFlag    EnableStatus
-		irep          *big.Int
-		rrep          *big.Int
-		mainPRepCount int64
-		pRepCount     int64
-		validators    []*common.Address
+		type_          int
+		offset         int
+		address        *common.Address
+		votes          VoteList
+		enableFlag     EnableStatus
+		irep           *big.Int
+		rrep           *big.Int
+		mainPRepCount  int64
+		pRepCount      int64
+		validators     []*common.Address
+		commissionRate icmodule.Rate
 	}
 
 	tests := []struct {
@@ -207,7 +208,6 @@ func TestState_AddEvent(t *testing.T) {
 		count += 1
 	}
 }
-
 
 func checkAddEventVote(t *testing.T, s *State, index int64, obj trie.Object, offset int, address *common.Address, votes VoteList) {
 	key := EventKey.Append(offset, index).Build()
@@ -518,4 +518,87 @@ func TestState_AddLoadValidators(t *testing.T) {
 		assert.True(t, idxToAddr[i].Equal(v))
 		assert.Equal(t, addrToIdx[v.String()], i)
 	}
+}
+
+func TestState_AddCommissionRate(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+
+	s := NewStateFromSnapshot(NewSnapshot(database, nil))
+
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
+	v1 := icmodule.Rate(100)
+	v2 := icmodule.Rate(200)
+
+	type args struct {
+		addr  module.Address
+		value icmodule.Rate
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want icmodule.Rate
+	}{
+		{
+			"Set rate 100",
+			args{
+				addr1,
+				v1,
+			},
+			v1,
+		},
+		{
+			"Set rate 200",
+			args{
+				addr1,
+				v2,
+			},
+			v2,
+		},
+		{
+			"Set rate 200 to new address",
+			args{
+				addr2,
+				v2,
+			},
+			v2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := tt.args
+			err := s.AddCommissionRate(args.addr, args.value)
+			assert.NoError(t, err)
+
+			key := CommissionRateKey.Append(args.addr).Build()
+			obj, err := icobject.GetFromMutableForObject(s.store, key)
+			assert.NoError(t, err)
+			cr := ToCommissionRate(obj)
+			assert.Equal(t, tt.want, cr.Value())
+		})
+	}
+
+	ss := s.GetSnapshot()
+	count := 0
+	for iter := ss.Filter(CommissionRateKey.Build()); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
+		assert.NoError(t, err)
+		assert.NotNil(t, o)
+		cr := ToCommissionRate(o)
+		assert.NotNil(t, cr)
+
+		keySplit, _ := containerdb.SplitKeys(key)
+		assert.Equal(t, CommissionRateKey.Build(), keySplit[0])
+		keyAddress, err := common.NewAddress(keySplit[1])
+		assert.NoError(t, err)
+		addr := addr1
+		if count == 1 {
+			addr = addr2
+		}
+		assert.True(t, addr.Equal(keyAddress))
+
+		count += 1
+	}
+	assert.Equal(t, 2, count)
 }

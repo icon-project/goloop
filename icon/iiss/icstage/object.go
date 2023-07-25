@@ -34,6 +34,7 @@ const (
 	TypeEventDelegated
 	TypeBTPDSA
 	TypeBTPPublicKey
+	TypeCommissionRate
 )
 
 func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
@@ -53,13 +54,15 @@ func NewObjectImpl(tag icobject.Tag) (icobject.Impl, error) {
 	case TypeBlockProduce:
 		return newBlockProduce(tag), nil
 	case TypeGlobal:
-		return NewGlobal(tag.Version())
+		return newGlobal(tag)
 	case TypeEventVotedReward:
 		return newEventVotedReward(tag), nil
 	case TypeBTPDSA:
 		return newBTPDSA(tag), nil
 	case TypeBTPPublicKey:
 		return newBTPPublicKey(tag), nil
+	case TypeCommissionRate:
+		return newCommissionRate(tag), nil
 	default:
 		return nil, errors.IllegalArgumentError.Errorf(
 			"UnknownTypeTag(tag=%#x)", tag)
@@ -92,6 +95,13 @@ func ToEventVotedReward(obj trie.Object) *EventVotedReward {
 		return nil
 	}
 	return obj.(*icobject.Object).Real().(*EventVotedReward)
+}
+
+func ToCommissionRate(obj trie.Object) *CommissionRate {
+	if obj == nil {
+		return nil
+	}
+	return obj.(*icobject.Object).Real().(*CommissionRate)
 }
 
 func ToBlockProduce(obj trie.Object) *BlockProduce {

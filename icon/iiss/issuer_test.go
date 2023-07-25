@@ -189,38 +189,38 @@ func TestIssuer_calcRewardPerBlock(t *testing.T) {
 		{
 			"Prevote - voting only",
 			values{
-				new(big.Int).SetInt64(100 * MonthBlock),
+				new(big.Int).SetInt64(100 * icmodule.MonthBlock),
 				new(big.Int).SetInt64(1000),
 				new(big.Int),
-				new(big.Int).SetInt64(100 * YearBlock),
+				new(big.Int).SetInt64(100 * icmodule.YearBlock),
 			},
 			new(big.Int).SetInt64(
-				(100*MonthBlock)/(MonthBlock*2)*100 +
-					RrepMultiplier*1000*100/RrepDivider,
+				(100*icmodule.MonthBlock)/(icmodule.MonthBlock*2)*100 +
+					icmodule.RrepMultiplier*1000*100/icmodule.RrepDivider,
 			),
 		},
 		{
 			"Prevote - too small delegation",
 			values{
-				new(big.Int).SetInt64(100 * MonthBlock),
+				new(big.Int).SetInt64(100 * icmodule.MonthBlock),
 				new(big.Int).SetInt64(1000),
 				new(big.Int),
 				new(big.Int).SetInt64(100),
 			},
-			new(big.Int).SetInt64((100*MonthBlock)/(MonthBlock*2)*100 + 0),
+			new(big.Int).SetInt64((100*icmodule.MonthBlock)/(icmodule.MonthBlock*2)*100 + 0),
 		},
 		{
 			"Decentralized",
 			values{
-				new(big.Int).SetInt64(100 * MonthBlock),
+				new(big.Int).SetInt64(100 * icmodule.MonthBlock),
 				new(big.Int).SetInt64(1000),
 				new(big.Int).SetInt64(22),
-				new(big.Int).SetInt64(100 * YearBlock),
+				new(big.Int).SetInt64(100 * icmodule.YearBlock),
 			},
 			new(big.Int).SetInt64(
-				(100*MonthBlock)/(MonthBlock*2)*22 +
-					(100*MonthBlock)/(MonthBlock*2)*100 +
-					RrepMultiplier*1000*100/RrepDivider,
+				(100*icmodule.MonthBlock)/(icmodule.MonthBlock*2)*22 +
+					(100*icmodule.MonthBlock)/(icmodule.MonthBlock*2)*100 +
+					icmodule.RrepMultiplier*1000*100/icmodule.RrepDivider,
 			),
 		},
 		{
@@ -311,7 +311,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued",
 			values{
-				0, 0, 10*icmodule.IScoreICXRatio, 0,
+				0, 0, 10 * icmodule.IScoreICXRatio, 0,
 			},
 			100,
 			wants{
@@ -321,7 +321,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued-larger than reward",
 			values{
-				0, 0, 300*icmodule.IScoreICXRatio, 0,
+				0, 0, 300 * icmodule.IScoreICXRatio, 0,
 			},
 			100,
 			wants{
@@ -351,7 +351,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued and fee",
 			values{
-				0, 0, 10*icmodule.IScoreICXRatio, 20,
+				0, 0, 10 * icmodule.IScoreICXRatio, 20,
 			},
 			100,
 			wants{
@@ -361,7 +361,7 @@ func TestIssuer_calcIssueAmount(t *testing.T) {
 		{
 			"OverIssued and fee - larger than reward (overIssuedIScore has priority",
 			values{
-				0, 0, 300*icmodule.IScoreICXRatio, 200,
+				0, 0, 300 * icmodule.IScoreICXRatio, 200,
 			},
 			100,
 			wants{

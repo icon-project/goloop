@@ -54,6 +54,7 @@ const (
 const (
 	IISSVersion2 int = iota + 2
 	IISSVersion3
+	IISSVersion4
 )
 
 const (

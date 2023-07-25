@@ -17,11 +17,13 @@
 package icstage
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -30,9 +32,10 @@ func TestGlobalV1(t *testing.T) {
 
 	type_ := TypeGlobal
 	version := GlobalVersion1
+	tag := icobject.MakeTag(type_, version)
 	offsetLimit := 10
 
-	g, err := NewGlobal(version)
+	g, err := newGlobal(tag)
 	assert.NoError(t, err)
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV1()
@@ -53,6 +56,8 @@ func TestGlobalV1(t *testing.T) {
 	assert.Equal(t, version, o2.Tag().Version())
 
 	global := ToGlobal(o2)
+	assert.Nil(t, global.GetV2())
+	assert.Nil(t, global.GetV3())
 	g2 := global.GetV1()
 	assert.Equal(t, true, g1.Equal(g2))
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
@@ -63,9 +68,10 @@ func TestGlobalV2(t *testing.T) {
 
 	type_ := TypeGlobal
 	version := GlobalVersion2
+	tag := icobject.MakeTag(type_, version)
 	offsetLimit := 10
 
-	g, err := NewGlobal(version)
+	g, err := newGlobal(tag)
 	assert.NoError(t, err)
 	assert.Equal(t, version, g.Version())
 	g1 := g.GetV2()
@@ -86,7 +92,67 @@ func TestGlobalV2(t *testing.T) {
 	assert.Equal(t, version, o2.Tag().Version())
 
 	global := ToGlobal(o2)
+	assert.Nil(t, global.GetV1())
+	assert.Nil(t, global.GetV3())
 	g2 := global.GetV2()
 	assert.Equal(t, true, g1.Equal(g2))
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
+}
+
+func TestGlobalV3(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+
+	type_ := TypeGlobal
+	version := GlobalVersion3
+	tag := icobject.MakeTag(type_, version)
+	offsetLimit := 10
+	iglobal := big.NewInt(3000000000)
+	iprep := icmodule.Rate(7700)
+	iwage := icmodule.Rate(1300)
+	icps := icmodule.Rate(1000)
+	irelay := icmodule.Rate(0)
+	minBond := big.NewInt(10000)
+
+	g, err := newGlobal(tag)
+	assert.NoError(t, err)
+	assert.Equal(t, version, g.Version())
+	g1 := g.GetV3()
+	assert.NotNil(t, g1)
+	g1.offsetLimit = offsetLimit
+	g1.rFund.SetIGlobal(iglobal)
+	g1.rFund.SetAllocation(KeyIprep, iprep)
+	g1.rFund.SetAllocation(KeyIwage, iwage)
+	g1.rFund.SetAllocation(KeyIcps, icps)
+	g1.rFund.SetAllocation(KeyIrelay, irelay)
+	g1.minBond = minBond
+
+	o1 := icobject.New(type_, g)
+	serialized := o1.Bytes()
+
+	o2 := new(icobject.Object)
+	if err = o2.Reset(database, serialized); err != nil {
+		t.Errorf("Failed to get object from bytes. %v", err)
+		return
+	}
+
+	assert.Equal(t, serialized, o2.Bytes())
+	assert.Equal(t, type_, o2.Tag().Type())
+	assert.Equal(t, version, o2.Tag().Version())
+
+	global := ToGlobal(o2)
+	assert.Nil(t, global.GetV1())
+	assert.Nil(t, global.GetV2())
+	g2 := global.GetV3()
+	assert.True(t, g1.Equal(g2))
+	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
+	assert.Equal(t, 0, g2.GetIGlobal().Cmp(iglobal))
+	assert.Equal(t, iprep, g2.GetIPRep())
+	assert.Equal(t, iprep, g2.GetRewardFundRateByKey(KeyIprep))
+	assert.Equal(t, iwage, g2.GetIWage())
+	assert.Equal(t, iwage, g2.GetRewardFundRateByKey(KeyIwage))
+	assert.Equal(t, icps, g2.GetICps())
+	assert.Equal(t, icps, g2.GetRewardFundRateByKey(KeyIcps))
+	assert.Equal(t, irelay, g2.GetIRelay())
+	assert.Equal(t, irelay, g2.GetRewardFundRateByKey(KeyIrelay))
+	assert.Equal(t, 0, g2.MinBond().Cmp(minBond))
 }

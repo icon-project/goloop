@@ -51,6 +51,11 @@ func (r Rate) NumBigInt() *big.Int {
 	return big.NewInt(r.NumInt64())
 }
 
+func (r Rate) MulInt64(v int64) int64 {
+	ret := v * r.NumInt64()
+	return ret / r.DenomInt64()
+}
+
 func (r Rate) MulBigInt(v *big.Int) *big.Int {
 	ret := new(big.Int).Set(v)
 	ret = ret.Mul(ret, r.NumBigInt())

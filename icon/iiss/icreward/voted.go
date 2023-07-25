@@ -24,27 +24,44 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstage"
+)
+
+const (
+	VotedVersion1 = iota
+	VotedVersion2
 )
 
 type Voted struct {
 	icobject.NoDatabase
-	enable           bool     // update via ENABLE event
+	version          int
+	status           icstage.EnableStatus
 	delegated        *big.Int // update via DELEGATE event
 	bonded           *big.Int // update via BOND event
 	bondedDelegation *big.Int // update when start calculation for P-Rep voted reward
+	commissionRate   icmodule.Rate
 }
 
 func (v *Voted) Version() int {
-	return 0
+	return v.version
+}
+
+func (v *Voted) SetVersion(version int) {
+	v.version = version
+}
+
+func (v *Voted) Status() icstage.EnableStatus {
+	return v.status
 }
 
 func (v *Voted) Enable() bool {
-	return v.enable
+	return v.status.IsEnabled()
 }
 
-func (v *Voted) SetEnable(enable bool) {
-	v.enable = enable
+func (v *Voted) SetStatus(status icstage.EnableStatus) {
+	v.status = status
 }
 
 func (v *Voted) Delegated() *big.Int {
@@ -80,21 +97,53 @@ func (v *Voted) GetVotedAmount() *big.Int {
 	return new(big.Int).Add(v.bonded, v.delegated)
 }
 
+func (v *Voted) CommissionRate() icmodule.Rate {
+	return v.commissionRate
+}
+
+func (v *Voted) SetCommissionRate(value icmodule.Rate) {
+	v.commissionRate = value
+}
+
 func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
-	_, err := decoder.DecodeMulti(&v.enable, &v.delegated, &v.bonded, &v.bondedDelegation)
+	var err error
+	switch v.version {
+	case VotedVersion1:
+		v.commissionRate = 0
+		var enable bool
+		_, err = decoder.DecodeMulti(&enable, &v.delegated, &v.bonded, &v.bondedDelegation)
+		if enable {
+			v.status = icstage.ESEnable
+		} else {
+			v.status = icstage.ESDisablePermanent
+		}
+	case VotedVersion2:
+		v.bondedDelegation = new(big.Int)
+		_, err = decoder.DecodeMulti(&v.status, &v.delegated, &v.bonded, &v.commissionRate)
+	default:
+		return errors.IllegalArgumentError.Errorf("illegal Voted version %d", v.version)
+	}
 	return err
 }
 
 func (v *Voted) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(v.enable, v.delegated, v.bonded, v.bondedDelegation)
+	switch v.version {
+	case VotedVersion1:
+		return encoder.EncodeMulti(v.Enable(), v.delegated, v.bonded, v.bondedDelegation)
+	case VotedVersion2:
+		return encoder.EncodeMulti(v.status, v.delegated, v.bonded, v.commissionRate)
+	default:
+		return errors.IllegalArgumentError.Errorf("illegal Voted version %d", v.version)
+	}
 }
 
 func (v *Voted) Equal(o icobject.Impl) bool {
-	if ic2, ok := o.(*Voted); ok {
-		return v.enable == ic2.enable &&
-			v.delegated.Cmp(ic2.delegated) == 0 &&
-			v.bonded.Cmp(ic2.bonded) == 0 &&
-			v.bondedDelegation.Cmp(ic2.bondedDelegation) == 0
+	if v2, ok := o.(*Voted); ok {
+		return v.version == v2.version &&
+			v.status == v2.status &&
+			v.delegated.Cmp(v2.delegated) == 0 &&
+			v.bonded.Cmp(v2.bonded) == 0 &&
+			v.commissionRate == v2.commissionRate
 	} else {
 		return false
 	}
@@ -104,36 +153,40 @@ func (v *Voted) Clone() *Voted {
 	if v == nil {
 		return nil
 	}
-	nv := new(Voted)
-	nv.enable = v.enable
-	nv.delegated = v.delegated
-	nv.bonded = v.bonded
-	nv.bondedDelegation = v.bondedDelegation
-	return nv
+	return &Voted{
+		version:          v.version,
+		status:           v.status,
+		delegated:        v.delegated,
+		bonded:           v.bonded,
+		bondedDelegation: v.bondedDelegation,
+		commissionRate:   v.commissionRate,
+	}
 }
 
 func (v *Voted) IsEmpty() bool {
-	return v.enable == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0 && v.bondedDelegation.Sign() == 0
+	return v.status.IsEnabled() == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0
 }
 
 func (v *Voted) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Voted{enable=%v delegated=%d bonded=%d bondedDelegation=%d}",
-				v.enable, v.delegated, v.bonded, v.bondedDelegation)
+			fmt.Fprintf(f, "Voted{version=%d status=%s delegated=%d bonded=%d bondedDelegation=%d commissionRate=%d}",
+				v.version, v.status, v.delegated, v.bonded, v.bondedDelegation, v.commissionRate)
 		} else {
-			fmt.Fprintf(f, "Voted{%v %d %d %d}",
-				v.enable, v.delegated, v.bonded, v.bondedDelegation)
+			fmt.Fprintf(f, "Voted{%d %s %d %d %d %d}",
+				v.version, v.status, v.delegated, v.bonded, v.bondedDelegation, v.commissionRate)
 		}
 	case 's':
-		fmt.Fprintf(f, "enable=%v delegated=%d bonded=%d bondedDelegation=%d",
-			v.enable, v.delegated, v.bonded, v.bondedDelegation)
+		fmt.Fprintf(f, "version=%d status=%s delegated=%d bonded=%d bondedDelegation=%d commissionRate=%d",
+			v.version, v.status, v.delegated, v.bonded, v.bondedDelegation, v.commissionRate)
 	}
 }
 
-func newVoted(_ icobject.Tag) *Voted {
-	return new(Voted)
+func newVoted(tag icobject.Tag) *Voted {
+	v := NewVoted()
+	v.version = tag.Version()
+	return v
 }
 
 func NewVoted() *Voted {
@@ -142,4 +195,10 @@ func NewVoted() *Voted {
 		bonded:           new(big.Int),
 		bondedDelegation: new(big.Int),
 	}
+}
+
+func NewVotedV2() *Voted {
+	v := NewVoted()
+	v.SetVersion(VotedVersion2)
+	return v
 }

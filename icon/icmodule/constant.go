@@ -20,7 +20,6 @@ import (
 	"math/big"
 )
 
-// From iiss.calculator.go
 const (
 	DayBlock     = 24 * 60 * 60 / 2
 	DayPerMonth  = 30
@@ -28,12 +27,14 @@ const (
 	MonthPerYear = 12
 	YearBlock    = MonthBlock * MonthPerYear
 
-	/*
-		MinRrep        = 200
-		RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
-		RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
-		MinDelegation  = YearBlock / IScoreICXRatio * (RrepDivider / MinRrep)
-	*/
+	MinRrep        = 200
+	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
+	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
+	MinDelegation  = YearBlock / IScoreICXRatio * (RrepDivider / MinRrep)
+)
+
+var (
+	BigIntMinDelegation = big.NewInt(int64(MinDelegation))
 )
 
 const (
@@ -51,15 +52,15 @@ const (
 	MinIRep                  = 10_000
 	RewardPoint              = 0.7
 
-	DefaultTermPeriod                            = InitialTermPeriod
-	DefaultUnbondingPeriodMultiplier             = 7
-	DefaultUnstakeSlotMax                        = 1000
-	DefaultMainPRepCount                         = 22
-	DefaultSubPRepCount                          = 78
-	DefaultIRep                                  = 0
-	DefaultRRep                                  = 1200
-	DefaultBondRequirement                       = 5 // 5%
-	DefaultLockMinMultiplier                     = 5
+	DefaultTermPeriod                           = InitialTermPeriod
+	DefaultUnbondingPeriodMultiplier            = 7
+	DefaultUnstakeSlotMax                       = 1000
+	DefaultMainPRepCount                        = 22
+	DefaultSubPRepCount                         = 78
+	DefaultIRep                                 = 0
+	DefaultRRep                                 = 1200
+	DefaultBondRequirement                      = 5 // 5%
+	DefaultLockMinMultiplier                    = 5
 	DefaultLockMaxMultiplier                    = 20
 	DefaultIglobal                              = YearBlock * IScoreICXRatio
 	DefaultIprep                                = 50 // 50%

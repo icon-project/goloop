@@ -53,8 +53,28 @@ func TestVoted(t *testing.T) {
 
 	t2 := ToVoted(o2)
 	assert.Equal(t, true, t1.Equal(t2))
+	assert.Equal(t, VotedVersion1, t2.Version())
 	assert.Equal(t, 0, t1.Delegated().Cmp(t2.Delegated()))
 	assert.Equal(t, 0, t1.BondedDelegation().Cmp(t2.BondedDelegation()))
+
+	// v1 -> v2
+	commissionRate := icmodule.Rate(1000)
+	t2.SetVersion(VotedVersion2)
+	t2.SetCommissionRate(commissionRate)
+
+	o2 = icobject.New(type_, t2)
+	o3 := new(icobject.Object)
+	if err := o3.Reset(database, o2.Bytes()); err != nil {
+		t.Errorf("Failed to get object from bytes")
+		return
+	}
+
+	t3 := ToVoted(o3)
+	assert.True(t, t3.Equal(t2))
+	assert.Equal(t, VotedVersion2, t3.Version())
+	assert.Equal(t, 0, t3.Delegated().Cmp(t2.Delegated()))
+	assert.Equal(t, 0, t3.BondedDelegation().Sign())
+	assert.Equal(t, t2.CommissionRate(), t3.CommissionRate())
 }
 
 func makeVotedFotTest(delegated int64, bonded int64) *Voted {
@@ -66,10 +86,9 @@ func makeVotedFotTest(delegated int64, bonded int64) *Voted {
 }
 
 func TestVoted_UpdateBondedDelegation(t *testing.T) {
-
 	type args struct {
-		delegated int64
-		bonded int64
+		delegated       int64
+		bonded          int64
 		bondRequirement int
 	}
 
@@ -80,35 +99,35 @@ func TestVoted_UpdateBondedDelegation(t *testing.T) {
 	}{
 		{
 			"IISSVersion 1",
-			args {
+			args{
 				100, 0, 0,
 			},
 			100,
 		},
 		{
 			"IISSVersion 2 - exact fulfil",
-			args {
+			args{
 				9500, 500, 5,
 			},
 			10000,
 		},
 		{
 			"IISSVersion 2 - not enough",
-			args {
+			args{
 				9600, 400, 5,
 			},
 			8000,
 		},
 		{
 			"IISSVersion 2 - overbonded",
-			args {
+			args{
 				1000, 100, 5,
 			},
 			1100,
 		},
 		{
 			"IISSVersion 2 - Zero bond requirement",
-			args {
+			args{
 				10000, 1000, 0,
 			},
 			11000,

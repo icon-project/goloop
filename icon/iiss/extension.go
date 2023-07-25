@@ -52,6 +52,10 @@ type ExtensionSnapshotImpl struct {
 	reward *icreward.Snapshot
 }
 
+func (s *ExtensionSnapshotImpl) DB() db.Database {
+	return s.database
+}
+
 func (s *ExtensionSnapshotImpl) Back1() *icstage.Snapshot {
 	return s.back1
 }
@@ -775,7 +779,7 @@ func (es *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRe
 	   irep <= totalSupply * IrepInflationLimit * 2 / (100 * MonthBlock * (MAIN_PREP_COUNT + PERCENTAGE_FOR_BETA_2))
 	*/
 	limit := new(big.Int).Mul(term.TotalSupply(), new(big.Int).SetInt64(IrepInflationLimit*2))
-	divider := new(big.Int).SetInt64(int64(100 * MonthPerYear * (term.MainPRepCount() + icmodule.VotedRewardMultiplier)))
+	divider := new(big.Int).SetInt64(int64(100 * icmodule.MonthPerYear * (term.MainPRepCount() + icmodule.VotedRewardMultiplier)))
 	limit.Div(limit, divider)
 	if newIRep.Cmp(limit) == 1 {
 		return scoreresult.InvalidParameterError.Errorf("IRep is out of range: %v > %v", newIRep, limit)
@@ -827,7 +831,7 @@ func (es *ExtensionStateImpl) OnExecutionBegin(wc icmodule.WorldContext) error {
 	return nil
 }
 
-func (es *ExtensionStateImpl) OnExecutionEnd(wc icmodule.WorldContext, totalFee *big.Int, calculator *Calculator) error {
+func (es *ExtensionStateImpl) OnExecutionEnd(wc icmodule.WorldContext, totalFee *big.Int, calculator Calculator) error {
 	var err error
 	if err = es.handleTimerJob(wc); err != nil {
 		return err
@@ -892,7 +896,7 @@ func (es *ExtensionStateImpl) OnExecutionEnd(wc icmodule.WorldContext, totalFee 
 	return nil
 }
 
-func (es *ExtensionStateImpl) checkCalculationDone(calculator *Calculator) error {
+func (es *ExtensionStateImpl) checkCalculationDone(calculator Calculator) error {
 	// Called at the end block of Term and effected to base TX issue amount in ICON1
 	rcInfo, err := es.State.GetRewardCalcInfo()
 	if err != nil {
@@ -920,7 +924,7 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 	if prevGlobal != nil && icstate.IISSVersion3 == prevGlobal.GetIISSVersion() {
 		pg := prevGlobal.GetV2()
 		multiplier := big.NewInt(int64(prevGlobal.GetTermPeriod() * icmodule.IScoreICXRatio))
-		divider := big.NewInt(MonthBlock * icmodule.DenomInRate)
+		divider := big.NewInt(icmodule.MonthBlock * icmodule.DenomInRate)
 		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().NumBigInt())
 		rewardCPS.Mul(rewardCPS, multiplier)
 		rewardCPS.Div(rewardCPS, divider)
@@ -1075,10 +1079,10 @@ func (es *ExtensionStateImpl) setIssuePrevBlockFee(fee *big.Int) error {
 	return nil
 }
 
-func (es *ExtensionStateImpl) applyCalculationResult(calculator *Calculator, blockHeight int64) error {
+func (es *ExtensionStateImpl) applyCalculationResult(calculator Calculator, blockHeight int64) error {
 	var resultHash []byte
 	result := calculator.Result()
-	reward := new(big.Int).Set(calculator.TotalReward())
+	reward := calculator.TotalReward()
 
 	rc, err := es.State.GetRewardCalcInfo()
 	rcInfo := rc.Clone()
@@ -1728,7 +1732,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 		{icstate.RelayKey, rf.Irelay},
 	}
 	ns := es.State.GetNetworkScores(cc)
-	div := big.NewInt(icmodule.DenomInRate * MonthBlock)
+	div := big.NewInt(icmodule.DenomInRate * icmodule.MonthBlock)
 	base := new(big.Int).Mul(rf.Iglobal, new(big.Int).SetInt64(term.Period()))
 	from := cc.Treasury()
 	for _, k := range fs {

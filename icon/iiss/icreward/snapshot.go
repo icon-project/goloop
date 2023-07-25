@@ -40,6 +40,36 @@ func (ss *Snapshot) Bytes() []byte {
 	return ss.store.Hash()
 }
 
+func (ss *Snapshot) GetDelegating(addr module.Address) (*Delegating, error) {
+	if sso, ok := ss.store.ImmutableForObject.(trie.SnapshotForObject); ok {
+		key := DelegatingKey.Append(addr).Build()
+		obj, err := sso.Get(key)
+		if err != nil {
+			return nil, err
+		}
+		if obj == nil {
+			return NewDelegating(), nil
+		}
+		return ToDelegating(obj), nil
+	}
+	return nil, nil
+}
+
+func (ss *Snapshot) GetBonding(addr module.Address) (*Bonding, error) {
+	if sso, ok := ss.store.ImmutableForObject.(trie.SnapshotForObject); ok {
+		key := BondingKey.Append(addr).Build()
+		obj, err := sso.Get(key)
+		if err != nil {
+			return nil, err
+		}
+		if obj == nil {
+			return NewBonding(), nil
+		}
+		return ToBonding(obj), nil
+	}
+	return nil, nil
+}
+
 func (ss *Snapshot) GetDSA() (*DSA, error) {
 	if sso, ok := ss.store.ImmutableForObject.(trie.SnapshotForObject); ok {
 		obj, err := sso.Get(DSAKey)
