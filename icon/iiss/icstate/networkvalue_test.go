@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -528,5 +529,53 @@ func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
 		state.Flush()
 		state.ClearCache()
 		assert.Equal(t, rate, state.GetNonVotePenaltySlashRate())
+	}
+}
+
+func TestState_SetSlashingRate(t *testing.T) {
+	state := newDummyState(false)
+	type arg struct {
+		penaltyType icmodule.PenaltyType
+		rate        icmodule.Rate
+	}
+	var args []arg
+	for pt := icmodule.PenaltyNone + 1; pt < icmodule.PenaltyReserved; pt++ {
+		args = append(args, arg{pt, icmodule.Rate(1)})
+	}
+
+	// Not exists -> Rate(1)
+	for i, in := range args {
+		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
+		t.Run(name, func(t *testing.T){
+			rate, err := state.GetSlashingRate(in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, icmodule.Rate(0), rate)
+
+			err = state.SetSlashingRate(in.penaltyType, in.rate)
+			assert.NoError(t, err)
+
+			rate, err = state.GetSlashingRate(in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, in.rate, rate)
+		})
+	}
+
+	// Rate(1) -> Rate(10)
+	for i, in := range args {
+		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
+		t.Run(name, func(t *testing.T){
+			oldRate := in.rate
+			in.rate = icmodule.Rate(70)
+			rate, err := state.GetSlashingRate(in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, oldRate, rate)
+
+			err = state.SetSlashingRate(in.penaltyType, in.rate)
+			assert.NoError(t, err)
+
+			rate, err = state.GetSlashingRate(in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, in.rate, rate)
+		})
 	}
 }

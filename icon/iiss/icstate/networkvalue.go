@@ -50,6 +50,7 @@ const (
 	VarDelegationSlotMax                    = "delegation_slot_max"
 	DictNetworkScores                       = "network_scores"
 	VarNonVotePenaltySlashRate              = "nonvote_penalty_slashRatio"
+	DictSlashingRate                        = "slashing_rate"
 )
 
 const (
@@ -82,6 +83,13 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 		return err
 	}
 	return nil
+}
+
+func (s *State) getDictDB(key string) *containerdb.DictDB {
+	return containerdb.NewDictDB(
+		s.store,
+		1,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.DictDBPrefix, key))
 }
 
 func (s *State) SetNetworkScore(role string, address module.Address) error {
@@ -366,6 +374,26 @@ func (s *State) SetNonVotePenaltySlashRate(value icmodule.Rate) error {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
 	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
+}
+
+func (s *State) GetSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
+	if !penaltyType.IsValid() {
+		return 0, scoreresult.InvalidParameterError.Errorf("InvalidPenaltyType(%d)", penaltyType)
+	}
+	var rate icmodule.Rate
+	db := s.getDictDB(DictSlashingRate)
+	if v := db.Get(int(penaltyType)); v != nil {
+		rate = icmodule.Rate(v.Int64())
+	}
+	return rate, nil
+}
+
+func (s *State) SetSlashingRate(penaltyType icmodule.PenaltyType, rate icmodule.Rate) error {
+	if !penaltyType.IsValid() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidPenaltyType(%d)", penaltyType)
+	}
+	db := s.getDictDB(DictSlashingRate)
+	return db.Set(int(penaltyType), rate.NumInt64())
 }
 
 func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, error) {
