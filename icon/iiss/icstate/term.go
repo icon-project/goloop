@@ -7,6 +7,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/module"
@@ -116,7 +117,13 @@ func (p PRepSnapshots) String() string {
 
 // =============================================================================
 
+const (
+	termVersion1 = iota
+	termVersion2
+)
+
 type termData struct {
+	version         int
 	sequence        int
 	startHeight     int64
 	period          int64
@@ -127,10 +134,15 @@ type termData struct {
 	totalSupply     *big.Int
 	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
 	rewardFund      *RewardFund
+	rewardFund2     *RewardFund2
 	bondRequirement icmodule.Rate
 	mainPRepCount   int
 	// If the length of prepSnapshots is 0, prepSnapshots should be nil
 	prepSnapshots PRepSnapshots
+}
+
+func (term *termData) Version() int {
+	return term.version
 }
 
 func (term *termData) Sequence() int {
@@ -165,8 +177,16 @@ func (term *termData) RewardFund() *RewardFund {
 	return term.rewardFund
 }
 
+func (term *termData) RewardFund2() *RewardFund2 {
+	return term.rewardFund2
+}
+
 func (term *termData) Iglobal() *big.Int {
-	return term.rewardFund.Iglobal
+	if term.version == termVersion1 {
+		return term.rewardFund.Iglobal
+	} else {
+		return term.rewardFund2.IGlobal()
+	}
 }
 
 func (term *termData) Iprep() icmodule.Rate {
@@ -201,7 +221,9 @@ func (term *termData) GetEndHeight() int64 {
 }
 
 func (term *termData) GetIISSVersion() int {
-	if term.revision >= icmodule.RevisionEnableIISS3 {
+	if term.revision >= icmodule.RevisionIISS4 {
+		return IISSVersion4
+	} else if term.revision >= icmodule.RevisionEnableIISS3 {
 		return IISSVersion3
 	}
 	return IISSVersion2
@@ -268,7 +290,8 @@ func (term *termData) clone() termData {
 		rrep:            term.rrep,
 		totalSupply:     term.totalSupply,
 		totalDelegated:  term.totalDelegated,
-		rewardFund:      term.rewardFund.Clone(),
+		rewardFund:      term.rewardFund,
+		rewardFund2:     term.rewardFund2,
 		bondRequirement: term.bondRequirement,
 		revision:        term.revision,
 		isDecentralized: term.isDecentralized,
@@ -344,11 +367,20 @@ func (term *termData) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		var format string
+		var rff string
 		if f.Flag('+') {
 			format = "Term{seq:%d start:%d end:%d period:%d totalSupply:%s totalDelegated:%s " +
-				"prepSnapshots:%d irep:%s rrep:%s revision:%d isDecentralized:%v}"
+				"prepSnapshots:%d irep:%s rrep:%s rf:%s revision:%d isDecentralized:%v}"
+			rff = "%+v"
 		} else {
-			format = "Term{%d %d %d %d %s %s %d %s %s %d %v}"
+			format = "Term{%d %d %d %d %s %s %d %s %s %s %d %v}"
+			rff = "%v"
+		}
+		var rf string
+		if term.version == termVersion1 {
+			rf = fmt.Sprintf(rff, term.rewardFund)
+		} else {
+			rf = fmt.Sprintf(rff, term.rewardFund2)
 		}
 		_, _ = fmt.Fprintf(
 			f,
@@ -362,6 +394,7 @@ func (term *termData) Format(f fmt.State, c rune) {
 			len(term.prepSnapshots),
 			term.irep,
 			term.rrep,
+			rf,
 			term.revision,
 			term.isDecentralized,
 		)
@@ -377,27 +410,43 @@ type TermSnapshot struct {
 	termData
 }
 
-func (term *TermSnapshot) Version() int {
-	return 0
-}
-
 func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 	var bondRequirement int64
-	err := decoder.DecodeAll(
-		&term.sequence,
-		&term.startHeight,
-		&term.period,
-		&term.irep,
-		&term.rrep,
-		&term.totalSupply,
-		&term.totalDelegated,
-		&term.rewardFund,
-		&bondRequirement,
-		&term.revision,
-		&term.isDecentralized,
-		&term.mainPRepCount,
-		&term.prepSnapshots,
-	)
+	var err error
+	switch term.version {
+	case termVersion1:
+		err = decoder.DecodeAll(
+			&term.sequence,
+			&term.startHeight,
+			&term.period,
+			&term.irep,
+			&term.rrep,
+			&term.totalSupply,
+			&term.totalDelegated,
+			&term.rewardFund,
+			&bondRequirement,
+			&term.revision,
+			&term.isDecentralized,
+			&term.mainPRepCount,
+			&term.prepSnapshots,
+		)
+	case termVersion2:
+		err = decoder.DecodeAll(
+			&term.sequence,
+			&term.startHeight,
+			&term.period,
+			&term.irep,
+			&term.rrep,
+			&term.totalSupply,
+			&term.totalDelegated,
+			&term.rewardFund2,
+			&bondRequirement,
+			&term.revision,
+			&term.isDecentralized,
+			&term.mainPRepCount,
+			&term.prepSnapshots,
+		)
+	}
 	if err == nil {
 		term.bondRequirement = icmodule.ToRate(bondRequirement)
 	}
@@ -405,21 +454,42 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
-	return encoder.EncodeMulti(
-		term.sequence,
-		term.startHeight,
-		term.period,
-		term.irep,
-		term.rrep,
-		term.totalSupply,
-		term.totalDelegated,
-		term.rewardFund,
-		term.bondRequirement.Percent(),
-		term.revision,
-		term.isDecentralized,
-		term.mainPRepCount,
-		term.prepSnapshots,
-	)
+	switch term.version {
+	case termVersion1:
+		return encoder.EncodeMulti(
+			term.sequence,
+			term.startHeight,
+			term.period,
+			term.irep,
+			term.rrep,
+			term.totalSupply,
+			term.totalDelegated,
+			term.rewardFund,
+			term.bondRequirement.Percent(),
+			term.revision,
+			term.isDecentralized,
+			term.mainPRepCount,
+			term.prepSnapshots,
+		)
+	case termVersion2:
+		return encoder.EncodeMulti(
+			term.sequence,
+			term.startHeight,
+			term.period,
+			term.irep,
+			term.rrep,
+			term.totalSupply,
+			term.totalDelegated,
+			term.rewardFund2,
+			term.bondRequirement.Percent(),
+			term.revision,
+			term.isDecentralized,
+			term.mainPRepCount,
+			term.prepSnapshots,
+		)
+	default:
+		return errors.IllegalArgumentError.Errorf("illegal Term version %d", term.version)
+	}
 }
 
 func (term *TermSnapshot) Equal(o icobject.Impl) bool {
@@ -437,8 +507,12 @@ func (term *TermSnapshot) GetPRepSnapshotCount() int {
 	return len(term.prepSnapshots)
 }
 
-func NewTermWithTag(_ icobject.Tag) *TermSnapshot {
-	return &TermSnapshot{}
+func NewTermWithTag(tag icobject.Tag) *TermSnapshot {
+	return &TermSnapshot{
+		termData: termData{
+			version: tag.Version(),
+		},
+	}
 }
 
 // ==================================================================
@@ -486,9 +560,14 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 	if ts == nil {
 		return nil
 	}
+	version := termVersion2
+	if revision < icmodule.RevisionIISS4 {
+		version = termVersion1
+	}
 
 	return &TermState{
 		termData: termData{
+			version:         version,
 			sequence:        ts.Sequence() + 1,
 			startHeight:     ts.GetEndHeight() + 1,
 			period:          state.GetTermPeriod(),
@@ -496,7 +575,8 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 			rrep:            state.GetRRep(),
 			totalSupply:     totalSupply,
 			totalDelegated:  state.GetTotalDelegation(),
-			rewardFund:      state.GetRewardFund().Clone(),
+			rewardFund:      state.GetRewardFund(),
+			rewardFund2:     state.GetRewardFund2(),
 			bondRequirement: state.GetBondRequirement(),
 			revision:        revision,
 			prepSnapshots:   ts.prepSnapshots.Clone(),

@@ -262,6 +262,18 @@ func (es *ExtensionStateImpl) setNewFront() (err error) {
 		); err != nil {
 			return
 		}
+	case icstate.IISSVersion4:
+		if err = es.Front.AddGlobalV3(
+			term.StartHeight(),
+			term.Revision(),
+			int(term.Period()-1),
+			term.GetElectedPRepCount(),
+			term.BondRequirement(),
+			term.RewardFund2(),
+			new(big.Int), // TODO pass minBond
+		); err != nil {
+			return
+		}
 	default:
 		return errors.CriticalFormatError.Errorf(
 			"InvalidIISSVersion(version=%d)", iissVersion)
