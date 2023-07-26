@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
@@ -189,8 +190,8 @@ func (r *reward) write() error {
 func (r *reward) prepReward() error {
 	global := r.g.GetV3()
 	return r.pi.DistributeReward(
-		global.GetRewardFundAmountByKey(icstage.KeyIprep),
-		global.GetRewardFundAmountByKey(icstage.KeyIwage),
+		global.GetRewardFundAmountByKey(icstate.KeyIprep),
+		global.GetRewardFundAmountByKey(icstate.KeyIwage),
 		global.MinBond(),
 		r,
 	)

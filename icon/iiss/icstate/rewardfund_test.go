@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -47,4 +48,191 @@ func TestRewardFund(t *testing.T) {
 
 	assert.Equal(t, iglobal*iprep/100, rf.GetPRepFund().Int64())
 	assert.Equal(t, iglobal*ivoter/100, rf.GetVoterFund().Int64())
+}
+
+func TestRFundKey(t *testing.T) {
+	tests := []struct {
+		name string
+		in   RFundKey
+		want bool
+	}{
+		{
+			"invalid",
+			RFundKey("invalid"),
+			false,
+		},
+		{
+			"KeyIprep",
+			KeyIprep,
+			true,
+		},
+		{
+			"KeyIwage",
+			KeyIwage,
+			true,
+		},
+		{
+			"KeyIcps",
+			KeyIcps,
+			true,
+		},
+		{
+			"KeyIrelay",
+			KeyIrelay,
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.in.IsValid())
+		})
+	}
+}
+
+func TestRewardFund2(t *testing.T) {
+	iglobal := int64(100000)
+	iprep := int64(50)
+	iwage := int64(30)
+	icps := int64(10)
+	irelay := int64(10)
+	rf := NewRewardFund2()
+	rf.SetIGlobal(big.NewInt(iglobal))
+	rf.SetAllocationByKey(KeyIprep, icmodule.ToRate(iprep))
+	rf.SetAllocationByKey(KeyIwage, icmodule.ToRate(iwage))
+	rf.SetAllocationByKey(KeyIcps, icmodule.ToRate(icps))
+	rf.SetAllocationByKey(KeyIrelay, icmodule.ToRate(irelay))
+
+	bs := rf.Bytes()
+
+	rf2, err := newRewardFund2FromByte(bs)
+	assert.NoError(t, err)
+
+	assert.True(t, rf.Equal(rf2))
+}
+
+func TestNewRewardFund2Allocation(t *testing.T) {
+	tests := []struct {
+		name  string
+		param []interface{}
+		err   bool
+		len   int
+	}{
+		{"Nil param", nil, true, 0},
+		{"Empty param", []interface{}{}, true, 0},
+		{
+			"Invalid key",
+			[]interface{}{
+				map[string]interface{}{
+					"name":  "invalid",
+					"value": fmt.Sprintf("%#x", 10000),
+				},
+			},
+			true,
+			0,
+		},
+		{
+			"Sum is not 10000",
+			[]interface{}{
+				map[string]interface{}{
+					"name":  KeyIprep,
+					"value": fmt.Sprintf("%#x", 5000),
+				},
+				map[string]interface{}{
+					"name":  KeyIcps,
+					"value": fmt.Sprintf("%#x", 1000),
+				},
+			},
+			true,
+			0,
+		},
+		{
+			"Success 4 elements",
+			[]interface{}{
+				map[string]interface{}{
+					"name":  KeyIprep,
+					"value": fmt.Sprintf("%#x", 5000),
+				},
+				map[string]interface{}{
+					"name":  KeyIwage,
+					"value": fmt.Sprintf("%#x", 3000),
+				},
+				map[string]interface{}{
+					"name":  KeyIcps,
+					"value": fmt.Sprintf("%#x", 1000),
+				},
+				map[string]interface{}{
+					"name":  KeyIrelay,
+					"value": fmt.Sprintf("%#x", 1000),
+				},
+			},
+			false,
+			4,
+		},
+		{
+			"Success 4 elements with zero value",
+			[]interface{}{
+				map[string]interface{}{
+					"name":  KeyIprep,
+					"value": fmt.Sprintf("%#x", 5000),
+				},
+				map[string]interface{}{
+					"name":  KeyIwage,
+					"value": fmt.Sprintf("%#x", 3000),
+				},
+				map[string]interface{}{
+					"name":  KeyIcps,
+					"value": fmt.Sprintf("%#x", 2000),
+				},
+				map[string]interface{}{
+					"name":  KeyIrelay,
+					"value": fmt.Sprintf("%#x", 0),
+				},
+			},
+			false,
+			4,
+		},
+		{
+			"Success 2 elements",
+			[]interface{}{
+				map[string]interface{}{
+					"name":  KeyIprep,
+					"value": fmt.Sprintf("%#x", 5000),
+				},
+				map[string]interface{}{
+					"name":  KeyIcps,
+					"value": fmt.Sprintf("%#x", 5000),
+				},
+			},
+			false,
+			2,
+		},
+		{
+			"Duplicated name",
+			[]interface{}{
+				map[string]interface{}{
+					"name":  KeyIprep,
+					"value": fmt.Sprintf("%#x", 5000),
+				},
+				map[string]interface{}{
+					"name":  KeyIprep,
+					"value": fmt.Sprintf("%#x", 5000),
+				},
+			},
+			true,
+			0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			allocation, err := NewRewardFund2Allocation(tt.param)
+			if tt.err {
+				assert.Error(t, err, "NewRewardFund2Allocation() was not failed for %v.", tt.param)
+			} else {
+				assert.NoError(t, err, "NewRewardFund2Allocation() was failed for %v. err=%v", tt.param, err)
+				assert.Equal(t, tt.len, len(allocation))
+			}
+		})
+	}
 }

@@ -62,10 +62,17 @@ func (t *testCalculator) Stats() *rc.Stats {
 }
 
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
+	rFund := icstate.NewRewardFund2()
+	rFund.SetIGlobal(big.NewInt(1_000_000))
+	alloc := map[icstate.RFundKey]icmodule.Rate{
+		icstate.KeyIprep:  icmodule.ToRate(77),
+		icstate.KeyIwage:  icmodule.ToRate(13),
+		icstate.KeyIcps:   icmodule.ToRate(10),
+		icstate.KeyIrelay: icmodule.ToRate(0),
+	}
+	rFund.SetAllocation(alloc)
 	return t.stage.AddGlobalV3(0, 0, 100, electedPRepCount, icmodule.ToRate(5),
-		big.NewInt(1_000_000),
-		icmodule.ToRate(77), icmodule.ToRate(13), icmodule.ToRate(10), icmodule.ToRate(0),
-		big.NewInt(100))
+		rFund, big.NewInt(100))
 }
 
 func (t *testCalculator) GetGlobalFromBack() (icstage.Global, error) {

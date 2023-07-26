@@ -41,6 +41,7 @@ const (
 	VarLockMinMultiplier                    = "lockMinMultiplier"
 	VarLockMaxMultiplier                    = "lockMaxMultiplier"
 	VarRewardFund                           = "reward_fund"
+	VarRewardFund2                          = "reward_fund2"
 	VarUnbondingMax                         = "unbonding_max"
 	VarValidationPenaltyCondition           = "validation_penalty_condition"
 	VarConsistentValidationPenaltyCondition = "consistent_validation_penalty_condition"
@@ -278,6 +279,16 @@ func (s *State) GetRewardFund() *RewardFund {
 
 func (s *State) SetRewardFund(rc *RewardFund) error {
 	return setValue(s.store, VarRewardFund, rc.Bytes())
+}
+
+func (s *State) GetRewardFund2() *RewardFund2 {
+	bs := getValue(s.store, VarRewardFund2).Bytes()
+	rc, _ := newRewardFund2FromByte(bs)
+	return rc
+}
+
+func (s *State) SetRewardFund2(r *RewardFund2) error {
+	return setValue(s.store, VarRewardFund2, r.Bytes())
 }
 
 func (s *State) GetUnbondingMax() int64 {

@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 )
 
 func TestGlobalV1(t *testing.T) {
@@ -120,10 +121,10 @@ func TestGlobalV3(t *testing.T) {
 	assert.NotNil(t, g1)
 	g1.offsetLimit = offsetLimit
 	g1.rFund.SetIGlobal(iglobal)
-	g1.rFund.SetAllocation(KeyIprep, iprep)
-	g1.rFund.SetAllocation(KeyIwage, iwage)
-	g1.rFund.SetAllocation(KeyIcps, icps)
-	g1.rFund.SetAllocation(KeyIrelay, irelay)
+	g1.rFund.SetAllocationByKey(icstate.KeyIprep, iprep)
+	g1.rFund.SetAllocationByKey(icstate.KeyIwage, iwage)
+	g1.rFund.SetAllocationByKey(icstate.KeyIcps, icps)
+	g1.rFund.SetAllocationByKey(icstate.KeyIrelay, irelay)
 	g1.minBond = minBond
 
 	o1 := icobject.New(type_, g)
@@ -147,12 +148,12 @@ func TestGlobalV3(t *testing.T) {
 	assert.Equal(t, offsetLimit, g2.GetOffsetLimit())
 	assert.Equal(t, 0, g2.GetIGlobal().Cmp(iglobal))
 	assert.Equal(t, iprep, g2.GetIPRep())
-	assert.Equal(t, iprep, g2.GetRewardFundRateByKey(KeyIprep))
+	assert.Equal(t, iprep, g2.GetRewardFundRateByKey(icstate.KeyIprep))
 	assert.Equal(t, iwage, g2.GetIWage())
-	assert.Equal(t, iwage, g2.GetRewardFundRateByKey(KeyIwage))
+	assert.Equal(t, iwage, g2.GetRewardFundRateByKey(icstate.KeyIwage))
 	assert.Equal(t, icps, g2.GetICps())
-	assert.Equal(t, icps, g2.GetRewardFundRateByKey(KeyIcps))
+	assert.Equal(t, icps, g2.GetRewardFundRateByKey(icstate.KeyIcps))
 	assert.Equal(t, irelay, g2.GetIRelay())
-	assert.Equal(t, irelay, g2.GetRewardFundRateByKey(KeyIrelay))
+	assert.Equal(t, irelay, g2.GetRewardFundRateByKey(icstate.KeyIrelay))
 	assert.Equal(t, 0, g2.MinBond().Cmp(minBond))
 }
