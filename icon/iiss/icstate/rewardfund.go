@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"unicode"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -189,6 +190,12 @@ func (r RFundKey) IsValid() bool {
 	return false
 }
 
+func (r RFundKey) String() string {
+	runes := []rune(r)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(r)
+}
+
 type RewardFund2 struct {
 	iGlobal    *big.Int
 	allocation map[RFundKey]icmodule.Rate
@@ -255,6 +262,15 @@ func (r *RewardFund2) RLPDecodeSelf(d codec.Decoder) error {
 
 func (r *RewardFund2) Bytes() []byte {
 	return codec.BC.MustMarshalToBytes(r)
+}
+
+func (r *RewardFund2) ToJSON() map[string]interface{} {
+	jso := make(map[string]interface{})
+	jso["Iglobal"] = r.IGlobal()
+	for k, v := range r.allocation {
+		jso[k.String()] = v
+	}
+	return jso
 }
 
 func (r *RewardFund2) string(withName bool) string {

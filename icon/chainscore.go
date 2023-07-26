@@ -570,6 +570,19 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, icmodule.RevisionICON2R0, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "setRewardFundAllocation2",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"values", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.Struct, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionPreIISS4, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "getScoreOwner",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{

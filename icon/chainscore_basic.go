@@ -322,6 +322,14 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 				return err
 			}
 		}
+
+		if r1 < icmodule.RevisionPreIISS4 && r2 >= icmodule.RevisionPreIISS4 {
+			// RewardFundAllocation2
+			r := es.State.GetRewardFund()
+			if err := es.State.SetRewardFund2(r.ToRewardFund2()); err != nil {
+				return err
+			}
+		}
 	}
 	if r1 < icmodule.Revision21 && r2 >= icmodule.Revision21 && s.cc.ChainID() == CIDForMainNet {
 		s.blockAccounts2()

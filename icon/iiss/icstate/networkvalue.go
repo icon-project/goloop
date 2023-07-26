@@ -368,7 +368,7 @@ func (s *State) SetNonVotePenaltySlashRate(value icmodule.Rate) error {
 	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
 }
 
-func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
+func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	jso := make(map[string]interface{})
 	jso["irep"] = s.GetIRep()
@@ -382,7 +382,12 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["bondRequirement"] = br.Percent()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
-	jso["rewardFund"] = s.GetRewardFund().ToJSON()
+	if revision <= icmodule.RevisionPreIISS4 {
+		jso["rewardFund"] = s.GetRewardFund().ToJSON()
+		jso["rewardFund2"] = s.GetRewardFund2().ToJSON()
+	} else {
+		jso["rewardFund"] = s.GetRewardFund2().ToJSON()
+	}
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()

@@ -88,6 +88,7 @@ func Test_networkValue(t *testing.T) {
 
 	// test for SetRewardFund
 	t.Run("SetRewardFund", func(t *testing.T) { setRewardFundTest(t, s) })
+	t.Run("SetRewardFund2", func(t *testing.T) { setRewardFund2Test(t, s) })
 
 	// test for SetUnbondingPeriodMultiplier
 	t.Run("SetUnbondingPeriodMultiplier", func(t *testing.T) { setUnbondingPeriodMultiplier(t, s) })
@@ -250,6 +251,20 @@ func setRewardFundTest(t *testing.T, s *State) {
 	err := s.SetRewardFund(rf)
 	assert.NoError(t, err)
 	actual = s.GetRewardFund()
+	assert.True(t, rf.Equal(actual))
+}
+
+func setRewardFund2Test(t *testing.T, s *State) {
+	rf := NewRewardFund2()
+	actual := s.GetRewardFund2()
+	assert.Equal(t, rf, actual)
+
+	rf.SetIGlobal(new(big.Int).SetInt64(100000))
+	rf.SetAllocationByKey(KeyIprep, icmodule.ToRate(50))
+	rf.SetAllocationByKey(KeyIcps, icmodule.ToRate(50))
+	err := s.SetRewardFund2(rf)
+	assert.NoError(t, err)
+	actual = s.GetRewardFund2()
 	assert.True(t, rf.Equal(actual))
 }
 
