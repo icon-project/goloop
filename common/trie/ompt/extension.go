@@ -56,7 +56,9 @@ func (n *extension) RLPListSize() int {
 }
 
 func (n *extension) RLPListEncode(e RLPEncoder) error {
-	e.RLPEncode(encodeKeys(0x00, n.keys))
+	if err := e.RLPEncode(encodeKeys(0x00, n.keys)); err != nil {
+		return err
+	}
 	e.RLPWrite(n.next.getLink(false))
 	return nil
 }

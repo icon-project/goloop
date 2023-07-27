@@ -84,8 +84,12 @@ func (n *leaf) RLPListSize() int {
 }
 
 func (n *leaf) RLPListEncode(e RLPEncoder) error {
-	e.RLPEncode(encodeKeys(0x20, n.keys))
-	e.RLPEncode(n.value.Bytes())
+	if err := e.RLPEncode(encodeKeys(0x20, n.keys)); err != nil {
+		return err
+	}
+	if err := e.RLPEncode(n.value.Bytes()); err != nil {
+		return err
+	}
 	return nil
 }
 
