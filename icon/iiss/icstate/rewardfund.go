@@ -108,10 +108,6 @@ func (rf *RewardFund) Bytes() []byte {
 	return codec.BC.MustMarshalToBytes(rf)
 }
 
-func (rf *RewardFund) IsEmpty() bool {
-	return rf.Iglobal.Sign() == 0
-}
-
 func (rf *RewardFund) Equal(other *RewardFund) bool {
 	return rf.Iglobal.Cmp(other.Iglobal) == 0 &&
 		rf.Iprep == other.Iprep &&
@@ -326,6 +322,7 @@ func newRewardFund2FromByte(bs []byte) (*RewardFund2, error) {
 
 func NewRewardFund2() *RewardFund2 {
 	return &RewardFund2{
+		iGlobal:    new(big.Int),
 		allocation: make(map[RFundKey]icmodule.Rate),
 	}
 }
@@ -337,8 +334,8 @@ type alloc struct {
 
 func NewRewardFund2Allocation(param []interface{}) (map[RFundKey]icmodule.Rate, error) {
 	allocation := make(map[RFundKey]icmodule.Rate)
-	var a alloc
 	for _, p := range param {
+		var a alloc
 		bs, err := json.Marshal(p)
 		if err != nil {
 			return nil, scoreresult.IllegalFormatError.Wrapf(err, "failed to Reward Fund allocation")
