@@ -382,11 +382,13 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["bondRequirement"] = br.Percent()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
-	if revision <= icmodule.RevisionPreIISS4 {
+	if revision < icmodule.RevisionIISS4 {
 		jso["rewardFund"] = s.GetRewardFund().ToJSON()
-		jso["rewardFund2"] = s.GetRewardFund2().ToJSON()
 	} else {
 		jso["rewardFund"] = s.GetRewardFund2().ToJSON()
+	}
+	if revision == icmodule.RevisionPreIISS4 {
+		jso["rewardFund2"] = s.GetRewardFund2().ToJSON()
 	}
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()

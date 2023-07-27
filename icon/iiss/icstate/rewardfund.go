@@ -189,7 +189,7 @@ func (r RFundKey) IsValid() bool {
 func (r RFundKey) String() string {
 	runes := []rune(r)
 	runes[0] = unicode.ToUpper(runes[0])
-	return string(r)
+	return string(runes)
 }
 
 type RewardFund2 struct {
@@ -264,7 +264,7 @@ func (r *RewardFund2) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["Iglobal"] = r.IGlobal()
 	for k, v := range r.allocation {
-		jso[k.String()] = v
+		jso[k.String()] = v.NumInt64()
 	}
 	return jso
 }
