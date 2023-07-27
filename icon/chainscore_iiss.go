@@ -887,6 +887,30 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 	return es.SetSlashingRates(s.newCallContext(s.cc), rates)
 }
 
+func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+
+	var penaltyTypes []icmodule.PenaltyType
+	for _, v := range values {
+		name, ok := v.(string)
+		if !ok {
+			return nil, scoreresult.InvalidParameterError.New("InvalidPenaltyNameType")
+		}
+		if pt := icmodule.ToPenaltyType(name); pt == icmodule.PenaltyNone {
+			return nil, scoreresult.InvalidParameterError.Errorf("InvalidPenaltyName(%s)", name)
+		} else {
+			penaltyTypes = append(penaltyTypes, pt)
+		}
+	}
+	return es.GetSlashingRates(penaltyTypes)
+}
+
 func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate) {
 	s.cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
