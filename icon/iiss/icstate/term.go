@@ -266,6 +266,21 @@ func (term *termData) equal(other *termData) bool {
 		return false
 	}
 
+	if term.version != other.version {
+		return false
+	}
+
+	switch term.version {
+	case termVersion1:
+		if term.rewardFund.Equal(other.rewardFund) == false {
+			return false
+		}
+	case termVersion2:
+		if term.rewardFund2.Equal(other.rewardFund2) == false {
+			return false
+		}
+	}
+
 	return term.sequence == other.sequence &&
 		term.startHeight == other.startHeight &&
 		term.period == other.period &&
@@ -273,7 +288,6 @@ func (term *termData) equal(other *termData) bool {
 		term.rrep.Cmp(other.rrep) == 0 &&
 		term.totalSupply.Cmp(other.totalSupply) == 0 &&
 		term.totalDelegated.Cmp(other.totalDelegated) == 0 &&
-		term.rewardFund.Equal(other.rewardFund) &&
 		term.bondRequirement == other.bondRequirement &&
 		term.revision == other.revision &&
 		term.isDecentralized == other.isDecentralized &&
@@ -283,6 +297,7 @@ func (term *termData) equal(other *termData) bool {
 
 func (term *termData) clone() termData {
 	return termData{
+		version:         term.version,
 		sequence:        term.sequence,
 		startHeight:     term.startHeight,
 		period:          term.period,
@@ -348,7 +363,8 @@ func (term *termData) getTotalPower() *big.Int {
 
 func (term *termData) String() string {
 	return fmt.Sprintf(
-		"Term{seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s revision:%d isDecentralized:%v}",
+		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s revision:%d isDecentralized:%v}",
+		term.version,
 		term.sequence,
 		term.startHeight,
 		term.GetEndHeight(),
@@ -369,11 +385,11 @@ func (term *termData) Format(f fmt.State, c rune) {
 		var format string
 		var rff string
 		if f.Flag('+') {
-			format = "Term{seq:%d start:%d end:%d period:%d totalSupply:%s totalDelegated:%s " +
+			format = "Term{ver:%d seq:%d start:%d end:%d period:%d totalSupply:%s totalDelegated:%s " +
 				"prepSnapshots:%d irep:%s rrep:%s rf:%s revision:%d isDecentralized:%v}"
 			rff = "%+v"
 		} else {
-			format = "Term{%d %d %d %d %s %s %d %s %s %s %d %v}"
+			format = "Term{%d %d %d %d %d %s %s %d %s %s %s %d %v}"
 			rff = "%v"
 		}
 		var rf string
@@ -385,6 +401,7 @@ func (term *termData) Format(f fmt.State, c rune) {
 		_, _ = fmt.Fprintf(
 			f,
 			format,
+			term.version,
 			term.sequence,
 			term.startHeight,
 			term.GetEndHeight(),
@@ -430,6 +447,7 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 			&term.mainPRepCount,
 			&term.prepSnapshots,
 		)
+		term.rewardFund2 = NewRewardFund2()
 	case termVersion2:
 		err = decoder.DecodeAll(
 			&term.sequence,
@@ -446,6 +464,7 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 			&term.mainPRepCount,
 			&term.prepSnapshots,
 		)
+		term.rewardFund = NewRewardFund()
 	}
 	if err == nil {
 		term.bondRequirement = icmodule.ToRate(bondRequirement)

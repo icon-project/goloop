@@ -2,6 +2,7 @@ package icstate
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -36,12 +37,44 @@ func newDummyPRepSnapshots(size int) PRepSnapshots {
 	return ret
 }
 
-func newTermState(sequence int, period int64) *TermState {
+func newTestRewardFund() *RewardFund {
+	return &RewardFund{
+		Iglobal: icutils.ToLoop(3_000_000),
+		Icps:    icmodule.ToRate(10),
+		Iprep:   icmodule.ToRate(13),
+		Ivoter:  icmodule.ToRate(77),
+		Irelay:  icmodule.ToRate(0),
+	}
+}
+
+func newTestRewardFund2() *RewardFund2 {
+	rf := NewRewardFund2()
+	rf.SetIGlobal(big.NewInt(1_000_000))
+	allocation := map[RFundKey]icmodule.Rate{
+		KeyIprep:  icmodule.ToRate(77),
+		KeyIwage:  icmodule.ToRate(10),
+		KeyIcps:   icmodule.ToRate(10),
+		KeyIrelay: icmodule.ToRate(3),
+	}
+	rf.SetAllocation(allocation)
+	return rf
+}
+
+func newTermState(version, sequence int, period int64) *TermState {
+	rf := NewRewardFund()
+	rf2 := NewRewardFund2()
+	if version == termVersion1 {
+		rf = newTestRewardFund()
+	} else {
+		rf2 = newTestRewardFund2()
+	}
 	return &TermState{
 		termData: termData{
-			sequence:   sequence,
-			period:     period,
-			rewardFund: NewRewardFund(),
+			version:     version,
+			sequence:    sequence,
+			period:      period,
+			rewardFund:  rf,
+			rewardFund2: rf2,
 		},
 	}
 }
@@ -176,25 +209,42 @@ func TestPRepSnapshot_RLP(t *testing.T) {
 }
 
 func TestTerm_Bytes(t *testing.T) {
-	term := newTermState(0, 10)
-
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	o1 := icobject.New(TypeTerm, term.GetSnapshot())
-	serialized := o1.Bytes()
 
-	o2 := new(icobject.Object)
-	if err := o2.Reset(database, serialized); err != nil {
-		t.Errorf("Failed to get object from bytes")
-		return
+	tests := []struct {
+		name      string
+		termState *TermState
+	}{
+		{
+			"Version1",
+			newTermState(termVersion1, 0, 10),
+		},
+		{
+			"Version2",
+			newTermState(termVersion2, 0, 10),
+		},
 	}
 
-	assert.Equal(t, serialized, o2.Bytes())
-	assert.True(t, o1.Equal(o2))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o1 := icobject.New(TypeTerm, tt.termState.GetSnapshot())
+			serialized := o1.Bytes()
+
+			o2 := new(icobject.Object)
+			if err := o2.Reset(database, serialized); err != nil {
+				t.Errorf("Failed to get object from bytes")
+				return
+			}
+
+			assert.Equal(t, serialized, o2.Bytes())
+			assert.True(t, o1.Equal(o2))
+		})
+	}
 }
 
 func TestTerm_TotalBondedDelegation(t *testing.T) {
 	size := 100
-	term := newTermState(0, 43120)
+	term := newTermState(termVersion1, 0, 43120)
 	prepSnapshots := newDummyPRepSnapshots(size)
 	term.SetPRepSnapshots(prepSnapshots.Clone())
 	assert.Equal(t, term.GetElectedPRepCount(), len(prepSnapshots))
@@ -213,23 +263,18 @@ func TestTerm_TotalBondedDelegation(t *testing.T) {
 
 func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 	const (
-		sequence = 1
-		startHeight = int64(100)
-		termPeriod = icmodule.DecentralizedTermPeriod
-		br = icmodule.Rate(1000)
-		revision = icmodule.RevisionBTP2
+		sequence        = 1
+		startHeight     = int64(100)
+		termPeriod      = icmodule.DecentralizedTermPeriod
+		br              = icmodule.Rate(1000)
+		revision        = icmodule.RevisionBTP2
 		isDecentralized = true
 	)
 
 	totalSupply := icutils.ToLoop(10_000_000)
 	totalDelegated := icutils.ToLoop(1_000_000)
-	rf := &RewardFund{
-		Iglobal: icutils.ToLoop(3_000_000),
-		Icps: icmodule.ToRate(10),
-		Iprep: icmodule.ToRate(13),
-		Ivoter: icmodule.ToRate(77),
-		Irelay: icmodule.ToRate(0),
-	}
+	rf := newTestRewardFund()
+	rf2 := newTestRewardFund2()
 	prepSnapshots := newDummyPRepSnapshots(100)
 
 	termState := &TermState{
@@ -241,7 +286,8 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 			rrep:            icmodule.BigIntZero,
 			totalSupply:     totalSupply,
 			totalDelegated:  totalDelegated,
-			rewardFund: rf.Clone(),
+			rewardFund:      rf.Clone(),
+			rewardFund2:     rf2,
 			bondRequirement: br,
 			revision:        revision,
 			prepSnapshots:   prepSnapshots.Clone(),
@@ -267,4 +313,70 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 	assert.True(t, termObject.Equal(termObject2))
 	assert.True(t, termSnapshot.Equal(termSnapshot2))
 	assert.Equal(t, br, termSnapshot2.BondRequirement())
+}
+
+func TestTermData_Iglobal(t *testing.T) {
+	rf := newTestRewardFund()
+	rf2 := newTestRewardFund2()
+	tests := []struct {
+		version int
+		want    *big.Int
+	}{
+		{
+			termVersion1,
+			rf.Iglobal,
+		},
+		{
+			termVersion2,
+			rf2.IGlobal(),
+		},
+	}
+
+	term := termData{
+		rewardFund:  newTestRewardFund(),
+		rewardFund2: newTestRewardFund2(),
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("Version : %d", tt.version), func(t *testing.T) {
+			term.version = tt.version
+			assert.Equal(t, tt.want, term.Iglobal())
+			assert.Equal(t, tt.version, term.Version())
+		})
+	}
+}
+
+func TestTermData_GetIISSVersion(t *testing.T) {
+	tests := []struct {
+		revision int
+		want     int
+	}{
+		{
+			icmodule.RevisionIISS,
+			IISSVersion2,
+		},
+		{
+			icmodule.Revision13,
+			IISSVersion2,
+		},
+		{
+			icmodule.RevisionEnableIISS3,
+			IISSVersion3,
+		},
+		{
+			icmodule.RevisionPreIISS4,
+			IISSVersion3,
+		},
+		{
+			icmodule.RevisionIISS4,
+			IISSVersion4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("Revision%d", tt.revision), func(t *testing.T) {
+			term := termData{revision: tt.revision}
+			assert.Equal(t, tt.want, term.GetIISSVersion())
+			assert.Equal(t, tt.revision, term.Revision())
+		})
+	}
 }

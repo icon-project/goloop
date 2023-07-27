@@ -241,7 +241,7 @@ func TestState_SetIssue(t *testing.T) {
 func TestState_SetTermSnapshot(t *testing.T) {
 	seq := 1
 	period := int64(43120)
-	term := newTermState(seq, period).GetSnapshot()
+	term := newTermState(termVersion1, seq, period).GetSnapshot()
 
 	state := newDummyState(false)
 	err := state.SetTermSnapshot(term)
