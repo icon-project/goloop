@@ -502,33 +502,36 @@ func TestState_SetDelegationSlotMax(t *testing.T) {
 
 func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
 	state := newDummyState(false)
-	assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate())
 
-	for _, rate := range []icmodule.Rate{
-		icmodule.ToRate(-1),
-		icmodule.ToRate(101),
-	} {
-		err := state.SetNonVotePenaltySlashRate(rate)
-		assert.Error(t, err)
-		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate())
+	for _, rev := range []int{icmodule.RevisionPreIISS4-1, icmodule.RevisionPreIISS4} {
+		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate(rev))
 
-		state.Flush()
-		state.ClearCache()
-		assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate())
-	}
+		for _, rate := range []icmodule.Rate{
+			icmodule.ToRate(-1),
+			icmodule.ToRate(101),
+		} {
+			err := state.SetNonVotePenaltySlashRate(rev, rate)
+			assert.Error(t, err)
+			assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate(rev))
 
-	for _, rate := range []icmodule.Rate{
-		icmodule.ToRate(100),
-		icmodule.ToRate(50),
-		icmodule.ToRate(0),
-	} {
-		err := state.SetNonVotePenaltySlashRate(rate)
-		assert.NoError(t, err)
-		assert.Equal(t, rate, state.GetNonVotePenaltySlashRate())
+			state.Flush()
+			state.ClearCache()
+			assert.Equal(t, icmodule.Rate(0), state.GetNonVotePenaltySlashRate(rev))
+		}
 
-		state.Flush()
-		state.ClearCache()
-		assert.Equal(t, rate, state.GetNonVotePenaltySlashRate())
+		for _, rate := range []icmodule.Rate{
+			icmodule.ToRate(100),
+			icmodule.ToRate(50),
+			icmodule.ToRate(0),
+		} {
+			err := state.SetNonVotePenaltySlashRate(rev, rate)
+			assert.NoError(t, err)
+			assert.Equal(t, rate, state.GetNonVotePenaltySlashRate(rev))
+
+			state.Flush()
+			state.ClearCache()
+			assert.Equal(t, rate, state.GetNonVotePenaltySlashRate(rev))
+		}
 	}
 }
 

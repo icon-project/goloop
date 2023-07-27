@@ -622,7 +622,7 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 		},
 	)
 
-	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate())
+	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate(cc.Revision().Value()))
 }
 
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {

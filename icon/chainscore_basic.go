@@ -305,7 +305,7 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 				return err
 			}
 			if err := es.State.SetNonVotePenaltySlashRate(
-				icmodule.ToRate(iconConfig.NonVotePenaltySlashRate.Int64())); err != nil {
+				r2, icmodule.ToRate(iconConfig.NonVotePenaltySlashRate.Int64())); err != nil {
 				return err
 			}
 		}

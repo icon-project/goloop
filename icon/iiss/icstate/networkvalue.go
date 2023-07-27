@@ -364,16 +364,25 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func (s *State) GetNonVotePenaltySlashRate() icmodule.Rate {
-	v := getValue(s.store, VarNonVotePenaltySlashRate).Int64()
-	return icmodule.ToRate(v)
+func (s *State) GetNonVotePenaltySlashRate(revision int) icmodule.Rate {
+	if revision < icmodule.RevisionPreIISS4 {
+		v := getValue(s.store, VarNonVotePenaltySlashRate).Int64()
+		return icmodule.ToRate(v)
+	} else {
+		rate, _ := s.GetSlashingRate(icmodule.PenaltyMissingNetworkProposalVote)
+		return rate
+	}
 }
 
-func (s *State) SetNonVotePenaltySlashRate(value icmodule.Rate) error {
+func (s *State) SetNonVotePenaltySlashRate(revision int, value icmodule.Rate) error {
 	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
+	if revision < icmodule.RevisionPreIISS4 {
+		return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
+	} else {
+		return s.SetSlashingRate(icmodule.PenaltyMissingNetworkProposalVote, value)
+	}
 }
 
 func (s *State) GetSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
@@ -426,7 +435,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRate().Percent()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
-	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRate().Percent()
+	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRate(revision).Percent()
 
 	preps := s.GetPRepSet(nil, 0)
 	if preps != nil {
