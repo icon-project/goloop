@@ -575,7 +575,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.Parameter{
 			{"values", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
 				[]scoreapi.Field{
-					{"name", scoreapi.Struct, nil},
+					{"name", scoreapi.String, nil},
 					{"value", scoreapi.Integer, nil},
 				},
 			},
