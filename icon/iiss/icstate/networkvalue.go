@@ -343,16 +343,25 @@ func (s *State) SetConsistentValidationPenaltyMask(value int64) error {
 	return setValue(s.store, VarConsistentValidationPenaltyMask, value)
 }
 
-func (s *State) GetConsistentValidationPenaltySlashRate() icmodule.Rate {
-	v := getValue(s.store, VarConsistentValidationPenaltySlashRate).Int64()
-	return icmodule.ToRate(v)
+func (s *State) GetConsistentValidationPenaltySlashRate(revision int) icmodule.Rate {
+	if revision < icmodule.RevisionPreIISS4 {
+		v := getValue(s.store, VarConsistentValidationPenaltySlashRate).Int64()
+		return icmodule.ToRate(v)
+	} else {
+		rate, _ := s.GetSlashingRate(icmodule.PenaltyContinuousBlockValidation)
+		return rate
+	}
 }
 
-func (s *State) SetConsistentValidationPenaltySlashRate(value icmodule.Rate) error {
+func (s *State) SetConsistentValidationPenaltySlashRate(revision int, value icmodule.Rate) error {
 	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
+	if revision < icmodule.RevisionPreIISS4 {
+		return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
+	} else {
+		return s.SetSlashingRate(icmodule.PenaltyContinuousBlockValidation, value)
+	}
 }
 
 func (s *State) GetDelegationSlotMax() int {
@@ -432,7 +441,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()
 	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
-	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRate().Percent()
+	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRate(revision).Percent()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
 	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRate(revision).Percent()

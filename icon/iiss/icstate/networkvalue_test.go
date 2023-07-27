@@ -453,35 +453,38 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 
 func TestState_SetConsistentValidationPenaltySlashRate(t *testing.T) {
 	state := newDummyState(false)
-	assert.Equal(t, icmodule.Rate(0), state.GetConsistentValidationPenaltySlashRate())
 
-	rates := []icmodule.Rate{
-		icmodule.ToRate(0),
-		icmodule.ToRate(50),
-		icmodule.ToRate(100),
-	}
-	for _, rate := range rates {
-		err := state.SetConsistentValidationPenaltySlashRate(rate)
-		assert.NoError(t, err)
-		assert.Equal(t, rate, state.GetConsistentValidationPenaltySlashRate())
+	for _, rev := range []int{icmodule.RevisionPreIISS4-1, icmodule.RevisionPreIISS4} {
+		assert.Equal(t, icmodule.Rate(0), state.GetConsistentValidationPenaltySlashRate(rev))
 
-		state.Flush()
-		state.ClearCache()
-		assert.Equal(t, rate, state.GetConsistentValidationPenaltySlashRate())
-	}
+		rates := []icmodule.Rate{
+			icmodule.ToRate(0),
+			icmodule.ToRate(50),
+			icmodule.ToRate(100),
+		}
+		for _, rate := range rates {
+			err := state.SetConsistentValidationPenaltySlashRate(rev, rate)
+			assert.NoError(t, err)
+			assert.Equal(t, rate, state.GetConsistentValidationPenaltySlashRate(rev))
 
-	expRate := rates[2]
-	for _, rate := range []icmodule.Rate{
-		icmodule.ToRate(-10),
-		icmodule.ToRate(101),
-	} {
-		err := state.SetConsistentValidationPenaltySlashRate(rate)
-		assert.Error(t, err)
-		assert.Equal(t, expRate, state.GetConsistentValidationPenaltySlashRate())
+			assert.NoError(t, state.Flush())
+			state.ClearCache()
+			assert.Equal(t, rate, state.GetConsistentValidationPenaltySlashRate(rev))
+		}
 
-		state.Flush()
-		state.ClearCache()
-		assert.Equal(t, expRate, state.GetConsistentValidationPenaltySlashRate())
+		expRate := rates[2]
+		for _, rate := range []icmodule.Rate{
+			icmodule.ToRate(-10),
+			icmodule.ToRate(101),
+		} {
+			err := state.SetConsistentValidationPenaltySlashRate(rev, rate)
+			assert.Error(t, err)
+			assert.Equal(t, expRate, state.GetConsistentValidationPenaltySlashRate(rev))
+
+			assert.NoError(t, state.Flush())
+			state.ClearCache()
+			assert.Equal(t, expRate, state.GetConsistentValidationPenaltySlashRate(rev))
+		}
 	}
 }
 
