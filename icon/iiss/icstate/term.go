@@ -369,7 +369,7 @@ func (term *termData) getTotalPower() *big.Int {
 
 func (term *termData) String() string {
 	return fmt.Sprintf(
-		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s revision:%d isDecentralized:%v}",
+		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s rf:%s, rf2:%s, revision:%d isDecentralized:%v}",
 		term.version,
 		term.sequence,
 		term.startHeight,
@@ -380,6 +380,8 @@ func (term *termData) String() string {
 		len(term.prepSnapshots),
 		term.irep,
 		term.rrep,
+		term.rewardFund,
+		term.rewardFund2,
 		term.revision,
 		term.isDecentralized,
 	)

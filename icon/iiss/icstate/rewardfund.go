@@ -156,6 +156,9 @@ func (rf *RewardFund) Format(f fmt.State, c rune) {
 			fmt.Fprintf(f, "RewardFund{%d %d %d %d %d}",
 				rf.Iglobal, rf.Iprep.Percent(), rf.Icps.Percent(), rf.Irelay.Percent(), rf.Ivoter.Percent())
 		}
+	case 's':
+		fmt.Fprintf(f, "RewardFund{Iglobal=%d Iprep=%d Icps=%d Irelay=%d Ivoter=%d}",
+			rf.Iglobal, rf.Iprep.Percent(), rf.Icps.Percent(), rf.Irelay.Percent(), rf.Ivoter.Percent())
 	}
 }
 
@@ -283,11 +286,11 @@ func (r *RewardFund2) string(withName bool) string {
 	for _, k := range rFundKeys {
 		if v, ok := r.allocation[k]; ok {
 			sb.WriteByte(' ')
-			 if withName {
-				 sb.WriteString(string(k))
-				 sb.WriteByte('=')
-			 }
-			 sb.WriteString(strconv.FormatInt(v.NumInt64(), 10))
+			if withName {
+				sb.WriteString(string(k))
+				sb.WriteByte('=')
+			}
+			sb.WriteString(strconv.FormatInt(v.NumInt64(), 10))
 		}
 	}
 
