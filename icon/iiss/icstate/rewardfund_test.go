@@ -368,3 +368,28 @@ func TestNewRewardFund2Allocation(t *testing.T) {
 		})
 	}
 }
+
+func TestRewardFund2_Format(t *testing.T) {
+	iglobal := int64(100_000)
+	icps := icmodule.ToRate(10)
+	iprep := icmodule.ToRate(70)
+	irelay := icmodule.ToRate(0)
+	iwage := icmodule.ToRate(20)
+
+	rf := NewRewardFund2()
+	rf.SetIGlobal(big.NewInt(iglobal))
+	rf.SetAllocationByKey(KeyIprep, iprep)
+	rf.SetAllocationByKey(KeyIcps, icps)
+	rf.SetAllocationByKey(KeyIrelay, irelay)
+	rf.SetAllocationByKey(KeyIwage, iwage)
+
+	exp := fmt.Sprintf("{%d %d %d %d %d}", iglobal, iprep, iwage, icps, irelay)
+	ret := fmt.Sprintf("%v", rf)
+	assert.Equal(t, exp, ret)
+
+	exp = fmt.Sprintf(
+		"RewardFund2{iGlobal=%d iprep=%d iwage=%d icps=%d irelay=%d}",
+		iglobal, iprep, iwage, icps, irelay)
+	assert.Equal(t, exp, fmt.Sprintf("%+v", rf))
+	assert.Equal(t, exp, fmt.Sprintf("%s", rf))
+}

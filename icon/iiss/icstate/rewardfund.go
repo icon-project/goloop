@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/icon-project/goloop/common"
@@ -270,40 +272,33 @@ func (r *RewardFund2) ToJSON() map[string]interface{} {
 }
 
 func (r *RewardFund2) string(withName bool) string {
-	ret := fmt.Sprintf("iGlobal=%d", r.iGlobal)
+	var sb strings.Builder
+	if withName {
+		sb.WriteString("RewardFund2{iGlobal=")
+	} else {
+		sb.WriteByte('{')
+	}
+
+	sb.WriteString(r.iGlobal.String())
 	for _, k := range rFundKeys {
 		if v, ok := r.allocation[k]; ok {
-			if len(ret) == 0 {
-				if withName {
-					ret = fmt.Sprintf("%s=%d", k, v)
-				} else {
-					ret = fmt.Sprintf("%d", v)
-				}
-			} else {
-				if withName {
-					ret = fmt.Sprintf("%s %s=%d", ret, k, v)
-				} else {
-					ret = fmt.Sprintf("%s %d", ret, v)
-				}
-			}
+			sb.WriteByte(' ')
+			 if withName {
+				 sb.WriteString(string(k))
+				 sb.WriteByte('=')
+			 }
+			 sb.WriteString(strconv.FormatInt(v.NumInt64(), 10))
 		}
 	}
-	if withName {
-		ret = fmt.Sprintf("RewardFund2{%s}", ret)
-	} else {
-		ret = fmt.Sprintf("{%s}", ret)
-	}
-	return ret
+
+	sb.WriteByte('}')
+	return sb.String()
 }
 
 func (r *RewardFund2) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
-		if f.Flag('+') {
-			fmt.Fprintf(f, "%s", r.string(true))
-		} else {
-			fmt.Fprintf(f, "%s", r.string(false))
-		}
+		fmt.Fprintf(f, "%s", r.string(f.Flag('+')))
 	case 's':
 		fmt.Fprintf(f, "%s", r.string(true))
 	}
