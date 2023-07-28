@@ -164,6 +164,8 @@ var revisionFlags = []module.Revision{
 	0,
 	// Revision23
 	0,
+	// Revision24
+	0,
 }
 
 func init() {
