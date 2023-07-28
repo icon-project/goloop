@@ -506,7 +506,7 @@ func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 			term.totalSupply,
 			term.totalDelegated,
 			term.rewardFund2,
-			term.bondRequirement.Percent(),
+			term.bondRequirement.NumInt64(),
 			term.revision,
 			term.isDecentralized,
 			term.mainPRepCount,
