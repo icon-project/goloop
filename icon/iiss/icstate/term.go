@@ -455,7 +455,6 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 			&term.mainPRepCount,
 			&term.prepSnapshots,
 		)
-		term.rewardFund2 = NewRewardFund2()
 	case termVersion2:
 		err = decoder.DecodeAll(
 			&term.sequence,
@@ -472,7 +471,6 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 			&term.mainPRepCount,
 			&term.prepSnapshots,
 		)
-		term.rewardFund = NewRewardFund()
 	}
 	if err == nil {
 		term.bondRequirement = icmodule.ToRate(bondRequirement)
@@ -587,9 +585,15 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 	if ts == nil {
 		return nil
 	}
-	version := termVersion2
+	var version int
+	var rf *RewardFund
+	var rf2 *RewardFund2
 	if revision < icmodule.RevisionIISS4 {
 		version = termVersion1
+		rf = state.GetRewardFund()
+	} else {
+		version = termVersion2
+		rf2 = state.GetRewardFund2()
 	}
 
 	return &TermState{
@@ -602,8 +606,8 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 			rrep:            state.GetRRep(),
 			totalSupply:     totalSupply,
 			totalDelegated:  state.GetTotalDelegation(),
-			rewardFund:      state.GetRewardFund(),
-			rewardFund2:     state.GetRewardFund2(),
+			rewardFund:      rf,
+			rewardFund2:     rf2,
 			bondRequirement: state.GetBondRequirement(),
 			revision:        revision,
 			prepSnapshots:   ts.prepSnapshots.Clone(),

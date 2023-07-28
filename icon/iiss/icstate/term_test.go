@@ -61,8 +61,8 @@ func newTestRewardFund2() *RewardFund2 {
 }
 
 func newTermState(version, sequence int, period int64) *TermState {
-	rf := NewRewardFund()
-	rf2 := NewRewardFund2()
+	var rf *RewardFund
+	var rf2 *RewardFund2
 	if version == termVersion1 {
 		rf = newTestRewardFund()
 	} else {
