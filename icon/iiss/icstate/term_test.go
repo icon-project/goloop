@@ -277,42 +277,45 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 	rf2 := newTestRewardFund2()
 	prepSnapshots := newDummyPRepSnapshots(100)
 
-	termState := &TermState{
-		termData: termData{
-			sequence:        sequence,
-			startHeight:     startHeight,
-			period:          termPeriod,
-			irep:            icmodule.BigIntZero,
-			rrep:            icmodule.BigIntZero,
-			totalSupply:     totalSupply,
-			totalDelegated:  totalDelegated,
-			rewardFund:      rf.Clone(),
-			rewardFund2:     rf2,
-			bondRequirement: br,
-			revision:        revision,
-			prepSnapshots:   prepSnapshots.Clone(),
-			isDecentralized: isDecentralized,
-		},
+	for version := termVersion1; version < termVersionReserved; version++ {
+		termState := &TermState{
+			termData: termData{
+				version:         version,
+				sequence:        sequence,
+				startHeight:     startHeight,
+				period:          termPeriod,
+				irep:            icmodule.BigIntZero,
+				rrep:            icmodule.BigIntZero,
+				totalSupply:     totalSupply,
+				totalDelegated:  totalDelegated,
+				rewardFund:      rf.Clone(),
+				rewardFund2:     rf2,
+				bondRequirement: br,
+				revision:        revision,
+				prepSnapshots:   prepSnapshots.Clone(),
+				isDecentralized: isDecentralized,
+			},
+		}
+
+		termSnapshot := termState.GetSnapshot()
+		termObject := icobject.New(TypeTerm, termSnapshot)
+
+		buf := bytes.NewBuffer(nil)
+		e := codec.BC.NewEncoder(buf)
+
+		assert.NoError(t, e.Encode(termObject))
+		assert.NoError(t, e.Close())
+
+		bs := buf.Bytes()
+		termObject2 := &icobject.Object{}
+		d := codec.BC.NewDecoder(bytes.NewReader(bs))
+		assert.NoError(t, termObject2.RLPDecodeSelf(d, NewObjectImpl))
+
+		termSnapshot2 := ToTerm(termObject2)
+		assert.True(t, termObject.Equal(termObject2))
+		assert.True(t, termSnapshot.Equal(termSnapshot2))
+		assert.Equal(t, br, termSnapshot2.BondRequirement())
 	}
-
-	termSnapshot := termState.GetSnapshot()
-	termObject := icobject.New(TypeTerm, termSnapshot)
-
-	buf := bytes.NewBuffer(nil)
-	e := codec.BC.NewEncoder(buf)
-
-	assert.NoError(t, e.Encode(termObject))
-	assert.NoError(t, e.Close())
-
-	bs := buf.Bytes()
-	termObject2 := &icobject.Object{}
-	d := codec.BC.NewDecoder(bytes.NewReader(bs))
-	assert.NoError(t, termObject2.RLPDecodeSelf(d, NewObjectImpl))
-
-	termSnapshot2 := ToTerm(termObject2)
-	assert.True(t, termObject.Equal(termObject2))
-	assert.True(t, termSnapshot.Equal(termSnapshot2))
-	assert.Equal(t, br, termSnapshot2.BondRequirement())
 }
 
 func TestTermData_Iglobal(t *testing.T) {

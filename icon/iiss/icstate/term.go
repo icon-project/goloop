@@ -120,6 +120,7 @@ func (p PRepSnapshots) String() string {
 const (
 	termVersion1 = iota
 	termVersion2
+	termVersionReserved
 )
 
 type termData struct {
@@ -455,6 +456,7 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 			&term.mainPRepCount,
 			&term.prepSnapshots,
 		)
+		term.bondRequirement = icmodule.ToRate(bondRequirement)
 	case termVersion2:
 		err = decoder.DecodeAll(
 			&term.sequence,
@@ -471,9 +473,7 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 			&term.mainPRepCount,
 			&term.prepSnapshots,
 		)
-	}
-	if err == nil {
-		term.bondRequirement = icmodule.ToRate(bondRequirement)
+		term.bondRequirement = icmodule.Rate(bondRequirement)
 	}
 	return err
 }
