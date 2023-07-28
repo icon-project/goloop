@@ -316,6 +316,12 @@ func (term *termData) clone() termData {
 }
 
 func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interface{} {
+	var rf interface{}
+	if term.GetIISSVersion() == IISSVersion3 {
+		rf = term.rewardFund.ToJSON()
+	} else if term.GetIISSVersion() >= IISSVersion4 {
+		rf = term.rewardFund2.ToJSON()
+	}
 	return map[string]interface{}{
 		"sequence":         term.sequence,
 		"startBlockHeight": term.startHeight,
@@ -326,7 +332,7 @@ func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interfa
 		"irep":             term.irep,
 		"rrep":             term.rrep,
 		"period":           term.period,
-		"rewardFund":       term.rewardFund.ToJSON(),
+		"rewardFund":       rf,
 		"bondRequirement":  term.bondRequirement.Percent(),
 		"revision":         term.revision,
 		"isDecentralized":  term.isDecentralized,
