@@ -536,7 +536,7 @@ func (sim *simulatorImpl) GetPRepStats(address module.Address) map[string]interf
 
 func (sim *simulatorImpl) GetNetworkInfo() map[string]interface{} {
 	es := sim.getExtensionState(true)
-	jso, err := es.State.GetNetworkInfoInJSON()
+	jso, err := es.State.GetNetworkInfoInJSON(sim.revision.Value())
 	if err != nil {
 		return nil
 	}

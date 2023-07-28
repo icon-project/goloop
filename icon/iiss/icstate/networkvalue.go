@@ -41,6 +41,7 @@ const (
 	VarLockMinMultiplier                    = "lockMinMultiplier"
 	VarLockMaxMultiplier                    = "lockMaxMultiplier"
 	VarRewardFund                           = "reward_fund"
+	VarRewardFund2                          = "reward_fund2"
 	VarUnbondingMax                         = "unbonding_max"
 	VarValidationPenaltyCondition           = "validation_penalty_condition"
 	VarConsistentValidationPenaltyCondition = "consistent_validation_penalty_condition"
@@ -280,6 +281,16 @@ func (s *State) SetRewardFund(rc *RewardFund) error {
 	return setValue(s.store, VarRewardFund, rc.Bytes())
 }
 
+func (s *State) GetRewardFund2() *RewardFund2 {
+	bs := getValue(s.store, VarRewardFund2).Bytes()
+	rc, _ := newRewardFund2FromByte(bs)
+	return rc
+}
+
+func (s *State) SetRewardFund2(r *RewardFund2) error {
+	return setValue(s.store, VarRewardFund2, r.Bytes())
+}
+
 func (s *State) GetUnbondingMax() int64 {
 	return getValue(s.store, VarUnbondingMax).Int64()
 }
@@ -357,7 +368,7 @@ func (s *State) SetNonVotePenaltySlashRate(value icmodule.Rate) error {
 	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
 }
 
-func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
+func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	jso := make(map[string]interface{})
 	jso["irep"] = s.GetIRep()
@@ -371,7 +382,14 @@ func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
 	jso["bondRequirement"] = br.Percent()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
-	jso["rewardFund"] = s.GetRewardFund().ToJSON()
+	if revision < icmodule.RevisionIISS4 {
+		jso["rewardFund"] = s.GetRewardFund().ToJSON()
+	} else {
+		jso["rewardFund"] = s.GetRewardFund2().ToJSON()
+	}
+	if revision == icmodule.RevisionPreIISS4 {
+		jso["rewardFund2"] = s.GetRewardFund2().ToJSON()
+	}
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()

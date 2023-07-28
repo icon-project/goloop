@@ -513,7 +513,7 @@ func (s *chainScore) Ex_getNetworkInfo() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := es.State.GetNetworkInfoInJSON()
+	res, err := es.State.GetNetworkInfoInJSON(s.cc.Revision().Value())
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get NetworkValue")
 	}
@@ -531,12 +531,15 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	iissVersion := es.State.GetIISSVersion()
 
-	iissVariables := make(map[string]interface{})
+	var iissVariables map[string]interface{}
 	if iissVersion == icstate.IISSVersion2 {
+		iissVariables = make(map[string]interface{})
 		iissVariables["irep"] = term.Irep()
 		iissVariables["rrep"] = term.Rrep()
 	} else if iissVersion == icstate.IISSVersion3 {
 		iissVariables = term.RewardFund().ToJSON()
+	} else if iissVersion == icstate.IISSVersion4 {
+		iissVariables = term.RewardFund2().ToJSON()
 	}
 
 	rcInfo, err := es.State.GetRewardCalcInfo()
@@ -672,9 +675,16 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	rf := es.State.GetRewardFund()
-	rf.Iglobal = iglobal.Value()
-	return es.State.SetRewardFund(rf)
+	revision := s.cc.Revision().Value()
+	if revision < icmodule.RevisionPreIISS4 {
+		rf := es.State.GetRewardFund()
+		rf.Iglobal = iglobal.Value()
+		return es.State.SetRewardFund(rf)
+	} else {
+		rf := es.State.GetRewardFund2()
+		rf.SetIGlobal(iglobal.Value())
+		return es.State.SetRewardFund2(rf)
+	}
 }
 
 func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *common.HexInt, irelay *common.HexInt, ivoter *common.HexInt) error {
@@ -691,6 +701,23 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 	rf.Irelay = icmodule.ToRate(irelay.Int64())
 	rf.Ivoter = icmodule.ToRate(ivoter.Int64())
 	return es.State.SetRewardFund(rf)
+}
+
+func (s *chainScore) Ex_setRewardFundAllocation2(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	alloc, err := icstate.NewRewardFund2Allocation(values)
+	if err != nil {
+		return err
+	}
+	rf := es.State.GetRewardFund2()
+	rf.SetAllocation(alloc)
+	return es.State.SetRewardFund2(rf)
 }
 
 func (s *chainScore) Ex_getScoreOwner(score module.Address) (module.Address, error) {

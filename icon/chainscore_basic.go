@@ -284,10 +284,6 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			}
 		}
 
-		if err := es.State.SetIISSVersion(iissVersion); err != nil {
-			return err
-		}
-
 		// Start genesis term according to the period information
 		// if it's not started.
 		if err := es.GenesisTerm(s.cc.BlockHeight(), r2); err != nil {
@@ -322,6 +318,25 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 				return err
 			}
 		}
+
+		if r1 < icmodule.RevisionPreIISS4 && r2 >= icmodule.RevisionPreIISS4 {
+			// RewardFundAllocation2
+			r := es.State.GetRewardFund()
+			if err := es.State.SetRewardFund2(r.ToRewardFund2()); err != nil {
+				return err
+			}
+		}
+
+		if r1 < icmodule.RevisionIISS4 && r2 >= icmodule.RevisionIISS4 {
+			if iissVersion < icstate.IISSVersion4 {
+				iissVersion = icstate.IISSVersion4
+			}
+		}
+
+		if err := es.State.SetIISSVersion(iissVersion); err != nil {
+			return err
+		}
+
 	}
 	if r1 < icmodule.Revision21 && r2 >= icmodule.Revision21 && s.cc.ChainID() == CIDForMainNet {
 		s.blockAccounts2()

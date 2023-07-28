@@ -42,6 +42,7 @@ const (
 	Revision21
 	Revision22
 	Revision23
+	Revision24
 	RevisionReserved
 )
 
@@ -111,6 +112,7 @@ const (
 	RevisionUpdatePRepStats = Revision22
 
 	RevisionPreIISS4 = Revision23
+	RevisionIISS4    = Revision24
 )
 
 var revisionFlags = []module.Revision{
@@ -161,6 +163,8 @@ var revisionFlags = []module.Revision{
 	// Revision22
 	0,
 	// Revision23
+	0,
+	// Revision24
 	0,
 }
 
