@@ -18,7 +18,6 @@ package test
 
 import (
 	"sync"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -30,7 +29,7 @@ import (
 
 type SimplePeer struct {
 	// immutable
-	t  *testing.T
+	t T
 	id module.PeerID
 	w  module.Wallet
 
@@ -40,7 +39,7 @@ type SimplePeer struct {
 	handlers []*SimplePeerHandler
 }
 
-func NewPeer(t *testing.T) *SimplePeer {
+func NewPeer(t T) *SimplePeer {
 	w := wallet.New()
 	return &SimplePeer{
 		t:  t,
@@ -49,7 +48,7 @@ func NewPeer(t *testing.T) *SimplePeer {
 	}
 }
 
-func NewPeerWithAddress(t *testing.T, w module.Wallet) *SimplePeer {
+func NewPeerWithAddress(t T, w module.Wallet) *SimplePeer {
 	return &SimplePeer{
 		t:  t,
 		id: network.NewPeerIDFromAddress(w.Address()),
