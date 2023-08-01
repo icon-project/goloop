@@ -32,7 +32,7 @@ import (
 	"github.com/icon-project/goloop/test"
 )
 
-func newFixture(t *testing.T) *test.Node {
+func newFixture(t test.T) *test.Node {
 	return test.NewNode(t, ictest.UseBMForBlockV1)
 }
 
