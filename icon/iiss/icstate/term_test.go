@@ -37,8 +37,8 @@ func newDummyPRepSnapshots(size int) PRepSnapshots {
 	return ret
 }
 
-func newTestRewardFund() *RewardFund {
-	return &RewardFund{
+func newTestRewardFund1() *RewardFund1 {
+	return &RewardFund1{
 		Iglobal: icutils.ToLoop(3_000_000),
 		Icps:    icmodule.ToRate(10),
 		Iprep:   icmodule.ToRate(13),
@@ -61,10 +61,10 @@ func newTestRewardFund2() *RewardFund2 {
 }
 
 func newTermState(version, sequence int, period int64) *TermState {
-	var rf *RewardFund
+	var rf1 *RewardFund1
 	var rf2 *RewardFund2
 	if version == termVersion1 {
-		rf = newTestRewardFund()
+		rf1 = newTestRewardFund1()
 	} else {
 		rf2 = newTestRewardFund2()
 	}
@@ -73,7 +73,7 @@ func newTermState(version, sequence int, period int64) *TermState {
 			version:     version,
 			sequence:    sequence,
 			period:      period,
-			rewardFund:  rf,
+			rewardFund1: rf1,
 			rewardFund2: rf2,
 		},
 	}
@@ -273,7 +273,7 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 
 	totalSupply := icutils.ToLoop(10_000_000)
 	totalDelegated := icutils.ToLoop(1_000_000)
-	rf := newTestRewardFund()
+	rf1 := newTestRewardFund1()
 	rf2 := newTestRewardFund2()
 	prepSnapshots := newDummyPRepSnapshots(100)
 
@@ -288,7 +288,7 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 				rrep:            icmodule.BigIntZero,
 				totalSupply:     totalSupply,
 				totalDelegated:  totalDelegated,
-				rewardFund:      rf.Clone(),
+				rewardFund1:     rf1.Clone(),
 				rewardFund2:     rf2,
 				bondRequirement: br,
 				revision:        revision,
@@ -319,7 +319,7 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 }
 
 func TestTermData_Iglobal(t *testing.T) {
-	rf := newTestRewardFund()
+	rf1 := newTestRewardFund1()
 	rf2 := newTestRewardFund2()
 	tests := []struct {
 		version int
@@ -327,7 +327,7 @@ func TestTermData_Iglobal(t *testing.T) {
 	}{
 		{
 			termVersion1,
-			rf.Iglobal,
+			rf1.Iglobal,
 		},
 		{
 			termVersion2,
@@ -336,7 +336,7 @@ func TestTermData_Iglobal(t *testing.T) {
 	}
 
 	term := termData{
-		rewardFund:  newTestRewardFund(),
+		rewardFund1: newTestRewardFund1(),
 		rewardFund2: newTestRewardFund2(),
 	}
 	for _, tt := range tests {

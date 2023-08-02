@@ -536,10 +536,8 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 		iissVariables = make(map[string]interface{})
 		iissVariables["irep"] = term.Irep()
 		iissVariables["rrep"] = term.Rrep()
-	} else if iissVersion == icstate.IISSVersion3 {
+	} else if iissVersion >= icstate.IISSVersion3 {
 		iissVariables = term.RewardFund().ToJSON()
-	} else if iissVersion == icstate.IISSVersion4 {
-		iissVariables = term.RewardFund2().ToJSON()
 	}
 
 	rcInfo, err := es.State.GetRewardCalcInfo()
@@ -660,7 +658,7 @@ func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error)
 		return false, err
 	}
 	cc := s.newCallContext(s.cc)
-	if err = es.ValidateRewardFund(iglobal.Value(), cc.GetTotalSupply()); err != nil {
+	if err = es.ValidateRewardFund(iglobal.Value(), cc.GetTotalSupply(), cc.Revision().Value()); err != nil {
 		return false, err
 	} else {
 		return true, nil
@@ -676,15 +674,18 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 		return err
 	}
 	revision := s.cc.Revision().Value()
-	if revision < icmodule.RevisionPreIISS4 {
-		rf := es.State.GetRewardFund()
+	if revision <= icmodule.RevisionPreIISS4 {
+		rf := es.State.GetRewardFund1()
 		rf.Iglobal = iglobal.Value()
-		return es.State.SetRewardFund(rf)
-	} else {
+		return es.State.SetRewardFund1(rf)
+	}
+
+	if revision >= icmodule.RevisionPreIISS4 {
 		rf := es.State.GetRewardFund2()
 		rf.SetIGlobal(iglobal.Value())
 		return es.State.SetRewardFund2(rf)
 	}
+	return nil
 }
 
 func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *common.HexInt, irelay *common.HexInt, ivoter *common.HexInt) error {
@@ -695,12 +696,12 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 	if err != nil {
 		return err
 	}
-	rf := es.State.GetRewardFund()
+	rf := es.State.GetRewardFund1()
 	rf.Iprep = icmodule.ToRate(iprep.Int64())
 	rf.Icps = icmodule.ToRate(icps.Int64())
 	rf.Irelay = icmodule.ToRate(irelay.Int64())
 	rf.Ivoter = icmodule.ToRate(ivoter.Int64())
-	return es.State.SetRewardFund(rf)
+	return es.State.SetRewardFund1(rf)
 }
 
 func (s *chainScore) Ex_setRewardFundAllocation2(values []interface{}) error {

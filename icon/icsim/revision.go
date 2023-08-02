@@ -109,14 +109,14 @@ func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
 }
 
 func applyRewardFund(config *config, s *icstate.State) error {
-	rf := &icstate.RewardFund{
+	rf := &icstate.RewardFund1{
 		Iglobal: big.NewInt(config.RewardFund.Iglobal),
 		Iprep:   icmodule.ToRate(config.RewardFund.Iprep),
 		Icps:    icmodule.ToRate(config.RewardFund.Icps),
 		Irelay:  icmodule.ToRate(config.RewardFund.Irelay),
 		Ivoter:  icmodule.ToRate(config.RewardFund.Ivoter),
 	}
-	if err := s.SetRewardFund(rf); err != nil {
+	if err := s.SetRewardFund1(rf); err != nil {
 		return err
 	}
 	return nil

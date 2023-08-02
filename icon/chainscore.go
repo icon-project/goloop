@@ -956,7 +956,7 @@ func applyRewardFund(iconConfig *config, s *icstate.State) error {
 		icmodule.ToRate(cfgRewardFund.Ivoter.Int64()),
 	)
 	if err == nil {
-		err = s.SetRewardFund(rf)
+		err = s.SetRewardFund1(rf)
 	}
 	return err
 }

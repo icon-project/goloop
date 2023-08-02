@@ -271,13 +271,13 @@ func (s *State) SetLockVariables(lockMin *big.Int, lockMax *big.Int) error {
 	return nil
 }
 
-func (s *State) GetRewardFund() *RewardFund {
+func (s *State) GetRewardFund1() *RewardFund1 {
 	bs := getValue(s.store, VarRewardFund).Bytes()
 	rc, _ := newRewardFundFromByte(bs)
 	return rc
 }
 
-func (s *State) SetRewardFund(rc *RewardFund) error {
+func (s *State) SetRewardFund1(rc *RewardFund1) error {
 	return setValue(s.store, VarRewardFund, rc.Bytes())
 }
 
@@ -289,6 +289,14 @@ func (s *State) GetRewardFund2() *RewardFund2 {
 
 func (s *State) SetRewardFund2(r *RewardFund2) error {
 	return setValue(s.store, VarRewardFund2, r.Bytes())
+}
+
+func (s *State) GetRewardFund(revision int) RewardFund {
+	if revision <= icmodule.RevisionPreIISS4 {
+		return s.GetRewardFund1()
+	} else {
+		return s.GetRewardFund2()
+	}
 }
 
 func (s *State) GetUnbondingMax() int64 {
@@ -382,11 +390,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["bondRequirement"] = br.Percent()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
-	if revision < icmodule.RevisionIISS4 {
-		jso["rewardFund"] = s.GetRewardFund().ToJSON()
-	} else {
-		jso["rewardFund"] = s.GetRewardFund2().ToJSON()
-	}
+	jso["rewardFund"] = s.GetRewardFund(revision).ToJSON()
 	if revision == icmodule.RevisionPreIISS4 {
 		jso["rewardFund2"] = s.GetRewardFund2().ToJSON()
 	}

@@ -30,7 +30,16 @@ import (
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
-type RewardFund struct {
+type RewardFund interface {
+	IGlobal() *big.Int
+	IPrep() icmodule.Rate
+	ICps() icmodule.Rate
+	IRelay() icmodule.Rate
+	IVoter() icmodule.Rate
+	ToJSON() map[string]interface{}
+}
+
+type RewardFund1 struct {
 	Iglobal *big.Int
 	Iprep   icmodule.Rate
 	Icps    icmodule.Rate
@@ -38,13 +47,13 @@ type RewardFund struct {
 	Ivoter  icmodule.Rate
 }
 
-func NewRewardFund() *RewardFund {
-	return &RewardFund{
+func NewRewardFund() *RewardFund1 {
+	return &RewardFund1{
 		Iglobal: new(big.Int),
 	}
 }
 
-func NewSafeRewardFund(iglobal *big.Int, iprep, icps, irelay, ivoter icmodule.Rate) (*RewardFund, error) {
+func NewSafeRewardFund(iglobal *big.Int, iprep, icps, irelay, ivoter icmodule.Rate) (*RewardFund1, error) {
 	if iglobal.Sign() < 0 {
 		return nil, scoreresult.InvalidParameterError.Errorf("InvalidIglobal(%d)", iglobal)
 	}
@@ -59,7 +68,7 @@ func NewSafeRewardFund(iglobal *big.Int, iprep, icps, irelay, ivoter icmodule.Ra
 			"IllegalInflationRate(prep=%d,cps=%d,relay=%d,voter=%d)",
 			iprep.Percent(), icps.Percent(), irelay.Percent(), ivoter.Percent())
 	}
-	return &RewardFund{
+	return &RewardFund1{
 		Iglobal: iglobal,
 		Iprep:   iprep,
 		Icps:    icps,
@@ -68,18 +77,38 @@ func NewSafeRewardFund(iglobal *big.Int, iprep, icps, irelay, ivoter icmodule.Ra
 	}, nil
 }
 
-func newRewardFundFromByte(bs []byte) (*RewardFund, error) {
+func newRewardFundFromByte(bs []byte) (*RewardFund1, error) {
 	if bs == nil {
 		return NewRewardFund(), nil
 	}
-	rc := &RewardFund{}
+	rc := &RewardFund1{}
 	if _, err := codec.BC.UnmarshalFromBytes(bs, rc); err != nil {
 		return nil, err
 	}
 	return rc, nil
 }
 
-func (rf *RewardFund) RLPEncodeSelf(e codec.Encoder) error {
+func (rf *RewardFund1) IGlobal() *big.Int {
+	return rf.Iglobal
+}
+
+func (rf *RewardFund1) IPrep() icmodule.Rate {
+	return rf.Iprep
+}
+
+func (rf *RewardFund1) ICps() icmodule.Rate {
+	return rf.Icps
+}
+
+func (rf *RewardFund1) IRelay() icmodule.Rate {
+	return rf.Irelay
+}
+
+func (rf *RewardFund1) IVoter() icmodule.Rate {
+	return rf.Ivoter
+}
+
+func (rf *RewardFund1) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		rf.Iglobal,
 		rf.Iprep.Percent(),
@@ -89,7 +118,7 @@ func (rf *RewardFund) RLPEncodeSelf(e codec.Encoder) error {
 	)
 }
 
-func (rf *RewardFund) RLPDecodeSelf(d codec.Decoder) error {
+func (rf *RewardFund1) RLPDecodeSelf(d codec.Decoder) error {
 	var Iprep, Icps, Irelay, Ivoter int64
 	err := d.DecodeListOf(
 		&rf.Iglobal,
@@ -106,11 +135,11 @@ func (rf *RewardFund) RLPDecodeSelf(d codec.Decoder) error {
 	}
 	return err
 }
-func (rf *RewardFund) Bytes() []byte {
+func (rf *RewardFund1) Bytes() []byte {
 	return codec.BC.MustMarshalToBytes(rf)
 }
 
-func (rf *RewardFund) Equal(other *RewardFund) bool {
+func (rf *RewardFund1) Equal(other *RewardFund1) bool {
 	return rf.Iglobal.Cmp(other.Iglobal) == 0 &&
 		rf.Iprep == other.Iprep &&
 		rf.Icps == other.Icps &&
@@ -118,8 +147,8 @@ func (rf *RewardFund) Equal(other *RewardFund) bool {
 		rf.Ivoter == other.Ivoter
 }
 
-func (rf *RewardFund) Clone() *RewardFund {
-	return &RewardFund{
+func (rf *RewardFund1) Clone() *RewardFund1 {
+	return &RewardFund1{
 		Iglobal: rf.Iglobal,
 		Iprep:   rf.Iprep,
 		Icps:    rf.Icps,
@@ -128,7 +157,7 @@ func (rf *RewardFund) Clone() *RewardFund {
 	}
 }
 
-func (rf *RewardFund) ToJSON() map[string]interface{} {
+func (rf *RewardFund1) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["Iglobal"] = rf.Iglobal
 	jso["Iprep"] = rf.Iprep.Percent()
@@ -138,31 +167,31 @@ func (rf *RewardFund) ToJSON() map[string]interface{} {
 	return jso
 }
 
-func (rf *RewardFund) GetPRepFund() *big.Int {
+func (rf *RewardFund1) GetPRepFund() *big.Int {
 	return rf.Iprep.MulBigInt(rf.Iglobal)
 }
 
-func (rf *RewardFund) GetVoterFund() *big.Int {
+func (rf *RewardFund1) GetVoterFund() *big.Int {
 	return rf.Ivoter.MulBigInt(rf.Iglobal)
 }
 
-func (rf *RewardFund) Format(f fmt.State, c rune) {
+func (rf *RewardFund1) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "RewardFund{Iglobal=%d Iprep=%d Icps=%d Irelay=%d Ivoter=%d}",
+			fmt.Fprintf(f, "RewardFund1{Iglobal=%d Iprep=%d Icps=%d Irelay=%d Ivoter=%d}",
 				rf.Iglobal, rf.Iprep.Percent(), rf.Icps.Percent(), rf.Irelay.Percent(), rf.Ivoter.Percent())
 		} else {
-			fmt.Fprintf(f, "RewardFund{%d %d %d %d %d}",
+			fmt.Fprintf(f, "RewardFund1{%d %d %d %d %d}",
 				rf.Iglobal, rf.Iprep.Percent(), rf.Icps.Percent(), rf.Irelay.Percent(), rf.Ivoter.Percent())
 		}
 	case 's':
-		fmt.Fprintf(f, "RewardFund{Iglobal=%d Iprep=%d Icps=%d Irelay=%d Ivoter=%d}",
+		fmt.Fprintf(f, "RewardFund1{Iglobal=%d Iprep=%d Icps=%d Irelay=%d Ivoter=%d}",
 			rf.Iglobal, rf.Iprep.Percent(), rf.Icps.Percent(), rf.Irelay.Percent(), rf.Ivoter.Percent())
 	}
 }
 
-func (rf *RewardFund) ToRewardFund2() *RewardFund2 {
+func (rf *RewardFund1) ToRewardFund2() *RewardFund2 {
 	r2 := NewRewardFund2()
 	r2.SetIGlobal(rf.Iglobal)
 	r2.SetAllocationByKey(KeyIprep, rf.Iprep+rf.Ivoter)
@@ -224,6 +253,21 @@ func (r *RewardFund2) GetAllocationByKey(key RFundKey) icmodule.Rate {
 
 func (r *RewardFund2) SetAllocationByKey(key RFundKey, value icmodule.Rate) {
 	r.allocation[key] = value
+}
+
+func (r *RewardFund2) IPrep() icmodule.Rate {
+	return r.GetAllocationByKey(KeyIprep)
+}
+
+func (r *RewardFund2) ICps() icmodule.Rate {
+	return r.GetAllocationByKey(KeyIcps)
+}
+func (r *RewardFund2) IRelay() icmodule.Rate {
+	return r.GetAllocationByKey(KeyIrelay)
+}
+
+func (r *RewardFund2) IVoter() icmodule.Rate {
+	return icmodule.Rate(0)
 }
 
 func (r *RewardFund2) GetAmount(key RFundKey) *big.Int {

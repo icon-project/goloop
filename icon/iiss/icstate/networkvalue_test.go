@@ -87,7 +87,7 @@ func Test_networkValue(t *testing.T) {
 	t.Run("SetLockVariables", func(t *testing.T) { setLockVariablesTest(t, s) })
 
 	// test for SetRewardFund
-	t.Run("SetRewardFund", func(t *testing.T) { setRewardFundTest(t, s) })
+	t.Run("SetRewardFund1", func(t *testing.T) { setRewardFund1Test(t, s) })
 	t.Run("SetRewardFund2", func(t *testing.T) { setRewardFund2Test(t, s) })
 
 	// test for SetUnbondingPeriodMultiplier
@@ -240,17 +240,17 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	assert.Equal(t, 0, actualMax.Cmp(max))
 }
 
-func setRewardFundTest(t *testing.T, s *State) {
+func setRewardFund1Test(t *testing.T, s *State) {
 	rf := NewRewardFund()
-	actual := s.GetRewardFund()
+	actual := s.GetRewardFund1()
 	assert.Equal(t, rf, actual)
 
 	rf.Iglobal = new(big.Int).SetInt64(100000)
 	rf.Iprep = icmodule.ToRate(50)
 	rf.Ivoter = icmodule.ToRate(50)
-	err := s.SetRewardFund(rf)
+	err := s.SetRewardFund1(rf)
 	assert.NoError(t, err)
-	actual = s.GetRewardFund()
+	actual = s.GetRewardFund1()
 	assert.True(t, rf.Equal(actual))
 }
 
