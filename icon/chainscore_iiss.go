@@ -933,6 +933,36 @@ func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate)
 	)
 }
 
+func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return icmodule.BigIntZero, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return icmodule.BigIntZero, err
+	}
+	return es.State.GetMinimumBond(), nil
+}
+
+func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if err = es.State.SetMinimumBond(new(big.Int).Set(&bond.Int)); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set minimum bond: from=%v bond=%v",
+			s.from,
+			bond,
+		)
+	}
+	return nil
+}
+
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
 	return iiss.NewCallContext(cc, s.from)
 }
