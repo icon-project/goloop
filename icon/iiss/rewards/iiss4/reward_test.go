@@ -18,8 +18,6 @@ package iiss4
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 	"testing"
 
@@ -27,9 +25,11 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
@@ -71,7 +71,7 @@ func (t *testCalculator) AddGlobal(electedPRepCount int) error {
 		icstate.KeyIrelay: icmodule.ToRate(0),
 	}
 	rFund.SetAllocation(alloc)
-	return t.stage.AddGlobalV3(0, 0, 100, electedPRepCount, icmodule.ToRate(5),
+	return t.stage.AddGlobalV3(0, 0, 99, electedPRepCount, icmodule.ToRate(5),
 		rFund, big.NewInt(100))
 }
 
@@ -300,9 +300,9 @@ func TestReward(t *testing.T) {
 	t.Run(fmt.Sprintf("loadPRepInfo-InitAccumulated"), func(t *testing.T) {
 		for k, p := range rr.pi.preps {
 			if p.Rank() <= rr.pi.ElectedPRepCount() {
-				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(int64(rr.pi.OffsetLimit())))
+				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(rr.pi.GetTermPeriod()))
 				assert.Equal(t, bonded, p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
-				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(int64(rr.pi.OffsetLimit())))
+				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(rr.pi.GetTermPeriod()))
 				assert.Equal(t, voted, p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
 			} else {
 				assert.Equal(t, new(big.Int), p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
