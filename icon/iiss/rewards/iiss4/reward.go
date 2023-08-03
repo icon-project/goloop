@@ -142,7 +142,7 @@ func (r *reward) processEvents() error {
 			if type_ == icstage.TypeEventBond {
 				vType = vtBond
 			}
-			r.pi.ApplyVote(vType, obj.Votes(), r.pi.OffsetLimit()-keyOffset)
+			r.pi.ApplyVote(vType, obj.Votes(), keyOffset)
 			ve.AddEvent(vType, obj.From(), obj.Votes(), keyOffset)
 		}
 	}
