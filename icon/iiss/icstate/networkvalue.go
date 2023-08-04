@@ -271,31 +271,34 @@ func (s *State) SetLockVariables(lockMin *big.Int, lockMax *big.Int) error {
 	return nil
 }
 
-func (s *State) GetRewardFund1() *RewardFund1 {
+func (s *State) GetRewardFundV1() *RewardFund {
 	bs := getValue(s.store, VarRewardFund).Bytes()
-	rc, _ := newRewardFundFromByte(bs)
+	rc, _ := NewRewardFundFromByte(bs)
 	return rc
 }
 
-func (s *State) SetRewardFund1(rc *RewardFund1) error {
-	return setValue(s.store, VarRewardFund, rc.Bytes())
-}
-
-func (s *State) GetRewardFund2() *RewardFund2 {
+func (s *State) GetRewardFundV2() *RewardFund {
 	bs := getValue(s.store, VarRewardFund2).Bytes()
-	rc, _ := newRewardFund2FromByte(bs)
+	rc, _ := NewRewardFundFromByte(bs)
 	return rc
 }
 
-func (s *State) SetRewardFund2(r *RewardFund2) error {
-	return setValue(s.store, VarRewardFund2, r.Bytes())
+func (s *State) SetRewardFund(r *RewardFund) error {
+	switch r.version {
+	case RFVersion1:
+		return setValue(s.store, VarRewardFund, r.Bytes())
+	case RFVersion2:
+		return setValue(s.store, VarRewardFund2, r.Bytes())
+	default:
+		return icmodule.IllegalArgumentError.Errorf("invalid reward fund version %d", r.version)
+	}
 }
 
-func (s *State) GetRewardFund(revision int) RewardFund {
+func (s *State) GetRewardFund(revision int) *RewardFund {
 	if revision <= icmodule.RevisionPreIISS4 {
-		return s.GetRewardFund1()
+		return s.GetRewardFundV1()
 	} else {
-		return s.GetRewardFund2()
+		return s.GetRewardFundV2()
 	}
 }
 
@@ -392,7 +395,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund(revision).ToJSON()
 	if revision == icmodule.RevisionPreIISS4 {
-		jso["rewardFund2"] = s.GetRewardFund2().ToJSON()
+		jso["rewardFund2"] = s.GetRewardFundV2().ToJSON()
 	}
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()

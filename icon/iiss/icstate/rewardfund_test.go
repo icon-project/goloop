@@ -26,100 +26,99 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 )
 
-func TestRewardFund(t *testing.T) {
-	iglobal := int64(100000)
-	iprep := int64(50)
-	ivoter := int64(50)
-	rf := NewRewardFund()
-	rf.Iglobal = big.NewInt(iglobal)
-	rf.Iprep = icmodule.ToRate(iprep)
-	rf.Ivoter = icmodule.ToRate(ivoter)
-
-	bs := rf.Bytes()
-
-	rf2, err := newRewardFundFromByte(bs)
-	assert.NoError(t, err)
-
-	assert.True(t, rf.Equal(rf2))
-	assert.Equal(t, 0, rf.Iglobal.Cmp(rf2.Iglobal))
-
-	rf3 := rf.Clone()
-	assert.True(t, rf.Equal(rf3))
-
-	assert.Equal(t, iglobal*iprep/100, rf.GetPRepFund().Int64())
-	assert.Equal(t, iglobal*ivoter/100, rf.GetVoterFund().Int64())
-}
-
 func TestRewardFund_NewSafeRewardFund(t *testing.T) {
 	tests := []struct {
-		name                        string
-		iglobal                     int
-		iprep, icps, irelay, ivoter int
-		err                         bool
+		name                               string
+		iglobal                            int
+		iprep, icps, irelay, ivoter, iwage int
+		err                                bool
 	}{
 		{
 			"success",
 			1000000,
-			4000, 1000, 2000, 3000,
+			4000, 1000, 2000, 3000, 3000,
 			false,
 		},
 		{
 			"invalid iglobal",
 			-1,
-			4000, 1000, 2000, 3000,
+			4000, 1000, 2000, 3000, 3000,
 			true,
 		},
 		{
 			"invalid iprep",
 			1000000,
-			-1, 5001, 2000, 3000,
+			-1, 5001, 2000, 3000, 3000,
 			true,
 		},
 		{
 			"invalid icps",
 			1000000,
-			6000, -1000, 2000, 3000,
+			6000, -1000, 2000, 3000, 3000,
 			true,
 		},
 		{
 			"invalid irelay",
 			1000000,
-			4000, 5000, -2000, 3000,
+			4000, 5000, -2000, 3000, 3000,
 			true,
 		},
 		{
-			"invalid ivoter",
+			"invalid ivoter/iwage",
 			1000000,
-			4000, 1000, 8000, -3000,
+			4000, 1000, 8000, -3000, -3000,
 			true,
 		},
 		{
 			"invalid sum",
 			1000000,
-			400, 100, 200, 300,
+			400, 100, 200, 300, 300,
 			true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rf, err := NewSafeRewardFund(
-				big.NewInt(int64(tt.iglobal)),
-				icmodule.Rate(tt.iprep),
-				icmodule.Rate(tt.icps),
-				icmodule.Rate(tt.irelay),
-				icmodule.Rate(tt.ivoter),
-			)
-			if tt.err {
-				assert.Error(t, err)
-			} else {
-				assert.Equal(t, big.NewInt(int64(tt.iglobal)), rf.Iglobal)
-				assert.Equal(t, icmodule.Rate(tt.iprep), rf.Iprep)
-				assert.Equal(t, icmodule.Rate(tt.icps), rf.Icps)
-				assert.Equal(t, icmodule.Rate(tt.irelay), rf.Irelay)
-				assert.Equal(t, icmodule.Rate(tt.ivoter), rf.Ivoter)
-			}
-		})
+	for _, ver := range []int{RFVersion1, RFVersion2} {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("Version%d-%s", ver, tt.name), func(t *testing.T) {
+				var rf *RewardFund
+				var err error
+				if ver == RFVersion1 {
+					rf, err = NewSafeRewardFundV1(
+						big.NewInt(int64(tt.iglobal)),
+						icmodule.Rate(tt.iprep),
+						icmodule.Rate(tt.icps),
+						icmodule.Rate(tt.irelay),
+						icmodule.Rate(tt.ivoter),
+					)
+				} else {
+					rf, err = NewSafeRewardFundV2(
+						big.NewInt(int64(tt.iglobal)),
+						icmodule.Rate(tt.iprep),
+						icmodule.Rate(tt.iwage),
+						icmodule.Rate(tt.icps),
+						icmodule.Rate(tt.irelay),
+					)
+				}
+				if tt.err {
+					assert.Error(t, err)
+				} else {
+					assert.Equal(t, big.NewInt(int64(tt.iglobal)), rf.IGlobal())
+					assert.Equal(t, icmodule.Rate(tt.iprep), rf.IPrep())
+					assert.Equal(t, icmodule.Rate(tt.icps), rf.ICps())
+					assert.Equal(t, icmodule.Rate(tt.irelay), rf.IRelay())
+					if ver == RFVersion1 {
+						assert.Equal(t, icmodule.Rate(tt.ivoter), rf.IVoter())
+					} else {
+						assert.Equal(t, icmodule.Rate(0), rf.IVoter())
+					}
+					if ver == RFVersion2 {
+						assert.Equal(t, icmodule.Rate(tt.iwage), rf.Iwage())
+					} else {
+						assert.Equal(t, icmodule.Rate(0), rf.Iwage())
+					}
+				}
+			})
+		}
 	}
 }
 
@@ -129,10 +128,11 @@ func TestRewardFund_ToRewardFund2(t *testing.T) {
 	ivoter := icmodule.Rate(1000)
 	icps := icmodule.Rate(3000)
 	irelay := icmodule.Rate(1000)
-	rf, err := NewSafeRewardFund(iglobal, iprep, icps, irelay, ivoter)
+	rf, err := NewSafeRewardFundV1(iglobal, iprep, icps, irelay, ivoter)
 	assert.NoError(t, err)
 
-	rf2 := rf.ToRewardFund2()
+	rf2 := rf.ToRewardFundV2()
+	assert.Equal(t, RFVersion2, rf2.version)
 	assert.Equal(t, iglobal, rf2.IGlobal())
 	assert.Equal(t, iprep+ivoter, rf2.GetAllocationByKey(KeyIprep))
 	assert.Equal(t, icps, rf2.GetAllocationByKey(KeyIcps))
@@ -142,71 +142,78 @@ func TestRewardFund_ToRewardFund2(t *testing.T) {
 
 func TestRFundKey(t *testing.T) {
 	tests := []struct {
-		name string
-		in   RFundKey
+		key  RFundKey
+		ver  int
 		want bool
 	}{
-		{
-			"invalid",
-			RFundKey("invalid"),
-			false,
-		},
-		{
-			"KeyIprep",
-			KeyIprep,
-			true,
-		},
-		{
-			"KeyIwage",
-			KeyIwage,
-			true,
-		},
-		{
-			"KeyIcps",
-			KeyIcps,
-			true,
-		},
-		{
-			"KeyIrelay",
-			KeyIrelay,
-			true,
-		},
+		{KeyIvoter, RFVersion1, true},
+		{KeyIvoter, RFVersion2, false},
+		{KeyIprep, RFVersion1, true},
+		{KeyIprep, RFVersion2, true},
+		{KeyIwage, RFVersion1, false},
+		{KeyIwage, RFVersion2, true},
+		{KeyIcps, RFVersion1, true},
+		{KeyIcps, RFVersion2, true},
+		{KeyIrelay, RFVersion1, true},
+		{KeyIrelay, RFVersion2, true},
+		{KeyIrelay, RFVersionReserved, false},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.in.IsValid())
+		t.Run(fmt.Sprintf("%s-RFVersion%d", tt.key, tt.ver), func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.key.IsValid(tt.ver))
 		})
 	}
 }
 
-func TestRewardFund2(t *testing.T) {
-	iglobal := int64(100000)
-	iprep := int64(50)
-	iwage := int64(30)
-	icps := int64(10)
-	irelay := int64(10)
-	rf := NewRewardFund2()
+func TestRewardFund(t *testing.T) {
+	iglobal := big.NewInt(100000)
+	iprep := icmodule.Rate(5000)
+	iwage := icmodule.Rate(3000)
+	icps := icmodule.Rate(1000)
+	irelay := icmodule.Rate(1000)
+
+	rf := NewRewardFund(RFVersion2)
 	assert.NotNil(t, rf.iGlobal)
 	assert.NotNil(t, rf.allocation)
-	rf.SetIGlobal(big.NewInt(iglobal))
-	rf.SetAllocationByKey(KeyIprep, icmodule.ToRate(iprep))
-	rf.SetAllocationByKey(KeyIwage, icmodule.ToRate(iwage))
-	rf.SetAllocationByKey(KeyIcps, icmodule.ToRate(icps))
-	rf.SetAllocationByKey(KeyIrelay, icmodule.ToRate(irelay))
+
+	rf, err := NewSafeRewardFundV2(iglobal, iprep, iwage, icps, irelay)
+	assert.NoError(t, err)
 
 	bs := rf.Bytes()
 
-	rf2, err := newRewardFund2FromByte(bs)
+	rf2, err := NewRewardFundFromByte(bs)
 	assert.NoError(t, err)
 
 	assert.True(t, rf.Equal(rf2))
 
-	assert.Equal(t, big.NewInt(iglobal*iprep/100), rf.GetAmount(KeyIprep))
-	assert.Equal(t, big.NewInt(iglobal*iwage/100), rf.GetAmount(KeyIwage))
-	assert.Equal(t, big.NewInt(iglobal*icps/100), rf.GetAmount(KeyIcps))
-	assert.Equal(t, big.NewInt(iglobal*irelay/100), rf.GetAmount(KeyIrelay))
+	assert.Equal(t, iprep.MulBigInt(iglobal), rf.GetAmount(KeyIprep))
+	assert.Equal(t, iwage.MulBigInt(iglobal), rf.GetAmount(KeyIwage))
+	assert.Equal(t, icps.MulBigInt(iglobal), rf.GetAmount(KeyIcps))
+	assert.Equal(t, irelay.MulBigInt(iglobal), rf.GetAmount(KeyIrelay))
 	assert.Equal(t, int64(0), rf.GetAmount("invalid").Int64())
+}
+
+func TestRewardFundFromVersion1(t *testing.T) {
+	iglobal := big.NewInt(100000)
+	iprep := icmodule.ToRate(int64(50))
+	icps := icmodule.ToRate(int64(10))
+	irelay := icmodule.ToRate(int64(10))
+	ivoter := icmodule.ToRate(int64(30))
+	rf, err := NewSafeRewardFundV1(iglobal, iprep, icps, irelay, ivoter)
+	assert.NoError(t, err)
+
+	bs := rf.Bytes()
+
+	rf2, err := NewRewardFundFromByte(bs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, RFVersion1, rf2.version)
+	assert.Equal(t, iglobal, rf2.IGlobal())
+	assert.Equal(t, iprep, rf2.IPrep())
+	assert.Equal(t, icps, rf2.ICps())
+	assert.Equal(t, irelay, rf2.IRelay())
+	assert.Equal(t, ivoter, rf2.IVoter())
 }
 
 func TestNewRewardFund2Allocation(t *testing.T) {
@@ -369,27 +376,160 @@ func TestNewRewardFund2Allocation(t *testing.T) {
 	}
 }
 
-func TestRewardFund2_Format(t *testing.T) {
-	iglobal := int64(100_000)
+func TestRewardFund_SetAllocation(t *testing.T) {
+	tests := []struct {
+		name       string
+		version    int
+		allocation map[RFundKey]icmodule.Rate
+		err        bool
+	}{
+		{
+			"success",
+			RFVersion1,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIvoter: icmodule.Rate(4000),
+			},
+			false,
+		},
+
+		{
+			"invalid key",
+			RFVersion1,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIvoter: icmodule.Rate(4000),
+				KeyIwage:  icmodule.Rate(0),
+			},
+			true,
+		},
+		{
+			"invalid sum",
+			RFVersion1,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIvoter: icmodule.Rate(5000),
+			},
+			true,
+		},
+		{
+			"success",
+			RFVersion2,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIwage:  icmodule.Rate(4000),
+			},
+			false,
+		},
+		{
+			"invalid key",
+			RFVersion2,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIwage:  icmodule.Rate(4000),
+				KeyIvoter: icmodule.Rate(0),
+			},
+			true,
+		},
+		{
+			"invalid sum",
+			RFVersion2,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIwage:  icmodule.Rate(5000),
+			},
+			true,
+		},
+		{
+			"success with less key",
+			RFVersion1,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep: icmodule.Rate(10000),
+			},
+			false,
+		},
+		{
+			"success with less key",
+			RFVersion2,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep: icmodule.Rate(10000),
+			},
+			false,
+		},
+		{
+			"invalid version",
+			RFVersionReserved,
+			map[RFundKey]icmodule.Rate{
+				KeyIprep: icmodule.Rate(10000),
+			},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("RFVersion%d-%s", tt.version+1, tt.name), func(t *testing.T) {
+			rf := NewRewardFund(tt.version)
+			err := rf.SetAllocation(tt.allocation)
+			if tt.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				for k, v := range tt.allocation {
+					assert.Equal(t, v, rf.GetAllocationByKey(k))
+				}
+			}
+		})
+	}
+}
+
+func TestRewardFund_Format(t *testing.T) {
+	iglobal := big.NewInt(100_000)
 	icps := icmodule.ToRate(10)
 	iprep := icmodule.ToRate(70)
 	irelay := icmodule.ToRate(0)
 	iwage := icmodule.ToRate(20)
 
-	rf := NewRewardFund2()
-	rf.SetIGlobal(big.NewInt(iglobal))
-	rf.SetAllocationByKey(KeyIprep, iprep)
-	rf.SetAllocationByKey(KeyIcps, icps)
-	rf.SetAllocationByKey(KeyIrelay, irelay)
-	rf.SetAllocationByKey(KeyIwage, iwage)
+	rf, err := NewSafeRewardFundV2(iglobal, iprep, iwage, icps, irelay)
+	assert.NoError(t, err)
 
-	exp := fmt.Sprintf("{%d %d %d %d %d}", iglobal, iprep, iwage, icps, irelay)
+	exp := fmt.Sprintf("{%d %d %d %d %d %d}", RFVersion2, iglobal, icps, iprep, irelay, iwage)
 	ret := fmt.Sprintf("%v", rf)
 	assert.Equal(t, exp, ret)
 
 	exp = fmt.Sprintf(
-		"RewardFund2{iGlobal=%d iprep=%d iwage=%d icps=%d irelay=%d}",
-		iglobal, iprep, iwage, icps, irelay)
+		"RewardFund{version=%d iGlobal=%d icps=%d iprep=%d irelay=%d iwage=%d}",
+		RFVersion2, iglobal, icps, iprep, irelay, iwage)
+	assert.Equal(t, exp, fmt.Sprintf("%+v", rf))
+	assert.Equal(t, exp, fmt.Sprintf("%s", rf))
+
+	rf = &RewardFund{
+		RFVersion2,
+		iglobal,
+		map[RFundKey]icmodule.Rate{
+			KeyIprep: iprep,
+			KeyIcps:  icps,
+			KeyIwage: iwage,
+		},
+	}
+
+	exp = fmt.Sprintf("{%d %d %d %d %d}", RFVersion2, iglobal, icps, iprep, iwage)
+	ret = fmt.Sprintf("%v", rf)
+	assert.Equal(t, exp, ret)
+
+	exp = fmt.Sprintf(
+		"RewardFund{version=%d iGlobal=%d icps=%d iprep=%d iwage=%d}",
+		RFVersion2, iglobal, icps, iprep, iwage)
 	assert.Equal(t, exp, fmt.Sprintf("%+v", rf))
 	assert.Equal(t, exp, fmt.Sprintf("%s", rf))
 }

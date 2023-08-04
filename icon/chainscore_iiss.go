@@ -675,15 +675,17 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 	}
 	revision := s.cc.Revision().Value()
 	if revision <= icmodule.RevisionPreIISS4 {
-		rf := es.State.GetRewardFund1()
-		rf.Iglobal = iglobal.Value()
-		return es.State.SetRewardFund1(rf)
+		rf := es.State.GetRewardFundV1()
+		rf.SetIGlobal(iglobal.Value())
+		if err = es.State.SetRewardFund(rf); err != nil {
+			return err
+		}
 	}
 
 	if revision >= icmodule.RevisionPreIISS4 {
-		rf := es.State.GetRewardFund2()
+		rf := es.State.GetRewardFundV2()
 		rf.SetIGlobal(iglobal.Value())
-		return es.State.SetRewardFund2(rf)
+		return es.State.SetRewardFund(rf)
 	}
 	return nil
 }
@@ -696,12 +698,18 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 	if err != nil {
 		return err
 	}
-	rf := es.State.GetRewardFund1()
-	rf.Iprep = icmodule.ToRate(iprep.Int64())
-	rf.Icps = icmodule.ToRate(icps.Int64())
-	rf.Irelay = icmodule.ToRate(irelay.Int64())
-	rf.Ivoter = icmodule.ToRate(ivoter.Int64())
-	return es.State.SetRewardFund1(rf)
+	rf := es.State.GetRewardFundV1()
+	if err = rf.SetAllocation(
+		map[icstate.RFundKey]icmodule.Rate{
+			icstate.KeyIprep:  icmodule.ToRate(iprep.Int64()),
+			icstate.KeyIcps:   icmodule.ToRate(icps.Int64()),
+			icstate.KeyIrelay: icmodule.ToRate(irelay.Int64()),
+			icstate.KeyIvoter: icmodule.ToRate(ivoter.Int64()),
+		},
+	); err != nil {
+		return err
+	}
+	return es.State.SetRewardFund(rf)
 }
 
 func (s *chainScore) Ex_setRewardFundAllocation2(values []interface{}) error {
@@ -716,9 +724,9 @@ func (s *chainScore) Ex_setRewardFundAllocation2(values []interface{}) error {
 	if err != nil {
 		return err
 	}
-	rf := es.State.GetRewardFund2()
+	rf := es.State.GetRewardFundV2()
 	rf.SetAllocation(alloc)
-	return es.State.SetRewardFund2(rf)
+	return es.State.SetRewardFund(rf)
 }
 
 func (s *chainScore) Ex_getScoreOwner(score module.Address) (module.Address, error) {

@@ -321,8 +321,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 		if r1 < icmodule.RevisionPreIISS4 && r2 >= icmodule.RevisionPreIISS4 {
 			// RewardFundAllocation2
-			r := es.State.GetRewardFund1()
-			if err := es.State.SetRewardFund2(r.ToRewardFund2()); err != nil {
+			r := es.State.GetRewardFundV1()
+			if err := es.State.SetRewardFund(r.ToRewardFundV2()); err != nil {
 				return err
 			}
 		}

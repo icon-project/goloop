@@ -272,7 +272,7 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 }
 
 func (s *State) AddGlobalV3(startHeight int64, revision, offsetLimit, electedPRepCount int, bondRequirement icmodule.Rate,
-	rFund *icstate.RewardFund2, minBond *big.Int,
+	rFund *icstate.RewardFund, minBond *big.Int,
 ) error {
 	g := NewGlobalV3(icstate.IISSVersion4, startHeight, revision, offsetLimit, electedPRepCount, bondRequirement, rFund, minBond)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))

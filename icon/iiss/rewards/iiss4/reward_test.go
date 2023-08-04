@@ -18,8 +18,6 @@ package iiss4
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"math/big"
 	"testing"
 
@@ -27,9 +25,11 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
@@ -62,7 +62,7 @@ func (t *testCalculator) Stats() *rc.Stats {
 }
 
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
-	rFund := icstate.NewRewardFund2()
+	rFund := icstate.NewRewardFund(icstate.RFVersion2)
 	rFund.SetIGlobal(big.NewInt(1_000_000))
 	alloc := map[icstate.RFundKey]icmodule.Rate{
 		icstate.KeyIprep:  icmodule.ToRate(77),

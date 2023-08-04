@@ -87,8 +87,8 @@ func Test_networkValue(t *testing.T) {
 	t.Run("SetLockVariables", func(t *testing.T) { setLockVariablesTest(t, s) })
 
 	// test for SetRewardFund
-	t.Run("SetRewardFund1", func(t *testing.T) { setRewardFund1Test(t, s) })
-	t.Run("SetRewardFund2", func(t *testing.T) { setRewardFund2Test(t, s) })
+	t.Run("SetRewardFund-version1", func(t *testing.T) { setRewardFundV1Test(t, s) })
+	t.Run("SetRewardFund-version2", func(t *testing.T) { setRewardFundV2Test(t, s) })
 
 	// test for SetUnbondingPeriodMultiplier
 	t.Run("SetUnbondingPeriodMultiplier", func(t *testing.T) { setUnbondingPeriodMultiplier(t, s) })
@@ -240,31 +240,37 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	assert.Equal(t, 0, actualMax.Cmp(max))
 }
 
-func setRewardFund1Test(t *testing.T, s *State) {
-	rf := NewRewardFund()
-	actual := s.GetRewardFund1()
-	assert.Equal(t, rf, actual)
-
-	rf.Iglobal = new(big.Int).SetInt64(100000)
-	rf.Iprep = icmodule.ToRate(50)
-	rf.Ivoter = icmodule.ToRate(50)
-	err := s.SetRewardFund1(rf)
+func setRewardFundV1Test(t *testing.T, s *State) {
+	rf, err := NewSafeRewardFundV1(
+		new(big.Int).SetInt64(100000),
+		icmodule.ToRate(50),
+		icmodule.ToRate(50),
+		icmodule.ToRate(0),
+		icmodule.ToRate(0),
+	)
 	assert.NoError(t, err)
-	actual = s.GetRewardFund1()
+
+	err = s.SetRewardFund(rf)
+	assert.NoError(t, err)
+
+	actual := s.GetRewardFundV1()
 	assert.True(t, rf.Equal(actual))
 }
 
-func setRewardFund2Test(t *testing.T, s *State) {
-	rf := NewRewardFund2()
-	actual := s.GetRewardFund2()
-	assert.Equal(t, rf, actual)
-
-	rf.SetIGlobal(new(big.Int).SetInt64(100000))
-	rf.SetAllocationByKey(KeyIprep, icmodule.ToRate(50))
-	rf.SetAllocationByKey(KeyIcps, icmodule.ToRate(50))
-	err := s.SetRewardFund2(rf)
+func setRewardFundV2Test(t *testing.T, s *State) {
+	rf, err := NewSafeRewardFundV2(
+		new(big.Int).SetInt64(100000),
+		icmodule.ToRate(50),
+		icmodule.ToRate(50),
+		icmodule.ToRate(0),
+		icmodule.ToRate(0),
+	)
 	assert.NoError(t, err)
-	actual = s.GetRewardFund2()
+
+	err = s.SetRewardFund(rf)
+	assert.NoError(t, err)
+
+	actual := s.GetRewardFundV2()
 	assert.True(t, rf.Equal(actual))
 }
 

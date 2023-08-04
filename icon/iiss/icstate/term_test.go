@@ -37,18 +37,21 @@ func newDummyPRepSnapshots(size int) PRepSnapshots {
 	return ret
 }
 
-func newTestRewardFund1() *RewardFund1 {
-	return &RewardFund1{
-		Iglobal: icutils.ToLoop(3_000_000),
-		Icps:    icmodule.ToRate(10),
-		Iprep:   icmodule.ToRate(13),
-		Ivoter:  icmodule.ToRate(77),
-		Irelay:  icmodule.ToRate(0),
+func newTestRewardFundV1() *RewardFund {
+	rf := NewRewardFund(RFVersion1)
+	rf.SetIGlobal(big.NewInt(3_000_000))
+	allocation := map[RFundKey]icmodule.Rate{
+		KeyIprep:  icmodule.ToRate(13),
+		KeyIcps:   icmodule.ToRate(10),
+		KeyIrelay: icmodule.ToRate(0),
+		KeyIvoter: icmodule.ToRate(77),
 	}
+	rf.SetAllocation(allocation)
+	return rf
 }
 
-func newTestRewardFund2() *RewardFund2 {
-	rf := NewRewardFund2()
+func newTestRewardFundV2() *RewardFund {
+	rf := NewRewardFund(RFVersion2)
 	rf.SetIGlobal(big.NewInt(1_000_000))
 	allocation := map[RFundKey]icmodule.Rate{
 		KeyIprep:  icmodule.ToRate(77),
@@ -61,20 +64,18 @@ func newTestRewardFund2() *RewardFund2 {
 }
 
 func newTermState(version, sequence int, period int64) *TermState {
-	var rf1 *RewardFund1
-	var rf2 *RewardFund2
+	var rf *RewardFund
 	if version == termVersion1 {
-		rf1 = newTestRewardFund1()
+		rf = newTestRewardFundV1()
 	} else {
-		rf2 = newTestRewardFund2()
+		rf = newTestRewardFundV2()
 	}
 	return &TermState{
 		termData: termData{
-			version:     version,
-			sequence:    sequence,
-			period:      period,
-			rewardFund1: rf1,
-			rewardFund2: rf2,
+			version:    version,
+			sequence:   sequence,
+			period:     period,
+			rewardFund: rf,
 		},
 	}
 }
@@ -273,11 +274,15 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 
 	totalSupply := icutils.ToLoop(10_000_000)
 	totalDelegated := icutils.ToLoop(1_000_000)
-	rf1 := newTestRewardFund1()
-	rf2 := newTestRewardFund2()
+	rf1 := newTestRewardFundV1()
+	rf2 := newTestRewardFundV2()
 	prepSnapshots := newDummyPRepSnapshots(100)
 
 	for version := termVersion1; version < termVersionReserved; version++ {
+		rf := rf1
+		if version == termVersion2 {
+			rf = rf2
+		}
 		termState := &TermState{
 			termData: termData{
 				version:         version,
@@ -288,8 +293,7 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 				rrep:            icmodule.BigIntZero,
 				totalSupply:     totalSupply,
 				totalDelegated:  totalDelegated,
-				rewardFund1:     rf1.Clone(),
-				rewardFund2:     rf2,
+				rewardFund:      rf,
 				bondRequirement: br,
 				revision:        revision,
 				prepSnapshots:   prepSnapshots.Clone(),
@@ -315,36 +319,6 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 		assert.True(t, termObject.Equal(termObject2))
 		assert.True(t, termSnapshot.Equal(termSnapshot2))
 		assert.Equal(t, br, termSnapshot2.BondRequirement())
-	}
-}
-
-func TestTermData_Iglobal(t *testing.T) {
-	rf1 := newTestRewardFund1()
-	rf2 := newTestRewardFund2()
-	tests := []struct {
-		version int
-		want    *big.Int
-	}{
-		{
-			termVersion1,
-			rf1.Iglobal,
-		},
-		{
-			termVersion2,
-			rf2.IGlobal(),
-		},
-	}
-
-	term := termData{
-		rewardFund1: newTestRewardFund1(),
-		rewardFund2: newTestRewardFund2(),
-	}
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Version : %d", tt.version), func(t *testing.T) {
-			term.version = tt.version
-			assert.Equal(t, tt.want, term.Iglobal())
-			assert.Equal(t, tt.version, term.Version())
-		})
 	}
 }
 

@@ -446,7 +446,7 @@ func NewGlobalV2(
 
 type GlobalV3 struct {
 	globalBase
-	rFund   *icstate.RewardFund2
+	rFund   *icstate.RewardFund
 	minBond *big.Int
 }
 
@@ -586,13 +586,13 @@ func (g *GlobalV3) GetV3() *GlobalV3 {
 
 func newGlobalV3() *GlobalV3 {
 	return &GlobalV3{
-		rFund: icstate.NewRewardFund2(),
+		rFund: icstate.NewRewardFund(icstate.RFVersion2),
 	}
 }
 
 func NewGlobalV3(
 	iissVersion int, startHeight int64, revision int, offsetLimit, electedPRepCount int,
-	bondRequirement icmodule.Rate, rFund *icstate.RewardFund2, minBond *big.Int,
+	bondRequirement icmodule.Rate, rFund *icstate.RewardFund, minBond *big.Int,
 ) *GlobalV3 {
 	g := &GlobalV3{
 		globalBase: globalBase{
