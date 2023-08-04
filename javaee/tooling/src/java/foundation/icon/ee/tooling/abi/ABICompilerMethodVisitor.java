@@ -298,6 +298,9 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             throw new ABICompilerException(
                     "Method parameters size mismatch (must compile with '-parameters')", methodName);
         }
+        if (isReadonly() && (Type.getReturnType(methodDescriptor) == Type.VOID_TYPE)) {
+            throw new ABICompilerException("Readonly methods must have non-void return type", methodName);
+        }
         if (pmv != null) {
             mv = pmv;
             pmv = null;

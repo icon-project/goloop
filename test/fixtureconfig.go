@@ -18,7 +18,6 @@ package test
 
 import (
 	"path"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -31,8 +30,8 @@ import (
 )
 
 type FixtureConfig struct {
-	T                 *testing.T
-	MerkleRoot        []byte
+	T          T
+	MerkleRoot []byte
 	MerkleLeaves      int64
 	MerkleLastVotes   []byte
 	Prefix            string
@@ -50,7 +49,7 @@ type FixtureConfig struct {
 	WAL               func() consensus.WALManager
 }
 
-func NewFixtureConfig(t *testing.T, o ...FixtureOption) *FixtureConfig {
+func NewFixtureConfig(t T, o ...FixtureOption) *FixtureConfig {
 	tru := true
 	cf := &FixtureConfig{
 		T:      t,

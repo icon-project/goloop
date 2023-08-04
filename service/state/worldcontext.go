@@ -362,6 +362,8 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 		governance:   c.governance,
 		systemInfo:   c.systemInfo,
 		blockInfo:    c.blockInfo,
+		csInfo:       c.csInfo,
+		platform:     c.platform,
 	}
 	return wc
 }

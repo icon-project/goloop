@@ -18,7 +18,6 @@ package test
 
 import (
 	"io"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -26,7 +25,7 @@ import (
 )
 
 func AssertBlock(
-	t *testing.T, blk module.Block,
+	t T, blk module.Block,
 	version int, height int64, id []byte, prevID []byte,
 ) {
 	assert.EqualValues(t, version, blk.Version())
@@ -36,7 +35,7 @@ func AssertBlock(
 }
 
 func AssertBlockInBM(
-	t *testing.T, bm module.BlockManager,
+	t T, bm module.BlockManager,
 	version int, height int64, id []byte, prevID []byte,
 ) {
 	blk, err := bm.GetBlockByHeight(height)
@@ -49,7 +48,7 @@ func AssertBlockInBM(
 }
 
 func AssertLastBlock(
-	t *testing.T, bm module.BlockManager,
+	t T, bm module.BlockManager,
 	height int64, prevID []byte, version int,
 ) {
 	blk, err := bm.GetLastBlock()
@@ -58,7 +57,7 @@ func AssertLastBlock(
 	AssertBlockInBM(t, bm, version, height, blk.ID(), prevID)
 }
 
-func GetLastBlock(t *testing.T, bm module.BlockManager) module.Block {
+func GetLastBlock(t T, bm module.BlockManager) module.Block {
 	blk, err := bm.GetLastBlock()
 	assert.NoError(t, err)
 	return blk
@@ -87,7 +86,7 @@ func ProposeBlock(
 }
 
 func ImportBlockByReader(
-	t *testing.T, bm module.BlockManager,
+	t T, bm module.BlockManager,
 	r io.Reader, flag int,
 ) (resBc module.BlockCandidate, err error, cbErr error) {
 	ch := make(chan cbResult)
@@ -105,7 +104,7 @@ func ImportBlockByReader(
 }
 
 func ImportBlock(
-	t *testing.T, bm module.BlockManager,
+	t T, bm module.BlockManager,
 	bc module.BlockCandidate, flag int,
 ) (resBc module.BlockCandidate, err error, cbErr error) {
 	ch := make(chan cbResult)
@@ -123,7 +122,7 @@ func ImportBlock(
 }
 
 func FinalizeBlock(
-	t *testing.T, bm module.BlockManager, bc module.BlockCandidate,
+	t T, bm module.BlockManager, bc module.BlockCandidate,
 ) {
 	err := bm.Finalize(bc)
 	assert.NoError(t, err)

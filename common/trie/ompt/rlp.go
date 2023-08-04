@@ -242,7 +242,7 @@ func rlpEncode(o interface{}) ([]byte, error) {
 		return rlpEncodeList(blist), nil
 	case RLPListEncoder:
 		sz := o.RLPListSize()
-		e := &rlpListEncoder{make([][]byte, sz)}
+		e := &rlpListEncoder{make([][]byte, 0, sz)}
 		if err := o.RLPListEncode(e); err != nil {
 			return nil, err
 		}

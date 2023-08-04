@@ -72,11 +72,11 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			return err
 		}
 		wc, err2 := txh.Prepare(ctx)
-		ctx = t.newContractContext(wc)
 		if err2 != nil {
 			t.log.Debugf("Fail to prepare for %+v", err2)
 			return err2
 		}
+		ctx = t.newContractContext(wc)
 
 		ec.Ready()
 		go func(ctx contract.Context, wc state.WorldContext, txo transaction.Transaction, cnt int, rb *txresult.Receipt) {

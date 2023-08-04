@@ -15,7 +15,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -50,6 +49,14 @@ func guessDebugEndpoint(endpoint string) string {
 		}
 	}
 	return ""
+}
+
+func TimestampFromTime(tm time.Time) jsonrpc.HexInt {
+	return jsonrpc.HexIntFromInt64(tm.UnixNano() / int64(time.Microsecond))
+}
+
+func TimestampNow() jsonrpc.HexInt {
+	return TimestampFromTime(time.Now())
 }
 
 func NewClientV3(endpoint string) *ClientV3 {
@@ -268,34 +275,43 @@ func (c *ClientV3) GetTransactionByHash(param *v3.TransactionHashParam) (*Transa
 
 var txSerializeExcludes = map[string]bool{"signature": true}
 
-func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
-	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+func SignTransaction(w module.Wallet, param *v3.TransactionParam) error {
 	js, err := json.Marshal(param)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	bs, err := transaction.SerializeJSON(js, nil, txSerializeExcludes)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	bs = append([]byte("icx_sendTransaction."), bs...)
 	sig, err := w.Sign(crypto.SHA3Sum256(bs))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	param.Signature = base64.StdEncoding.EncodeToString(sig)
+	return nil
+}
 
+func (c *ClientV3) SendSignedTransaction(param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
 	var result jsonrpc.HexBytes
-	if _, err = c.Do("icx_sendTransaction", param, &result); err != nil {
+	if _, err := c.Do("icx_sendTransaction", param, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
+func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
+	param.Timestamp = TimestampNow()
+	if err := SignTransaction(w, param); err != nil {
+		return  nil, err
+	}
+	return c.SendSignedTransaction(param)
+}
+
 func (c *ClientV3) SendRawTransaction(w module.Wallet, param map[string]interface{}) (*jsonrpc.HexBytes, error) {
-	param["timestamp"] = intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond))
+	param["timestamp"] = TimestampNow()
 	bs, err := transaction.SerializeMap(param, nil, txSerializeExcludes)
 	if err != nil {
 		return nil, err
@@ -565,7 +581,7 @@ func (c *ClientV3) EstimateStep(param *v3.TransactionParamForEstimate) (*common.
 	if len(c.DebugEndPoint) == 0 {
 		return nil, errors.InvalidStateError.New("UnavailableDebugEndPoint")
 	}
-	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+	param.Timestamp = TimestampNow()
 	var result common.HexInt
 	if _, err := c.DoURL(c.DebugEndPoint,
 		"debug_estimateStep", param, &result); err != nil {

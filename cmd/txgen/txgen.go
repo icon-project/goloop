@@ -130,6 +130,7 @@ func (c *Client) SendTxAndGetResult(tx interface{}, wait time.Duration) (*Transa
 type TransactionMaker interface {
 	Prepare(client *Client) error
 	MakeOne() (interface{}, error)
+	Dispose(tx interface{})
 }
 
 type Context struct {
@@ -209,6 +210,8 @@ func (ctx *Context) sendRequests(wg *sync.WaitGroup, client *Client) {
 				}
 				js, _ := json.MarshalIndent(tx, "", "  ")
 				log.Panicf("Fail to send TX err=%+v tx=%s", err, js)
+			} else {
+				ctx.maker.Dispose(tx)
 			}
 			break
 		}

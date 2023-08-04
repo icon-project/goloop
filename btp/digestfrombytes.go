@@ -55,6 +55,8 @@ func (ntds *networkTypeDigestSlice) RLPDecodeSelf(d codec.Decoder) error {
 		err := d2.Decode(&ntd)
 		if err == io.EOF {
 			break
+		} else if err != nil {
+			return err
 		}
 		res = append(res, &networkTypeDigest{
 			networkTypeDigestCore: &ntd,

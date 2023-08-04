@@ -23,6 +23,7 @@ func main() {
 	var installParams map[string]string
 	var index, last int64
 	var waitTimeout int64
+	var noWaitResult bool
 
 	cmd := &cobra.Command{
 		Use: fmt.Sprintf("%s [urls]", os.Args[0]),
@@ -41,8 +42,9 @@ func main() {
 	flags.Int64VarP(&index, "index", "i", 0, "Initial index value to be used for generating transaction")
 	flags.Int64VarP(&last, "last", "l", 0, "Last index value to be used for generating transaction")
 	flags.Int64Var(&waitTimeout, "wait", 0, "Wait for specified time (in ms) for each TX (enable to use sendAndWait)")
+	flags.BoolVar(&noWaitResult, "nowaitresult", false, "No wait for result for confirm in COIN transfer")
 
-	cmd.Run = func(cmd *cobra.Command, urls []string) {
+	cmd.RunE = func(cmd *cobra.Command, urls []string) error {
 		if len(urls) == 0 {
 			urls = []string{"http://localhost:9080/api/v3"}
 		}
@@ -62,7 +64,7 @@ func main() {
 		}
 
 		var maker TransactionMaker
-		if len(scorePath) > 0 && params != nil {
+		if len(scorePath) > 0 && len(methodName) > 0 {
 			maker = &CallMaker{
 				NID:           nid,
 				SourcePath:    scorePath,
@@ -84,15 +86,17 @@ func main() {
 			}
 		} else {
 			maker = &CoinTransferMaker{
-				NID:         nid,
-				WalletCount: walletCount,
-				GodWallet:   godWallet,
+				NID:          nid,
+				WalletCount:  walletCount,
+				GodWallet:    godWallet,
+				NoWaitResult: noWaitResult,
+				TxCount:      last,
 			}
 		}
 
 		ctx := NewContext(concurrent, int64(tps), maker, waitTimeout)
-		ctx.Run(urls)
+		return ctx.Run(urls)
 	}
 
-	cmd.Execute()
+	_ = cmd.Execute()
 }

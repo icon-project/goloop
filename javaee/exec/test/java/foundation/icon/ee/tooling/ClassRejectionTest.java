@@ -17,11 +17,13 @@
 package foundation.icon.ee.tooling;
 
 import foundation.icon.ee.test.SimpleTest;
+import foundation.icon.ee.tooling.abi.ABICompilerException;
 import foundation.icon.ee.types.Status;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import score.Context;
 import score.UserRevertException;
+import score.annotation.External;
 import score.annotation.Keep;
 
 import java.math.BigInteger;
@@ -82,8 +84,15 @@ public class ClassRejectionTest extends SimpleTest {
         }
     }
 
+    public static class LambdaPredicate {
+        public LambdaPredicate() {
+            var list = List.of("a", "b");
+            list.removeIf(e -> e.equals("a"));
+        }
+    }
+
     @Test
-    public void testOptimize() {
+    public void testUnsupported() {
         final Class<?>[] cases = new Class[]{
                 ClassNotInJCL.class,
                 ClassNotInJCL2.class,
@@ -92,6 +101,7 @@ public class ClassRejectionTest extends SimpleTest {
                 MethodNotSupported.class,
                 MethodNotSupported2.class,
                 MethodNotSupported3.class,
+                LambdaPredicate.class,
         };
         for (var c : cases) {
             Exception e = Assertions.assertThrows(
@@ -101,18 +111,30 @@ public class ClassRejectionTest extends SimpleTest {
         }
     }
 
-    public static class LambdaPredicate {
-        public LambdaPredicate() {
-            var list = List.of("a", "b");
-            list.removeIf(e -> e.equals("a"));
+    public static class InvalidFallback {
+        @External
+        public void fallback() {
+        }
+    }
+
+    public static class NoReturnInReadOnlyMethod {
+        @External(readonly=true)
+        public void readProp() {
         }
     }
 
     @Test
-    public void testLambda() {
-        Assertions.assertThrows(
-                UnsupportedOperationException.class,
-                () -> makeRelJar(LambdaPredicate.class));
+    public void testExternal() {
+        final Class<?>[] cases = new Class[]{
+                InvalidFallback.class,
+                NoReturnInReadOnlyMethod.class,
+        };
+        for (var c : cases) {
+            Exception e = Assertions.assertThrows(
+                    ABICompilerException.class,
+                    () -> makeRelJar(c));
+            System.out.println(e.getMessage());
+        }
     }
 
     public static class UseCustomExceptionForRevert {

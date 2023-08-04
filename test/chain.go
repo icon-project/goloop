@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/icon-project/goloop/btp/ntm"
@@ -273,7 +272,7 @@ func (c *Chain) Close() {
 }
 
 func NewChain(
-	t *testing.T,
+	t T,
 	w module.Wallet,
 	database db.Database,
 	logger log.Logger,
