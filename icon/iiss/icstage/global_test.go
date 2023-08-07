@@ -120,11 +120,9 @@ func TestGlobalV3(t *testing.T) {
 	g1 := g.GetV3()
 	assert.NotNil(t, g1)
 	g1.offsetLimit = offsetLimit
-	g1.rFund.SetIGlobal(iglobal)
-	g1.rFund.SetAllocationByKey(icstate.KeyIprep, iprep)
-	g1.rFund.SetAllocationByKey(icstate.KeyIwage, iwage)
-	g1.rFund.SetAllocationByKey(icstate.KeyIcps, icps)
-	g1.rFund.SetAllocationByKey(icstate.KeyIrelay, irelay)
+	rFund, err := icstate.NewSafeRewardFundV2(iglobal, iprep, iwage, icps, irelay)
+	assert.NoError(t, err)
+	g1.rFund = rFund
 	g1.minBond = minBond
 
 	o1 := icobject.New(type_, g)

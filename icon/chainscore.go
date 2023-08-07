@@ -971,7 +971,7 @@ func (r rewardFund) Format(f fmt.State, c rune) {
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {
 	cfgRewardFund := &iconConfig.RewardFund
-	rf, err := icstate.NewSafeRewardFund(
+	rf, err := icstate.NewSafeRewardFundV1(
 		new(big.Int).Set(cfgRewardFund.Iglobal.Value()),
 		icmodule.ToRate(cfgRewardFund.Iprep.Int64()),
 		icmodule.ToRate(cfgRewardFund.Icps.Int64()),

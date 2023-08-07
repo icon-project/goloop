@@ -135,7 +135,6 @@ type termData struct {
 	totalSupply     *big.Int
 	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
 	rewardFund      *RewardFund
-	rewardFund2     *RewardFund2
 	bondRequirement icmodule.Rate
 	mainPRepCount   int
 	// If the length of prepSnapshots is 0, prepSnapshots should be nil
@@ -178,32 +177,24 @@ func (term *termData) RewardFund() *RewardFund {
 	return term.rewardFund
 }
 
-func (term *termData) RewardFund2() *RewardFund2 {
-	return term.rewardFund2
-}
-
 func (term *termData) Iglobal() *big.Int {
-	if term.version == termVersion1 {
-		return term.rewardFund.Iglobal
-	} else {
-		return term.rewardFund2.IGlobal()
-	}
+	return term.RewardFund().IGlobal()
 }
 
 func (term *termData) Iprep() icmodule.Rate {
-	return term.rewardFund.Iprep
+	return term.RewardFund().IPrep()
 }
 
 func (term *termData) Icps() icmodule.Rate {
-	return term.rewardFund.Icps
+	return term.RewardFund().ICps()
 }
 
 func (term *termData) Irelay() icmodule.Rate {
-	return term.rewardFund.Irelay
+	return term.RewardFund().IRelay()
 }
 
 func (term *termData) Ivoter() icmodule.Rate {
-	return term.rewardFund.Ivoter
+	return term.RewardFund().IVoter()
 }
 
 func (term *termData) BondRequirement() icmodule.Rate {
@@ -267,22 +258,8 @@ func (term *termData) equal(other *termData) bool {
 		return false
 	}
 
-	if term.version != other.version {
-		return false
-	}
-
-	switch term.version {
-	case termVersion1:
-		if term.rewardFund.Equal(other.rewardFund) == false {
-			return false
-		}
-	case termVersion2:
-		if term.rewardFund2.Equal(other.rewardFund2) == false {
-			return false
-		}
-	}
-
-	return term.sequence == other.sequence &&
+	return term.version == other.version &&
+		term.sequence == other.sequence &&
 		term.startHeight == other.startHeight &&
 		term.period == other.period &&
 		term.irep.Cmp(other.irep) == 0 &&
@@ -293,6 +270,7 @@ func (term *termData) equal(other *termData) bool {
 		term.revision == other.revision &&
 		term.isDecentralized == other.isDecentralized &&
 		term.mainPRepCount == other.mainPRepCount &&
+		term.rewardFund.Equal(other.rewardFund) &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
@@ -307,7 +285,6 @@ func (term *termData) clone() termData {
 		totalSupply:     term.totalSupply,
 		totalDelegated:  term.totalDelegated,
 		rewardFund:      term.rewardFund,
-		rewardFund2:     term.rewardFund2,
 		bondRequirement: term.bondRequirement,
 		revision:        term.revision,
 		isDecentralized: term.isDecentralized,
@@ -317,12 +294,6 @@ func (term *termData) clone() termData {
 }
 
 func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interface{} {
-	var rf interface{}
-	if term.GetIISSVersion() == IISSVersion3 {
-		rf = term.rewardFund.ToJSON()
-	} else if term.GetIISSVersion() >= IISSVersion4 {
-		rf = term.rewardFund2.ToJSON()
-	}
 	return map[string]interface{}{
 		"sequence":         term.sequence,
 		"startBlockHeight": term.startHeight,
@@ -333,7 +304,7 @@ func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interfa
 		"irep":             term.irep,
 		"rrep":             term.rrep,
 		"period":           term.period,
-		"rewardFund":       rf,
+		"rewardFund":       term.rewardFund.ToJSON(),
 		"bondRequirement":  term.bondRequirement.Percent(),
 		"revision":         term.revision,
 		"isDecentralized":  term.isDecentralized,
@@ -370,7 +341,7 @@ func (term *termData) getTotalPower() *big.Int {
 
 func (term *termData) String() string {
 	return fmt.Sprintf(
-		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s rf:%s, rf2:%s, revision:%d isDecentralized:%v}",
+		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s rf:%s, revision:%d isDecentralized:%v}",
 		term.version,
 		term.sequence,
 		term.startHeight,
@@ -382,7 +353,6 @@ func (term *termData) String() string {
 		term.irep,
 		term.rrep,
 		term.rewardFund,
-		term.rewardFund2,
 		term.revision,
 		term.isDecentralized,
 	)
@@ -392,20 +362,11 @@ func (term *termData) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		var format string
-		var rff string
 		if f.Flag('+') {
 			format = "Term{ver:%d seq:%d start:%d end:%d period:%d totalSupply:%s totalDelegated:%s " +
-				"prepSnapshots:%d irep:%s rrep:%s rf:%s revision:%d isDecentralized:%v}"
-			rff = "%+v"
+				"prepSnapshots:%d irep:%s rrep:%s rf:%+v revision:%d isDecentralized:%v}"
 		} else {
-			format = "Term{%d %d %d %d %d %s %s %d %s %s %s %d %v}"
-			rff = "%v"
-		}
-		var rf string
-		if term.version == termVersion1 {
-			rf = fmt.Sprintf(rff, term.rewardFund)
-		} else {
-			rf = fmt.Sprintf(rff, term.rewardFund2)
+			format = "Term{%d %d %d %d %d %s %s %d %s %s %v %d %v}"
 		}
 		_, _ = fmt.Fprintf(
 			f,
@@ -420,7 +381,7 @@ func (term *termData) Format(f fmt.State, c rune) {
 			len(term.prepSnapshots),
 			term.irep,
 			term.rrep,
-			rf,
+			term.rewardFund,
 			term.revision,
 			term.isDecentralized,
 		)
@@ -438,44 +399,30 @@ type TermSnapshot struct {
 
 func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 	var bondRequirement int64
-	var err error
+	if err := decoder.DecodeAll(
+		&term.sequence,
+		&term.startHeight,
+		&term.period,
+		&term.irep,
+		&term.rrep,
+		&term.totalSupply,
+		&term.totalDelegated,
+		&term.rewardFund,
+		&bondRequirement,
+		&term.revision,
+		&term.isDecentralized,
+		&term.mainPRepCount,
+		&term.prepSnapshots,
+	); err != nil {
+		return err
+	}
 	switch term.version {
 	case termVersion1:
-		err = decoder.DecodeAll(
-			&term.sequence,
-			&term.startHeight,
-			&term.period,
-			&term.irep,
-			&term.rrep,
-			&term.totalSupply,
-			&term.totalDelegated,
-			&term.rewardFund,
-			&bondRequirement,
-			&term.revision,
-			&term.isDecentralized,
-			&term.mainPRepCount,
-			&term.prepSnapshots,
-		)
 		term.bondRequirement = icmodule.ToRate(bondRequirement)
 	case termVersion2:
-		err = decoder.DecodeAll(
-			&term.sequence,
-			&term.startHeight,
-			&term.period,
-			&term.irep,
-			&term.rrep,
-			&term.totalSupply,
-			&term.totalDelegated,
-			&term.rewardFund2,
-			&bondRequirement,
-			&term.revision,
-			&term.isDecentralized,
-			&term.mainPRepCount,
-			&term.prepSnapshots,
-		)
 		term.bondRequirement = icmodule.Rate(bondRequirement)
 	}
-	return err
+	return nil
 }
 
 func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
@@ -505,7 +452,7 @@ func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 			term.rrep,
 			term.totalSupply,
 			term.totalDelegated,
-			term.rewardFund2,
+			term.rewardFund,
 			term.bondRequirement.NumInt64(),
 			term.revision,
 			term.isDecentralized,
@@ -586,14 +533,10 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 		return nil
 	}
 	var version int
-	var rf *RewardFund
-	var rf2 *RewardFund2
 	if revision < icmodule.RevisionIISS4 {
 		version = termVersion1
-		rf = state.GetRewardFund()
 	} else {
 		version = termVersion2
-		rf2 = state.GetRewardFund2()
 	}
 
 	return &TermState{
@@ -606,8 +549,7 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 			rrep:            state.GetRRep(),
 			totalSupply:     totalSupply,
 			totalDelegated:  state.GetTotalDelegation(),
-			rewardFund:      rf,
-			rewardFund2:     rf2,
+			rewardFund:      state.GetRewardFund(revision),
 			bondRequirement: state.GetBondRequirement(),
 			revision:        revision,
 			prepSnapshots:   ts.prepSnapshots.Clone(),
@@ -626,7 +568,7 @@ func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
 			rrep:            state.GetRRep(),
 			totalSupply:     new(big.Int),
 			totalDelegated:  new(big.Int),
-			rewardFund:      state.GetRewardFund().Clone(),
+			rewardFund:      state.GetRewardFundV1().Clone(),
 			bondRequirement: state.GetBondRequirement(),
 			revision:        revision,
 			isDecentralized: false,

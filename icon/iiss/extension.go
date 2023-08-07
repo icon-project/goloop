@@ -269,7 +269,7 @@ func (es *ExtensionStateImpl) setNewFront() (err error) {
 			int(term.Period()-1),
 			term.GetElectedPRepCount(),
 			term.BondRequirement(),
-			term.RewardFund2(),
+			term.RewardFund(),
 			new(big.Int), // TODO pass minBond
 		); err != nil {
 			return
@@ -799,9 +799,9 @@ func (es *ExtensionStateImpl) ValidateIRep(oldIRep, newIRep *big.Int, prevSetIRe
 	return nil
 }
 
-func (es *ExtensionStateImpl) ValidateRewardFund(iglobal *big.Int, totalSupply *big.Int) error {
-	rf := es.State.GetRewardFund()
-	return validateRewardFund(iglobal, rf.Iglobal, totalSupply)
+func (es *ExtensionStateImpl) ValidateRewardFund(iglobal *big.Int, totalSupply *big.Int, revision int) error {
+	rf := es.State.GetRewardFund(revision)
+	return validateRewardFund(iglobal, rf.IGlobal(), totalSupply)
 }
 
 const inflationLimit = 15
@@ -1733,19 +1733,19 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 	}
 
 	rf := term.RewardFund()
-	if rf.Iglobal.Sign() != 1 {
+	if rf.IGlobal().Sign() != 1 {
 		return nil
 	}
 	fs := []struct {
 		key  string
 		rate icmodule.Rate
 	}{
-		{icstate.CPSKey, rf.Icps},
-		{icstate.RelayKey, rf.Irelay},
+		{icstate.CPSKey, rf.ICps()},
+		{icstate.RelayKey, rf.IRelay()},
 	}
 	ns := es.State.GetNetworkScores(cc)
 	div := big.NewInt(icmodule.DenomInRate * icmodule.MonthBlock)
-	base := new(big.Int).Mul(rf.Iglobal, new(big.Int).SetInt64(term.Period()))
+	base := new(big.Int).Mul(rf.IGlobal(), new(big.Int).SetInt64(term.Period()))
 	from := cc.Treasury()
 	for _, k := range fs {
 		if k.rate == 0 {

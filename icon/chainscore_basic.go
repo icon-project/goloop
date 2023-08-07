@@ -343,8 +343,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 func (s *chainScore) onRevisionPreIISS4(es *iiss.ExtensionStateImpl) error {
 	// RewardFundAllocation2
-	r := es.State.GetRewardFund()
-	if err := es.State.SetRewardFund2(r.ToRewardFund2()); err != nil {
+	r := es.State.GetRewardFundV1()
+	if err := es.State.SetRewardFund(r.ToRewardFundV2()); err != nil {
 		return err
 	}
 

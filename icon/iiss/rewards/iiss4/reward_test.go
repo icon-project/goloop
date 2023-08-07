@@ -62,7 +62,7 @@ func (t *testCalculator) Stats() *rc.Stats {
 }
 
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
-	rFund := icstate.NewRewardFund2()
+	rFund := icstate.NewRewardFund(icstate.RFVersion2)
 	rFund.SetIGlobal(big.NewInt(1_000_000))
 	alloc := map[icstate.RFundKey]icmodule.Rate{
 		icstate.KeyIprep:  icmodule.ToRate(77),
