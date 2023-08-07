@@ -75,6 +75,13 @@ const (
 	DefaultDelegationSlotMax                    = 100
 	DefaultExtraMainPRepCount                   = 3
 	DefaultNonVotePenaltySlashRate              = 0 // 0%
+
+	// IISS-4.0
+	DefaultPRepDisqualificationSlashingRate       = Rate(DenomInRate) // 100%
+	DefaultContinuousBlockValidationSlashingRate  = Rate(1)           // 0.01%
+	DefaultBlockValidationSlashingRate            = Rate(0)           // 0%
+	DefaultMissingNetworkProposalVoteSlashingRate = Rate(1)           // 0.01%
+	DefaultDoubleVoteSlashingRate                 = Rate(1000)        // 10%
 )
 
 // The following variables are read-only
