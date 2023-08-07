@@ -278,7 +278,11 @@ func (r *RewardFund) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
 	jso["Iglobal"] = r.IGlobal()
 	for k, v := range r.allocation {
-		jso[k.String()] = v.NumInt64()
+		if r.version == RFVersion1 {
+			jso[k.String()] = v.Percent()
+		} else {
+			jso[k.String()] = v.NumInt64()
+		}
 	}
 	return jso
 }
