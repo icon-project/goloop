@@ -65,17 +65,20 @@ func newTestRewardFundV2() *RewardFund {
 
 func newTermState(version, sequence int, period int64) *TermState {
 	var rf *RewardFund
+	var mb *big.Int
 	if version == termVersion1 {
 		rf = newTestRewardFundV1()
 	} else {
 		rf = newTestRewardFundV2()
+		mb = icmodule.DefaultMinBond
 	}
 	return &TermState{
 		termData: termData{
-			version:    version,
-			sequence:   sequence,
-			period:     period,
-			rewardFund: rf,
+			version:     version,
+			sequence:    sequence,
+			period:      period,
+			rewardFund:  rf,
+			minimumBond: mb,
 		},
 	}
 }
@@ -280,8 +283,13 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 
 	for version := termVersion1; version < termVersionReserved; version++ {
 		rf := rf1
-		if version == termVersion2 {
+		var irep, rrep, mb *big.Int
+		if version == termVersion1 {
+			irep = icmodule.BigIntZero
+			rrep = icmodule.BigIntZero
+		} else {
 			rf = rf2
+			mb = icmodule.DefaultMinBond
 		}
 		termState := &TermState{
 			termData: termData{
@@ -289,8 +297,8 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 				sequence:        sequence,
 				startHeight:     startHeight,
 				period:          termPeriod,
-				irep:            icmodule.BigIntZero,
-				rrep:            icmodule.BigIntZero,
+				irep:            irep,
+				rrep:            rrep,
 				totalSupply:     totalSupply,
 				totalDelegated:  totalDelegated,
 				rewardFund:      rf,
@@ -298,6 +306,7 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 				revision:        revision,
 				prepSnapshots:   prepSnapshots.Clone(),
 				isDecentralized: isDecentralized,
+				minimumBond:     mb,
 			},
 		}
 
