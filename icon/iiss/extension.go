@@ -618,11 +618,11 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyNonVote)),
+			intconv.Int64ToBytes(int64(icmodule.PenaltyMissingNetworkProposalVote)),
 		},
 	)
 
-	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate())
+	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate(cc.Revision().Value()))
 }
 
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
@@ -1837,4 +1837,50 @@ func (es *ExtensionStateImpl) OnSetPublicKey(cc icmodule.CallContext, from modul
 		from,
 		dsaIndex,
 	)
+}
+
+func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values map[string]icmodule.Rate) error {
+	var pt icmodule.PenaltyType
+	rates := make(map[icmodule.PenaltyType]icmodule.Rate)
+
+	for name, rate := range values {
+		pt = icmodule.ToPenaltyType(name)
+		if !pt.IsValid() {
+			return scoreresult.InvalidParameterError.Errorf("InvalidPenaltyName(%s)", name)
+		}
+		rates[pt] = rate
+	}
+
+	for _, pt = range icmodule.GetPenaltyTypes() {
+		if rate, ok := rates[pt]; ok {
+			oldRate, err := es.State.GetSlashingRate(pt)
+			if err != nil {
+				return err
+			}
+			if oldRate != rate {
+				if err = es.State.SetSlashingRate(pt, rate); err != nil {
+					return err
+				}
+				// Record slashingRateChangedV2 eventLogs in PenaltyType order
+				recordSlashingRateChangedV2Event(cc, pt, rate)
+			}
+		}
+	}
+	return nil
+}
+
+func (es *ExtensionStateImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
+	if len(penaltyTypes) == 0 {
+		penaltyTypes = icmodule.GetPenaltyTypes()
+	}
+
+	jso := make(map[string]interface{})
+	for _, pt := range penaltyTypes {
+		if rate, err := es.State.GetSlashingRate(pt); err == nil {
+			jso[pt.String()] = rate.NumInt64()
+		} else {
+			return nil, err
+		}
+	}
+	return jso, nil
 }

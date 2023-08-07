@@ -125,10 +125,10 @@ func (p *PRep) UpdateAccumulatedPower(bondRequirement icmodule.Rate) *big.Int {
 	return p.accumulatedPower
 }
 
-func (p *PRep) InitAccumulated(offsetLimit int) {
-	ol := big.NewInt(int64(offsetLimit))
-	p.accumulatedVoted = new(big.Int).Mul(p.GetVoted(), ol)
-	p.accumulatedBonded = new(big.Int).Mul(p.bonded, ol)
+func (p *PRep) InitAccumulated(termPeriod int64) {
+	period := big.NewInt(termPeriod)
+	p.accumulatedVoted = new(big.Int).Mul(p.GetVoted(), period)
+	p.accumulatedBonded = new(big.Int).Mul(p.bonded, period)
 }
 
 func (p *PRep) ApplyVote(vType VoteType, amount *big.Int, period int) {
@@ -339,7 +339,7 @@ func (p *PRepInfo) InitAccumulated() {
 			break
 		}
 		prep := p.preps[key]
-		prep.InitAccumulated(p.offsetLimit)
+		prep.InitAccumulated(p.GetTermPeriod())
 		p.preps[key] = prep
 	}
 }

@@ -839,7 +839,7 @@ func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common
 		return err
 	}
 	rate := icmodule.ToRate(slashingRate.Int64())
-	if err = es.State.SetConsistentValidationPenaltySlashRate(rate); err != nil {
+	if err = es.State.SetConsistentValidationPenaltySlashRate(s.cc.Revision().Value(), rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
@@ -861,7 +861,7 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 		return err
 	}
 	rate := icmodule.ToRate(slashingRate.Int64())
-	if err = es.State.SetNonVotePenaltySlashRate(rate); err != nil {
+	if err = es.State.SetNonVotePenaltySlashRate(s.cc.Revision().Value(), rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
@@ -869,6 +869,61 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	}
 	s.onSlashingRateChangedEvent("NonVotePenalty", rate)
 	return nil
+}
+
+func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if len(values) == 0 {
+		return nil
+	}
+
+	rates := make(map[string]icmodule.Rate)
+	for _, v := range values {
+		pair, ok := v.(map[string]interface{})
+		name, ok := pair["name"].(string)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidNameType")
+		}
+		value, ok := pair["value"].(*common.HexInt)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidRateType")
+		}
+		if _, ok = rates[name]; ok {
+			return icmodule.DuplicateError.Errorf("DuplicatePenaltyName(%s)", name)
+		}
+		rates[name] = icmodule.Rate(value.Int64())
+	}
+	return es.SetSlashingRates(s.newCallContext(s.cc), rates)
+}
+
+func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+
+	var penaltyTypes []icmodule.PenaltyType
+	for _, v := range values {
+		name, ok := v.(string)
+		if !ok {
+			return nil, scoreresult.InvalidParameterError.New("InvalidPenaltyNameType")
+		}
+		if pt := icmodule.ToPenaltyType(name); pt == icmodule.PenaltyNone {
+			return nil, scoreresult.InvalidParameterError.Errorf("InvalidPenaltyName(%s)", name)
+		} else {
+			penaltyTypes = append(penaltyTypes, pt)
+		}
+	}
+	return es.GetSlashingRates(penaltyTypes)
 }
 
 func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate) {

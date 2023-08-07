@@ -658,7 +658,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, 0},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4-1},
 	{scoreapi.Method{
 		scoreapi.Function, "setNonVoteSlashingRate",
 		scoreapi.FlagExternal, 1,
@@ -666,7 +666,30 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, 0},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4-1},
+	{scoreapi.Method{
+		scoreapi.Function, "setSlashingRates",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"rates", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionPreIISS4, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getSlashingRates",
+		scoreapi.FlagReadOnly, 0,
+		[]scoreapi.Parameter{
+			{"names", scoreapi.ListTypeOf(1, scoreapi.String), nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionPreIISS4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setUseSystemDeposit",
 		scoreapi.FlagExternal, 2,

@@ -53,9 +53,9 @@ func TestPRep_InitAccumulated(t *testing.T) {
 		accBonded, accVoted int64
 	}
 	tests := []struct {
-		name        string
-		offsetLimit int
-		want        want
+		name       string
+		termPeriod int64
+		want       want
 	}{
 		{
 			"Init",
@@ -70,7 +70,7 @@ func TestPRep_InitAccumulated(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := newTestPRep(prep{a1, icstage.ESEnable, bond, delegate, true, 0})
 
-			p.InitAccumulated(tt.offsetLimit)
+			p.InitAccumulated(tt.termPeriod)
 
 			assert.Equal(t, tt.want.accBonded, p.AccumulatedBonded().Int64())
 			assert.Equal(t, tt.want.accVoted, p.AccumulatedVoted().Int64())
@@ -285,8 +285,8 @@ func TestPRepInfo(t *testing.T) {
 	for i, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
 		if p.rank <= pInfo.ElectedPRepCount() && p.Electable() {
-			accBonded := new(big.Int).Mul(p.Bonded(), big.NewInt(int64(pInfo.OffsetLimit())))
-			accVoted := new(big.Int).Mul(new(big.Int).Add(p.Bonded(), p.Delegated()), big.NewInt(int64(pInfo.OffsetLimit())))
+			accBonded := new(big.Int).Mul(p.Bonded(), big.NewInt(pInfo.GetTermPeriod()))
+			accVoted := new(big.Int).Mul(new(big.Int).Add(p.Bonded(), p.Delegated()), big.NewInt(pInfo.GetTermPeriod()))
 			assert.Equal(t, accBonded, p.AccumulatedBonded(), i)
 			assert.Equal(t, accVoted, p.AccumulatedVoted(), i)
 		} else {
