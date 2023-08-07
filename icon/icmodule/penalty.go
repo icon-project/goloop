@@ -71,4 +71,5 @@ func PenaltyNames() []string {
 
 func GetPenaltyTypes() []PenaltyType {
 	return penaltyTypes
+
 }

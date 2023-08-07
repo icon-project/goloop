@@ -870,6 +870,9 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 	if err != nil {
 		return err
 	}
+	if len(values) == 0 {
+		return nil
+	}
 
 	rates := make(map[string]icmodule.Rate)
 	for _, v := range values {
@@ -881,6 +884,9 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 		value, ok := pair["value"].(*common.HexInt)
 		if !ok {
 			return scoreresult.InvalidParameterError.New("InvalidRateType")
+		}
+		if _, ok = rates[name]; ok {
+			return icmodule.DuplicateError.Errorf("DuplicatePenaltyName(%s)", name)
 		}
 		rates[name] = icmodule.Rate(value.Int64())
 	}

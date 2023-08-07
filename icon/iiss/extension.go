@@ -1839,11 +1839,31 @@ func (es *ExtensionStateImpl) OnSetPublicKey(cc icmodule.CallContext, from modul
 	)
 }
 
-func (es *ExtensionStateImpl) SetSlashingRates(_ icmodule.CallContext, values map[string]icmodule.Rate) error {
+func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values map[string]icmodule.Rate) error {
+	var pt icmodule.PenaltyType
+	rates := make(map[icmodule.PenaltyType]icmodule.Rate)
+
 	for name, rate := range values {
-		penaltyType := icmodule.ToPenaltyType(name)
-		if err := es.State.SetSlashingRate(penaltyType, rate); err != nil {
-			return err
+		pt = icmodule.ToPenaltyType(name)
+		if !pt.IsValid() {
+			return scoreresult.InvalidParameterError.Errorf("InvalidPenaltyName(%s)", name)
+		}
+		rates[pt] = rate
+	}
+
+	for _, pt = range icmodule.GetPenaltyTypes() {
+		if rate, ok := rates[pt]; ok {
+			oldRate, err := es.State.GetSlashingRate(pt)
+			if err != nil {
+				return err
+			}
+			if oldRate != rate {
+				if err = es.State.SetSlashingRate(pt, rate); err != nil {
+					return err
+				}
+				// Record slashingRateChangedV2 eventLogs in PenaltyType order
+				recordSlashingRateChangedV2Event(cc, pt, rate)
+			}
 		}
 	}
 	return nil
