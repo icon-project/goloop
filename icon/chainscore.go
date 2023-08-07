@@ -658,7 +658,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, 0},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4-1},
 	{scoreapi.Method{
 		scoreapi.Function, "setNonVoteSlashingRate",
 		scoreapi.FlagExternal, 1,
@@ -666,7 +666,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, 0},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4-1},
 	{scoreapi.Method{
 		scoreapi.Function, "setSlashingRates",
 		scoreapi.FlagExternal, 1,
