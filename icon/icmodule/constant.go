@@ -88,7 +88,7 @@ const (
 // The following variables are read-only
 var (
 	BigIntZero           = new(big.Int)
-	BigIntICX            = big.NewInt(1_000_000_000_000_000_000)
+	BigIntICX            = big.NewInt(ICX)
 	BigIntInitialIRep    = new(big.Int).Mul(big.NewInt(InitialIRep), BigIntICX)
 	BigIntMinIRep        = new(big.Int).Mul(big.NewInt(MinIRep), BigIntICX)
 	BigIntIScoreICXRatio = big.NewInt(IScoreICXRatio)
