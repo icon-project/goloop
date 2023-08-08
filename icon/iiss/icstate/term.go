@@ -354,7 +354,7 @@ func (term *termData) getTotalPower() *big.Int {
 
 func (term *termData) String() string {
 	return fmt.Sprintf(
-		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s rf:%s revision:%d isDecentralized:%v mb:%d}",
+		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s rf:%s revision:%d isDecentralized:%t mb:%d}",
 		term.version,
 		term.sequence,
 		term.startHeight,
@@ -378,9 +378,9 @@ func (term *termData) Format(f fmt.State, c rune) {
 		var format string
 		if f.Flag('+') {
 			format = "Term{ver:%d seq:%d start:%d end:%d period:%d totalSupply:%s totalDelegated:%s " +
-				"prepSnapshots:%d irep:%s rrep:%s rf:%+v revision:%d isDecentralized:%v minimumBond:%d}"
+				"prepSnapshots:%d irep:%s rrep:%s rf:%+v revision:%d isDecentralized:%t minimumBond:%d}"
 		} else {
-			format = "Term{%d %d %d %d %d %s %s %d %s %s %v %d %d %v}"
+			format = "Term{%d %d %d %d %d %s %s %d %s %s %v %d %t %d}"
 		}
 		_, _ = fmt.Fprintf(
 			f,
