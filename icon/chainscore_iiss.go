@@ -941,7 +941,11 @@ func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
 	if err != nil {
 		return icmodule.BigIntZero, err
 	}
-	return es.State.GetMinimumBond(), nil
+	bond := es.State.GetMinimumBond()
+	if bond == nil {
+		return icmodule.BigIntZero, icmodule.NotFoundError.New("MinimumBondNotFound")
+	}
+	return bond, nil
 }
 
 func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
@@ -952,9 +956,15 @@ func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	obond := es.State.GetMinimumBond()
+	if bond.Sign() < 0 {
+		return scoreresult.InvalidParameterError.New("NegativeMinimumBond")
+	}
+	oBond := es.State.GetMinimumBond()
+	if oBond == nil {
+		return icmodule.NotFoundError.New("MinimumBondNotFound")
+	}
 	nBond := &bond.Int
-	if obond.Cmp(nBond) == 0 {
+	if oBond.Cmp(nBond) == 0 {
 		return nil
 	}
 	if err = es.State.SetMinimumBond(new(big.Int).Set(nBond)); err != nil {
