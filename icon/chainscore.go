@@ -782,7 +782,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.RevisionBTP2, 0},
+	}, icmodule.RevisionPreIISS4, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setMinimumBond",
 		scoreapi.FlagExternal, 1,
