@@ -1884,3 +1884,92 @@ func (es *ExtensionStateImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyTy
 	}
 	return jso, nil
 }
+
+func (es *ExtensionStateImpl) InitCommissionInfo(
+	cc icmodule.CallContext, rate, maxRate, maxChangeRate icmodule.Rate) error {
+	ci, err := icstate.NewCommissionInfo(rate, maxRate, maxChangeRate)
+	if err != nil {
+		return err
+	}
+	owner := cc.From()
+	if err = es.State.InitCommissionInfo(owner, ci); err != nil {
+		return err
+	}
+	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
+		return err
+	}
+	recordCommissionRateInitializedEvent(cc, owner, rate, maxRate, maxChangeRate)
+	return nil
+}
+
+func (es *ExtensionStateImpl) SetCommissionRate(cc icmodule.CallContext, rate icmodule.Rate) error {
+	owner := cc.From()
+	if owner == nil {
+		return scoreresult.InvalidParameterError.Errorf("InvalidOwner(%s)", owner)
+	}
+	if !rate.IsValid() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidCommissionRate(%d)", rate)
+	}
+	pb := es.State.GetPRepBaseByOwner(owner, false)
+	if pb == nil {
+		return icmodule.NotFoundError.Errorf("PRepBaseNotFound(%s)", owner)
+	}
+	if !pb.CommissionInfoExists() {
+		return icmodule.NotFoundError.Errorf("CommissionInfoNotFound(%s)", owner)
+	}
+	ps := es.State.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
+	}
+	if !ps.IsActive() {
+		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
+	}
+
+	if rate == pb.CommissionRate() {
+		// Nothing to do
+		return nil
+	}
+	oldRate, err := es.getOldCommissionRate(owner)
+	if err != nil {
+		return err
+	}
+	changeRate := rate - oldRate
+	maxChangeRate := pb.MaxCommissionChangeRate()
+	if changeRate > maxChangeRate {
+		return icmodule.IllegalArgumentError.Errorf(
+			"CommissionRateTooHigh(oldRate=%d,newRate=%d,maxChangeRate=%d)",
+			oldRate, rate, maxChangeRate)
+	}
+	if err = pb.SetCommissionRate(rate); err != nil {
+		return err
+	}
+	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
+		return err
+	}
+	recordCommissionRateChangedEvent(cc, owner, rate)
+	return nil
+}
+
+func (es *ExtensionStateImpl) getOldCommissionRate(owner module.Address) (icmodule.Rate, error) {
+	// Find owner's old commissionRate in Back1 and Back2
+	for _, back := range []*icstage.State{es.Back1, es.Back2} {
+		cr, err := back.GetCommissionRate(owner)
+		if err != nil {
+			return icmodule.Rate(0), err
+		}
+		if cr != nil {
+			return cr.Value(), nil
+		}
+	}
+
+	// If there is no commission rate for a given owner in Back1 and Back2, look for it in Base.
+	voted, err := es.Reward.GetVoted(owner)
+	if err != nil {
+		return icmodule.Rate(0), err
+	}
+	if voted != nil {
+		return voted.CommissionRate(), nil
+	}
+	// It is not allowed to call setCommissionRate() during the term when commissionInfo is initialized.
+	return icmodule.Rate(0), icmodule.NotFoundError.Errorf("OldCommissionRateNotFound(%s)", owner)
+}

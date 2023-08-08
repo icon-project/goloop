@@ -17,11 +17,13 @@
 package icstate
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -208,6 +210,46 @@ func TestPRepBaseState_UpdateInfo(t *testing.T) {
 	}
 }
 
+func TestPRepBaseSnapshot_RLPEncodeFields(t *testing.T) {
+	const (
+		Rate = icmodule.Rate(1000)
+		MaxRate = icmodule.Rate(2000)
+		MaxChangeRate = icmodule.Rate(100)
+	)
+
+	pbs := NewPRepBaseState()
+	ci, err := NewCommissionInfo(Rate, MaxRate, MaxChangeRate)
+	assert.NoError(t, err)
+	err = pbs.InitCommissionInfo(ci)
+	assert.NoError(t, err)
+
+	buf := bytes.NewBuffer(nil)
+	e := codec.BC.NewEncoder(buf)
+
+	pbss := pbs.GetSnapshot()
+	assert.Equal(t, PRepBaseVersion2, pbss.Version())
+
+	err = pbss.RLPEncodeFields(e)
+	assert.NoError(t, err)
+
+	err = e.Close()
+	assert.NoError(t, err)
+
+	pbss2 := NewPRepBaseSnapshot(PRepBaseVersion2)
+	assert.Zero(t, pbss2.CommissionRate())
+	assert.Zero(t, pbss2.MaxCommissionRate())
+	assert.Zero(t, pbss2.MaxCommissionChangeRate())
+
+	d := codec.BC.NewDecoder(bytes.NewReader(buf.Bytes()))
+	err = pbss2.RLPDecodeFields(d)
+	assert.NoError(t, err)
+	assert.True(t, pbss.Equal(pbss2))
+
+	assert.Equal(t, Rate, pbss2.CommissionRate())
+	assert.Equal(t, MaxRate, pbss2.MaxCommissionRate())
+	assert.Equal(t, MaxChangeRate, pbss2.MaxCommissionChangeRate())
+}
+
 func TestPRepInfo_Validate1(t *testing.T) {
 	type fields struct {
 		City        *string
@@ -312,4 +354,29 @@ func TestPRepInfo_Validate1(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPRepBaseState_SetCommissionRate(t *testing.T) {
+	rate := icmodule.ToRate(10)
+	maxRate := icmodule.ToRate(20)
+	maxChangeRate := icmodule.ToRate(2)
+
+	pbs := NewPRepBaseState()
+	err := pbs.SetCommissionRate(rate)
+	assert.Error(t, err)
+
+	ci, err := NewCommissionInfo(rate, maxRate, maxChangeRate)
+	assert.NoError(t, err)
+	err = pbs.InitCommissionInfo(ci)
+	assert.NoError(t, err)
+
+	newRate := rate + maxChangeRate
+	err = pbs.SetCommissionRate(newRate)
+	assert.NoError(t, err)
+	assert.Equal(t, newRate, pbs.CommissionRate())
+
+	invalidRate := maxRate + maxChangeRate
+	err = pbs.SetCommissionRate(invalidRate)
+	assert.Error(t, err)
+	assert.Equal(t, newRate, pbs.CommissionRate())
 }

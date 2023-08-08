@@ -19,6 +19,7 @@ package iiss
 import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -27,6 +28,28 @@ func recordSlashingRateChangedV2Event(cc icmodule.CallContext, penaltyType icmod
 		[][]byte{[]byte("SlashingRateChangedV2(str,int)")},
 		[][]byte{
 			[]byte(penaltyType.String()),
+			intconv.Int64ToBytes(rate.NumInt64()),
+		},
+	)
+}
+
+func recordCommissionRateInitializedEvent(
+	cc icmodule.CallContext, owner module.Address, rate, maxRate, maxChangeRate icmodule.Rate) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("CommissionRateInitialized(Address,int,int,int)"), owner.Bytes()},
+		[][]byte{
+			intconv.Int64ToBytes(rate.NumInt64()),
+			intconv.Int64ToBytes(maxRate.NumInt64()),
+			intconv.Int64ToBytes(maxChangeRate.NumInt64()),
+		},
+	)
+}
+
+func recordCommissionRateChangedEvent(
+	cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("CommissionRateChanged(Address,int)"), owner.Bytes()},
+		[][]byte{
 			intconv.Int64ToBytes(rate.NumInt64()),
 		},
 	)
