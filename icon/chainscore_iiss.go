@@ -952,14 +952,22 @@ func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	if err = es.State.SetMinimumBond(new(big.Int).Set(&bond.Int)); err != nil {
+	obond := es.State.GetMinimumBond()
+	nBond := &bond.Int
+	if obond.Cmp(nBond) == 0 {
+		return nil
+	}
+	if err = es.State.SetMinimumBond(new(big.Int).Set(nBond)); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err,
-			"Failed to set minimum bond: from=%v bond=%v",
-			s.from,
-			bond,
+			"Failed to set minimum bond: bond=%d",
+			nBond,
 		)
 	}
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("MinimumBondChanged(int)")},
+		[][]byte{intconv.BigIntToBytes(nBond)},
+	)
 	return nil
 }
 
