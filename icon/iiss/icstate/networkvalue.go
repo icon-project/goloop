@@ -429,11 +429,19 @@ func (s *State) SetSlashingRate(penaltyType icmodule.PenaltyType, rate icmodule.
 	return db.Set(int(penaltyType), rate.NumInt64())
 }
 
+// GetMinimumBond returns the minimum bond related to minimum wage
+// It returns nil before RevisionPreIISS4
 func (s *State) GetMinimumBond() *big.Int {
 	return getValue(s.store, VarMinBond).BigInt()
 }
 
 func (s *State) SetMinimumBond(bond *big.Int) error {
+	if bond == nil {
+		return scoreresult.InvalidParameterError.Errorf("MinimumBondIsNil")
+	}
+	if bond.Sign() < 0 {
+		return scoreresult.InvalidParameterError.Errorf("NegativeMinimumBond")
+	}
 	return setValue(s.store, VarMinBond, bond)
 }
 
@@ -464,7 +472,9 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
 	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRate(revision).Percent()
-	jso["minimumBond"] = s.GetMinimumBond()
+	if revision >= icmodule.RevisionPreIISS4 {
+		jso["minimumBond"] = s.GetMinimumBond()
+	}
 
 	preps := s.GetPRepSet(nil, 0)
 	if preps != nil {
