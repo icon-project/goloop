@@ -1918,6 +1918,10 @@ func (es *ExtensionStateImpl) SetCommissionRate(cc icmodule.CallContext, rate ic
 		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
 	}
 
+	if rate == pb.CommissionRate() {
+		// Nothing to do
+		return nil
+	}
 	oldRate, err := es.getOldCommissionRate(owner)
 	if err != nil {
 		return err
