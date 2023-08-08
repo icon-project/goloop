@@ -1895,7 +1895,11 @@ func (es *ExtensionStateImpl) InitCommissionInfo(
 	if err = es.State.InitCommissionInfo(owner, ci); err != nil {
 		return err
 	}
-	return es.Front.AddCommissionRate(owner, rate)
+	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
+		return err
+	}
+	recordCommissionRateInitializedEvent(cc, owner, rate, maxRate, maxChangeRate)
+	return nil
 }
 
 func (es *ExtensionStateImpl) SetCommissionRate(cc icmodule.CallContext, rate icmodule.Rate) error {
@@ -1939,7 +1943,11 @@ func (es *ExtensionStateImpl) SetCommissionRate(cc icmodule.CallContext, rate ic
 	if err = pb.SetCommissionRate(rate); err != nil {
 		return err
 	}
-	return es.Front.AddCommissionRate(owner, rate)
+	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
+		return err
+	}
+	recordCommissionRateChangedEvent(cc, owner, rate)
+	return nil
 }
 
 func (es *ExtensionStateImpl) getOldCommissionRate(owner module.Address) (icmodule.Rate, error) {

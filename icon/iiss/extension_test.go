@@ -64,6 +64,10 @@ func (cc *callContext) BlockHeight() int64 {
 	return cc.blockHeight
 }
 
+func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
+	// Nothing to do
+}
+
 func newDummyCallContext(from module.Address, rev module.Revision) icmodule.CallContext {
 	return &callContext{
 		from: from,
