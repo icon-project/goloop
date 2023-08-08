@@ -933,6 +933,54 @@ func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate)
 	)
 }
 
+func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return icmodule.BigIntZero, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return icmodule.BigIntZero, err
+	}
+	bond := es.State.GetMinimumBond()
+	if bond == nil {
+		return icmodule.BigIntZero, icmodule.NotFoundError.New("MinimumBondNotFound")
+	}
+	return bond, nil
+}
+
+func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if bond.Sign() < 0 {
+		return scoreresult.InvalidParameterError.New("NegativeMinimumBond")
+	}
+	oBond := es.State.GetMinimumBond()
+	if oBond == nil {
+		return icmodule.NotFoundError.New("MinimumBondNotFound")
+	}
+	nBond := &bond.Int
+	if oBond.Cmp(nBond) == 0 {
+		return nil
+	}
+	if err = es.State.SetMinimumBond(new(big.Int).Set(nBond)); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set minimum bond: bond=%d",
+			nBond,
+		)
+	}
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("MinimumBondChanged(int)")},
+		[][]byte{intconv.BigIntToBytes(nBond)},
+	)
+	return nil
+}
+
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
 	return iiss.NewCallContext(cc, s.from)
 }

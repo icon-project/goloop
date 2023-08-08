@@ -591,3 +591,37 @@ func TestState_SetSlashingRate(t *testing.T) {
 		})
 	}
 }
+
+func TestState_SetMinimumBond(t *testing.T) {
+	s := newDummyState(false)
+
+	bond := s.GetMinimumBond()
+	assert.Nil(t, bond)
+
+	args := []struct{
+		bond *big.Int
+		success bool
+	}{
+		{nil, false},
+		{big.NewInt(-1), false},
+		{big.NewInt(-1000), false},
+		{icmodule.BigIntZero, true},
+		{big.NewInt(1000), true},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name_%02d_%s", i, arg.bond)
+		prevBond := s.GetMinimumBond()
+
+		t.Run(name, func(t *testing.T){
+			err := s.SetMinimumBond(arg.bond)
+			if arg.success {
+				assert.NoError(t, err)
+				assert.Zero(t, arg.bond.Cmp(s.GetMinimumBond()))
+			} else {
+				assert.Error(t, err)
+				assert.Zero(t, prevBond.Cmp(s.GetMinimumBond()))
+			}
+		})
+	}
+}

@@ -323,6 +323,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 			if err := s.onRevisionPreIISS4(es); err != nil {
 				return err
 			}
+
+			// MinBond
+			if err := es.State.SetMinimumBond(icmodule.DefaultMinBond); err != nil {
+				return err
+			}
 		}
 
 		if r1 < icmodule.RevisionIISS4 && r2 >= icmodule.RevisionIISS4 {

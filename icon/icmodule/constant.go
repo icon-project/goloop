@@ -51,6 +51,7 @@ const (
 	InitialIRep              = 50_000 // in icx, not loop
 	MinIRep                  = 10_000
 	RewardPoint              = 0.7
+	ICX                      = 1_000_000_000_000_000_000
 
 	DefaultTermPeriod                           = InitialTermPeriod
 	DefaultUnbondingPeriodMultiplier            = 7
@@ -87,10 +88,12 @@ const (
 // The following variables are read-only
 var (
 	BigIntZero           = new(big.Int)
-	BigIntICX            = big.NewInt(1_000_000_000_000_000_000)
+	BigIntICX            = big.NewInt(ICX)
 	BigIntInitialIRep    = new(big.Int).Mul(big.NewInt(InitialIRep), BigIntICX)
 	BigIntMinIRep        = new(big.Int).Mul(big.NewInt(MinIRep), BigIntICX)
 	BigIntIScoreICXRatio = big.NewInt(IScoreICXRatio)
 	BigIntRegPRepFee     = new(big.Int).Mul(big.NewInt(2000), BigIntICX)
 	BigIntDayBlocks      = big.NewInt(DayBlock)
+
+	DefaultMinBond = new(big.Int).Mul(big.NewInt(10_000), BigIntICX)
 )

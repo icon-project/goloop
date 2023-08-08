@@ -270,7 +270,7 @@ func (es *ExtensionStateImpl) setNewFront() (err error) {
 			term.GetElectedPRepCount(),
 			term.BondRequirement(),
 			term.RewardFund(),
-			new(big.Int), // TODO pass minBond
+			term.MinimumBond(),
 		); err != nil {
 			return
 		}

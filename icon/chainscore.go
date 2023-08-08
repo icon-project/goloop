@@ -775,6 +775,22 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getMinimumBond",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, icmodule.RevisionPreIISS4, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setMinimumBond",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"bond", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionPreIISS4, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
