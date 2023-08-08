@@ -1891,9 +1891,12 @@ func (es *ExtensionStateImpl) InitCommissionInfo(
 	if err != nil {
 		return err
 	}
-	return es.State.InitCommissionInfo(cc.From(), ci)
+	owner := cc.From()
+	if err = es.State.InitCommissionInfo(owner, ci); err != nil {
+		return err
+	}
+	return es.Front.AddCommissionRate(owner, rate)
 }
-
 
 func (es *ExtensionStateImpl) SetCommissionRate(cc icmodule.CallContext, rate icmodule.Rate) error {
 	owner := cc.From()

@@ -270,7 +270,41 @@ func TestExtensionStateImpl_getOldCommissionRate(t *testing.T) {
 }
 
 func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
+	rate := icmodule.ToRate(5)
+	maxRate := icmodule.ToRate(30)
+	maxChangeRate := icmodule.ToRate(10)
 
+	var err error
+	owner := common.MustNewAddressFromString("hx1234")
+	cc := newDummyCallContext(owner, icmodule.ValueToRevision(icmodule.RevisionPreIISS4))
+	es := newDummyExtensionState(t)
+
+	pi := newDummyPRepInfo(1)
+	err = es.State.RegisterPRep(owner, pi, icmodule.BigIntZero, 0)
+	assert.NoError(t, err)
+
+	err = es.InitCommissionInfo(cc, rate, maxRate, maxChangeRate)
+	assert.NoError(t, err)
+
+	pb := es.State.GetPRepBaseByOwner(owner, false)
+
+	assert.Equal(t, rate, pb.CommissionRate())
+	assert.Equal(t, maxRate, pb.MaxCommissionRate())
+	assert.Equal(t, maxChangeRate, pb.MaxCommissionChangeRate())
+
+	cr, err := es.Front.GetCommissionRate(owner)
+	assert.NoError(t, err)
+	assert.Equal(t, rate, cr.Value())
+
+	// It is allowed only once to call InitCommissionInfo()
+	err = es.InitCommissionInfo(
+		cc, icmodule.ToRate(10), icmodule.ToRate(60), icmodule.ToRate(20))
+	assert.Error(t, err)
+
+	// Existing commissionInfo is not changed
+	assert.Equal(t, rate, pb.CommissionRate())
+	assert.Equal(t, maxRate, pb.MaxCommissionRate())
+	assert.Equal(t, maxChangeRate, pb.MaxCommissionChangeRate())
 }
 
 func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
