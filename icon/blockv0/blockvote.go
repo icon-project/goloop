@@ -339,7 +339,7 @@ func (s *BlockVoteList) RLPDecodeSelf(d codec.Decoder) error {
 		if e == nil {
 			s.votes[i] = nil
 		} else {
-			if len(cbvl.Sharable) <= int(e.SharableIndex) {
+			if e.SharableIndex < 0 || int(e.SharableIndex) >= len(cbvl.Sharable) {
 				return errors.Errorf("invalid sharable index len(Sharable)=%d index=%d", len(cbvl.Sharable), e.SharableIndex)
 			}
 			s.votes[i] = &BlockVote{

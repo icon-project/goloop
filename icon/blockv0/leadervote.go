@@ -298,11 +298,19 @@ func (s *LeaderVoteList) RLPDecodeSelf(d codec.Decoder) error {
 	if err != nil {
 		return err
 	}
+	for i, sh := range cbvl.Sharable {
+		if sh.Round == nil && sh.Round_ == nil {
+			return errors.Errorf("LeaderVote with no round height=%d sharable index=%d", sh.BlockHeight, i)
+		}
+	}
 	s.votes = make([]*LeaderVote, len(cbvl.Entries))
 	for i, e := range cbvl.Entries {
 		if e==nil {
 			s.votes[i] = nil
 		} else {
+			if e.SharableIndex < 0 || int(e.SharableIndex) >= len(cbvl.Sharable) {
+				return errors.Errorf("invalid sharable index len(Sharable)=%d index=%d", len(cbvl.Sharable), e.SharableIndex)
+			}
 			s.votes[i] = &LeaderVote{
 				cbvl.Sharable[e.SharableIndex],
 				e.LeaderVoteIndividual,
