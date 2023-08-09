@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/bits"
 	"math/rand"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type word = uint64
@@ -13,6 +15,13 @@ const wordBits = 64
 type BitArray struct {
 	NumBits int
 	Words   []word
+}
+
+func (ba *BitArray) Verify() error {
+	if ba.NumBits > len(ba.Words)*wordBits {
+		return errors.Errorf("invalid BitArray NumBits=%d Words.len=%d", ba.NumBits, len(ba.Words))
+	}
+	return nil
 }
 
 func (ba *BitArray) Len() int {

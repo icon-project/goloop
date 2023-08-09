@@ -128,6 +128,8 @@ func TestConsensus_ClientBasics(t *testing.T) {
 	var rsm consensus.RoundStateMessage
 	rsm.Height = 10
 	rsm.Sync = true
+	rsm.PrevotesMask = consensus.NewBitArray(0)
+	rsm.PrecommitsMask = consensus.NewBitArray(0)
 	csh.Unicast(consensus.ProtoRoundState, &rsm, nil)
 
 	var brm fastsync.BlockRequest

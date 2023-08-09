@@ -222,6 +222,9 @@ func (vl *CommitVoteList) toVoteList(
 		if err != nil {
 			return nil, err
 		}
+		if pf.ValidatorCount() != valLen {
+			return nil, errors.Errorf("bad validator count in proof validatorCount=%d pf.validatorCount=%d", valLen, pf.ValidatorCount())
+		}
 		for v := 0; v < pf.ValidatorCount(); v++ {
 			var bys []byte
 			pp := pf.ProofPartAt(v)

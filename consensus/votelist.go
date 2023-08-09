@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type VoteItem struct {
@@ -63,6 +64,22 @@ func (vl *VoteList) Get(i int) *VoteMessage {
 	msg.setSignature(vl.VoteItems[i].Signature)
 	msg.NTSDProofParts = vl.VoteItems[i].NTSDProofParts
 	return msg
+}
+
+func (vl *VoteList) Verify() error {
+	for i := range vl.VoteItems {
+		pi := int(vl.VoteItems[i].PrototypeIndex)
+		if pi < 0 || pi >= len(vl.Prototypes) {
+			return errors.Errorf("invalid prototype index VoteItemIndex=%d PrototypeIndex=%d Prototypes.len=%d", i, vl.VoteItems[i].PrototypeIndex, len(vl.Prototypes))
+		}
+	}
+	for i := 0; i < vl.Len(); i++ {
+		v := vl.Get(i)
+		if err := v.Verify(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func NewVoteList() *VoteList {
