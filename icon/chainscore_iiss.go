@@ -911,17 +911,23 @@ func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]inter
 		return nil, err
 	}
 
+	var pt icmodule.PenaltyType
 	var penaltyTypes []icmodule.PenaltyType
+	bits := 0
 	for _, v := range values {
 		name, ok := v.(string)
 		if !ok {
-			return nil, scoreresult.InvalidParameterError.New("InvalidPenaltyNameType")
+			return nil, scoreresult.InvalidParameterError.New("InvalidNameType")
 		}
-		if pt := icmodule.ToPenaltyType(name); pt == icmodule.PenaltyNone {
-			return nil, scoreresult.InvalidParameterError.Errorf("InvalidPenaltyName(%s)", name)
-		} else {
-			penaltyTypes = append(penaltyTypes, pt)
+		if pt = icmodule.ToPenaltyType(name); pt == icmodule.PenaltyNone {
+			return nil, scoreresult.InvalidParameterError.Errorf("InvalidName(%s)", name)
 		}
+		bit := 1 << int(pt)
+		if bits&bit != 0 {
+			return nil, icmodule.DuplicateError.Errorf("DuplicateName(%s)", name)
+		}
+		bits |= bit
+		penaltyTypes = append(penaltyTypes, pt)
 	}
 	return es.GetSlashingRates(penaltyTypes)
 }
