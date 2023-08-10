@@ -74,6 +74,11 @@ type chainTask interface {
 	Wait() error
 }
 
+type simpleTask interface {
+	chainTask
+	Run() error
+}
+
 type singleChain struct {
 	wallet module.Wallet
 
@@ -502,6 +507,9 @@ func (c *singleChain) releaseManagers() {
 }
 
 func (c *singleChain) _runTask(task chainTask, wait bool) error {
+	if st, ok := task.(simpleTask) ; ok {
+		return st.Run()
+	}
 	if err := c._setStartingTask(task); err != nil {
 		return err
 	}
