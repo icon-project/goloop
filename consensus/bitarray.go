@@ -10,30 +10,30 @@ type word = uint64
 
 const wordBits = 64
 
-type bitArray struct {
+type BitArray struct {
 	NumBits int
 	Words   []word
 }
 
-func (ba *bitArray) Len() int {
+func (ba *BitArray) Len() int {
 	return ba.NumBits
 }
 
-func (ba *bitArray) Set(idx int) {
+func (ba *BitArray) Set(idx int) {
 	if idx >= ba.NumBits {
 		return
 	}
 	ba.Words[idx/wordBits] = ba.Words[idx/wordBits] | (1 << uint(idx%wordBits))
 }
 
-func (ba *bitArray) Unset(idx int) {
+func (ba *BitArray) Unset(idx int) {
 	if idx >= ba.NumBits {
 		return
 	}
 	ba.Words[idx/wordBits] = ba.Words[idx/wordBits] &^ (1 << uint(idx%wordBits))
 }
 
-func (ba *bitArray) Put(idx int, v bool) {
+func (ba *BitArray) Put(idx int, v bool) {
 	if idx >= ba.NumBits {
 		return
 	}
@@ -44,14 +44,14 @@ func (ba *bitArray) Put(idx int, v bool) {
 	}
 }
 
-func (ba *bitArray) Get(idx int) bool {
+func (ba *BitArray) Get(idx int) bool {
 	if idx >= ba.NumBits {
 		return false
 	}
 	return ba.Words[idx/wordBits]&(1<<uint(idx%wordBits)) != 0
 }
 
-func (ba *bitArray) Flip() {
+func (ba *BitArray) Flip() {
 	l := len(ba.Words)
 	for i := 0; i < l; i++ {
 		ba.Words[i] = ^ba.Words[i]
@@ -61,7 +61,7 @@ func (ba *bitArray) Flip() {
 	}
 }
 
-func (ba *bitArray) AssignAnd(ba2 *bitArray) {
+func (ba *BitArray) AssignAnd(ba2 *BitArray) {
 	lba := len(ba.Words)
 	lba2 := len(ba2.Words)
 	if ba.NumBits > ba2.NumBits {
@@ -74,7 +74,7 @@ func (ba *bitArray) AssignAnd(ba2 *bitArray) {
 	}
 }
 
-func (ba *bitArray) PickRandom() int {
+func (ba *BitArray) PickRandom() int {
 	var count int
 	for i := 0; i < len(ba.Words); i++ {
 		count = count + bits.OnesCount64(ba.Words[i])
@@ -100,12 +100,12 @@ func (ba *bitArray) PickRandom() int {
 	panic("PickRandom: internal error")
 }
 
-func (ba bitArray) String() string {
+func (ba BitArray) String() string {
 	// TODO better form?
 	return fmt.Sprintf("%x", ba.Words)
 }
 
-func (ba *bitArray) Equal(ba2 *bitArray) bool {
+func (ba *BitArray) Equal(ba2 *BitArray) bool {
 	lba := len(ba.Words)
 	if ba.NumBits != ba2.NumBits {
 		return false
@@ -118,12 +118,12 @@ func (ba *bitArray) Equal(ba2 *bitArray) bool {
 	return true
 }
 
-func (ba *bitArray) Copy() *bitArray {
-	ba2 := newBitArray(ba.NumBits)
+func (ba *BitArray) Copy() *BitArray {
+	ba2 := NewBitArray(ba.NumBits)
 	copy(ba2.Words, ba.Words)
 	return ba2
 }
 
-func newBitArray(n int) *bitArray {
-	return &bitArray{n, make([]word, (n+wordBits-1)/wordBits)}
+func NewBitArray(n int) *BitArray {
+	return &BitArray{n, make([]word, (n+wordBits-1)/wordBits)}
 }

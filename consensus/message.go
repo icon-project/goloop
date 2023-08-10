@@ -394,9 +394,9 @@ func (msg *VoteMessage) RLPDecodeSelf(d codec.Decoder) error {
 
 type peerRoundState struct {
 	_HR
-	PrevotesMask   *bitArray
-	PrecommitsMask *bitArray
-	BlockPartsMask *bitArray
+	PrevotesMask   *BitArray
+	PrecommitsMask *BitArray
+	BlockPartsMask *BitArray
 	Sync           bool
 }
 
