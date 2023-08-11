@@ -536,7 +536,14 @@ func (p *PRepBaseState) SetCommissionRate(rate icmodule.Rate) error {
 	if p.ci == nil {
 		return icmodule.NotFoundError.New("CommissionInfoNotFound")
 	}
-	return p.ci.SetRate(rate)
+	if rate == p.ci.Rate() {
+		return nil
+	}
+	err := p.ci.SetRate(rate)
+	if err == nil {
+		p.setDirty()
+	}
+	return err
 }
 
 func (p *PRepBaseState) CommissionInfoExists() bool {
