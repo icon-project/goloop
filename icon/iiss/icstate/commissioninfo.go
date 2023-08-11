@@ -80,9 +80,9 @@ func (ci *CommissionInfo) ToJSON(jso map[string]interface{}) map[string]interfac
 	if jso == nil {
 		jso = make(map[string]interface{})
 	}
-	jso["commissionRate"] = ci.rate
-	jso["maxCommissionRate"] = ci.maxRate
-	jso["maxCommissionChangeRate"] = ci.maxChangeRate
+	jso["commissionRate"] = ci.rate.NumInt64()
+	jso["maxCommissionRate"] = ci.maxRate.NumInt64()
+	jso["maxCommissionChangeRate"] = ci.maxChangeRate.NumInt64()
 	return jso
 }
 
