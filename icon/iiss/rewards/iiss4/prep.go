@@ -52,7 +52,7 @@ func (p *PRep) Electable() bool {
 }
 
 func (p *PRep) Rewardable(electedPRepCount int) bool {
-	return p.status == icstage.ESEnable && p.rank <= electedPRepCount
+	return p.status == icstage.ESEnable && p.rank <= electedPRepCount && p.accumulatedPower.Sign() == 1
 }
 
 func (p *PRep) Status() icstage.EnableStatus {
