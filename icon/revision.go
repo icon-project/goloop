@@ -201,8 +201,10 @@ func onRevision13(s *chainScore, _ int) error {
 }
 
 func onRevision14(s *chainScore, _ int) error {
-	// The time when predefined accounts will be blocked is changed from rev10 to rev14
-	s.blockAccounts()
+	if s.cc.ChainID() == CIDForMainNet {
+		// The time when predefined accounts will be blocked is changed from rev10 to rev14
+		s.blockAccounts()
+	}
 
 	as := s.cc.GetAccountState(state.SystemID)
 
