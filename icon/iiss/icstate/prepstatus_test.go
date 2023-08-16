@@ -17,12 +17,14 @@
 package icstate
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
@@ -681,6 +683,55 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 	}
 }
 
+func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
+	var err error
+	args := []struct{
+		dsaMask int64
+		jailFlags int
+		unjailRequestHeight int64
+		minDoubleVoteHeight int64
+	}{
+		{0, 0, 0, 0},
+		{1, 0, 0, 0},
+		{0, JFlagInJail, 100, 0},
+		{0, JFlagInJail | JFlagUnjailing, 100, 0},
+		{0, JFlagInJail | JFlagDoubleVote, 100, 0},
+		{0, 0, 100, 0},
+		{0, 0, 100, 200},
+		{1, JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 100, 200},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T){
+			state := NewPRepStatus()
+			state.dsaMask = arg.dsaMask
+			state.ji.SetFlags(arg.jailFlags)
+			state.ji.SetUnajilRequestHeight(arg.unjailRequestHeight)
+			state.ji.SetMinDoubleVoteHeight(arg.minDoubleVoteHeight)
+			state.setDirty()
+
+			snapshot0 := state.GetSnapshot()
+			assert.Equal(t, arg.unjailRequestHeight, snapshot0.UnjailRequestHeight())
+			assert.Equal(t, arg.minDoubleVoteHeight, snapshot0.MinDoubleVoteHeight())
+
+			buf := bytes.NewBuffer(nil)
+			e := codec.BC.NewEncoder(buf)
+			err = snapshot0.RLPEncodeFields(e)
+			assert.NoError(t, err)
+			e.Close()
+
+			snapshot1 := &PRepStatusSnapshot{}
+			d := codec.BC.NewDecoder(bytes.NewReader(buf.Bytes()))
+			err = snapshot1.RLPDecodeFields(d)
+			assert.NoError(t, err)
+
+			assert.True(t, snapshot0.Equal(snapshot1))
+			d.Close()
+		})
+	}
+}
+
 func TestPRepStatusData_getPenaltyType(t *testing.T) {
 	ps := NewPRepStatus()
 	assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
@@ -699,13 +750,13 @@ func TestPRepStatusData_getPenaltyType(t *testing.T) {
 	assert.Equal(t, icmodule.PenaltyPRepDisqualification, ps.getPenaltyType())
 }
 
-func TestPrepStatusData_ToJSON(t *testing.T) {
+func TestPRepStatusData_ToJSON(t *testing.T) {
 	ps := NewPRepStatus()
 	jso := ps.ToJSON(100, 5, 0)
 
-	penalty, ok := jso["penalty"].(int64)
+	penalty, ok := jso["penalty"].(int)
 	assert.True(t, ok)
-	assert.Equal(t, int64(icmodule.PenaltyNone), penalty)
+	assert.Equal(t, int(icmodule.PenaltyNone), penalty)
 
 	grade, ok := jso["grade"].(int)
 	assert.True(t, ok)

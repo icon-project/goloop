@@ -126,6 +126,9 @@ type prepStatusData struct {
 	lastHeight   int64
 	dsaMask      int64
 
+	// Since IISS-4.0
+	ji JailInfo
+
 	effectiveDelegated *big.Int
 }
 
@@ -257,7 +260,8 @@ func (ps *prepStatusData) equal(other *prepStatusData) bool {
 		ps.vPenaltyMask == other.vPenaltyMask &&
 		ps.lastState == other.lastState &&
 		ps.lastHeight == other.lastHeight &&
-		ps.dsaMask == other.dsaMask
+		ps.dsaMask == other.dsaMask &&
+		ps.ji == other.ji
 }
 
 func (ps *prepStatusData) clone() prepStatusData {
@@ -273,6 +277,7 @@ func (ps *prepStatusData) clone() prepStatusData {
 		lastState:    ps.lastState,
 		lastHeight:   ps.lastHeight,
 		dsaMask:      ps.dsaMask,
+		ji:           ps.ji,
 
 		effectiveDelegated: ps.effectiveDelegated,
 	}
@@ -282,7 +287,7 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement icmodule.Rat
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
-	jso["penalty"] = int64(ps.getPenaltyType())
+	jso["penalty"] = int(ps.getPenaltyType())
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
@@ -293,6 +298,7 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement icmodule.Rat
 	if dsaMask != 0 {
 		jso["hasPublicKey"] = (ps.GetDSAMask() & dsaMask) == dsaMask
 	}
+	ps.ji.ToJSON(jso)
 	return jso
 }
 
@@ -334,12 +340,14 @@ func (ps *prepStatusData) IsEmpty() bool {
 		ps.lastState == None &&
 		ps.lastHeight == 0 &&
 		ps.status == NotReady &&
-		ps.dsaMask == 0
+		ps.dsaMask == 0 &&
+		ps.ji.IsEmpty()
 }
 
 func (ps *prepStatusData) String() string {
 	return fmt.Sprintf(
-		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d dd=%s bd=%s vote=%s ed=%d dm=%d",
+		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d "+
+			"dd=%s bd=%s vote=%s ed=%d dm=%d ji=%v",
 		ps.status,
 		ps.grade,
 		ps.lastState,
@@ -353,6 +361,7 @@ func (ps *prepStatusData) String() string {
 		ps.getVoted(),
 		ps.effectiveDelegated,
 		ps.dsaMask,
+		ps.ji,
 	)
 }
 
@@ -364,9 +373,9 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			format = "PRepStatus{" +
 				"status=%s grade=%s lastState=%s lastHeight=%d " +
 				"vFail=%d vTotal=%d vPenaltyCount=%d vFailCont=%d " +
-				"delegated=%s bonded=%s effectiveDelegated=%d dsaMask=%d}"
+				"delegated=%s bonded=%s effectiveDelegated=%d dsaMask=%d ji=%v}"
 		} else {
-			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s %d %d}"
+			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s %d %d %v}"
 		}
 		_, _ = fmt.Fprintf(
 			f, format,
@@ -382,10 +391,23 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			ps.bonded,
 			ps.effectiveDelegated,
 			ps.dsaMask,
+			ps.ji,
 		)
 	case 's':
 		_, _ = fmt.Fprint(f, ps.String())
 	}
+}
+
+func (ps *prepStatusData) JailFlags() int {
+	return ps.ji.Flags()
+}
+
+func (ps *prepStatusData) UnjailRequestHeight() int64 {
+	return ps.ji.UnjailRequestHeight()
+}
+
+func (ps *prepStatusData) MinDoubleVoteHeight() int64 {
+	return ps.ji.MinDoubleVoteHeight()
 }
 
 type PRepStatusSnapshot struct {
@@ -398,7 +420,7 @@ func (ps *PRepStatusSnapshot) Version() int {
 }
 
 func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	if n, err := decoder.DecodeMulti(
+	n, err := decoder.DecodeMulti(
 		&ps.grade,
 		&ps.status,
 		&ps.delegated,
@@ -410,11 +432,18 @@ func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 		&ps.lastState,
 		&ps.lastHeight,
 		&ps.dsaMask,
-	); err == nil || (n == 10 && err == io.EOF) {
+		&ps.ji,
+	)
+	if err == nil {
 		return nil
-	} else {
+	}
+	if err != io.EOF {
 		return err
 	}
+	if n != 10 && n != 11 {
+		return icmodule.InvalidStateError.Errorf("InvalidFormat(n=%d)", n)
+	}
+	return nil
 }
 
 func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
@@ -432,10 +461,15 @@ func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	); err != nil {
 		return err
 	}
-	if ps.dsaMask == 0 {
-		return nil
+
+	if !ps.ji.IsEmpty() {
+		return encoder.EncodeMulti(ps.dsaMask, &ps.ji)
+	} else {
+		if ps.dsaMask != 0 {
+			return encoder.Encode(ps.dsaMask)
+		}
 	}
-	return encoder.Encode(ps.dsaMask)
+	return nil
 }
 
 func (ps *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
