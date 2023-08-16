@@ -829,7 +829,7 @@ func TestState_InitCommissionInfo(t *testing.T) {
 	assert.Equal(t, maxChangeRate, pb.MaxCommissionChangeRate())
 
 	jso = pb.ToJSON(owner)
-	assert.Equal(t, rate, jso["commissionRate"].(icmodule.Rate))
-	assert.Equal(t, maxRate, jso["maxCommissionRate"])
-	assert.Equal(t, maxChangeRate, jso["maxCommissionChangeRate"])
+	assert.Equal(t, int64(rate), jso["commissionRate"])
+	assert.Equal(t, int64(maxRate), jso["maxCommissionRate"])
+	assert.Equal(t, int64(maxChangeRate), jso["maxCommissionChangeRate"])
 }
