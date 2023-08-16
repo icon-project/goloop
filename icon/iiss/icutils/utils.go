@@ -254,3 +254,11 @@ func CalcPower(br icmodule.Rate, bonded, voted *big.Int) *big.Int {
 	power.Div(power, br.NumBigInt())
 	return MinBigInt(power, voted)
 }
+
+func MatchAll(flags, flag int) bool {
+	return flags&flag == flag
+}
+
+func MatchAny(flags, flag int) bool {
+	return flags&flag != 0
+}
