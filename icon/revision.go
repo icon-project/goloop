@@ -25,7 +25,7 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-type handleRevFunc func(*chainScore, state.AccountState, int) error
+type handleRevFunc func(*chainScore) error
 
 var handleRevFuncs = map[int]handleRevFunc{
 	icmodule.Revision5:  onRevision5,
@@ -40,8 +40,10 @@ var handleRevFuncs = map[int]handleRevFunc{
 	icmodule.Revision24: onRevision24,
 }
 
-func onRevision5(s *chainScore, as state.AccountState, revision int) error {
+func onRevision5(s *chainScore) error {
 	// goloop engine
+
+	as := s.cc.GetAccountState(state.SystemID)
 
 	// enable Fee sharing 2.0
 	systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
@@ -140,11 +142,8 @@ func onRevision5(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision6(s *chainScore, as state.AccountState, revision int) error {
-	es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if !ok {
-		return nil
-	}
+func onRevision6(s *chainScore) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
 			return err
@@ -153,11 +152,8 @@ func onRevision6(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision9(s *chainScore, as state.AccountState, revision int) error {
-	es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if !ok {
-		return nil
-	}
+func onRevision9(s *chainScore) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RevisionMultipleUnstakes
 	if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
@@ -185,7 +181,9 @@ func onRevision9(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision13(s *chainScore, as state.AccountState, revision int) error {
+func onRevision13(s *chainScore) error {
+	as := s.cc.GetAccountState(state.SystemID)
+
 	// using v2 block for ICON2
 	if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
 		return err
@@ -198,19 +196,18 @@ func onRevision13(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision14(s *chainScore, as state.AccountState, revision int) error {
+func onRevision14(s *chainScore) error {
 	// The time when predefined accounts will be blocked is changed from rev10 to rev14
 	s.blockAccounts()
+
+	as := s.cc.GetAccountState(state.SystemID)
 
 	// disable Virtual step
 	if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.DisableDepositTerm); err != nil {
 		return err
 	}
 
-	es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if !ok {
-		return nil
-	}
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// Rev13: IISS-2.x works on goloop engine, enabling some IISS-3.x related APIs.
 	//     (getBond, setBond, getBonderList, setBonderList)
@@ -230,7 +227,9 @@ func onRevision14(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision15(s *chainScore, as state.AccountState, revision int) error {
+func onRevision15(s *chainScore) error {
+	as := s.cc.GetAccountState(state.SystemID)
+
 	// Enable JavaEE
 	if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(EETypesJavaAndPython); err != nil {
 		return err
@@ -239,12 +238,9 @@ func onRevision15(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision17(s *chainScore, as state.AccountState, revision int) error {
-	es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if !ok {
-		return nil
-	}
-
+func onRevision17(s *chainScore) error {
+	revision := icmodule.Revision17
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	iconConfig := s.loadIconConfig()
 
 	// Set slash rate of Non Vote Penalty
@@ -265,7 +261,7 @@ func onRevision17(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision21(s *chainScore, as state.AccountState, revision int) error {
+func onRevision21(s *chainScore) error {
 	if s.cc.ChainID() == CIDForMainNet {
 		s.blockAccounts2()
 	}
@@ -273,11 +269,8 @@ func onRevision21(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision23(s *chainScore, as state.AccountState, revision int) error {
-	es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if !ok {
-		return nil
-	}
+func onRevision23(s *chainScore) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RewardFundAllocation2
 	r := es.State.GetRewardFundV1()
@@ -311,11 +304,8 @@ func onRevision23(s *chainScore, as state.AccountState, revision int) error {
 	return nil
 }
 
-func onRevision24(s *chainScore, as state.AccountState, revision int) error {
-	es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	if !ok {
-		return nil
-	}
+func onRevision24(s *chainScore) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// IISS 4.0
 	if err := es.State.SetIISSVersion(icstate.IISSVersion4); err != nil {

@@ -22,7 +22,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -102,16 +101,8 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 	for rev := r1 + 1; rev <= r2; rev++ {
 		if fn, ok := handleRevFuncs[rev]; ok {
-			if err := fn(s, as, rev); err != nil {
+			if err := fn(s); err != nil {
 				s.log.Infof("call handleRevFunc for %d", rev)
-				return err
-			}
-		}
-
-		if es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl); ok {
-			// Start genesis term according to the period information
-			// if it's not started.
-			if err := es.GenesisTerm(s.cc.BlockHeight(), r2); err != nil {
 				return err
 			}
 		}
