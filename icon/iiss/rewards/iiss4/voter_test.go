@@ -20,13 +20,14 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestVotingEvents(t *testing.T) {
@@ -356,18 +357,20 @@ func TestVoter(t *testing.T) {
 		owner       module.Address
 		status      icstage.EnableStatus
 		accVoted    int64
+		accPower    int64
 		voterReward int64
 	}{
-		{a1, icstage.ESEnable, 100_000, 1_000_000},
-		{a2, icstage.ESJail, 200_000, 0},
-		{a3, icstage.ESUnjail, 300_000, 0},
-		{a4, icstage.ESDisablePermanent, 400_000, 0},
+		{a1, icstage.ESEnable, 100_000, 100_000, 1_000_000},
+		{a2, icstage.ESJail, 200_000, 200_000, 0},
+		{a3, icstage.ESUnjail, 300_000, 300_000, 0},
+		{a4, icstage.ESDisablePermanent, 400_000, 400_000, 0},
 	}
 	pInfo := NewPRepInfo(5, 3, 100)
 	for _, p := range preps {
 		k := icutils.ToKey(p.owner)
 		np := NewPRep(p.owner, p.status, new(big.Int), new(big.Int), 0, true)
 		np.accumulatedVoted = big.NewInt(p.accVoted)
+		np.accumulatedPower = big.NewInt(p.accPower)
 		np.SetVoterReward(big.NewInt(p.voterReward))
 		pInfo.preps[k] = np
 	}
