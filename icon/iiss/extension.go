@@ -1146,6 +1146,7 @@ func (es *ExtensionStateImpl) applyCalculationResult(calculator Calculator, bloc
 }
 
 func (es *ExtensionStateImpl) GenesisTerm(blockHeight int64, revision int) error {
+	// Start genesis term according to the period information if it's not started.
 	if revision >= icmodule.RevisionIISS && es.State.GetTermSnapshot() == nil {
 		term := icstate.GenesisTerm(es.State, blockHeight+1, revision)
 		if err := es.State.SetTermSnapshot(term.GetSnapshot()); err != nil {

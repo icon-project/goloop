@@ -25,7 +25,7 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-type handleRevFunc func(*chainScore) error
+type handleRevFunc func(s *chainScore, targetRev int) error
 
 var handleRevFuncs = map[int]handleRevFunc{
 	icmodule.Revision5:  onRevision5,
@@ -40,7 +40,7 @@ var handleRevFuncs = map[int]handleRevFunc{
 	icmodule.Revision24: onRevision24,
 }
 
-func onRevision5(s *chainScore) error {
+func onRevision5(s *chainScore, targetRev int) error {
 	// goloop engine
 
 	as := s.cc.GetAccountState(state.SystemID)
@@ -139,10 +139,14 @@ func onRevision5(s *chainScore) error {
 		}
 	}
 
+	if err := es.GenesisTerm(s.cc.BlockHeight(), targetRev); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func onRevision6(s *chainScore) error {
+func onRevision6(s *chainScore, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
@@ -152,7 +156,7 @@ func onRevision6(s *chainScore) error {
 	return nil
 }
 
-func onRevision9(s *chainScore) error {
+func onRevision9(s *chainScore, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RevisionMultipleUnstakes
@@ -181,7 +185,7 @@ func onRevision9(s *chainScore) error {
 	return nil
 }
 
-func onRevision13(s *chainScore) error {
+func onRevision13(s *chainScore, _ int) error {
 	as := s.cc.GetAccountState(state.SystemID)
 
 	// using v2 block for ICON2
@@ -196,7 +200,7 @@ func onRevision13(s *chainScore) error {
 	return nil
 }
 
-func onRevision14(s *chainScore) error {
+func onRevision14(s *chainScore, _ int) error {
 	// The time when predefined accounts will be blocked is changed from rev10 to rev14
 	s.blockAccounts()
 
@@ -227,7 +231,7 @@ func onRevision14(s *chainScore) error {
 	return nil
 }
 
-func onRevision15(s *chainScore) error {
+func onRevision15(s *chainScore, _ int) error {
 	as := s.cc.GetAccountState(state.SystemID)
 
 	// Enable JavaEE
@@ -238,7 +242,7 @@ func onRevision15(s *chainScore) error {
 	return nil
 }
 
-func onRevision17(s *chainScore) error {
+func onRevision17(s *chainScore, _ int) error {
 	revision := icmodule.Revision17
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	iconConfig := s.loadIconConfig()
@@ -261,7 +265,7 @@ func onRevision17(s *chainScore) error {
 	return nil
 }
 
-func onRevision21(s *chainScore) error {
+func onRevision21(s *chainScore, _ int) error {
 	if s.cc.ChainID() == CIDForMainNet {
 		s.blockAccounts2()
 	}
@@ -269,7 +273,7 @@ func onRevision21(s *chainScore) error {
 	return nil
 }
 
-func onRevision23(s *chainScore) error {
+func onRevision23(s *chainScore, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RewardFundAllocation2
@@ -304,7 +308,7 @@ func onRevision23(s *chainScore) error {
 	return nil
 }
 
-func onRevision24(s *chainScore) error {
+func onRevision24(s *chainScore, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// IISS 4.0

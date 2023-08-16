@@ -93,7 +93,7 @@ func (s *chainScore) fromGovernance() bool {
 	return s.cc.Governance().Equal(s.from)
 }
 
-func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) error {
+func (s *chainScore) handleRevisionChange(r1, r2 int) error {
 	s.log.Infof("handleRevisionChange %d->%d", r1, r2)
 	if r1 >= r2 {
 		return nil
@@ -101,12 +101,11 @@ func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 
 	for rev := r1 + 1; rev <= r2; rev++ {
 		if fn, ok := handleRevFuncs[rev]; ok {
-			if err := fn(s); err != nil {
+			if err := fn(s, r2); err != nil {
 				s.log.Infof("call handleRevFunc for %d", rev)
 				return err
 			}
 		}
-
 	}
 	return nil
 }
@@ -173,7 +172,7 @@ func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(code); err != nil {
 		return err
 	}
-	if err := s.handleRevisionChange(as, int(r), int(code.Int64())); err != nil {
+	if err := s.handleRevisionChange(int(r), int(code.Int64())); err != nil {
 		return nil
 	}
 	as.MigrateForRevision(s.cc.ToRevision(int(code.Int64())))

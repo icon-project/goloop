@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -1291,15 +1290,8 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
-	if err := s.handleRevisionChange(as, icmodule.Revision1, revision); err != nil {
+	if err := s.handleRevisionChange(icmodule.Revision1, revision); err != nil {
 		return err
-	}
-
-	if es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl); ok {
-		// Start genesis term according to the period information if it's not started.
-		if err := es.GenesisTerm(s.cc.BlockHeight(), revision); err != nil {
-			return err
-		}
 	}
 
 	return nil
