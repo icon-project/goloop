@@ -22,8 +22,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss"
-	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -95,277 +93,16 @@ func (s *chainScore) fromGovernance() bool {
 	return s.cc.Governance().Equal(s.from)
 }
 
-func (s *chainScore) handleRevisionChange(as state.AccountState, r1, r2 int) error {
+func (s *chainScore) handleRevisionChange(r1, r2 int) error {
+	s.log.Infof("handleRevisionChange %d->%d", r1, r2)
 	if r1 >= r2 {
 		return nil
 	}
 
-	// for goloop engine
-
-	if r1 < icmodule.Revision5 && r2 >= icmodule.Revision5 {
-		// enable Fee sharing 2.0
-		systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
-		systemConfig |= state.SysConfigFeeSharing
-		if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(systemConfig); err != nil {
-			return err
-		}
-		// enable Virtual step
-		depositTerm := scoredb.NewVarDB(as, state.VarDepositTerm).Int64()
-		if depositTerm == icmodule.DisableDepositTerm {
-			if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.InitialDepositTerm); err != nil {
-				return err
-			}
-		}
-	}
-
-	if r1 < icmodule.RevisionEnableFee3 && r2 >= icmodule.RevisionEnableFee3 {
-		// disable Virtual step
-		if err := scoredb.NewVarDB(as, state.VarDepositTerm).Set(icmodule.DisableDepositTerm); err != nil {
-			return err
-		}
-	}
-
-	if r1 < icmodule.RevisionICON2R0 && r2 >= icmodule.RevisionICON2R0 {
-		// using v2 block for ICON2
-		if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
-			return err
-		}
-		if s.cc.ChainID() == CIDForMainNet {
-			if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(9); err != nil {
-				return err
-			}
-		}
-	}
-
-	// for ICON platform IISS
-
-	if r2 < icmodule.RevisionIISS {
-		return nil
-	}
-	if r1 < icmodule.RevisionIISS && r2 >= icmodule.RevisionIISS {
-		iconConfig := s.loadIconConfig()
-		s.cc.Logger().Infof("IconConfig: %s", iconConfig)
-
-		s.cc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(s.cc.Database(), nil))
-		es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
-		if err := es.State.SetIISSVersion(icstate.IISSVersion2); err != nil {
-			return err
-		}
-		if err := es.State.SetTermPeriod(iconConfig.TermPeriod.Int64()); err != nil {
-			return err
-		}
-		if err := es.State.SetIRep(iconConfig.Irep.Value()); err != nil {
-			return err
-		}
-		if err := es.State.SetRRep(iconConfig.Rrep.Value()); err != nil {
-			return err
-		}
-		if err := es.State.SetMainPRepCount(iconConfig.MainPRepCount.Int64()); err != nil {
-			return err
-		}
-		if err := es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
-			return err
-		}
-		if err := es.State.SetBondRequirement(icmodule.ToRate(iconConfig.BondRequirement.Int64())); err != nil {
-			return err
-		}
-		if err := es.State.SetLockVariables(iconConfig.LockMinMultiplier.Value(), iconConfig.LockMaxMultiplier.Value()); err != nil {
-			return err
-		}
-		if err := es.State.SetUnbondingPeriodMultiplier(iconConfig.UnbondingPeriodMultiplier.Int64()); err != nil {
-			return err
-		}
-		if err := es.State.SetDelegationSlotMax(iconConfig.DelegationSlotMax.Int64()); err != nil {
-			return err
-		}
-		if err := applyRewardFund(iconConfig, es.State); err != nil {
-			return err
-		}
-		if err := es.State.SetUnstakeSlotMax(iconConfig.UnstakeSlotMax.Int64()); err != nil {
-			return err
-		}
-		if err := es.State.SetUnbondingMax(iconConfig.UnbondingMax.Int64()); err != nil {
-			return err
-		}
-		if err := es.State.SetValidationPenaltyCondition(int(iconConfig.ValidationPenaltyCondition.Int64())); err != nil {
-			return err
-		}
-		if err := es.State.SetConsistentValidationPenaltyCondition(
-			iconConfig.ConsistentValidationPenaltyCondition.Int64()); err != nil {
-			return err
-		}
-		if err := es.State.SetConsistentValidationPenaltyMask(
-			iconConfig.ConsistentValidationPenaltyMask.Int64()); err != nil {
-			return err
-		}
-		// 10% slashRate is hardcoded for backward compatibility
-		if err := es.State.SetConsistentValidationPenaltySlashRate(r2, icmodule.ToRate(10)); err != nil {
-			return err
-		}
-	}
-
-	if es, ok := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl); ok {
-		iissVersion := es.State.GetIISSVersion()
-
-		if r1 < icmodule.RevisionIISS && r2 >= icmodule.RevisionIISS {
-			if iissVersion < icstate.IISSVersion2 {
-				iissVersion = icstate.IISSVersion2
-			}
-			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.DefaultUnstakeSlotMax {
-				if err := es.State.SetUnstakeSlotMax(icmodule.InitialUnstakeSlotMax); err != nil {
-					return err
-				}
-			}
-			if delegationSlotMax := es.State.GetDelegationSlotMax(); delegationSlotMax == icmodule.DefaultDelegationSlotMax {
-				if err := es.State.SetDelegationSlotMax(icmodule.InitialDelegationSlotMax); err != nil {
-					return err
-				}
-			}
-			if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.DefaultBondRequirement) {
-				if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.IISS2BondRequirement)); err != nil {
-					return err
-				}
-			}
-		}
-
-		if r1 < icmodule.RevisionDecentralize && r2 >= icmodule.RevisionDecentralize {
-			if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
-				if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
-					return err
-				}
-			}
-		}
-
-		if r1 < icmodule.RevisionMultipleUnstakes && r2 >= icmodule.RevisionMultipleUnstakes {
-			if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
-				if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
-					return err
-				}
-			}
-		}
-
-		if r1 < icmodule.RevisionDelegationSlotMaxTo100 && r2 >= icmodule.RevisionDelegationSlotMaxTo100 {
-			if dSlotMax := es.State.GetDelegationSlotMax(); dSlotMax == icmodule.InitialDelegationSlotMax {
-				if err := es.State.SetDelegationSlotMax(icmodule.DefaultDelegationSlotMax); err != nil {
-					return err
-				}
-			}
-		}
-
-		if r1 < icmodule.RevisionSetIRepViaNetworkProposal && r2 >= icmodule.RevisionSetIRepViaNetworkProposal {
-			if irep := es.State.GetIRep(); irep.Sign() == 0 {
-				if term := es.State.GetTermSnapshot(); term != nil {
-					if err := es.State.SetIRep(term.Irep()); err != nil {
-						return err
-					}
-				}
-			}
-		}
-
-		// The time when predefined accounts will be blocked is changed from rev10 to rev14
-		if r1 < icmodule.RevisionBlockAccounts && r2 >= icmodule.RevisionBlockAccounts && s.cc.ChainID() == CIDForMainNet {
-			s.blockAccounts()
-		}
-
-		// R0: IISS-2.x works on goloop engine, enabling some IISS-3.x related APIs.
-		//     (getBond, setBond, getBonderList, setBonderList)
-		// R1: IISS-3.x works fully on goloop engine.
-		if r1 < icmodule.RevisionEnableIISS3 && r2 >= icmodule.RevisionEnableIISS3 {
-			if iissVersion < icstate.IISSVersion3 {
-				iissVersion = icstate.IISSVersion3
-			}
-			if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.IISS2BondRequirement) {
-				if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
-					return err
-				}
-			}
-			if err := es.ClearPRepIllegalDelegated(); err != nil {
-				return err
-			}
-		}
-
-		// Start genesis term according to the period information
-		// if it's not started.
-		if err := es.GenesisTerm(s.cc.BlockHeight(), r2); err != nil {
-			return err
-		}
-
-		// Enable JavaEE
-		if r1 < icmodule.RevisionEnableJavaEE && r2 >= icmodule.RevisionEnableJavaEE {
-			if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(EETypesJavaAndPython); err != nil {
-				return err
-			}
-		}
-
-		// Set slash rate of Non Vote Penalty
-		if r1 < icmodule.RevisionICON2R3 && r2 >= icmodule.RevisionICON2R3 {
-			iconConfig := s.loadIconConfig()
-			if err := es.State.SetConsistentValidationPenaltySlashRate(
-				r2, icmodule.ToRate(iconConfig.ConsistentValidationPenaltySlashRate.Int64())); err != nil {
-				return err
-			}
-			if err := es.State.SetNonVotePenaltySlashRate(
-				r2, icmodule.ToRate(iconConfig.NonVotePenaltySlashRate.Int64())); err != nil {
-				return err
-			}
-		}
-
-		// Enable ExtraMainPReps
-		if r1 < icmodule.RevisionExtraMainPReps && r2 >= icmodule.RevisionExtraMainPReps {
-			iconConfig := s.loadIconConfig()
-			extraMainPRepCount := iconConfig.ExtraMainPRepCount.Int64()
-			if err := es.State.SetExtraMainPRepCount(extraMainPRepCount); err != nil {
-				return err
-			}
-		}
-
-		if r1 < icmodule.RevisionPreIISS4 && r2 >= icmodule.RevisionPreIISS4 {
-			if err := s.onRevisionPreIISS4(es); err != nil {
-				return err
-			}
-
-			// MinBond
-			if err := es.State.SetMinimumBond(icmodule.DefaultMinBond); err != nil {
-				return err
-			}
-		}
-
-		if r1 < icmodule.RevisionIISS4 && r2 >= icmodule.RevisionIISS4 {
-			if iissVersion < icstate.IISSVersion4 {
-				iissVersion = icstate.IISSVersion4
-			}
-		}
-
-		if err := es.State.SetIISSVersion(iissVersion); err != nil {
-			return err
-		}
-	}
-	if r1 < icmodule.Revision21 && r2 >= icmodule.Revision21 && s.cc.ChainID() == CIDForMainNet {
-		s.blockAccounts2()
-	}
-	return nil
-}
-
-func (s *chainScore) onRevisionPreIISS4(es *iiss.ExtensionStateImpl) error {
-	// RewardFundAllocation2
-	r := es.State.GetRewardFundV1()
-	if err := es.State.SetRewardFund(r.ToRewardFundV2()); err != nil {
-		return err
-	}
-
-	if s.cc.ChainID() == CIDForMainNet {
-		items := []struct {
-			pt   icmodule.PenaltyType
-			rate icmodule.Rate
-		}{
-			{icmodule.PenaltyPRepDisqualification, icmodule.DefaultPRepDisqualificationSlashingRate},
-			{icmodule.PenaltyContinuousBlockValidation, icmodule.DefaultContinuousBlockValidationSlashingRate},
-			{icmodule.PenaltyBlockValidation, icmodule.DefaultBlockValidationSlashingRate},
-			{icmodule.PenaltyMissingNetworkProposalVote, icmodule.DefaultMissingNetworkProposalVoteSlashingRate},
-			{icmodule.PenaltyDoubleVote, icmodule.DefaultDoubleVoteSlashingRate},
-		}
-		for _, item := range items {
-			if err := es.State.SetSlashingRate(item.pt, item.rate); err != nil {
+	for rev := r1 + 1; rev <= r2; rev++ {
+		if fn, ok := handleRevFuncs[rev]; ok {
+			if err := fn(s, r2); err != nil {
+				s.log.Infof("call handleRevFunc for %d", rev)
 				return err
 			}
 		}
@@ -435,7 +172,7 @@ func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(code); err != nil {
 		return err
 	}
-	if err := s.handleRevisionChange(as, int(r), int(code.Int64())); err != nil {
+	if err := s.handleRevisionChange(int(r), int(code.Int64())); err != nil {
 		return nil
 	}
 	as.MigrateForRevision(s.cc.ToRevision(int(code.Int64())))

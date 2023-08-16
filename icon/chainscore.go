@@ -658,7 +658,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4-1},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setNonVoteSlashingRate",
 		scoreapi.FlagExternal, 1,
@@ -666,7 +666,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4-1},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setSlashingRates",
 		scoreapi.FlagExternal, 1,
@@ -1290,7 +1290,11 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
-	return s.handleRevisionChange(as, icmodule.Revision1, revision)
+	if err := s.handleRevisionChange(icmodule.Revision1, revision); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *chainScore) Update(param []byte) error {
