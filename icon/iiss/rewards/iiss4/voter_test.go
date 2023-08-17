@@ -396,13 +396,13 @@ func TestVoter(t *testing.T) {
 			}},
 	}
 	expectVotes := map[string]*big.Int{
-		icutils.ToKey(a1): big.NewInt(int64(110 * pInfo.OffsetLimit())),
-		icutils.ToKey(a2): big.NewInt(int64(220 * pInfo.OffsetLimit())),
-		icutils.ToKey(a3): big.NewInt(int64(330 * pInfo.OffsetLimit())),
-		icutils.ToKey(a4): big.NewInt(int64(440 * pInfo.OffsetLimit())),
+		icutils.ToKey(a1): big.NewInt(110 * pInfo.GetTermPeriod()),
+		icutils.ToKey(a2): big.NewInt(220 * pInfo.GetTermPeriod()),
+		icutils.ToKey(a3): big.NewInt(330 * pInfo.GetTermPeriod()),
+		icutils.ToKey(a4): big.NewInt(440 * pInfo.GetTermPeriod()),
 	}
 	for _, voting := range votings {
-		voter.AddVoting(voting, pInfo.OffsetLimit())
+		voter.AddVoting(voting, pInfo.GetTermPeriod())
 	}
 	for key, amount := range voter.votes {
 		v, _ := expectVotes[key]
@@ -432,15 +432,15 @@ func TestVoter(t *testing.T) {
 	}
 	expectVotes = map[string]*big.Int{
 		icutils.ToKey(a1): big.NewInt(
-			int64(110*pInfo.OffsetLimit() + 10*(pInfo.OffsetLimit()-10) + -10*(pInfo.OffsetLimit()-50)),
+			110*pInfo.GetTermPeriod() + int64(10*(pInfo.OffsetLimit()-10)+-10*(pInfo.OffsetLimit()-50)),
 		),
 		icutils.ToKey(a2): big.NewInt(
-			int64(220*pInfo.OffsetLimit() + 20*(pInfo.OffsetLimit()-10) + -20*(pInfo.OffsetLimit()-50)),
+			220*pInfo.GetTermPeriod() + int64(20*(pInfo.OffsetLimit()-10)+-20*(pInfo.OffsetLimit()-50)),
 		),
 		icutils.ToKey(a3): big.NewInt(
-			int64(330*pInfo.OffsetLimit() + 30*(pInfo.OffsetLimit()-10) + -30*(pInfo.OffsetLimit()-50)),
+			330*pInfo.GetTermPeriod() + int64(30*(pInfo.OffsetLimit()-10)+-30*(pInfo.OffsetLimit()-50)),
 		),
-		icutils.ToKey(a4): big.NewInt(int64(440 * pInfo.OffsetLimit())),
+		icutils.ToKey(a4): big.NewInt(440 * pInfo.GetTermPeriod()),
 	}
 	for _, event := range events {
 		voter.AddEvent(event, pInfo.OffsetLimit()-event.Offset())

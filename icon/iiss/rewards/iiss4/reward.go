@@ -217,14 +217,14 @@ func (r *reward) voterReward() error {
 			return err
 		}
 		voter := NewVoter(addr)
-		voter.AddVoting(icreward.ToDelegating(o), r.pi.OffsetLimit())
+		voter.AddVoting(icreward.ToDelegating(o), r.pi.GetTermPeriod())
 
 		b, err := base.GetBonding(addr)
 		if err != nil {
 			return err
 		}
 		if b != nil && b.IsEmpty() == false {
-			voter.AddVoting(b, r.pi.OffsetLimit())
+			voter.AddVoting(b, r.pi.GetTermPeriod())
 		}
 
 		events := r.ve.Get(addr)
@@ -267,7 +267,7 @@ func (r *reward) voterReward() error {
 		}
 
 		voter := NewVoter(addr)
-		voter.AddVoting(icreward.ToBonding(o), r.pi.OffsetLimit())
+		voter.AddVoting(icreward.ToBonding(o), r.pi.GetTermPeriod())
 
 		events := r.ve.Get(addr)
 		if events != nil {

@@ -173,8 +173,8 @@ func (v *Voter) addVoting(voting icstate.Voting, period *big.Int) {
 	}
 }
 
-func (v *Voter) AddVoting(voting icreward.Voting, period int) {
-	pr := big.NewInt(int64(period))
+func (v *Voter) AddVoting(voting icreward.Voting, period int64) {
+	pr := big.NewInt(period)
 	iter := voting.Iterator()
 	for ; iter.Has(); iter.Next() {
 		if vote, err := iter.Get(); err != nil {
