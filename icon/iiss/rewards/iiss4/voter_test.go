@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -365,7 +366,7 @@ func TestVoter(t *testing.T) {
 		{a3, icstage.ESUnjail, 300_000, 300_000, 0},
 		{a4, icstage.ESDisablePermanent, 400_000, 400_000, 0},
 	}
-	pInfo := NewPRepInfo(5, 3, 100)
+	pInfo := NewPRepInfo(5, 3, 100, log.New())
 	for _, p := range preps {
 		k := icutils.ToKey(p.owner)
 		np := NewPRep(p.owner, p.status, new(big.Int), new(big.Int), 0, true)
@@ -375,7 +376,7 @@ func TestVoter(t *testing.T) {
 		pInfo.preps[k] = np
 	}
 
-	voter := NewVoter(a1)
+	voter := NewVoter(a1, log.New())
 	assert.Equal(t, a1, voter.Owner())
 
 	// AddVoting()

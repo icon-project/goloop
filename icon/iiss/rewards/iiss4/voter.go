@@ -20,6 +20,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -157,6 +158,8 @@ func NewVotingEvents() *VotingEvents {
 type Voter struct {
 	owner module.Address
 	votes map[string]*big.Int
+
+	log log.Logger
 }
 
 func (v *Voter) Owner() module.Address {
@@ -174,6 +177,7 @@ func (v *Voter) addVoting(voting icstate.Voting, period *big.Int) {
 }
 
 func (v *Voter) AddVoting(voting icreward.Voting, period int64) {
+	v.log.Debugf("Add voting to %s: %+v, %d", v.owner, voting, period)
 	pr := big.NewInt(period)
 	iter := voting.Iterator()
 	for ; iter.Has(); iter.Next() {
@@ -186,6 +190,7 @@ func (v *Voter) AddVoting(voting icreward.Voting, period int64) {
 }
 
 func (v *Voter) AddEvent(event *VoteEvent, period int) {
+	v.log.Debugf("Add event to %s: %+v, %d", v.owner, event, period)
 	pr := big.NewInt(int64(period))
 	for _, vote := range event.Votes() {
 		v.addVoting(vote, pr)
@@ -198,18 +203,20 @@ func (v *Voter) CalculateReward(pInfo *PRepInfo) *big.Int {
 	for k, vote := range v.votes {
 		prep := pInfo.GetPRep(k)
 		if prep != nil && prep.Rewardable(pInfo.ElectedPRepCount()) {
-			reward := new(big.Int).Mul(vote, prep.VoterReward())
-			reward.Div(reward, prep.AccumulatedVoted())
-			iScore.Add(iScore, reward)
+			r := new(big.Int).Mul(vote, prep.VoterReward())
+			r.Div(r, prep.AccumulatedVoted())
+			v.log.Debugf("voter reward %d = %d * %d / %d", r, vote, prep.VoterReward(), prep.AccumulatedVoted())
+			iScore.Add(iScore, r)
 		}
 	}
 
 	return iScore
 }
 
-func NewVoter(owner module.Address) *Voter {
+func NewVoter(owner module.Address, logger log.Logger) *Voter {
 	return &Voter{
 		owner: owner,
 		votes: make(map[string]*big.Int),
+		log:   logger,
 	}
 }

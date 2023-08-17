@@ -22,6 +22,7 @@ import (
 	"math/big"
 	"sort"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -270,6 +271,7 @@ type PRepInfo struct {
 	bondRequirement  icmodule.Rate
 	offsetLimit      int
 	rank             []string
+	log              log.Logger
 }
 
 func (p *PRepInfo) GetPRep(key string) *PRep {
@@ -351,6 +353,8 @@ func (p *PRepInfo) ApplyVote(vType VoteType, votes icstage.VoteList, offset int)
 			continue
 		} else {
 			prep.ApplyVote(vType, vote.Amount(), p.offsetLimit-offset)
+			p.log.Debugf("ApplyVote %+v: by %d, %d %+v, %d * %d",
+				prep, vType, offset, vote, vote.Amount(), p.offsetLimit-offset)
 			p.preps[key] = prep
 		}
 	}
@@ -366,6 +370,7 @@ func (p *PRepInfo) UpdateAccumulatedPower() {
 		power := prep.UpdateAccumulatedPower(p.bondRequirement)
 		p.preps[key] = prep
 		p.totalAccumulatedPower = new(big.Int).Add(p.totalAccumulatedPower, power)
+		p.log.Debugf("[%d] totalAccumulatedPower %d = old + %d by %s", i, p.totalAccumulatedPower, power, prep.owner)
 	}
 }
 
@@ -394,9 +399,17 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		prep.SetCommission(commission)
 		prep.SetVoterReward(new(big.Int).Sub(prepReward, commission))
 
+		p.log.Debugf("PRep reward of %s: %d = %d * %d / %d",
+			prep.Owner(), prepReward, tReward, prep.AccumulatedPower(), p.totalAccumulatedPower)
+		p.log.Debugf("PRep commission of %s: %d = %d * %d / %d",
+			prep.Owner(), prep.Commission(), prepReward, prep.CommissionRate().NumInt64(), prep.CommissionRate().DenomInt64())
+		p.log.Debugf("PRep voter reward of %s: %d = %d - %d",
+			prep.Owner(), prep.VoterReward(), prepReward, commission)
+
 		iScore := new(big.Int).Set(commission)
 		if prep.Bonded().Cmp(minBond) >= 0 {
 			iScore.Add(iScore, minWage)
+			p.log.Debugf("PRep min wage of %s = %d", prep.Owner(), minWage)
 		}
 		if err := ru.UpdateIScore(prep.Owner(), iScore, common.RTPRep); err != nil {
 			return err
@@ -416,12 +429,13 @@ func (p *PRepInfo) Write(writer common.Writer) error {
 	return nil
 }
 
-func NewPRepInfo(bondRequirement icmodule.Rate, electedPRepCount, offsetLimit int) *PRepInfo {
+func NewPRepInfo(bondRequirement icmodule.Rate, electedPRepCount, offsetLimit int, logger log.Logger) *PRepInfo {
 	return &PRepInfo{
 		preps:                 make(map[string]*PRep),
 		totalAccumulatedPower: new(big.Int),
 		electedPRepCount:      electedPRepCount,
 		bondRequirement:       bondRequirement,
 		offsetLimit:           offsetLimit,
+		log:                   logger,
 	}
 }

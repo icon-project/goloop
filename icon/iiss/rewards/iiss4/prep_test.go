@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -209,7 +210,7 @@ func TestPRep_ToVoted(t *testing.T) {
 }
 
 func newTestPRepInfo(preps []prep, br icmodule.Rate, offsetLimit, electedPRepCount int) *PRepInfo {
-	pInfo := NewPRepInfo(br, electedPRepCount, offsetLimit)
+	pInfo := NewPRepInfo(br, electedPRepCount, offsetLimit, log.New())
 	for _, p := range preps {
 		pInfo.Add(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
 	}

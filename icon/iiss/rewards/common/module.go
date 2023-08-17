@@ -19,6 +19,7 @@ package common
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/module"
@@ -29,6 +30,7 @@ type Calculator interface {
 	Base() *icreward.Snapshot
 	Temp() *icreward.State
 	Stats() *Stats
+	Logger() log.Logger
 }
 
 type Reader interface {

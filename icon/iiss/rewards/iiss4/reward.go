@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -48,6 +49,10 @@ func NewReward(c rc.Calculator) (rc.Reward, error) {
 
 func (r *reward) Global() icstage.Global {
 	return r.g
+}
+
+func (r *reward) Logger() log.Logger {
+	return r.c.Logger()
 }
 
 func (r *reward) Calculate() error {
@@ -86,7 +91,7 @@ func (r *reward) loadPRepInfo() error {
 		return err
 	}
 
-	pi := NewPRepInfo(r.g.GetBondRequirement(), r.g.GetElectedPRepCount(), r.g.GetOffsetLimit())
+	pi := NewPRepInfo(r.g.GetBondRequirement(), r.g.GetElectedPRepCount(), r.g.GetOffsetLimit(), r.Logger())
 
 	prefix := icreward.VotedKey.Build()
 	for iter := base.Filter(prefix); iter.Has(); iter.Next() {
@@ -152,6 +157,7 @@ func (r *reward) processEvents() error {
 }
 
 func (r *reward) UpdateIScore(addr module.Address, amount *big.Int, t rc.RewardType) error {
+	r.c.Logger().Debugf("Update IScore of %s, %d by %s", addr, amount, t.String())
 	temp := r.c.Temp()
 	iScore, err := temp.GetIScore(addr)
 	if err != nil {
@@ -216,7 +222,7 @@ func (r *reward) voterReward() error {
 		if err != nil {
 			return err
 		}
-		voter := NewVoter(addr)
+		voter := NewVoter(addr, r.c.Logger())
 		voter.AddVoting(icreward.ToDelegating(o), r.pi.GetTermPeriod())
 
 		b, err := base.GetBonding(addr)
@@ -266,7 +272,7 @@ func (r *reward) voterReward() error {
 			continue
 		}
 
-		voter := NewVoter(addr)
+		voter := NewVoter(addr, r.c.Logger())
 		voter.AddVoting(icreward.ToBonding(o), r.pi.GetTermPeriod())
 
 		events := r.ve.Get(addr)
@@ -291,7 +297,7 @@ func (r *reward) voterReward() error {
 		if err != nil {
 			return err
 		}
-		voter := NewVoter(addr)
+		voter := NewVoter(addr, r.c.Logger())
 		for _, event := range events {
 			voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
 		}

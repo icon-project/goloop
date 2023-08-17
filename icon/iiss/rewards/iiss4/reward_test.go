@@ -25,6 +25,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
@@ -38,6 +39,7 @@ import (
 type testCalculator struct {
 	stage  *icstage.State
 	reward *icreward.State
+	log    log.Logger
 
 	back  *icstage.Snapshot
 	base  *icreward.Snapshot
@@ -59,6 +61,10 @@ func (t *testCalculator) Temp() *icreward.State {
 
 func (t *testCalculator) Stats() *rc.Stats {
 	return t.stats
+}
+
+func (t *testCalculator) Logger() log.Logger {
+	return t.log
 }
 
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
@@ -175,6 +181,7 @@ func newTestCalculator() *testCalculator {
 		stage:  icstage.NewState(database),
 		reward: icreward.NewState(database, nil),
 		stats:  rc.NewStats(),
+		log:    log.New(),
 	}
 	tc.Build()
 	return tc

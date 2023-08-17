@@ -123,6 +123,10 @@ func (c *Calculator) Stats() *rc.Stats {
 	return c.stats
 }
 
+func (c *Calculator) Logger() log.Logger {
+	return c.log
+}
+
 func (c *Calculator) Stop() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
