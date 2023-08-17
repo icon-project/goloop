@@ -106,6 +106,8 @@ func (v *VotingEvents) Write(reader rc.Reader, writer rc.Writer) error {
 		}
 		if d == nil {
 			d = icreward.NewDelegating()
+		} else {
+			d = d.Clone()
 		}
 		b, err := reader.GetBonding(from)
 		if err != nil {
@@ -113,6 +115,8 @@ func (v *VotingEvents) Write(reader rc.Reader, writer rc.Writer) error {
 		}
 		if b == nil {
 			b = icreward.NewBonding()
+		} else {
+			b = b.Clone()
 		}
 
 		// update with events
