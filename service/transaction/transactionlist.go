@@ -16,7 +16,8 @@ import (
 )
 
 type transactionList struct {
-	trie trie.ImmutableForObject
+	trie   trie.ImmutableForObject
+	writer db.Writer
 }
 
 func intToKey(i int) []byte {
@@ -65,6 +66,9 @@ func (l *transactionList) Iterator() module.TransactionIterator {
 }
 
 func (l *transactionList) Hash() []byte {
+	if l.writer != nil {
+		defer l.writer.Prepare()
+	}
 	return l.trie.Hash()
 }
 
@@ -73,6 +77,9 @@ func (l *transactionList) Equal(t module.TransactionList) bool {
 }
 
 func (l *transactionList) Flush() error {
+	if l.writer != nil {
+		return l.writer.Flush()
+	}
 	if ss, ok := l.trie.(trie.SnapshotForObject); ok {
 		return ss.Flush()
 	}
@@ -81,15 +88,24 @@ func (l *transactionList) Flush() error {
 
 func NewTransactionListFromHash(d db.Database, h []byte) module.TransactionList {
 	t := trie_manager.NewImmutableForObject(d, h, TransactionType)
-	return &transactionList{t}
+	return &transactionList{t, nil}
 }
 
 func NewTransactionListFromSlice(dbase db.Database, list []module.Transaction) module.TransactionList {
-	mt := trie_manager.NewMutableForObject(dbase, nil, TransactionType)
-	for idx, tx := range list {
-		mt.Set(intToKey(idx), tx.(trie.Object))
+	if len(list) == 0 {
+		return NewTransactionListFromHash(dbase, nil)
 	}
-	return &transactionList{mt.GetSnapshot()}
+	writer := db.NewWriter(dbase)
+	mt := trie_manager.NewMutableForObject(writer.Database(), nil, TransactionType)
+	for idx, tx := range list {
+		_, err := mt.Set(intToKey(idx), tx.(trie.Object))
+		if err != nil {
+			panic(err)
+		}
+	}
+	snapshot := mt.GetSnapshot()
+	writer.Add(snapshot)
+	return &transactionList{snapshot, writer}
 }
 
 func NewTransactionListWithBuilder(builder merkle.Builder, h []byte) module.TransactionList {
@@ -97,5 +113,5 @@ func NewTransactionListWithBuilder(builder merkle.Builder, h []byte) module.Tran
 	snapshot := trie_manager.NewImmutableForObject(d, h, TransactionType)
 	snapshot.Resolve(builder)
 	// log.Printf("NewTransactionListWithBuilder: hash=%x size=%d", h, builder.UnresolvedCount())
-	return &transactionList{snapshot}
+	return &transactionList{snapshot, nil}
 }
