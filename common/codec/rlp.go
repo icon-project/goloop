@@ -11,7 +11,7 @@ import (
 )
 
 var rlpCodecObject rlpCodec
-var RLP = bytesWrapper{&rlpCodecObject}
+var RLP = bytesWrapperFrom(&rlpCodecObject)
 
 // MaxSizeForBytes is size limit for bytes buffer.
 // msgpack decoder already has limit to 1 MB

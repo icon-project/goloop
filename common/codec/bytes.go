@@ -3,41 +3,78 @@ package codec
 import (
 	"bytes"
 	"io"
+	"sync"
 
 	"github.com/icon-project/goloop/common/log"
 )
 
-type bytesWrapper struct {
-	codecImpl
+type bytesEncoder struct {
+	Encoder
+	buffer *bytes.Buffer
 }
 
-func (c bytesWrapper) Marshal(w io.Writer, v interface{}) error {
+func (e *bytesEncoder) Reset() {
+	e.buffer.Reset()
+}
+
+func (e *bytesEncoder) Bytes() []byte {
+	return []byte(e.buffer.String())
+}
+
+type bytesDecoder struct {
+	Decoder
+	buffer *bytes.Buffer
+}
+
+func (d *bytesDecoder) Reset(bs []byte) {
+	d.buffer.Reset()
+	d.buffer.Write(bs)
+	d.Decoder.SetMaxBytes(len(bs))
+}
+
+func (d *bytesDecoder) Bytes() []byte {
+	return []byte(d.buffer.String())
+}
+
+type bytesWrapper struct {
+	codecImpl
+	encoders sync.Pool
+	decoders sync.Pool
+}
+
+func (c *bytesWrapper) Marshal(w io.Writer, v interface{}) error {
 	return c.NewEncoder(w).Encode(v)
 }
 
-func (c bytesWrapper) Unmarshal(r io.Reader, v interface{}) error {
+func (c *bytesWrapper) Unmarshal(r io.Reader, v interface{}) error {
 	return c.NewDecoder(r).Decode(v)
 }
 
-func (c bytesWrapper) MarshalToBytes(v interface{}) ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	if err := c.NewEncoder(buf).Encode(v); err != nil {
+func (c *bytesWrapper) MarshalToBytes(v interface{}) ([]byte, error) {
+	be := c.encoders.Get().(*bytesEncoder)
+
+	be.Reset()
+	if err := be.Encode(v) ; err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+
+	c.encoders.Put(be)
+	return be.Bytes(), nil
 }
 
-func (c bytesWrapper) UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {
-	buf := bytes.NewBuffer(b)
-	dec := c.NewDecoder(buf)
-	dec.SetMaxBytes(len(b))
-	if err := dec.Decode(v); err != nil {
+func (c *bytesWrapper) UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {
+	bd := c.decoders.Get().(*bytesDecoder)
+
+	bd.Reset(b)
+	if err := bd.Decode(v); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+
+	c.decoders.Put(bd)
+	return bd.Bytes(), nil
 }
 
-func (c bytesWrapper) MustMarshalToBytes(v interface{}) []byte {
+func (c *bytesWrapper) MustMarshalToBytes(v interface{}) []byte {
 	bs, err := c.MarshalToBytes(v)
 	if err != nil {
 		log.Panicf("MustMarshalToBytes() fails for object=%T err=%+v", v, err)
@@ -47,7 +84,7 @@ func (c bytesWrapper) MustMarshalToBytes(v interface{}) []byte {
 	}
 }
 
-func (c bytesWrapper) MustUnmarshalFromBytes(b []byte, v interface{}) []byte {
+func (c *bytesWrapper) MustUnmarshalFromBytes(b []byte, v interface{}) []byte {
 	bs, err := c.UnmarshalFromBytes(b, v)
 	if err != nil {
 		log.Panicf("MustUnmarshalFromBytes() fails for bytes=% x buffer=%T err=%+v", b, v, err)
@@ -66,9 +103,33 @@ func (w bytesWriter) Write(bs []byte) (int, error) {
 	return len(bs), nil
 }
 
-func (c bytesWrapper) NewEncoderBytes(b *[]byte) EncodeAndCloser {
+func (c *bytesWrapper) NewEncoderBytes(b *[]byte) EncodeAndCloser {
 	if len(*b) > 0 {
 		*b = (*b)[:0]
 	}
 	return c.codecImpl.NewEncoder(&bytesWriter{b})
+}
+
+func bytesWrapperFrom(codec codecImpl) *bytesWrapper {
+	return &bytesWrapper{
+		codecImpl: codec,
+		encoders: sync.Pool{
+			New: func() interface{} {
+				buffer := bytes.NewBuffer(nil)
+				return &bytesEncoder{
+					Encoder: codec.NewEncoder(buffer),
+					buffer:  buffer,
+				}
+			},
+		},
+		decoders: sync.Pool{
+			New: func() interface{} {
+				buffer := bytes.NewBuffer(nil)
+				return &bytesDecoder{
+					Decoder: codec.NewDecoder(buffer),
+					buffer:  buffer,
+				}
+			},
+		},
+	}
 }
