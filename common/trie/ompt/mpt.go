@@ -42,7 +42,7 @@ type (
 		mptBase
 		cache *cache.NodeCache
 		root  node
-		mutex sync.Mutex
+		mutex sync.RWMutex
 		s     *mptStatics
 	}
 )
@@ -157,8 +157,8 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 }
 
 func (m *mpt) Get(k []byte) (trie.Object, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	if logStatics {
 		atomic.AddInt32(&m.s.get, 1)
 	}

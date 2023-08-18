@@ -70,22 +70,27 @@ type nodeBase struct {
 	hashValue  []byte
 	serialized []byte
 	state      nodeState
-	mutex      sync.Mutex
+	mutex      sync.RWMutex
 }
 
 func (n *nodeBase) hash() []byte {
 	return n.hashValue
 }
 
+func (n *nodeBase) rlock() AutoRWUnlock {
+	return RLock(&n.mutex)
+}
+
 func (n *nodeBase) getLink(n2 node, forceHash bool) []byte {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if n.state < stateHashed {
 		bytes, err := rlpEncode(n2)
 		if err != nil {
 			log.Panicln("FAIL to serialize", n, err)
 		}
+		lock.Migrate()
 		n.serialized = bytes
 		if len(n.serialized) > hashSize || forceHash {
 			n.hashValue = calcHash(n.serialized)

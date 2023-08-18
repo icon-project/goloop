@@ -82,8 +82,8 @@ func (n *branch) RLPListEncode(e RLPEncoder) error {
 }
 
 func (n *branch) freeze() {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 	if n.state != stateDirty {
 		return
 	}
@@ -92,12 +92,15 @@ func (n *branch) freeze() {
 			child.freeze()
 		}
 	}
-	n.state = stateFrozen
+	lock.Migrate()
+	if n.state == stateDirty {
+		n.state = stateFrozen
+	}
 }
 
 func (n *branch) flush(m *mpt, nibs []byte) error {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 	if n.state == stateFlushed {
 		return nil
 	}
@@ -114,14 +117,16 @@ func (n *branch) flush(m *mpt, nibs []byte) error {
 			return err
 		}
 	}
+	lock.Migrate()
 	if err := n.nodeBase.flushBaseInLock(m, nibs); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (n *branch) getChangable() *branch {
+func (n *branch) getChangable(lock *AutoRWUnlock) *branch {
 	if n.state == stateDirty {
+		lock.Migrate()
 		return n
 	}
 	return &branch{children: n.children, value: n.value}
@@ -129,13 +134,13 @@ func (n *branch) getChangable() *branch {
 
 func (n *branch) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if len(keys) == 0 {
 		old := n.value
 		if n.value == nil || !n.value.Equal(o) {
-			br := n.getChangable()
+			br := n.getChangable(&lock)
 			br.value = o
 			return br, true, old, nil
 		}
@@ -145,11 +150,12 @@ func (n *branch) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool,
 	child := n.children[idx]
 	nchild, dirty, old, err := m.set(child, nibs, depth+1, o)
 	if dirty {
-		br := n.getChangable()
+		br := n.getChangable(&lock)
 		br.children[idx] = nchild
 		return br, true, old, err
 	}
 	if child != nchild {
+		lock.Migrate()
 		n.children[idx] = nchild
 	}
 	return n, false, old, err
@@ -157,8 +163,8 @@ func (n *branch) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool,
 
 func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	var br *branch
 	var ov trie.Object
@@ -167,7 +173,7 @@ func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object
 			return n, false, nil, nil
 		}
 		ov = n.value
-		br = n.getChangable()
+		br = n.getChangable(&lock)
 		br.value = nil
 	} else {
 		idx := keys[0]
@@ -178,11 +184,12 @@ func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object
 		nchild, dirty, old, err := child.delete(m, nibs, depth+1)
 		if !dirty {
 			if nchild != child {
+				lock.Migrate()
 				n.children[idx] = nchild
 			}
 			return n, false, nil, err
 		}
-		br = n.getChangable()
+		br = n.getChangable(&lock)
 		br.children[idx] = nchild
 		ov = old
 	}
@@ -228,12 +235,13 @@ func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object
 
 func (n *branch) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
 	keys := nibs[depth:]
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if len(keys) == 0 {
 		nv, changed, err := m.getObject(n.value)
 		if changed {
+			lock.Migrate()
 			n.value = nv
 		}
 		return n, nv, err
@@ -246,6 +254,7 @@ func (n *branch) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) 
 	}
 	nchild, o, err := child.get(m, nibs, depth+1)
 	if nchild != child {
+		lock.Migrate()
 		n.children[idx] = nchild
 	}
 	return n, o, err
@@ -256,8 +265,8 @@ func (n *branch) realize(m *mpt) (node, error) {
 }
 
 func (n *branch) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	for i := 15; i >= 0; i-- {
 		child := n.children[i]
@@ -269,12 +278,14 @@ func (n *branch) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Objec
 			return "", nil, err
 		}
 		if child != nchild {
+			lock.Migrate()
 			n.children[i] = nchild
 		}
 	}
 	if n.value != nil {
 		value, changed, err := m.getObject(n.value)
 		if changed {
+			lock.Migrate()
 			n.value = value
 		}
 		if err == nil {
@@ -285,8 +296,8 @@ func (n *branch) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Objec
 }
 
 func (n *branch) getProof(m *mpt, keys []byte, proofs [][]byte) (nn node, proof [][]byte, err error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if n.state < stateHashed {
 		return n, nil, fmt.Errorf("IllegaState %s", n.toString())
@@ -303,18 +314,20 @@ func (n *branch) getProof(m *mpt, keys []byte, proofs [][]byte) (nn node, proof 
 	}
 	nchild, proofs, err := child.getProof(m, keys[1:], proofs)
 	if nchild != child {
+		lock.Migrate()
 		n.children[keys[0]] = nchild
 	}
 	return n, proofs, err
 }
 
 func (n *branch) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj trie.Object, err error) {
-	n.mutex.Lock()
+	lock := n.rlock()
 	defer func() {
 		if err == nil && n.state == stateFlushed {
+			lock.Migrate()
 			n.state = stateWritten
 		}
-		n.mutex.Unlock()
+		defer lock.Unlock()
 	}()
 
 	if n.hashValue != nil {
@@ -331,6 +344,7 @@ func (n *branch) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj trie.O
 				return n, nil, err
 			}
 			if changed {
+				lock.Migrate()
 				n.value = value
 			}
 		}
@@ -343,6 +357,7 @@ func (n *branch) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj trie.O
 	}
 	nchild, obj, err := child.prove(m, keys[1:], proof)
 	if nchild != child {
+		lock.Migrate()
 		n.children[keys[0]] = nchild
 	}
 	return n, obj, err
@@ -371,10 +386,11 @@ func (n *branch) resolve(m *mpt, bd merkle.Builder) error {
 }
 
 func (n *branch) compact() node {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if n.state < stateFlushed {
+		lock.Migrate()
 		for i := range n.children {
 			node := n.children[i]
 			if node != nil {
