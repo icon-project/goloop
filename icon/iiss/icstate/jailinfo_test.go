@@ -45,34 +45,39 @@ func TestJailInfo_isEmpty(t *testing.T) {
 	}
 }
 
-func TestJailInfo_RequestUnjail(t *testing.T) {
+func TestJailInfo_OnUnjailRequested(t *testing.T) {
 	args := []struct{
 		// input
 		ji *JailInfo
 		bh int64
 		// output
+		success bool
 		inJail bool
 		unjailRequestBlockHeight int64
 	}{
 		{
 			&JailInfo{0, 0, 0}, 100,
-			false, 0,
+			true, false, 0,
+		},
+		{
+			&JailInfo{JFlagInJail, 100, 0}, 50,
+			false, true, 100,
 		},
 		{
 			&JailInfo{JFlagInJail, 0, 0}, 100,
-			true, 100,
+			true, true, 100,
 		},
 		{
 			&JailInfo{JFlagInJail | JFlagUnjailing, 50, 0}, 100,
-			true, 50,
+			true, true, 50,
 		},
 		{
 			&JailInfo{JFlagInJail | JFlagDoubleVote, 0, 0}, 100,
-			true, 100,
+			true, true, 100,
 		},
 		{
 			&JailInfo{JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 50, 0}, 100,
-			true, 50,
+			true, true, 50,
 		},
 	}
 
@@ -80,11 +85,14 @@ func TestJailInfo_RequestUnjail(t *testing.T) {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T){
 			ji := arg.ji
-			err := ji.RequestUnjail(arg.bh)
-			assert.NoError(t, err)
-
-			assert.Equal(t, arg.inJail, ji.IsInJail())
-			assert.Equal(t, arg.unjailRequestBlockHeight, ji.UnjailRequestHeight())
+			err := ji.OnUnjailRequested(arg.bh)
+			if arg.success {
+				assert.NoError(t, err)
+				assert.Equal(t, arg.inJail, ji.IsInJail())
+				assert.Equal(t, arg.unjailRequestBlockHeight, ji.UnjailRequestHeight())
+			} else {
+				assert.Error(t, err)
+			}
 		})
 	}
 }

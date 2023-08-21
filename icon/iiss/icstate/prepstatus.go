@@ -695,7 +695,10 @@ func (ps *PRepStatusState) OnTermEnd(newGrade Grade, limit int) error {
 	return nil
 }
 
-// TODO: This function will be deprecated
+func (ps *PRepStatusState) OnUnjailRequested(blockHeight int64) error {
+	return ps.ji.OnUnjailRequested(blockHeight)
+}
+
 // syncBlockVoteStats updates vote stats data at a given blockHeight
 func (ps *PRepStatusState) syncBlockVoteStats(blockHeight int64) error {
 	if blockHeight < ps.lastHeight {

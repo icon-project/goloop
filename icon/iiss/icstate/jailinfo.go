@@ -61,17 +61,6 @@ func (ji *JailInfo) IsEmpty() bool {
 	return ji.flags == 0 && ji.unjailRequestHeight == 0 && ji.minDoubleVoteHeight == 0
 }
 
-func (ji *JailInfo) RequestUnjail(blockHeight int64) error {
-	if blockHeight < 0 {
-		return scoreresult.InvalidParameterError.Errorf("InvalidBlockHeight(%d)", blockHeight)
-	}
-	if ji.flags&(JFlagInJail|JFlagUnjailing) == JFlagInJail {
-		ji.flags |= JFlagUnjailing
-		ji.unjailRequestHeight = blockHeight
-	}
-	return nil
-}
-
 func (ji *JailInfo) ToJSON(jso map[string]interface{}) map[string]interface{} {
 	if jso == nil {
 		jso = make(map[string]interface{})
@@ -99,6 +88,17 @@ func (ji *JailInfo) OnPenaltyImposed(pt icmodule.PenaltyType) error {
 		ji.flags |= JFlagInJail | JFlagDoubleVote
 	default:
 		return scoreresult.InvalidParameterError.Errorf("UnexpectedPenaltyType(%d)", pt)
+	}
+	return nil
+}
+
+func (ji *JailInfo) OnUnjailRequested(blockHeight int64) error {
+	if blockHeight < ji.unjailRequestHeight {
+		return scoreresult.InvalidParameterError.Errorf("InvalidBlockHeight(%d)", blockHeight)
+	}
+	if ji.flags&(JFlagInJail|JFlagUnjailing) == JFlagInJail {
+		ji.flags |= JFlagUnjailing
+		ji.unjailRequestHeight = blockHeight
 	}
 	return nil
 }
