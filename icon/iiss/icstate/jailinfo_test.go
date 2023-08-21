@@ -26,7 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 )
 
-func TestJailInfo_isEmpty(t *testing.T) {
+func TestJailInfo_IsEmpty(t *testing.T) {
 	args := []struct {
 		ji    JailInfo
 		empty bool
@@ -39,20 +39,20 @@ func TestJailInfo_isEmpty(t *testing.T) {
 
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T){
+		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, arg.empty, arg.ji.IsEmpty())
 		})
 	}
 }
 
 func TestJailInfo_OnUnjailRequested(t *testing.T) {
-	args := []struct{
+	args := []struct {
 		// input
 		ji *JailInfo
 		bh int64
 		// output
-		success bool
-		inJail bool
+		success                  bool
+		inJail                   bool
 		unjailRequestBlockHeight int64
 	}{
 		{
@@ -83,7 +83,7 @@ func TestJailInfo_OnUnjailRequested(t *testing.T) {
 
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T){
+		t.Run(name, func(t *testing.T) {
 			ji := arg.ji
 			err := ji.OnUnjailRequested(arg.bh)
 			if arg.success {
@@ -92,6 +92,65 @@ func TestJailInfo_OnUnjailRequested(t *testing.T) {
 				assert.Equal(t, arg.unjailRequestBlockHeight, ji.UnjailRequestHeight())
 			} else {
 				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestJailInfo_OnMainPRepIn(t *testing.T) {
+	type output struct {
+		success bool
+		urbh    int64 // UnjailRequestHeight
+		mdvbh   int64 // MinDoubleVoteHeight
+	}
+	args := []struct {
+		// input
+		ji JailInfo
+		bh int64
+		// output
+		exp output
+	}{
+		{
+			JailInfo{0, 0, 0},
+			100,
+			output{true, 0, 0},
+		},
+		{
+			JailInfo{JFlagInJail, 0, 0},
+			100,
+			output{false, 0, 0},
+		},
+		{
+			JailInfo{JFlagInJail|JFlagDoubleVote, 50, 80},
+			100,
+			output{false, 0, 0},
+		},
+		{
+			JailInfo{JFlagInJail | JFlagUnjailing, 50, 0},
+			100,
+			output{true, 50, 0},
+		},
+		{
+			JailInfo{JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 50, 0},
+			100,
+			output{true, 50, 100},
+		},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			exp := arg.exp
+			ji := arg.ji
+			err := ji.OnMainPRepIn(arg.bh)
+			if exp.success {
+				assert.NoError(t, err)
+				assert.Zero(t, ji.Flags())
+				assert.Equal(t, exp.urbh, ji.UnjailRequestHeight())
+				assert.Equal(t, exp.mdvbh, ji.MinDoubleVoteHeight())
+			} else {
+				assert.Error(t, err)
+				assert.Equal(t, arg.ji, ji)
 			}
 		})
 	}
@@ -130,14 +189,14 @@ func TestJailInfo_RLPEncodeSelf(t *testing.T) {
 
 func TestJailInfo_Format(t *testing.T) {
 	const (
-		flags = JFlagInJail
+		flags               = JFlagInJail
 		unjailRequestHeight = 100
 		minDoubleVoteHeight = 200
 	)
 	ji := JailInfo{flags, unjailRequestHeight, minDoubleVoteHeight}
 
-	args := []struct{
-		fmt string
+	args := []struct {
+		fmt    string
 		output string
 	}{
 		{"%s", "JailInfo{1 100 200}"},
@@ -147,7 +206,7 @@ func TestJailInfo_Format(t *testing.T) {
 
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T){
+		t.Run(name, func(t *testing.T) {
 			text := fmt.Sprintf(arg.fmt, ji)
 			assert.Equal(t, arg.output, text)
 		})
