@@ -666,7 +666,7 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 				vPenaltyMask: init.vpm,
 			}}
 
-			err = ps.OnPenaltyImposed(bh)
+			err = ps.OnPenaltyImposed(icmodule.PenaltyBlockValidation, bh)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)

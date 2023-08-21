@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
@@ -88,6 +89,18 @@ func (ji *JailInfo) RLPDecodeSelf(d codec.Decoder) error {
 
 func (ji *JailInfo) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(ji.flags, ji.unjailRequestHeight, ji.minDoubleVoteHeight)
+}
+
+func (ji *JailInfo) OnPenaltyImposed(pt icmodule.PenaltyType) error {
+	switch pt {
+	case icmodule.PenaltyBlockValidation:
+		ji.flags |= JFlagInJail
+	case icmodule.PenaltyDoubleVote:
+		ji.flags |= JFlagInJail | JFlagDoubleVote
+	default:
+		return scoreresult.InvalidParameterError.Errorf("UnexpectedPenaltyType(%d)", pt)
+	}
+	return nil
 }
 
 func (ji JailInfo) String() string {

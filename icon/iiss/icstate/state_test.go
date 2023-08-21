@@ -480,7 +480,7 @@ func TestState_ImposePenalty(t *testing.T) {
 	state.ClearCache()
 
 	ps := state.GetPRepStatusByOwner(owner, false)
-	err = state.ImposePenalty(owner, ps, blockHeight)
+	err = state.ImposePenalty(icmodule.PenaltyBlockValidation, owner, ps, blockHeight)
 	assert.NoError(t, err)
 	state.Flush()
 	state.ClearCache()

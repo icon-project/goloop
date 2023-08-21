@@ -467,14 +467,15 @@ func sortPRepStatsList(statsList []*PRepStats, br icmodule.Rate) {
 }
 
 // ImposePenalty changes grade and set LastState to icstate.None
-func (s *State) ImposePenalty(owner module.Address, ps *PRepStatusState, blockHeight int64) error {
+func (s *State) ImposePenalty(
+	pt icmodule.PenaltyType, owner module.Address, ps *PRepStatusState, blockHeight int64) error {
 	var err error
 
 	// Update status of the penalized main prep
 	s.logger.Debugf("OnPenaltyImposed() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
 
 	oldGrade := ps.Grade()
-	err = ps.OnPenaltyImposed(blockHeight)
+	err = ps.OnPenaltyImposed(pt, blockHeight)
 	s.logger.Debugf("OnPenaltyImposed() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
 	if err != nil {
 		return err

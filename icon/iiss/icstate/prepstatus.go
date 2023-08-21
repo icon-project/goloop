@@ -670,13 +670,16 @@ func (ps *PRepStatusState) OnValidatorOut(blockHeight int64) error {
 	return nil
 }
 
-func (ps *PRepStatusState) OnPenaltyImposed(blockHeight int64) error {
+func (ps *PRepStatusState) OnPenaltyImposed(pt icmodule.PenaltyType, blockHeight int64) error {
 	if err := ps.syncBlockVoteStats(blockHeight); err != nil {
 		return err
 	}
 	ps.vFailCont = 0
 	ps.vPenaltyMask |= 1
 	ps.grade = GradeCandidate
+	if err := ps.ji.OnPenaltyImposed(pt); err != nil {
+		return err
+	}
 	ps.setDirty()
 	return nil
 }
