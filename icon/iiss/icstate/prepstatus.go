@@ -638,18 +638,19 @@ func (ps *PRepStatusState) onTrueBlockVote(blockHeight int64) error {
 }
 
 // OnMainPRepIn is called only in case of penalized main prep replacement
-func (ps *PRepStatusState) OnMainPRepIn(limit int) error {
+func (ps *PRepStatusState) OnMainPRepIn(blockHeight int64, limit int) error {
 	if ps.grade != GradeSub {
 		return errors.Errorf("Invalid grade: %v -> M", ps.grade)
 	}
-	ps.onMainPRepIn(limit)
+	ps.onMainPRepIn(blockHeight, limit)
 	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) onMainPRepIn(limit int) {
+func (ps *PRepStatusState) onMainPRepIn(blockHeight int64, limit int) error {
 	ps.grade = GradeMain
 	ps.shiftVPenaltyMask(limit)
+	return ps.ji.OnMainPRepIn(blockHeight)
 }
 
 func (ps *PRepStatusState) onMainPRepOut(newGrade Grade) {
@@ -684,10 +685,12 @@ func (ps *PRepStatusState) OnPenaltyImposed(pt icmodule.PenaltyType, blockHeight
 	return nil
 }
 
-func (ps *PRepStatusState) OnTermEnd(newGrade Grade, limit int) error {
+func (ps *PRepStatusState) OnTermEnd(blockHeight int64, newGrade Grade, limit int) error {
 	ps.resetVFailCont()
 	if newGrade == GradeMain {
-		ps.onMainPRepIn(limit)
+		if err := ps.onMainPRepIn(blockHeight, limit); err != nil {
+			return err
+		}
 	} else {
 		ps.onMainPRepOut(newGrade)
 	}

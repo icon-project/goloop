@@ -410,7 +410,7 @@ func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", newOwner)
 	}
-	err := ps.OnMainPRepIn(s.GetConsistentValidationPenaltyMask())
+	err := ps.OnMainPRepIn(blockHeight, s.GetConsistentValidationPenaltyMask())
 	s.logger.Tracef("OnMainPRepReplaced()   end: bh=%d old=%v new=%v %+v", blockHeight, oldOwner, newOwner, ps)
 	return err
 }

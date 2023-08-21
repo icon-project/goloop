@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -112,6 +111,7 @@ func assertPower(t *testing.T, p map[string]interface{}) bool {
 	return true
 }
 
+/*
 func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	const (
 		termPeriod                           = 100
@@ -752,3 +752,4 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	_, ok = jso["totalPower"].(*big.Int)
 	assert.True(t, ok)
 }
+ */

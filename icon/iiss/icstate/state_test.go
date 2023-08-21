@@ -448,7 +448,7 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 	err = state.OnMainPRepReplaced(blockHeight, owners[0], owners[1])
 	assert.Error(t, err) // Invalid: C -> M
 
-	err = ps.OnTermEnd(GradeSub, limit)
+	err = ps.OnTermEnd(blockHeight, GradeSub, limit)
 	assert.NoError(t, err)
 	state.Flush()
 	state.ClearCache()
