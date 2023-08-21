@@ -81,7 +81,9 @@ func NewPRep(owner module.Address, state *State) *PRep {
 // ===============================================================
 
 type PRepSet interface {
-	OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error
+	OnTermEnd(
+		revision int, blockHeight int64,
+		mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error
 	GetPRepSize(grade Grade) int
 	GetElectedPRepSize() int
 	Size() int
@@ -158,7 +160,9 @@ type prepSetImpl struct {
 }
 
 // OnTermEnd initializes all prep status including grade on term end
-func (p *prepSetImpl) OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error {
+func (p *prepSetImpl) OnTermEnd(
+	revision int, blockHeight int64,
+	mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error {
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -183,7 +187,7 @@ func (p *prepSetImpl) OnTermEnd(revision, mainPRepCount, subPRepCount, extraMain
 		}
 
 		prep := entry.PRep()
-		if err := prep.OnTermEnd(newGrade, limit); err != nil {
+		if err := prep.OnTermEnd(blockHeight, newGrade, limit); err != nil {
 			return err
 		}
 		if revision == icmodule.RevisionResetPenaltyMask {

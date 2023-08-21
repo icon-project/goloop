@@ -216,6 +216,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	tests := []struct {
 		name       string
 		rev        int
+		bh         int64 // blockHeight
 		main       int
 		sub        int
 		extra      int
@@ -225,56 +226,56 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}{
 		{
 			"Sort by power",
-			icmodule.RevisionResetPenaltyMask,
+			icmodule.RevisionResetPenaltyMask, 1000,
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power",
-			icmodule.RevisionEnableIISS3,
+			icmodule.RevisionEnableIISS3, 1000,
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power + extra main prep",
-			icmodule.RevisionExtraMainPReps,
+			icmodule.RevisionExtraMainPReps, 1000,
 			1, 2, 1,
 			[]*PRep{prep4, prep3, prep5, prep2, prep1, prep6},
 			2, 1,
 		},
 		{
 			"Sort by power + extra main prep with zero count",
-			icmodule.RevisionExtraMainPReps,
+			icmodule.RevisionExtraMainPReps, 1000,
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power + pubKey + extra main prep",
-			icmodule.RevisionBTP2,
+			icmodule.RevisionBTP2, 1000,
 			1, 2, 1,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			2, 0,
 		},
 		{
 			"Sort by power + pubKey + extra main prep with zero count",
-			icmodule.RevisionBTP2,
+			icmodule.RevisionBTP2, 1000,
 			1, 2, 0,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			1, 1,
 		},
 		{
 			"Too big sub prep, extra main prep",
-			icmodule.RevisionBTP2,
+			icmodule.RevisionBTP2, 1000,
 			1, 6, 10,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			2, 0,
 		},
 		{
 			"Too big sub prep, extra main prep with zero main prep",
-			icmodule.RevisionBTP2,
+			icmodule.RevisionBTP2, 1000,
 			0, 6, 10,
 			[]*PRep{prep1, prep5, prep6, prep4, prep3, prep2},
 			2, 0,
@@ -284,7 +285,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s rev=%d", tt.name, tt.rev), func(t *testing.T) {
 			prepSet.Sort(tt.main, tt.sub, tt.extra, br, tt.rev)
-			err := prepSet.OnTermEnd(tt.rev, tt.main, tt.sub, tt.extra, 0, br)
+			err := prepSet.OnTermEnd(tt.rev, tt.bh, tt.main, tt.sub, tt.extra, 0, br)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectMain, prepSet.GetPRepSize(GradeMain))
 			assert.Equal(t, tt.expectSub, prepSet.GetPRepSize(GradeSub))
