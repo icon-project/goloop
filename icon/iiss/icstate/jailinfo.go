@@ -103,6 +103,19 @@ func (ji *JailInfo) OnUnjailRequested(blockHeight int64) error {
 	return nil
 }
 
+func (ji *JailInfo) OnMainPRepIn(blockHeight int64) error {
+	if icutils.MatchAll(ji.flags, JFlagInJail) {
+		if !icutils.MatchAll(ji.flags, JFlagUnjailing) {
+			return icmodule.InvalidStateError.Errorf("InvalidJailFlags(%d)", ji.flags)
+		}
+		if icutils.MatchAll(ji.flags, JFlagDoubleVote) {
+			ji.minDoubleVoteHeight = blockHeight
+		}
+		ji.flags = 0
+	}
+	return nil
+}
+
 func (ji JailInfo) String() string {
 	return fmt.Sprintf("JailInfo{%d %d %d}", ji.flags, ji.unjailRequestHeight, ji.minDoubleVoteHeight)
 }
