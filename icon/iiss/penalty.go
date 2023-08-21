@@ -44,7 +44,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	}
 
 	// Impose penalty
-	if err = es.State.ImposePenalty(owner, ps, blockHeight); err != nil {
+	if err = es.State.ImposePenalty(icmodule.PenaltyBlockValidation, owner, ps, blockHeight); err != nil {
 		return err
 	}
 
