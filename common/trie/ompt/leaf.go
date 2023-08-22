@@ -77,10 +77,11 @@ func (n *leaf) flush(m *mpt, nibs []byte) error {
 	if err := n.value.Flush(); err != nil {
 		return err
 	}
-	lock.Migrate()
 	if err := n.nodeBase.flushBaseInLock(m, nil); err != nil {
 		return err
 	}
+	lock.Migrate()
+	n.state = stateFlushed
 	return nil
 }
 

@@ -173,8 +173,8 @@ func (m *mpt) Get(k []byte) (trie.Object, error) {
 }
 
 func (m *mpt) Hash() []byte {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	if m.root != nil {
 		return m.root.getLink(true)
 	} else {
@@ -183,8 +183,8 @@ func (m *mpt) Hash() []byte {
 }
 
 func (m *mpt) Flush() error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	if m.root != nil {
 		// Before flush node data to Database, We need to make sure that it
 		// builds required  data for dumping data.
@@ -415,12 +415,13 @@ func (m *mpt) Iterator() trie.IteratorForObject {
 }
 
 func (m *mpt) Filter(prefix []byte) trie.IteratorForObject {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	lock := RLock(&m.mutex)
+	defer lock.Unlock()
 
 	root := m.root
 	if root != nil {
-		if n, err := root.realize(m); err == nil {
+		if n, err := root.realize(m); err == nil && n != root {
+			lock.Migrate()
 			root = n
 			m.root = n
 		}

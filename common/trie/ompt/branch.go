@@ -117,10 +117,11 @@ func (n *branch) flush(m *mpt, nibs []byte) error {
 			return err
 		}
 	}
-	lock.Migrate()
 	if err := n.nodeBase.flushBaseInLock(m, nibs); err != nil {
 		return err
 	}
+	lock.Migrate()
+	n.state = stateFlushed
 	return nil
 }
 

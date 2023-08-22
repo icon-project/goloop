@@ -120,7 +120,6 @@ func (n *nodeBase) flushBaseInLock(m *mpt, nibs []byte) error {
 		}
 		m.cache.Put(nibs, n.hashValue, n.serialized)
 	}
-	n.state = stateFlushed
 	return nil
 }
 

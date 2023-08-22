@@ -79,8 +79,8 @@ func (n *extension) freeze() {
 }
 
 func (n *extension) flush(m *mpt, nibs []byte) error {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 	if n.state == stateFlushed {
 		return nil
 	}
@@ -90,6 +90,8 @@ func (n *extension) flush(m *mpt, nibs []byte) error {
 	if err := n.nodeBase.flushBaseInLock(m, nil); err != nil {
 		return err
 	}
+	lock.Migrate()
+	n.state = stateFlushed
 	return nil
 }
 
