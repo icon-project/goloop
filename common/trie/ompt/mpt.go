@@ -64,7 +64,7 @@ func allocNibbles(size int) []byte {
 	return bs[0:size*2]
 }
 
-func feeNibbles(nibs []byte) {
+func freeNibbles(nibs []byte) {
 	if cap(nibs) != hashSize*2 {
 		return
 	}
@@ -163,7 +163,7 @@ func (m *mpt) Get(k []byte) (trie.Object, error) {
 		atomic.AddInt32(&m.s.get, 1)
 	}
 	nibs := bytesToNibs(k)
-	defer feeNibbles(nibs)
+	defer freeNibbles(nibs)
 	root, obj, err := m.get(m.root, nibs, 0)
 	if m.root != root {
 		lock.Migrate()
@@ -250,7 +250,7 @@ func (m *mpt) Set(k []byte, o trie.Object) (trie.Object, error) {
 		atomic.AddInt32(&m.s.set, 1)
 	}
 	nibs := bytesToNibs(k)
-	defer feeNibbles(nibs)
+	defer freeNibbles(nibs)
 	root, _, old, err := m.set(m.root, nibs, 0, o)
 	m.root = root
 	if debugDump && root != nil {
@@ -269,7 +269,7 @@ func (m *mpt) Delete(k []byte) (trie.Object, error) {
 		atomic.AddInt32(&m.s.set, 1)
 	}
 	nibs := bytesToNibs(k)
-	defer feeNibbles(nibs)
+	defer freeNibbles(nibs)
 	root, dirty, old, err := m.delete(m.root, nibs, 0)
 	if dirty {
 		m.root = root
@@ -454,7 +454,7 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	proofs := [][]byte(nil)
 
 	nibs := bytesToNibs(k)
-	defer feeNibbles(nibs)
+	defer freeNibbles(nibs)
 	root, proofs, err := m.root.getProof(m, nibs, proofs)
 	if root != m.root {
 		m.root = root
@@ -476,7 +476,7 @@ func (m *mpt) Prove(k []byte, proofs [][]byte) (trie.Object, error) {
 		return nil, common.ErrIllegalArgument
 	}
 	nibs := bytesToNibs(k)
-	defer feeNibbles(nibs)
+	defer freeNibbles(nibs)
 	root, obj, err := m.root.prove(m, nibs, proofs)
 	if root != m.root {
 		m.root = root
