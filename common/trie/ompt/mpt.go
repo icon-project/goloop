@@ -157,15 +157,18 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 }
 
 func (m *mpt) Get(k []byte) (trie.Object, error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+	lock := RLock(&m.mutex)
+	defer lock.Unlock()
 	if logStatics {
 		atomic.AddInt32(&m.s.get, 1)
 	}
 	nibs := bytesToNibs(k)
 	defer feeNibbles(nibs)
 	root, obj, err := m.get(m.root, nibs, 0)
-	m.root = root
+	if m.root != root {
+		lock.Migrate()
+		m.root = root
+	}
 	return obj, err
 }
 
