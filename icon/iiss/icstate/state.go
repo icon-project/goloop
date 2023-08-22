@@ -399,7 +399,8 @@ func (s *State) OnBlockVote(owner module.Address, voted bool, blockHeight int64)
 	return err
 }
 
-func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.Address) error {
+func (s *State) OnMainPRepReplaced(sc icmodule.StateContext, oldOwner, newOwner module.Address) error {
+	blockHeight := sc.BlockHeight()
 	s.logger.Tracef("OnMainPRepReplaced() start: bh=%d old=%v new=%v", blockHeight, oldOwner, newOwner)
 	if newOwner == nil {
 		// No sub prep remains
@@ -410,7 +411,7 @@ func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", newOwner)
 	}
-	err := ps.OnMainPRepIn(blockHeight, s.GetConsistentValidationPenaltyMask())
+	err := ps.OnMainPRepIn(sc, s.GetConsistentValidationPenaltyMask())
 	s.logger.Tracef("OnMainPRepReplaced()   end: bh=%d old=%v new=%v %+v", blockHeight, oldOwner, newOwner, ps)
 	return err
 }
@@ -468,14 +469,15 @@ func sortPRepStatsList(statsList []*PRepStats, br icmodule.Rate) {
 
 // ImposePenalty changes grade and set LastState to icstate.None
 func (s *State) ImposePenalty(
-	pt icmodule.PenaltyType, owner module.Address, ps *PRepStatusState, blockHeight int64) error {
+	sc icmodule.StateContext, pt icmodule.PenaltyType, owner module.Address, ps *PRepStatusState) error {
 	var err error
+	blockHeight := sc.BlockHeight()
 
 	// Update status of the penalized main prep
 	s.logger.Debugf("OnPenaltyImposed() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
 
 	oldGrade := ps.Grade()
-	err = ps.OnPenaltyImposed(pt, blockHeight)
+	err = ps.OnPenaltyImposed(sc, pt)
 	s.logger.Debugf("OnPenaltyImposed() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
 	if err != nil {
 		return err
@@ -483,7 +485,7 @@ func (s *State) ImposePenalty(
 
 	// If a penalized prep is a main prep, choose a new validator from prep snapshots
 	if oldGrade == GradeMain {
-		err = s.replaceMainPRepByOwner(owner, blockHeight)
+		err = s.replaceMainPRepByOwner(sc, owner)
 	}
 	return err
 }
@@ -518,7 +520,7 @@ func (s *State) ReducePRepBonded(owner module.Address, amount *big.Int) error {
 	return s.SetTotalBond(new(big.Int).Sub(s.GetTotalBond(), amount))
 }
 
-func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int64) error {
+func (s *State) DisablePRep(sc icmodule.StateContext, owner module.Address, status Status) error {
 	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
@@ -534,7 +536,7 @@ func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int
 		return err
 	}
 	if oldGrade == GradeMain {
-		if err = s.replaceMainPRepByOwner(owner, blockHeight); err != nil {
+		if err = s.replaceMainPRepByOwner(sc, owner); err != nil {
 			return err
 		}
 	}
@@ -649,8 +651,11 @@ func (s *State) GetPRepStatsOfInJSON(
 	}, nil
 }
 
-func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, end int, revision int) (map[string]interface{}, error) {
+func (s *State) GetPRepsInJSON(
+	bc state.BTPContext, sc icmodule.StateContext, start, end int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
+	revision := sc.Revision()
+
 	prepSet := s.GetPRepSet(bc, revision)
 	prepSet.SortForQuery(br, revision)
 
@@ -684,12 +689,12 @@ func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, en
 	}
 	for i := start - 1; i < end; i++ {
 		prep := prepSet.GetByIndex(i).PRep()
-		prepJSO := prep.ToJSON(blockHeight, br, dsaMask)
+		prepJSO := prep.ToJSON(sc, br, dsaMask)
 		prepList = append(prepList, prepJSO)
 	}
 
 	jso["startRanking"] = start
-	jso["blockHeight"] = blockHeight
+	jso["blockHeight"] = sc.BlockHeight()
 	jso["totalStake"] = s.GetTotalStake()
 	jso["totalDelegated"] = prepSet.TotalDelegated()
 	jso["preps"] = prepList

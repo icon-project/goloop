@@ -296,11 +296,13 @@ func (es *ExtensionStateImpl) GetPRepInJSON(cc icmodule.CallContext, address mod
 			dsaMask = bc.GetActiveDSAMask()
 		}
 	}
-	return prep.ToJSON(cc.BlockHeight(), es.State.GetBondRequirement(), dsaMask), nil
+	sc := es.newStateContext(cc)
+	return prep.ToJSON(sc, es.State.GetBondRequirement(), dsaMask), nil
 }
 
 func (es *ExtensionStateImpl) GetPRepsInJSON(cc icmodule.CallContext, start, end int) (map[string]interface{}, error) {
-	return es.State.GetPRepsInJSON(cc.GetBTPContext(), cc.BlockHeight(), start, end, cc.Revision().Value())
+	sc := es.newStateContext(cc)
+	return es.State.GetPRepsInJSON(cc.GetBTPContext(), sc, start, end)
 }
 
 func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
@@ -576,8 +578,9 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 	var err error
 	blockHeight := cc.BlockHeight()
 	owner := cc.From()
+	sc := es.newStateContext(cc)
 
-	if err = es.State.DisablePRep(owner, icstate.Unregistered, blockHeight); err != nil {
+	if err = es.State.DisablePRep(sc, owner, icstate.Unregistered); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 	}
 	if err = es.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent); err != nil {
@@ -593,7 +596,9 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 
 func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address module.Address) error {
 	blockHeight := cc.BlockHeight()
-	if err := es.State.DisablePRep(address, icstate.Disqualified, blockHeight); err != nil {
+	sc := es.newStateContext(cc)
+
+	if err := es.State.DisablePRep(sc, address, icstate.Disqualified); err != nil {
 		return err
 	}
 	if err := es.addEventEnable(blockHeight, address, icstage.ESDisablePermanent); err != nil {
@@ -967,7 +972,6 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var err error
 
 	revision := wc.Revision().Value()
-	blockHeight := wc.BlockHeight()
 	br := es.State.GetBondRequirement()
 	mainPRepCount := int(es.State.GetMainPRepCount())
 	subPRepCount := int(es.State.GetSubPRepCount())
@@ -989,10 +993,10 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	if isDecentralized {
 		// Reset the status of all active preps ordered by power
 		limit := es.State.GetConsistentValidationPenaltyMask()
+		sc := es.newStateContext(wc)
 
 		if err = prepSet.OnTermEnd(
-			revision, blockHeight,
-			mainPRepCount, subPRepCount, extraMainPRepCount, limit, br); err != nil {
+			sc, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br); err != nil {
 			return err
 		}
 	} else {
@@ -1176,14 +1180,15 @@ func (es *ExtensionStateImpl) updateValidators(wc icmodule.WorldContext, isTermE
 	return err
 }
 
-func (es *ExtensionStateImpl) GetPRepTermInJSON(blockHeight int64) (map[string]interface{}, error) {
+func (es *ExtensionStateImpl) GetPRepTermInJSON(cc icmodule.CallContext) (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
-	jso := term.ToJSON(blockHeight, es.State)
-	jso["blockHeight"] = blockHeight
+	sc := es.newStateContext(cc)
+	jso := term.ToJSON(sc, es.State)
+	jso["blockHeight"] = cc.BlockHeight()
 	return jso, nil
 }
 
@@ -1976,4 +1981,14 @@ func (es *ExtensionStateImpl) getOldCommissionRate(owner module.Address) (icmodu
 	}
 	// It is not allowed to call setCommissionRate() during the term when commissionInfo is initialized.
 	return icmodule.Rate(0), icmodule.NotFoundError.Errorf("OldCommissionRateNotFound(%s)", owner)
+}
+
+func (es *ExtensionStateImpl) newStateContext(cc icmodule.WorldContext) icmodule.StateContext {
+	revision := cc.Revision().Value()
+	termRevision := revision
+	term := es.State.GetTermSnapshot()
+	if term != nil {
+		termRevision = term.Revision()
+	}
+	return icstate.NewStateContext(cc.BlockHeight(), revision, termRevision)
 }

@@ -494,7 +494,7 @@ func (sim *simulatorImpl) QueryIScore(address module.Address) *big.Int {
 
 func (sim *simulatorImpl) GetPRepTerm() map[string]interface{} {
 	es := sim.getExtensionState(true)
-	jso, _ := es.GetPRepTermInJSON(sim.BlockHeight())
+	jso, _ := es.GetPRepTermInJSON(sim.newCallContext())
 	return jso
 }
 

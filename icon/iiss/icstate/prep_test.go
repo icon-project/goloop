@@ -215,8 +215,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		rev        int
-		bh         int64 // blockHeight
+		sc         icmodule.StateContext
 		main       int
 		sub        int
 		extra      int
@@ -226,56 +225,56 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}{
 		{
 			"Sort by power",
-			icmodule.RevisionResetPenaltyMask, 1000,
+			NewStateContext(1000, icmodule.RevisionResetPenaltyMask, icmodule.RevisionResetPenaltyMask),
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power",
-			icmodule.RevisionEnableIISS3, 1000,
+			NewStateContext(1000, icmodule.RevisionEnableIISS3, icmodule.RevisionEnableIISS3),
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power + extra main prep",
-			icmodule.RevisionExtraMainPReps, 1000,
+			NewStateContext(1000, icmodule.RevisionExtraMainPReps, icmodule.RevisionExtraMainPReps),
 			1, 2, 1,
 			[]*PRep{prep4, prep3, prep5, prep2, prep1, prep6},
 			2, 1,
 		},
 		{
 			"Sort by power + extra main prep with zero count",
-			icmodule.RevisionExtraMainPReps, 1000,
+			NewStateContext(1000, icmodule.RevisionExtraMainPReps, icmodule.RevisionExtraMainPReps),
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power + pubKey + extra main prep",
-			icmodule.RevisionBTP2, 1000,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			1, 2, 1,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			2, 0,
 		},
 		{
 			"Sort by power + pubKey + extra main prep with zero count",
-			icmodule.RevisionBTP2, 1000,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			1, 2, 0,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			1, 1,
 		},
 		{
 			"Too big sub prep, extra main prep",
-			icmodule.RevisionBTP2, 1000,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			1, 6, 10,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			2, 0,
 		},
 		{
 			"Too big sub prep, extra main prep with zero main prep",
-			icmodule.RevisionBTP2, 1000,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			0, 6, 10,
 			[]*PRep{prep1, prep5, prep6, prep4, prep3, prep2},
 			2, 0,
@@ -283,9 +282,10 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s rev=%d", tt.name, tt.rev), func(t *testing.T) {
-			prepSet.Sort(tt.main, tt.sub, tt.extra, br, tt.rev)
-			err := prepSet.OnTermEnd(tt.rev, tt.bh, tt.main, tt.sub, tt.extra, 0, br)
+		rev := tt.sc.Revision()
+		t.Run(fmt.Sprintf("%s rev=%d", tt.name, rev), func(t *testing.T) {
+			prepSet.Sort(tt.main, tt.sub, tt.extra, br, rev)
+			err := prepSet.OnTermEnd(tt.sc, tt.main, tt.sub, tt.extra, 0, br)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectMain, prepSet.GetPRepSize(GradeMain))
 			assert.Equal(t, tt.expectSub, prepSet.GetPRepSize(GradeSub))
@@ -301,14 +301,14 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 				// check grade of P-Rep
 				switch {
 				case j < tt.expectMain:
-					if tt.rev >= icmodule.RevisionBTP2 &&
+					if rev >= icmodule.RevisionBTP2 &&
 						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
 						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 					} else {
 						assert.Equal(t, GradeMain, aEntry.PRep().Grade())
 					}
 				case j < tt.expectMain+tt.expectSub:
-					if tt.rev >= icmodule.RevisionBTP2 &&
+					if rev >= icmodule.RevisionBTP2 &&
 						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
 						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 					} else {
@@ -318,7 +318,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 					assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 				}
 
-				if tt.rev == icmodule.RevisionResetPenaltyMask {
+				if rev == icmodule.RevisionResetPenaltyMask {
 					assert.Zero(t, aEntry.PRep().GetVPenaltyCount())
 				}
 			}

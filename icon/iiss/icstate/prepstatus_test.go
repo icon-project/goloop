@@ -649,6 +649,8 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 			},
 		},
 	}
+	revision := icmodule.RevisionIISS4
+	termRevision := revision - 1
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
@@ -666,7 +668,8 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 				vPenaltyMask: init.vpm,
 			}}
 
-			err = ps.OnPenaltyImposed(icmodule.PenaltyBlockValidation, bh)
+			sc := NewStateContext(bh, revision, termRevision)
+			err = ps.OnPenaltyImposed(sc, icmodule.PenaltyBlockValidation)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
@@ -751,8 +754,10 @@ func TestPRepStatusData_getPenaltyType(t *testing.T) {
 }
 
 func TestPRepStatusData_ToJSON(t *testing.T) {
+	sc := NewStateContext(100, icmodule.RevisionIISS4, icmodule.RevisionPreIISS4)
+
 	ps := NewPRepStatus()
-	jso := ps.ToJSON(100, 5, 0)
+	jso := ps.ToJSON(sc, 5, 0)
 
 	penalty, ok := jso["penalty"].(int)
 	assert.True(t, ok)

@@ -283,7 +283,9 @@ func (ps *prepStatusData) clone() prepStatusData {
 	}
 }
 
-func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement icmodule.Rate, dsaMask int64) map[string]interface{} {
+func (ps *prepStatusData) ToJSON(
+	sc icmodule.StateContext, bondRequirement icmodule.Rate, dsaMask int64) map[string]interface{} {
+	blockHeight := sc.BlockHeight()
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
@@ -298,7 +300,7 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement icmodule.Rat
 	if dsaMask != 0 {
 		jso["hasPublicKey"] = (ps.GetDSAMask() & dsaMask) == dsaMask
 	}
-	ps.ji.ToJSON(jso)
+	ps.ji.ToJSON(sc, jso)
 	return jso
 }
 
@@ -638,19 +640,21 @@ func (ps *PRepStatusState) onTrueBlockVote(blockHeight int64) error {
 }
 
 // OnMainPRepIn is called only in case of penalized main prep replacement
-func (ps *PRepStatusState) OnMainPRepIn(blockHeight int64, limit int) error {
+func (ps *PRepStatusState) OnMainPRepIn(sc icmodule.StateContext, limit int) error {
 	if ps.grade != GradeSub {
 		return errors.Errorf("Invalid grade: %v -> M", ps.grade)
 	}
-	ps.onMainPRepIn(blockHeight, limit)
+	if err := ps.onMainPRepIn(sc, limit); err != nil {
+		return err
+	}
 	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) onMainPRepIn(blockHeight int64, limit int) error {
+func (ps *PRepStatusState) onMainPRepIn(sc icmodule.StateContext, limit int) error {
 	ps.grade = GradeMain
 	ps.shiftVPenaltyMask(limit)
-	return ps.ji.OnMainPRepIn(blockHeight)
+	return ps.ji.OnMainPRepIn(sc)
 }
 
 func (ps *PRepStatusState) onMainPRepOut(newGrade Grade) {
@@ -671,24 +675,25 @@ func (ps *PRepStatusState) OnValidatorOut(blockHeight int64) error {
 	return nil
 }
 
-func (ps *PRepStatusState) OnPenaltyImposed(pt icmodule.PenaltyType, blockHeight int64) error {
+func (ps *PRepStatusState) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
+	blockHeight := sc.BlockHeight()
 	if err := ps.syncBlockVoteStats(blockHeight); err != nil {
 		return err
 	}
 	ps.vFailCont = 0
 	ps.vPenaltyMask |= 1
 	ps.grade = GradeCandidate
-	if err := ps.ji.OnPenaltyImposed(pt); err != nil {
-		return err
+	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
+		 return err
 	}
 	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) OnTermEnd(blockHeight int64, newGrade Grade, limit int) error {
+func (ps *PRepStatusState) OnTermEnd(sc icmodule.StateContext, newGrade Grade, limit int) error {
 	ps.resetVFailCont()
 	if newGrade == GradeMain {
-		if err := ps.onMainPRepIn(blockHeight, limit); err != nil {
+		if err := ps.onMainPRepIn(sc, limit); err != nil {
 			return err
 		}
 	} else {
@@ -698,8 +703,8 @@ func (ps *PRepStatusState) OnTermEnd(blockHeight int64, newGrade Grade, limit in
 	return nil
 }
 
-func (ps *PRepStatusState) OnUnjailRequested(blockHeight int64) error {
-	return ps.ji.OnUnjailRequested(blockHeight)
+func (ps *PRepStatusState) OnUnjailRequested(sc icmodule.StateContext) error {
+	return ps.ji.OnUnjailRequested(sc)
 }
 
 // syncBlockVoteStats updates vote stats data at a given blockHeight
@@ -765,4 +770,8 @@ func NewPRepStats(owner module.Address, ps *PRepStatusState) *PRepStats {
 		owner:           owner,
 		PRepStatusState: ps,
 	}
+}
+
+func isIISS4Activated(termRevision int) bool {
+	return termRevision == icmodule.RevisionIISS4
 }

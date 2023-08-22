@@ -300,7 +300,7 @@ func (term *termData) clone() termData {
 	}
 }
 
-func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interface{} {
+func (term *termData) ToJSON(sc icmodule.StateContext, state *State) map[string]interface{} {
 	jso := map[string]interface{}{
 		"sequence":         term.sequence,
 		"startBlockHeight": term.startHeight,
@@ -315,7 +315,7 @@ func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interfa
 		"isDecentralized":  term.isDecentralized,
 		"mainPRepCount":    term.mainPRepCount,
 		"iissVersion":      term.GetIISSVersion(),
-		"preps":            term.prepsToJSON(blockHeight, state),
+		"preps":            term.prepsToJSON(sc, state),
 	}
 	switch term.version {
 	case termVersion1:
@@ -327,7 +327,7 @@ func (term *termData) ToJSON(blockHeight int64, state *State) map[string]interfa
 	return jso
 }
 
-func (term *termData) prepsToJSON(blockHeight int64, state *State) []interface{} {
+func (term *termData) prepsToJSON(sc icmodule.StateContext, state *State) []interface{} {
 	br := state.GetBondRequirement()
 	jso := make([]interface{}, 0, len(term.prepSnapshots))
 	for _, pss := range term.prepSnapshots {
@@ -337,7 +337,7 @@ func (term *termData) prepsToJSON(blockHeight int64, state *State) []interface{}
 		}
 		grade := prep.Grade()
 		if grade == GradeMain || grade == GradeSub {
-			prepInJSON := prep.ToJSON(blockHeight, br, 0)
+			prepInJSON := prep.ToJSON(sc, br, 0)
 			jso = append(jso, prepInJSON)
 		}
 	}

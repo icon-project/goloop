@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -378,14 +379,15 @@ func (s *State) changeValidatorNodeAddress(
 	return s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
 
-func (s *State) replaceMainPRepByOwner(owner module.Address, blockHeight int64) error {
+func (s *State) replaceMainPRepByOwner(sc icmodule.StateContext, owner module.Address) error {
 	node := s.GetNodeByOwner(owner)
+	blockHeight := sc.BlockHeight()
 	newMainPRepOwner, err := s.replaceMainPRepByNode(node, blockHeight)
 	if err != nil {
 		return err
 	}
 	if newMainPRepOwner != nil {
-		err = s.OnMainPRepReplaced(blockHeight, owner, newMainPRepOwner)
+		err = s.OnMainPRepReplaced(sc, owner, newMainPRepOwner)
 	}
 	return err
 }
