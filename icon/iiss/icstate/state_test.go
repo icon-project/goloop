@@ -428,66 +428,195 @@ func TestState_OnBlockVote(t *testing.T) {
 
 func TestState_OnMainPRepReplaced(t *testing.T) {
 	var err error
+	var sc icmodule.StateContext
 	limit := 30
-	state := newDummyState(false)
-	owners := newDummyAddresses(2)
 
-	for i := 0; i < len(owners); i++ {
-		ri := newDummyPRepInfo(1)
-		err = state.RegisterPRep(owners[i], ri, new(big.Int), 1234)
-		assert.NoError(t, err)
+	type input struct {
+		rev     int
+		termRev int
+	}
+	args := []struct {
+		in input
+	}{
+		{input{icmodule.RevisionIISS4, icmodule.RevisionIISS4 - 1}},
+		{input{icmodule.RevisionIISS4, icmodule.RevisionIISS4}},
+		{input{icmodule.RevisionIISS4 + 1, icmodule.RevisionIISS4}},
+		{input{icmodule.RevisionIISS4 + 1, icmodule.RevisionIISS4 + 1}},
 	}
 
-	state.Flush()
-	state.ClearCache()
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			state := newDummyState(false)
+			owners := newDummyAddresses(2)
 
-	ps := state.GetPRepStatusByOwner(owners[1], false)
-	assert.Equal(t, GradeCandidate, ps.Grade())
+			for i := 0; i < len(owners); i++ {
+				ri := newDummyPRepInfo(1)
+				err = state.RegisterPRep(owners[i], ri, new(big.Int), 1234)
+				assert.NoError(t, err)
+			}
 
-	blockHeight := int64(1000)
-	err = state.OnMainPRepReplaced(blockHeight, owners[0], owners[1])
-	assert.Error(t, err) // Invalid: C -> M
+			sc = NewStateContext(1000, arg.in.rev, arg.in.termRev)
 
-	err = ps.OnTermEnd(blockHeight, GradeSub, limit)
-	assert.NoError(t, err)
-	state.Flush()
-	state.ClearCache()
+			state.Flush()
+			state.ClearCache()
 
-	ps = state.GetPRepStatusByOwner(owners[1], false)
-	assert.Equal(t, GradeSub, ps.Grade())
+			ps := state.GetPRepStatusByOwner(owners[1], false)
+			assert.Equal(t, GradeCandidate, ps.Grade())
 
-	blockHeight++
-	err = state.OnMainPRepReplaced(blockHeight, owners[0], owners[1])
-	assert.NoError(t, err)
+			err = state.OnMainPRepReplaced(sc, owners[0], owners[1])
+			assert.Error(t, err) // Invalid: C -> M
 
-	state.Flush()
-	state.ClearCache()
+			err = ps.OnTermEnd(sc, GradeSub, limit)
+			assert.NoError(t, err)
+			state.Flush()
+			state.ClearCache()
 
-	ps = state.GetPRepStatusByOwner(owners[1], false)
-	assert.Equal(t, GradeMain, ps.Grade())
+			ps = state.GetPRepStatusByOwner(owners[1], false)
+			assert.Equal(t, GradeSub, ps.Grade())
+
+			termRev := sc.TermRevision()
+			if sc.Revision() < termRev {
+				termRev = sc.Revision()
+			}
+			sc = NewStateContext(sc.BlockHeight()+1, sc.Revision(), termRev)
+
+			err = state.OnMainPRepReplaced(sc, owners[0], owners[1])
+			assert.NoError(t, err)
+
+			state.Flush()
+			state.ClearCache()
+
+			ps = state.GetPRepStatusByOwner(owners[1], false)
+			assert.Equal(t, GradeMain, ps.Grade())
+		})
+	}
 }
 
 func TestState_ImposePenalty(t *testing.T) {
 	var err error
-	blockHeight := int64(1000)
 	owner := newDummyAddress(1)
-	state := newDummyState(false)
-
 	ri := newDummyPRepInfo(1)
-	err = state.RegisterPRep(owner, ri, new(big.Int), 1234)
-	assert.NoError(t, err)
-	state.Flush()
-	state.ClearCache()
 
-	ps := state.GetPRepStatusByOwner(owner, false)
-	err = state.ImposePenalty(icmodule.PenaltyBlockValidation, owner, ps, blockHeight)
-	assert.NoError(t, err)
-	state.Flush()
-	state.ClearCache()
+	type input struct {
+		rev     int
+		termRev int
+		pt      icmodule.PenaltyType
+	}
+	type output struct {
+		jailFlags int
+	}
+	args := []struct {
+		in  input
+		out output
+	}{
+		{
+			input{
+				icmodule.RevisionIISS4 - 1,
+				icmodule.RevisionIISS4 - 1,
+				icmodule.PenaltyBlockValidation,
+			},
+			output{0},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4 - 1,
+				icmodule.PenaltyBlockValidation,
+			},
+			output{0},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4,
+				icmodule.PenaltyBlockValidation,
+			},
+			output{JFlagInJail},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4 + 1,
+				icmodule.RevisionIISS4,
+				icmodule.PenaltyBlockValidation,
+			},
+			output{JFlagInJail},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4 + 1,
+				icmodule.RevisionIISS4 + 1,
+				icmodule.PenaltyBlockValidation,
+			},
+			output{JFlagInJail},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4 - 1,
+				icmodule.RevisionIISS4 - 1,
+				icmodule.PenaltyDoubleVote,
+			},
+			output{0},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4 - 1,
+				icmodule.PenaltyDoubleVote,
+			},
+			output{0},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4,
+				icmodule.PenaltyDoubleVote,
+			},
+			output{JFlagInJail | JFlagDoubleVote},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4 + 1,
+				icmodule.RevisionIISS4,
+				icmodule.PenaltyDoubleVote,
+			},
+			output{JFlagInJail | JFlagDoubleVote},
+		},
+		{
+			input{
+				icmodule.RevisionIISS4 + 1,
+				icmodule.RevisionIISS4 + 1,
+				icmodule.PenaltyDoubleVote,
+			},
+			output{JFlagInJail | JFlagDoubleVote},
+		},
+	}
 
-	ps = state.GetPRepStatusByOwner(owner, false)
-	assert.Equal(t, 1, ps.GetVPenaltyCount())
-	assert.True(t, ps.IsAlreadyPenalized())
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			state := newDummyState(false)
+
+			err = state.RegisterPRep(owner, ri, icmodule.BigIntZero, 1234)
+			assert.NoError(t, err)
+			state.Flush()
+			state.ClearCache()
+
+			sc := NewStateContext(10000, arg.in.rev, arg.in.termRev)
+			ps := state.GetPRepStatusByOwner(owner, false)
+			err = state.ImposePenalty(sc, arg.in.pt, owner, ps)
+			assert.NoError(t, err)
+			state.Flush()
+			state.ClearCache()
+
+			ps = state.GetPRepStatusByOwner(owner, false)
+			assert.Equal(t, 1, ps.GetVPenaltyCount())
+			assert.True(t, ps.IsAlreadyPenalized())
+			assert.Equal(t, arg.out.jailFlags, ps.JailFlags())
+			assert.Zero(t, ps.UnjailRequestHeight())
+			assert.Zero(t, ps.MinDoubleVoteHeight())
+		})
+	}
 }
 
 func TestState_ReducePRepBonded(t *testing.T) {
@@ -552,7 +681,8 @@ func TestState_DisablePRep(t *testing.T) {
 	assert.Equal(t, delegation, ps.Delegated().Int64())
 	assert.Equal(t, Active, ps.Status())
 
-	err = state.DisablePRep(owner, Unregistered, 1000)
+	sc := NewStateContext(1000, icmodule.RevisionPreIISS4, icmodule.RevisionPreIISS4)
+	err = state.DisablePRep(sc, owner, Unregistered)
 	assert.NoError(t, err)
 	state.Flush()
 	state.ClearCache()

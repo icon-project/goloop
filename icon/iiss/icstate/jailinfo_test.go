@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/icon/icmodule"
 )
 
 func TestJailInfo_IsEmpty(t *testing.T) {
@@ -85,7 +86,8 @@ func TestJailInfo_OnUnjailRequested(t *testing.T) {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
 			ji := arg.ji
-			err := ji.OnUnjailRequested(arg.bh)
+			sc := NewStateContext(arg.bh, icmodule.RevisionIISS4, icmodule.RevisionIISS4)
+			err := ji.OnUnjailRequested(sc)
 			if arg.success {
 				assert.NoError(t, err)
 				assert.Equal(t, arg.inJail, ji.IsInJail())
@@ -142,7 +144,8 @@ func TestJailInfo_OnMainPRepIn(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			exp := arg.exp
 			ji := arg.ji
-			err := ji.OnMainPRepIn(arg.bh)
+			sc := NewStateContext(arg.bh, icmodule.RevisionPreIISS4, icmodule.RevisionIISS4)
+			err := ji.OnMainPRepIn(sc)
 			if exp.success {
 				assert.NoError(t, err)
 				assert.Zero(t, ji.Flags())

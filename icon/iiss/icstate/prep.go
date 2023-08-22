@@ -39,9 +39,12 @@ func (p *PRep) NodeAddress() module.Address {
 	return pb.GetNode(p.owner)
 }
 
-func (p *PRep) ToJSON(blockHeight int64, bondRequirement icmodule.Rate, activeDSAMask int64) map[string]interface{} {
+func (p *PRep) ToJSON(sc icmodule.StateContext, bondRequirement icmodule.Rate, activeDSAMask int64) map[string]interface{} {
 	pb := p.getPRepBaseState()
-	jso := icutils.MergeMaps(pb.ToJSON(p.owner), p.PRepStatusState.ToJSON(blockHeight, bondRequirement, activeDSAMask))
+	jso := icutils.MergeMaps(
+		pb.ToJSON(p.owner),
+		p.PRepStatusState.ToJSON(sc, bondRequirement, activeDSAMask),
+	)
 	jso["address"] = p.owner
 	return jso
 }
@@ -81,9 +84,7 @@ func NewPRep(owner module.Address, state *State) *PRep {
 // ===============================================================
 
 type PRepSet interface {
-	OnTermEnd(
-		revision int, blockHeight int64,
-		mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error
+	OnTermEnd(sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error
 	GetPRepSize(grade Grade) int
 	GetElectedPRepSize() int
 	Size() int
@@ -160,9 +161,9 @@ type prepSetImpl struct {
 }
 
 // OnTermEnd initializes all prep status including grade on term end
-func (p *prepSetImpl) OnTermEnd(
-	revision int, blockHeight int64,
+func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext,
 	mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error {
+	revision := sc.Revision()
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
@@ -187,7 +188,7 @@ func (p *prepSetImpl) OnTermEnd(
 		}
 
 		prep := entry.PRep()
-		if err := prep.OnTermEnd(blockHeight, newGrade, limit); err != nil {
+		if err := prep.OnTermEnd(sc, newGrade, limit); err != nil {
 			return err
 		}
 		if revision == icmodule.RevisionResetPenaltyMask {

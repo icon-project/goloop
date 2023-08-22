@@ -492,8 +492,7 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	blockHeight := s.cc.BlockHeight()
-	jso, err := es.GetPRepTermInJSON(blockHeight)
+	jso, err := es.GetPRepTermInJSON(s.newCallContext(s.cc))
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get PRepTerm")
 	}

@@ -61,13 +61,15 @@ func (ji *JailInfo) IsEmpty() bool {
 	return ji.flags == 0 && ji.unjailRequestHeight == 0 && ji.minDoubleVoteHeight == 0
 }
 
-func (ji *JailInfo) ToJSON(jso map[string]interface{}) map[string]interface{} {
-	if jso == nil {
-		jso = make(map[string]interface{})
+func (ji *JailInfo) ToJSON(sc icmodule.StateContext, jso map[string]interface{}) map[string]interface{} {
+	if sc.IsIISS4Activated() {
+		if jso == nil {
+			jso = make(map[string]interface{})
+		}
+		jso["jailFlags"] = ji.flags
+		jso["unjailRequestHeight"] = ji.unjailRequestHeight
+		jso["minDoubleVoteHeight"] = ji.minDoubleVoteHeight
 	}
-	jso["jailFlags"] = ji.flags
-	jso["unjailRequestHeight"] = ji.unjailRequestHeight
-	jso["minDoubleVoteHeight"] = ji.minDoubleVoteHeight
 	return jso
 }
 
@@ -80,7 +82,10 @@ func (ji *JailInfo) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(ji.flags, ji.unjailRequestHeight, ji.minDoubleVoteHeight)
 }
 
-func (ji *JailInfo) OnPenaltyImposed(pt icmodule.PenaltyType) error {
+func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
+	if !sc.IsIISS4Activated() {
+		return nil
+	}
 	switch pt {
 	case icmodule.PenaltyBlockValidation:
 		ji.flags |= JFlagInJail
@@ -92,7 +97,11 @@ func (ji *JailInfo) OnPenaltyImposed(pt icmodule.PenaltyType) error {
 	return nil
 }
 
-func (ji *JailInfo) OnUnjailRequested(blockHeight int64) error {
+func (ji *JailInfo) OnUnjailRequested(sc icmodule.StateContext) error {
+	if !sc.IsIISS4Activated() {
+		return nil
+	}
+	blockHeight := sc.BlockHeight()
 	if blockHeight < ji.unjailRequestHeight {
 		return scoreresult.InvalidParameterError.Errorf("InvalidBlockHeight(%d)", blockHeight)
 	}
@@ -103,13 +112,16 @@ func (ji *JailInfo) OnUnjailRequested(blockHeight int64) error {
 	return nil
 }
 
-func (ji *JailInfo) OnMainPRepIn(blockHeight int64) error {
+func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext) error {
+	if !sc.IsIISS4Activated() {
+		return nil
+	}
 	if icutils.MatchAll(ji.flags, JFlagInJail) {
 		if !icutils.MatchAll(ji.flags, JFlagUnjailing) {
 			return icmodule.InvalidStateError.Errorf("InvalidJailFlags(%d)", ji.flags)
 		}
 		if icutils.MatchAll(ji.flags, JFlagDoubleVote) {
-			ji.minDoubleVoteHeight = blockHeight
+			ji.minDoubleVoteHeight = sc.BlockHeight()
 		}
 		ji.flags = 0
 	}
