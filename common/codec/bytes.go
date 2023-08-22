@@ -50,6 +50,17 @@ func (c *bytesWrapper) Unmarshal(r io.Reader, v interface{}) error {
 	return c.NewDecoder(r).Decode(v)
 }
 
+func bytesDup(bs []byte) []byte {
+	sz := len(bs)
+	if sz != 0 {
+		nbs := make([]byte,len(bs))
+		copy(nbs, bs)
+		return nbs
+	} else {
+		return []byte{}
+	}
+}
+
 func (c *bytesWrapper) MarshalToBytes(v interface{}) ([]byte, error) {
 	be := c.encoders.Get().(*bytesEncoder)
 
@@ -57,9 +68,10 @@ func (c *bytesWrapper) MarshalToBytes(v interface{}) ([]byte, error) {
 	if err := be.Encode(v) ; err != nil {
 		return nil, err
 	}
+	remainder := bytesDup(be.Bytes())
 
 	c.encoders.Put(be)
-	return be.Bytes(), nil
+	return remainder, nil
 }
 
 func (c *bytesWrapper) UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {
@@ -69,9 +81,10 @@ func (c *bytesWrapper) UnmarshalFromBytes(b []byte, v interface{}) ([]byte, erro
 	if err := bd.Decode(v); err != nil {
 		return nil, err
 	}
+	bs := bytesDup(bd.Bytes())
 
 	c.decoders.Put(bd)
-	return bd.Bytes(), nil
+	return bs, nil
 }
 
 func (c *bytesWrapper) MustMarshalToBytes(v interface{}) []byte {
