@@ -46,6 +46,79 @@ func TestJailInfo_IsEmpty(t *testing.T) {
 	}
 }
 
+func TestJailInfo_OnPenaltyImposed(t *testing.T) {
+	type input struct {
+		flags int
+		pt    icmodule.PenaltyType
+	}
+	type output struct {
+		flags   int
+		success bool
+	}
+	args := []struct {
+		in  input
+		out output
+	}{
+		{
+			input{0, icmodule.PenaltyBlockValidation},
+			output{JFlagInJail, true},
+		},
+		{
+			input{JFlagInJail|JFlagDoubleVote, icmodule.PenaltyBlockValidation},
+			output{JFlagInJail|JFlagDoubleVote, true},
+		},
+		{
+			input{0, icmodule.PenaltyDoubleVote},
+			output{JFlagInJail|JFlagDoubleVote, true},
+		},
+		{
+			input{JFlagInJail, icmodule.PenaltyDoubleVote},
+			output{JFlagInJail|JFlagDoubleVote, true},
+		},
+		{
+			input{JFlagInJail|JFlagUnjailing, icmodule.PenaltyDoubleVote},
+			output{JFlagInJail|JFlagDoubleVote, true},
+		},
+		{
+			input{0, icmodule.PenaltyContinuousBlockValidation},
+			output{0, false},
+		},
+		{
+			input{JFlagInJail, icmodule.PenaltyContinuousBlockValidation},
+			output{JFlagInJail, false},
+		},
+		{
+			input{0, icmodule.PenaltyPRepDisqualification},
+			output{0, false},
+		},
+		{
+			input{JFlagInJail, icmodule.PenaltyPRepDisqualification},
+			output{JFlagInJail, false},
+		},
+	}
+
+	unjailRequestHeight := int64(500)
+	sc := NewStateContext(1000, icmodule.RevisionIISS4, icmodule.RevisionIISS4)
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			in := arg.in
+			out := arg.out
+			ji := &JailInfo{in.flags, unjailRequestHeight, 0}
+
+			err := ji.OnPenaltyImposed(sc, in.pt)
+			if out.success {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+			assert.Equal(t, out.flags, ji.Flags())
+			assert.Equal(t, unjailRequestHeight, ji.UnjailRequestHeight())
+			assert.Zero(t, ji.MinDoubleVoteHeight())
+		})
+	}
+}
+
 func TestJailInfo_OnUnjailRequested(t *testing.T) {
 	args := []struct {
 		// input
@@ -123,7 +196,7 @@ func TestJailInfo_OnMainPRepIn(t *testing.T) {
 			output{false, 0, 0},
 		},
 		{
-			JailInfo{JFlagInJail|JFlagDoubleVote, 50, 80},
+			JailInfo{JFlagInJail | JFlagDoubleVote, 50, 80},
 			100,
 			output{false, 0, 0},
 		},
