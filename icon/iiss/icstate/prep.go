@@ -145,6 +145,20 @@ func (p *prepSetEntry) HasPubKey() bool {
 	return p.pubKey
 }
 
+func isPRepElectable(p PRepSetEntry, br icmodule.Rate) bool {
+	if p.Power(br).Sign() <= 0 {
+		return false
+	}
+	if !p.HasPubKey() {
+		return false
+	}
+	prep := p.PRep()
+	if prep.IsInJail() && !prep.IsUnjailing() {
+		return false
+	}
+	return true
+}
+
 func NewPRepSetEntry(prep *PRep, pubKey bool) *prepSetEntry {
 	return &prepSetEntry{
 		prep:   prep,
@@ -259,30 +273,30 @@ func (p *prepSetImpl) ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PR
 	return ret
 }
 
+// Sort sorts the PRepSet based on predefined criteria that may change with each revision
+// PRepCount parameters are the metrics in configuration file
+// Ex) mainPRepCount(22), subPRepCount(78), extraMainPRepCount(3)
 func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, rev int) {
 	if rev < icmodule.RevisionExtraMainPReps {
 		p.sort(br, nil)
+	} else if rev < icmodule.RevisionBTP2 {
+		p.sort(br, nil)
+		p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 	} else {
-		if rev < icmodule.RevisionBTP2 {
-			p.sort(br, nil)
-			p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
-		} else {
-			p.sort(br, cmpPubKey)
-			var electable int
-			p.visitAll(func(idx int, e1 PRepSetEntry) bool {
-				if e1.Power(br).Sign() > 0 && e1.HasPubKey() {
-					electable += 1
-					return true
-				} else {
-					return false
-				}
-			})
-			if electable > mainPRepCount {
-				if electable < mainPRepCount+subPRepCount {
-					subPRepCount = electable - mainPRepCount
-				}
-				p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
+		p.sort(br, cmpPubKey)
+		var electable int
+		p.visitAll(func(idx int, e PRepSetEntry) bool {
+			ok := isPRepElectable(e, br)
+			if ok {
+				electable += 1
 			}
+			return ok
+		})
+		if electable > mainPRepCount {
+			if electable < mainPRepCount+subPRepCount {
+				subPRepCount = electable - mainPRepCount
+			}
+			p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 		}
 	}
 }
@@ -309,32 +323,37 @@ func cmpPubKey(e0, e1 PRepSetEntry) int {
 		}
 		return -1
 	}
+
+	p0 := e0.PRep()
+	p1 := e1.PRep()
+	if p0.IsInJail() != p1.IsInJail() {
+		if p0.IsInJail() {
+			return -1
+		}
+		 return 1
+	}
+	if p0.IsUnjailing() != p1.IsUnjailing() {
+		if p0.IsUnjailing() {
+			return 1
+		}
+		return -1
+	}
 	return 0
 }
 
 func lessByPower(e0, e1 PRepSetEntry, br icmodule.Rate, cmp func(i, j PRepSetEntry) int) bool {
+	var ret int
 	if cmp != nil {
-		ret := cmp(e0, e1)
-		if ret > 0 {
-			return true
-		} else if ret < 0 {
-			return false
+		if ret = cmp(e0, e1); ret != 0 {
+			return ret > 0
 		}
 	}
-	ret := e0.Power(br).Cmp(e1.Power(br))
-	if ret > 0 {
-		return true
-	} else if ret < 0 {
-		return false
+	if ret = e0.Power(br).Cmp(e1.Power(br)); ret != 0 {
+		return ret > 0
 	}
-
-	ret = e0.Delegated().Cmp(e1.Delegated())
-	if ret > 0 {
-		return true
-	} else if ret < 0 {
-		return false
+	if ret = e0.Delegated().Cmp(e1.Delegated()); ret != 0 {
+		return ret > 0
 	}
-
 	return bytes.Compare(e0.Owner().Bytes(), e1.Owner().Bytes()) > 0
 }
 
@@ -407,6 +426,13 @@ func sortByLRU(prepSet []PRepSetEntry, br icmodule.Rate) {
 }
 
 func lessByLRU(p0, p1 *PRep, br icmodule.Rate) bool {
+	if p0.IsUnjailing() != p1.IsUnjailing() {
+		return p0.IsUnjailing()
+	}
+	if p0.UnjailRequestHeight() != p1.UnjailRequestHeight() {
+		return p0.UnjailRequestHeight() < p1.UnjailRequestHeight()
+	}
+
 	// Sort by lastState
 	if p0.LastState() == None {
 		if p1.LastState() != None {

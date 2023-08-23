@@ -404,6 +404,14 @@ func (ps *prepStatusData) JailFlags() int {
 	return ps.ji.Flags()
 }
 
+func (ps *prepStatusData) IsInJail() bool {
+	return ps.ji.IsInJail()
+}
+
+func (ps *prepStatusData) IsUnjailing() bool {
+	return ps.ji.IsUnjailing()
+}
+
 func (ps *prepStatusData) UnjailRequestHeight() int64 {
 	return ps.ji.UnjailRequestHeight()
 }
