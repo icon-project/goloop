@@ -1992,3 +1992,24 @@ func (es *ExtensionStateImpl) newStateContext(cc icmodule.WorldContext) icmodule
 	}
 	return icstate.NewStateContext(cc.BlockHeight(), revision, termRevision)
 }
+
+func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
+	owner := cc.From()
+	if owner == nil {
+		return scoreresult.InvalidParameterError.Errorf("InvalidOwner(%s)", owner)
+	}
+	ps := es.State.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
+	}
+	if !ps.IsActive() {
+		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
+	}
+	if ps.IsInJail() && !ps.IsUnjailing() {
+		if err := ps.OnUnjailRequested(es.newStateContext(cc)); err != nil {
+			return err
+		}
+		// TODO: goldworm: Unjail-related event for icstage
+	}
+	return nil
+}

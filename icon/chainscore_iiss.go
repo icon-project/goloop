@@ -1015,3 +1015,14 @@ func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
 	}
 	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate.Int64()))
 }
+
+func (s *chainScore) Ex_requestUnjail() error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.RequestUnjail(s.newCallContext(s.cc))
+}

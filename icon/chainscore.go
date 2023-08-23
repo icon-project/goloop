@@ -809,6 +809,12 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionPreIISS4, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "requestUnjail",
+		scoreapi.FlagExternal, 0,
+		nil,
+		nil,
+	}, icmodule.RevisionIISS4, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
