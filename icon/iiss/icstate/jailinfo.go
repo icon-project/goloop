@@ -88,12 +88,13 @@ func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.Penal
 	}
 	switch pt {
 	case icmodule.PenaltyBlockValidation:
-		ji.flags |= JFlagInJail
+		ji.turnFlag(JFlagInJail, true)
 	case icmodule.PenaltyDoubleVote:
-		ji.flags |= JFlagInJail | JFlagDoubleVote
+		ji.turnFlag(JFlagInJail|JFlagDoubleVote, true)
 	default:
 		return scoreresult.InvalidParameterError.Errorf("UnexpectedPenaltyType(%d)", pt)
 	}
+	ji.turnFlag(JFlagUnjailing, false)
 	return nil
 }
 
@@ -106,7 +107,7 @@ func (ji *JailInfo) OnUnjailRequested(sc icmodule.StateContext) error {
 		return scoreresult.InvalidParameterError.Errorf("InvalidBlockHeight(%d)", blockHeight)
 	}
 	if ji.flags&(JFlagInJail|JFlagUnjailing) == JFlagInJail {
-		ji.flags |= JFlagUnjailing
+		ji.turnFlag(JFlagUnjailing, true)
 		ji.unjailRequestHeight = blockHeight
 	}
 	return nil
@@ -126,6 +127,15 @@ func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext) error {
 		ji.flags = 0
 	}
 	return nil
+}
+
+func (ji *JailInfo) turnFlag(flag int, on bool) int {
+	if on {
+		ji.flags |= flag
+	} else {
+		ji.flags &= ^flag
+	}
+	return ji.flags
 }
 
 func (ji JailInfo) String() string {
