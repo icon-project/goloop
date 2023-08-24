@@ -132,7 +132,7 @@ func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (i
 	return s.addEventVote(TypeEventBond, offset, from, votes)
 }
 
-func (s *State) AddEventEnable(offset int, target module.Address, status EnableStatus) (int64, error) {
+func (s *State) AddEventEnable(offset int, target module.Address, status icmodule.EnableStatus) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
 	obj := NewEventEnable(common.AddressToPtr(target), status)

@@ -34,7 +34,7 @@ import (
 
 type prep struct {
 	owner          module.Address
-	status         icstage.EnableStatus
+	status         icmodule.EnableStatus
 	bond           int64
 	delegate       int64
 	pubkey         bool
@@ -69,7 +69,7 @@ func TestPRep_InitAccumulated(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newTestPRep(prep{a1, icstage.ESEnable, bond, delegate, true, 0})
+			p := newTestPRep(prep{a1, icmodule.ESEnable, bond, delegate, true, 0})
 
 			p.InitAccumulated(tt.termPeriod)
 
@@ -121,7 +121,7 @@ func TestPRep_ApplyVote(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newTestPRep(prep{a1, icstage.ESEnable, bond, delegate, true, 0})
+			p := newTestPRep(prep{a1, icmodule.ESEnable, bond, delegate, true, 0})
 
 			p.ApplyVote(tt.vType, big.NewInt(tt.amount), tt.period)
 
@@ -145,38 +145,38 @@ func TestPRep_Bigger(t *testing.T) {
 	}{
 		{
 			"address",
-			prep{a1, icstage.ESEnable, 100, 0, true, 0},
-			prep{a2, icstage.ESEnable, 100, 0, true, 0},
+			prep{a1, icmodule.ESEnable, 100, 0, true, 0},
+			prep{a2, icmodule.ESEnable, 100, 0, true, 0},
 			false,
 		},
 		{
 			"delegated",
-			prep{a1, icstage.ESEnable, 99, 1, true, 0},
-			prep{a1, icstage.ESEnable, 100, 0, true, 0},
+			prep{a1, icmodule.ESEnable, 99, 1, true, 0},
+			prep{a1, icmodule.ESEnable, 100, 0, true, 0},
 			true,
 		},
 		{
 			"Power",
-			prep{a1, icstage.ESEnable, 99, 1, true, 0},
-			prep{a1, icstage.ESEnable, 100, 1, true, 0},
+			prep{a1, icmodule.ESEnable, 99, 1, true, 0},
+			prep{a1, icmodule.ESEnable, 100, 1, true, 0},
 			false,
 		},
 		{
 			"public key",
-			prep{a1, icstage.ESEnable, 100, 0, false, 0},
-			prep{a1, icstage.ESEnable, 100, 0, true, 0},
+			prep{a1, icmodule.ESEnable, 100, 0, false, 0},
+			prep{a1, icmodule.ESEnable, 100, 0, true, 0},
 			false,
 		},
 		{
 			"status",
-			prep{a1, icstage.ESEnable, 100, 1, true, 0},
-			prep{a1, icstage.ESJail, 100, 1, true, 0},
+			prep{a1, icmodule.ESEnable, 100, 1, true, 0},
+			prep{a1, icmodule.ESJail, 100, 1, true, 0},
 			true,
 		},
 		{
 			"status == Unjail",
-			prep{a1, icstage.ESEnable, 99, 1, true, 0},
-			prep{a1, icstage.ESUnjail, 100, 1, true, 0},
+			prep{a1, icmodule.ESEnable, 99, 1, true, 0},
+			prep{a1, icmodule.ESUnjail, 100, 1, true, 0},
 			false,
 		},
 	}
@@ -195,7 +195,7 @@ func TestPRep_Bigger(t *testing.T) {
 
 func TestPRep_ToVoted(t *testing.T) {
 	a1, _ := common.NewAddressFromString("hx1")
-	status := icstage.ESEnable
+	status := icmodule.ESEnable
 	bond := int64(100)
 	delegate := int64(0)
 	cr := icmodule.Rate(500)
@@ -256,11 +256,11 @@ func TestPRepInfo(t *testing.T) {
 	a5, _ := common.NewAddressFromString("hx5")
 	a6, _ := common.NewAddressFromString("hx6")
 	preps := []prep{
-		{a1, icstage.ESEnable, 100, 1000, true, 100},
-		{a2, icstage.ESJail, 200, 2000, true, 200},
-		{a3, icstage.ESUnjail, 300, 3000, true, 300},
-		{a4, icstage.ESEnable, 40, 4000, true, 400},
-		{a5, icstage.ESUnjail, 50, 5000, true, 500},
+		{a1, icmodule.ESEnable, 100, 1000, true, 100},
+		{a2, icmodule.ESJail, 200, 2000, true, 200},
+		{a3, icmodule.ESUnjail, 300, 3000, true, 300},
+		{a4, icmodule.ESEnable, 40, 4000, true, 400},
+		{a5, icmodule.ESUnjail, 50, 5000, true, 500},
 	}
 
 	ranks := []module.Address{a3, a1, a5, a4, a2}
@@ -373,12 +373,12 @@ func TestPRepInfo(t *testing.T) {
 
 	status := []struct {
 		target module.Address
-		es     icstage.EnableStatus
+		es     icmodule.EnableStatus
 	}{
-		{a3, icstage.ESEnable},
-		{a5, icstage.ESJail},
-		{a4, icstage.ESJail},
-		{a6, icstage.ESEnable}, // will add new PRep
+		{a3, icmodule.ESEnable},
+		{a5, icmodule.ESJail},
+		{a4, icmodule.ESJail},
+		{a6, icmodule.ESEnable}, // will add new PRep
 	}
 	for _, s := range status {
 		old := pInfo.GetPRep(icutils.ToKey(s.target))

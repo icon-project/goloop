@@ -24,6 +24,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -93,7 +94,7 @@ func TestEvent_Enable(t *testing.T) {
 	type_ := TypeEventEnable
 	version := 0
 	addr1 := "hx1"
-	status := ESDisablePermanent
+	status := icmodule.ESDisablePermanent
 
 	t1 := NewEventEnable(common.MustNewAddressFromString(addr1), status)
 
