@@ -14,6 +14,7 @@ const (
 	JFlagInJail = 1 << iota
 	JFlagUnjailing
 	JFlagDoubleVote
+	JFlagMax
 )
 
 type JailInfo struct {
@@ -24,10 +25,6 @@ type JailInfo struct {
 
 func (ji *JailInfo) Flags() int {
 	return ji.flags
-}
-
-func (ji *JailInfo) SetFlags(flags int) {
-	ji.flags = flags
 }
 
 func (ji *JailInfo) IsInJail() bool {
@@ -42,6 +39,10 @@ func (ji *JailInfo) IsUnjailable() bool {
 	return ji.flags&(JFlagInJail|JFlagUnjailing) == JFlagInJail
 }
 
+func (ji *JailInfo) IsElectable() bool {
+	return !ji.IsUnjailable()
+}
+
 func (ji *JailInfo) IsInDoubleVotePenalty() bool {
 	return icutils.MatchAll(ji.flags, JFlagDoubleVote)
 }
@@ -50,16 +51,8 @@ func (ji *JailInfo) UnjailRequestHeight() int64 {
 	return ji.unjailRequestHeight
 }
 
-func (ji *JailInfo) SetUnajilRequestHeight(blockHeight int64) {
-	ji.unjailRequestHeight = blockHeight
-}
-
 func (ji *JailInfo) MinDoubleVoteHeight() int64 {
 	return ji.minDoubleVoteHeight
-}
-
-func (ji *JailInfo) SetMinDoubleVoteHeight(blockHeight int64) {
-	ji.minDoubleVoteHeight = blockHeight
 }
 
 func (ji *JailInfo) IsEmpty() bool {
@@ -99,22 +92,22 @@ func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.Penal
 	default:
 		return scoreresult.InvalidParameterError.Errorf("UnexpectedPenaltyType(%d)", pt)
 	}
-	ji.turnFlag(JFlagUnjailing, false)
+	ji.setUnjailing(sc, false)
 	return nil
 }
 
 func (ji *JailInfo) OnUnjailRequested(sc icmodule.StateContext) error {
 	if !sc.IsIISS4Activated() {
-		return nil
+		return icmodule.NotReadyError.New("IISS4NotReady")
 	}
 	blockHeight := sc.BlockHeight()
 	if blockHeight < ji.unjailRequestHeight {
 		return scoreresult.InvalidParameterError.Errorf("InvalidBlockHeight(%d)", blockHeight)
 	}
-	if ji.flags&(JFlagInJail|JFlagUnjailing) == JFlagInJail {
-		ji.turnFlag(JFlagUnjailing, true)
-		ji.unjailRequestHeight = blockHeight
+	if !ji.IsUnjailable() {
+		return icmodule.InvalidStateError.Errorf("UnjailRequestNotAllowed(flags=%d)", ji.flags)
 	}
+	ji.setUnjailing(sc, true)
 	return nil
 }
 
@@ -130,6 +123,7 @@ func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext, owner module.Address)
 			ji.minDoubleVoteHeight = sc.BlockHeight()
 		}
 		ji.flags = 0
+		ji.unjailRequestHeight = 0
 		if err := sc.AddEventEnable(owner, icmodule.ESEnable); err != nil {
 			return err
 		}
@@ -146,11 +140,20 @@ func (ji *JailInfo) turnFlag(flag int, on bool) int {
 	return ji.flags
 }
 
+func (ji *JailInfo) setUnjailing(sc icmodule.StateContext, on bool) {
+	ji.turnFlag(JFlagUnjailing, on)
+	if on {
+		ji.unjailRequestHeight = sc.BlockHeight()
+	} else {
+		ji.unjailRequestHeight = 0
+	}
+}
+
 func (ji JailInfo) String() string {
 	return fmt.Sprintf("JailInfo{%d %d %d}", ji.flags, ji.unjailRequestHeight, ji.minDoubleVoteHeight)
 }
 
-func (ji JailInfo) Format(f fmt.State, c rune) {
+func (ji *JailInfo) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		var format string

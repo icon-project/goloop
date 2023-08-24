@@ -688,30 +688,28 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 
 func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 	var err error
-	args := []struct{
-		dsaMask int64
-		jailFlags int
+	args := []struct {
+		dsaMask             int64
+		jailFlags           int
 		unjailRequestHeight int64
 		minDoubleVoteHeight int64
 	}{
 		{0, 0, 0, 0},
 		{1, 0, 0, 0},
-		{0, JFlagInJail, 100, 0},
+		{0, JFlagInJail, 0, 0},
 		{0, JFlagInJail | JFlagUnjailing, 100, 0},
-		{0, JFlagInJail | JFlagDoubleVote, 100, 0},
-		{0, 0, 100, 0},
-		{0, 0, 100, 200},
+		{0, JFlagInJail | JFlagDoubleVote, 0, 0},
+		{0, 0, 0, 0},
+		{0, 0, 0, 200},
 		{1, JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 100, 200},
 	}
 
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T){
+		t.Run(name, func(t *testing.T) {
 			state := NewPRepStatus()
 			state.dsaMask = arg.dsaMask
-			state.ji.SetFlags(arg.jailFlags)
-			state.ji.SetUnajilRequestHeight(arg.unjailRequestHeight)
-			state.ji.SetMinDoubleVoteHeight(arg.minDoubleVoteHeight)
+			state.ji = *newJailInfo(arg.jailFlags, arg.unjailRequestHeight, arg.minDoubleVoteHeight)
 			state.setDirty()
 
 			snapshot0 := state.GetSnapshot()

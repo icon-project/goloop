@@ -25,17 +25,37 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
+
+func checkUnjailRequestHeight(t *testing.T, ji *JailInfo, unjailRequestHeight int64) {
+	if !ji.IsUnjailing() {
+		unjailRequestHeight = int64(0)
+	}
+	assert.Equal(t, unjailRequestHeight, ji.UnjailRequestHeight())
+}
+
+func newJailInfo(flags int, unjailRequestHeight, minDoubleVoteHeight int64) *JailInfo {
+	if !icutils.MatchAll(flags, JFlagUnjailing) && unjailRequestHeight != 0 {
+		return nil
+	}
+	if icutils.MatchAny(flags, ^(JFlagMax - 1)) {
+		return nil
+	}
+	return &JailInfo{flags, unjailRequestHeight, minDoubleVoteHeight}
+}
 
 func TestJailInfo_IsEmpty(t *testing.T) {
 	args := []struct {
-		ji    JailInfo
+		ji    *JailInfo
 		empty bool
 	}{
-		{JailInfo{0, 0, 0}, true},
-		{JailInfo{1, 0, 0}, false},
-		{JailInfo{0, 100, 0}, false},
-		{JailInfo{0, 0, 100}, false},
+		{newJailInfo(0, 0, 0), true},
+		{newJailInfo(JFlagInJail, 0, 0), false},
+		{newJailInfo(JFlagInJail|JFlagUnjailing, 50, 0), false},
+		{newJailInfo(JFlagInJail|JFlagUnjailing|JFlagDoubleVote, 50, 0), false},
+		{newJailInfo(0, 0, 100), false},
+		{newJailInfo(JFlagInJail|JFlagDoubleVote, 0, 100), false},
 	}
 
 	for i, arg := range args {
@@ -64,20 +84,20 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 			output{JFlagInJail, true},
 		},
 		{
-			input{JFlagInJail|JFlagDoubleVote, icmodule.PenaltyBlockValidation},
-			output{JFlagInJail|JFlagDoubleVote, true},
+			input{JFlagInJail | JFlagDoubleVote, icmodule.PenaltyBlockValidation},
+			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
 			input{0, icmodule.PenaltyDoubleVote},
-			output{JFlagInJail|JFlagDoubleVote, true},
+			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
 			input{JFlagInJail, icmodule.PenaltyDoubleVote},
-			output{JFlagInJail|JFlagDoubleVote, true},
+			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
-			input{JFlagInJail|JFlagUnjailing, icmodule.PenaltyDoubleVote},
-			output{JFlagInJail|JFlagDoubleVote, true},
+			input{JFlagInJail | JFlagUnjailing, icmodule.PenaltyDoubleVote},
+			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
 			input{0, icmodule.PenaltyContinuousBlockValidation},
@@ -97,14 +117,19 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 		},
 	}
 
-	unjailRequestHeight := int64(500)
+	var unjailRequestHeight int64
 	sc := NewStateContext(1000, icmodule.RevisionIISS4, icmodule.RevisionIISS4)
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
 			in := arg.in
 			out := arg.out
-			ji := &JailInfo{in.flags, unjailRequestHeight, 0}
+			if icutils.MatchAll(in.flags, JFlagUnjailing) {
+				unjailRequestHeight = int64(500)
+			} else {
+				unjailRequestHeight = int64(0)
+			}
+			ji := newJailInfo(in.flags, unjailRequestHeight, 0)
 
 			err := ji.OnPenaltyImposed(sc, in.pt)
 			if out.success {
@@ -113,7 +138,7 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 				assert.Error(t, err)
 			}
 			assert.Equal(t, out.flags, ji.Flags())
-			assert.Equal(t, unjailRequestHeight, ji.UnjailRequestHeight())
+			checkUnjailRequestHeight(t, ji, unjailRequestHeight)
 			assert.Zero(t, ji.MinDoubleVoteHeight())
 		})
 	}
@@ -130,28 +155,24 @@ func TestJailInfo_OnUnjailRequested(t *testing.T) {
 		unjailRequestBlockHeight int64
 	}{
 		{
-			&JailInfo{0, 0, 0}, 100,
-			true, false, 0,
+			newJailInfo(0, 0, 0), 100,
+			false, false, 0,
 		},
 		{
-			&JailInfo{JFlagInJail, 100, 0}, 50,
-			false, true, 100,
+			newJailInfo(JFlagInJail|JFlagUnjailing, 50, 0), 100,
+			false, true, 50,
 		},
 		{
-			&JailInfo{JFlagInJail, 0, 0}, 100,
+			newJailInfo(JFlagInJail|JFlagUnjailing|JFlagDoubleVote, 50, 0), 100,
+			false, true, 50,
+		},
+		{
+			newJailInfo(JFlagInJail, 0, 0), 100,
 			true, true, 100,
 		},
 		{
-			&JailInfo{JFlagInJail | JFlagUnjailing, 50, 0}, 100,
-			true, true, 50,
-		},
-		{
-			&JailInfo{JFlagInJail | JFlagDoubleVote, 0, 0}, 100,
+			newJailInfo(JFlagInJail|JFlagDoubleVote, 0, 0), 100,
 			true, true, 100,
-		},
-		{
-			&JailInfo{JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 50, 0}, 100,
-			true, true, 50,
 		},
 	}
 
@@ -164,7 +185,7 @@ func TestJailInfo_OnUnjailRequested(t *testing.T) {
 			if arg.success {
 				assert.NoError(t, err)
 				assert.Equal(t, arg.inJail, ji.IsInJail())
-				assert.Equal(t, arg.unjailRequestBlockHeight, ji.UnjailRequestHeight())
+				checkUnjailRequestHeight(t, ji, arg.unjailRequestBlockHeight)
 			} else {
 				assert.Error(t, err)
 			}
@@ -222,7 +243,7 @@ func TestJailInfo_OnMainPRepIn(t *testing.T) {
 			if exp.success {
 				assert.NoError(t, err)
 				assert.Zero(t, ji.Flags())
-				assert.Equal(t, exp.urbh, ji.UnjailRequestHeight())
+				checkUnjailRequestHeight(t, &ji, exp.urbh)
 				assert.Equal(t, exp.mdvbh, ji.MinDoubleVoteHeight())
 			} else {
 				assert.Error(t, err)
@@ -265,19 +286,19 @@ func TestJailInfo_RLPEncodeSelf(t *testing.T) {
 
 func TestJailInfo_Format(t *testing.T) {
 	const (
-		flags               = JFlagInJail
+		flags               = JFlagInJail | JFlagUnjailing
 		unjailRequestHeight = 100
 		minDoubleVoteHeight = 200
 	)
-	ji := JailInfo{flags, unjailRequestHeight, minDoubleVoteHeight}
+	ji := newJailInfo(flags, unjailRequestHeight, minDoubleVoteHeight)
 
 	args := []struct {
 		fmt    string
 		output string
 	}{
-		{"%s", "JailInfo{1 100 200}"},
-		{"%v", "JailInfo{1 100 200}"},
-		{"%+v", "JailInfo{flags:1 urbh:100 mdvbh:200}"},
+		{"%s", "JailInfo{3 100 200}"},
+		{"%v", "JailInfo{3 100 200}"},
+		{"%+v", "JailInfo{flags:3 urbh:100 mdvbh:200}"},
 	}
 
 	for i, arg := range args {
@@ -285,6 +306,73 @@ func TestJailInfo_Format(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			text := fmt.Sprintf(arg.fmt, ji)
 			assert.Equal(t, arg.output, text)
+		})
+	}
+}
+
+func TestJailInfo_IsFunctions(t *testing.T) {
+	type output struct {
+		unjailable          bool
+		electable           bool
+		inJail              bool
+		unjailing           bool
+		inDoubleVotePenalty bool
+	}
+	args := []struct {
+		// input
+		flags int
+		urbh  int64
+		mdvbh int64
+		// output
+		out output
+	}{
+		{
+			JFlagInJail, 0, 0,
+			output{true, false, true, false, false},
+		},
+		{
+			JFlagInJail, 0, 200,
+			output{true, false, true, false, false},
+		},
+		{
+			JFlagInJail | JFlagDoubleVote, 0, 0,
+			output{true, false, true, false, true},
+		},
+		{
+			JFlagInJail | JFlagDoubleVote, 0, 200,
+			output{true, false, true, false, true},
+		},
+		{
+			0, 0, 0,
+			output{false, true, false, false, false},
+		},
+		{
+			JFlagInJail | JFlagUnjailing, 100, 0,
+			output{false, true, true, true, false},
+		},
+		{
+			JFlagInJail | JFlagUnjailing, 100, 200,
+			output{false, true, true, true, false},
+		},
+		{
+			JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 100, 0,
+			output{false, true, true, true, true},
+		},
+		{
+			JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 100, 200,
+			output{false, true, true, true, true},
+		},
+	}
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			ji := newJailInfo(arg.flags, arg.urbh, arg.mdvbh)
+			assert.NotNil(t, ji)
+			assert.Equal(t, arg.out.unjailable, ji.IsUnjailable())
+			assert.Equal(t, arg.out.electable, ji.IsElectable())
+			assert.Equal(t, arg.out.inJail, ji.IsInJail())
+			assert.Equal(t, arg.out.unjailing, ji.IsUnjailing())
+			assert.Equal(t, arg.out.inDoubleVotePenalty, ji.IsInDoubleVotePenalty())
 		})
 	}
 }
