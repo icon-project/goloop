@@ -21,7 +21,7 @@ type counter struct {
 type voteSet struct {
 	msgs     []*VoteMessage
 	maxIndex int
-	mask     *bitArray
+	mask     *BitArray
 	round    int32
 
 	counters []counter
@@ -186,7 +186,7 @@ func (vs *voteSet) getRoundEvidences(minRound int32, nid []byte) *VoteList {
 }
 
 // shall not modify returned array. invalidated if a vote is added.
-func (vs *voteSet) getMask() *bitArray {
+func (vs *voteSet) getMask() *BitArray {
 	return vs.mask
 }
 
@@ -210,7 +210,7 @@ func newVoteSet(nValidators int) *voteSet {
 	return &voteSet{
 		msgs:     make([]*VoteMessage, nValidators),
 		maxIndex: -1,
-		mask:     newBitArray(nValidators),
+		mask: NewBitArray(nValidators),
 		round:    -1,
 	}
 }
@@ -240,7 +240,7 @@ func (hvs *heightVoteSet) reset(nValidators int) {
 	hvs._votes = make(map[int32][numberOfVoteTypes]*voteSet)
 }
 
-func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray, precommitsMask *bitArray) *VoteList {
+func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *BitArray, precommitsMask *BitArray) *VoteList {
 	rvl := NewVoteList()
 	prevotes := hvs.votesFor(round, VoteTypePrevote)
 	for i, msg := range prevotes.msgs {

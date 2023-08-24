@@ -44,6 +44,7 @@ type worldVirtualContext struct {
 	real              WorldState
 	lastAccountLocker map[string]*worldVirtualState
 	lastWorldLocker   *worldVirtualState
+	roAccounts        map[string]AccountState
 }
 
 func (wvc *worldVirtualContext) getLocker(id string, parent *worldVirtualState) *worldVirtualState {
@@ -349,6 +350,19 @@ func (wvs *worldVirtualState) GetFuture(reqs []LockRequest) WorldVirtualState {
 	return nwvs
 }
 
+func (wvs *worldVirtualState) getROAccountState(id []byte) AccountState {
+	if wvs.roAccounts==nil {
+		wvs.roAccounts = make(map[string]AccountState)
+	} else {
+		if as, ok := wvs.roAccounts[string(id)]; ok {
+			return as
+		}
+	}
+	as := newAccountROState(wvs.Database(), wvs.real.GetAccountSnapshot(id))
+	wvs.roAccounts[string(id)] = as
+	return as
+}
+
 func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 	for _, req := range reqs {
 		if req.Lock != AccountReadLock && req.Lock != AccountWriteLock {
@@ -401,8 +415,7 @@ func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 			if las.lock == AccountWriteLock {
 				las.state = wvs.real.GetAccountState(idBytes)
 			} else {
-				las.state = newAccountROState(wvs.Database(),
-					wvs.real.GetAccountSnapshot(idBytes))
+				las.state = wvs.getROAccountState(idBytes)
 			}
 		}
 		if las.lock == AccountWriteLock {

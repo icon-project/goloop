@@ -24,7 +24,7 @@ func TestBitArray_PickRandom(t *testing.T) {
 		{65, []int{64}, 2, 64},
 	}
 	for _, c := range testCases {
-		ba := newBitArray(c.len)
+		ba := NewBitArray(c.len)
 		for i := 0; i < len(c.ones); i++ {
 			ba.Set(c.ones[i])
 			assert.True(ba.Get(c.ones[i]))
@@ -51,13 +51,13 @@ func TestBitArray_PickRandom2(t *testing.T) {
 		{500, []int{64, 77, 399}},
 	}
 	for _, c := range testCases {
-		ba := newBitArray(c.len)
+		ba := NewBitArray(c.len)
 		for i := 0; i < len(c.ones); i++ {
 			ba.Set(c.ones[i])
 			assert.True(ba.Get(c.ones[i]))
 		}
 		baCopy := ba.Copy()
-		ba2 := newBitArray(c.len)
+		ba2 := NewBitArray(c.len)
 		for i := 0; i < len(c.ones); i++ {
 			v := ba.PickRandom()
 			assert.True(ba.Get(v))
@@ -73,7 +73,7 @@ func TestBitArray_PickRandom2(t *testing.T) {
 func TestBitArray_Basics(t *testing.T) {
 	assert := assert.New(t)
 	const bits = 10
-	ba := newBitArray(bits)
+	ba := NewBitArray(bits)
 
 	assert.EqualValues(bits, ba.Len())
 	assert.EqualValues(false, ba.Get(2))
@@ -83,11 +83,11 @@ func TestBitArray_Basics(t *testing.T) {
 	assert.EqualValues(false, ba.Get(2))
 	assert.EqualValues(false, ba.Get(11))
 
-	ba2 := newBitArray(bits + 1)
+	ba2 := NewBitArray(bits + 1)
 	ba2.AssignAnd(ba)
 	assert.EqualValues(bits, ba2.Len())
 
-	ba2 = newBitArray(bits + 1)
+	ba2 = NewBitArray(bits + 1)
 	assert.False(ba.Equal(ba2))
 
 	ba2 = ba.Copy()

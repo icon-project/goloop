@@ -267,7 +267,7 @@ func (msg *VoteMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
 	}
-	if msg.Type < VoteTypePrevote || msg.Type > numberOfVoteTypes {
+	if msg.Type != VoteTypePrevote && msg.Type != VoteTypePrecommit {
 		return errors.New("bad field value")
 	}
 	if msg.Type == VoteTypePrevote && len(msg.NTSVoteBases) > 0 {
@@ -394,9 +394,9 @@ func (msg *VoteMessage) RLPDecodeSelf(d codec.Decoder) error {
 
 type peerRoundState struct {
 	_HR
-	PrevotesMask   *bitArray
-	PrecommitsMask *bitArray
-	BlockPartsMask *bitArray
+	PrevotesMask   *BitArray
+	PrecommitsMask *BitArray
+	BlockPartsMask *BitArray
 	Sync           bool
 }
 
@@ -424,6 +424,20 @@ func (msg *RoundStateMessage) Verify() error {
 	if err := msg.peerRoundState._HR.verify(); err != nil {
 		return err
 	}
+	if msg.PrevotesMask == nil || msg.PrecommitsMask == nil {
+		return errors.Errorf("invalid RoundStateMessage PrevotesMask=%v PRecommitMask=%v", msg.PrevotesMask, msg.PrecommitsMask)
+	}
+	if err := msg.PrevotesMask.Verify(); err != nil {
+		return err
+	}
+	if err := msg.PrecommitsMask.Verify(); err != nil {
+		return err
+	}
+	if msg.BlockPartsMask != nil {
+		if err := msg.BlockPartsMask.Verify(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -443,7 +457,7 @@ func (msg *VoteListMessage) Verify() error {
 	if msg.VoteList == nil {
 		return errors.Errorf("nil VoteList")
 	}
-	return nil
+	return msg.VoteList.Verify()
 }
 
 func (msg VoteListMessage) String() string {

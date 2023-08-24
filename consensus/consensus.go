@@ -1910,7 +1910,7 @@ func (cs *consensus) GetPrecommits(r int32) *VoteList {
 	return cs.hvs.votesFor(r, VoteTypePrecommit).voteList()
 }
 
-func (cs *consensus) GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *VoteList {
+func (cs *consensus) GetVotes(r int32, prevotesMask *BitArray, precommitsMask *BitArray) *VoteList {
 	return cs.hvs.getVoteListForMask(r, prevotesMask, precommitsMask)
 }
 

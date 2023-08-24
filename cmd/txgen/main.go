@@ -6,13 +6,15 @@ import (
 	"log"
 	"os"
 
-	"github.com/icon-project/goloop/common/wallet"
 	"github.com/spf13/cobra"
+
+	"github.com/icon-project/goloop/common/wallet"
 )
 
 func main() {
 	var keyStoreFile string
 	var keyStorePass string
+	var keyStoreSecret string
 	var scorePath string
 	var tps int
 	var concurrent int
@@ -31,6 +33,7 @@ func main() {
 	flags := cmd.PersistentFlags()
 	flags.StringVarP(&keyStoreFile, "keystore", "k", "", "File path to keystore of base account (like GOD)")
 	flags.StringVarP(&keyStorePass, "password", "p", "gochain", "Password for the keystore")
+	flags.StringVar(&keyStoreSecret, "secret",  "", "Secret file containing password for the keystore")
 	flags.IntVarP(&tps, "tps", "t", 1000, "Max transaction per a second")
 	flags.IntVarP(&concurrent, "concurrent", "c", 2, "Number of subroutines (threads)")
 	flags.IntVarP(&walletCount, "wallets", "w", 1000, "Number of temporal wallets")
@@ -57,8 +60,16 @@ func main() {
 		if err != nil {
 			log.Panicf("Fail to read KeyStore file=%s err=%+v", keyStoreFile, err)
 		}
+		var pass []byte;
+		if len(keyStoreSecret)>0 {
+			if pass, err = os.ReadFile(keyStoreSecret); err != nil {
+				log.Panicf("Fail to read secret for keyStore file=%s", keyStoreSecret);
+			}
+		} else {
+			pass = []byte(keyStorePass);
+		}
 
-		godWallet, err := wallet.NewFromKeyStore(ks, []byte(keyStorePass))
+		godWallet, err := wallet.NewFromKeyStore(ks, pass)
 		if err != nil {
 			log.Panicf("Fail to decrypt KeyStore err=%+v", err)
 		}

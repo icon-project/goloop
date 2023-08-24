@@ -12,7 +12,7 @@ import (
 )
 
 var mpCodecObject mpCodec
-var MP = bytesWrapper{&mpCodecObject}
+var MP = bytesWrapperFrom(&mpCodecObject)
 
 type mpCodec struct {
 }

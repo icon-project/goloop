@@ -7,6 +7,9 @@ import (
 
 func AllocEngines(l log.Logger, names ...string) ([]Engine, error) {
 	l.Infof("Allocate Engines:%s", names)
+	if len(names) == 1 &&  names[0] == "none" {
+		return make([]Engine,0), nil
+	}
 	engines := make([]Engine, len(names))
 	for i, name := range names {
 		switch name {

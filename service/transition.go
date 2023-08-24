@@ -132,6 +132,7 @@ type transition struct {
 	mutex sync.Mutex
 
 	result         []byte
+	receiptWriter  db.Writer
 	worldSnapshot  state.WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
@@ -140,6 +141,7 @@ type transition struct {
 
 	transactionCount int
 	executeDuration  time.Duration
+	txFlushDuration  time.Duration
 
 	syncer ssync.Syncer
 
@@ -702,8 +704,11 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			}
 		}
 	}
-	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)
-	t.normalReceipts = txresult.NewReceiptListFromSlice(t.db, normalReceipts)
+	t.receiptWriter = db.NewWriter(t.db)
+	t.patchReceipts = txresult.NewReceiptListFromSlice(t.receiptWriter.Database(), patchReceipts)
+	t.normalReceipts = txresult.NewReceiptListFromSlice(t.receiptWriter.Database(), normalReceipts)
+	t.receiptWriter.Add(t.patchReceipts)
+	t.receiptWriter.Add(t.normalReceipts)
 
 	// save gathered fee to treasury
 	tr := ctx.GetAccountState(ctx.Treasury().ID())
@@ -745,6 +750,8 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.worldSnapshot.BTPData(),
 	}
 	t.result = tresult.Bytes()
+
+	t.receiptWriter.Prepare()
 
 	t.reportExecution(nil)
 }
@@ -803,9 +810,13 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 }
 
 func (t *transition) finalizeNormalTransaction() error {
+	startTS := time.Now();
 	if err := t.commitTXIDs(module.TransactionGroupNormal); err != nil {
 		return err
 	}
+	defer func() {
+		t.txFlushDuration = time.Since(startTS)
+	}()
 	return t.normalTransactions.Flush()
 }
 
@@ -830,11 +841,17 @@ func (t *transition) finalizeResult(noFlush bool, keepParent bool) error {
 				return err
 			}
 			worldTS = time.Now()
-			if err := t.patchReceipts.Flush(); err != nil {
-				return err
-			}
-			if err := t.normalReceipts.Flush(); err != nil {
-				return err
+			if t.receiptWriter != nil {
+				if err := t.receiptWriter.Flush(); err != nil {
+					return err
+				}
+			} else {
+				if err := t.patchReceipts.Flush(); err != nil {
+					return err
+				}
+				if err := t.normalReceipts.Flush(); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -844,7 +861,7 @@ func (t *transition) finalizeResult(noFlush bool, keepParent bool) error {
 	finalTS := time.Now()
 
 	t.onWorldFinalize(t.worldSnapshot)
-	t.chain.Regulator().OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
+	t.chain.Regulator().OnTxExecution(t.transactionCount, t.executeDuration, t.txFlushDuration+finalTS.Sub(startTS))
 	t.log.Infof("finalizeResult() total=%s world=%s receipts=%s",
 		finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
 	return nil
