@@ -45,4 +45,5 @@ type StateContext interface {
 	Revision() int
 	TermRevision() int
 	IsIISS4Activated() bool
+	AddEventEnable(from module.Address, flag EnableStatus) error
 }

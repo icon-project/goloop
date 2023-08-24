@@ -2005,7 +2005,7 @@ func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 	if !ps.IsActive() {
 		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
 	}
-	if ps.IsInJail() && !ps.IsUnjailing() {
+	if ps.IsUnjailable() {
 		if err := ps.OnUnjailRequested(es.newStateContext(cc)); err != nil {
 			return err
 		}

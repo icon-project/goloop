@@ -16,7 +16,10 @@
 
 package icstate
 
-import "github.com/icon-project/goloop/icon/icmodule"
+import (
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/module"
+)
 
 type stateContext struct {
 	blockHeight int64
@@ -47,4 +50,8 @@ func (sc *stateContext) TermRevision() int {
 
 func (sc *stateContext) IsIISS4Activated() bool {
 	return sc.termRevision >= icmodule.RevisionIISS4
+}
+
+func (sc *stateContext) AddEventEnable(from module.Address, flag icmodule.EnableStatus) error {
+	return nil
 }
