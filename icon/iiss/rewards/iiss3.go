@@ -482,7 +482,7 @@ func (c *Calculator) calculateVotingReward() error {
 			status := event.Status()
 			if c.global.GetRevision() >= icmodule.RevisionFixVotingReward && event.Status().IsDisabledTemporarily() {
 				// ICONist get voting reward when target PRep got turn skipping penalty
-				status = icstage.ESEnable
+				status = icmodule.ESEnable
 			}
 			vInfo.SetEnable(event.Target(), status)
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
@@ -929,7 +929,7 @@ func (vd *votedData) SetIScore(value *big.Int) {
 	vd.iScore = value
 }
 
-func (vd *votedData) Status() icstage.EnableStatus {
+func (vd *votedData) Status() icmodule.EnableStatus {
 	return vd.voted.Status()
 }
 
@@ -937,7 +937,7 @@ func (vd *votedData) Enable() bool {
 	return vd.voted.Enable()
 }
 
-func (vd *votedData) SetStatus(status icstage.EnableStatus) {
+func (vd *votedData) SetStatus(status icmodule.EnableStatus) {
 	vd.voted.SetStatus(status)
 }
 
@@ -976,7 +976,7 @@ func (vd *votedData) IsEmpty() bool {
 
 func (vd *votedData) UpdateToWrite() {
 	if vd.voted.Status().IsDisabledTemporarily() {
-		vd.voted.SetStatus(icstage.ESEnable)
+		vd.voted.SetStatus(icmodule.ESEnable)
 	}
 }
 
@@ -1052,7 +1052,7 @@ func (vi *votedInfo) AddVotedData(addr module.Address, data *votedData) {
 	}
 }
 
-func (vi *votedInfo) SetEnable(addr module.Address, status icstage.EnableStatus) {
+func (vi *votedInfo) SetEnable(addr module.Address, status icmodule.EnableStatus) {
 	if vData, ok := vi.preps[icutils.ToKey(addr)]; ok {
 		if status.IsEnabled() != vData.Enable() {
 			if status.IsEnabled() {

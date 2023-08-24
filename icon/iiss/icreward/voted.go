@@ -26,7 +26,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
-	"github.com/icon-project/goloop/icon/iiss/icstage"
 )
 
 const (
@@ -37,7 +36,7 @@ const (
 type Voted struct {
 	icobject.NoDatabase
 	version          int
-	status           icstage.EnableStatus
+	status           icmodule.EnableStatus
 	delegated        *big.Int // update via DELEGATE event
 	bonded           *big.Int // update via BOND event
 	bondedDelegation *big.Int // update when start calculation for P-Rep voted reward
@@ -52,7 +51,7 @@ func (v *Voted) SetVersion(version int) {
 	v.version = version
 }
 
-func (v *Voted) Status() icstage.EnableStatus {
+func (v *Voted) Status() icmodule.EnableStatus {
 	return v.status
 }
 
@@ -60,7 +59,7 @@ func (v *Voted) Enable() bool {
 	return v.status.IsEnabled()
 }
 
-func (v *Voted) SetStatus(status icstage.EnableStatus) {
+func (v *Voted) SetStatus(status icmodule.EnableStatus) {
 	v.status = status
 }
 
@@ -113,9 +112,9 @@ func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
 		var enable bool
 		_, err = decoder.DecodeMulti(&enable, &v.delegated, &v.bonded, &v.bondedDelegation)
 		if enable {
-			v.status = icstage.ESEnable
+			v.status = icmodule.ESEnable
 		} else {
-			v.status = icstage.ESDisablePermanent
+			v.status = icmodule.ESDisablePermanent
 		}
 	case VotedVersion2:
 		v.bondedDelegation = new(big.Int)

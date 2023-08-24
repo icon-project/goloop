@@ -134,7 +134,7 @@ func TestState_AddEvent(t *testing.T) {
 		offset         int
 		address        *common.Address
 		votes          VoteList
-		enableFlag     EnableStatus
+		enableFlag     icmodule.EnableStatus
 		irep           *big.Int
 		rrep           *big.Int
 		mainPRepCount  int64
@@ -171,7 +171,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:      TypeEventEnable,
 				offset:     offset2,
 				address:    addr2,
-				enableFlag: ESDisablePermanent,
+				enableFlag: icmodule.ESDisablePermanent,
 			},
 		},
 	}
@@ -233,7 +233,7 @@ func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Addre
 	checkAddEventVote(t, s, index, obj, offset, address, votes)
 }
 
-func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableStatus) {
+func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag icmodule.EnableStatus) {
 	index, err := s.AddEventEnable(offset, address, flag)
 	assert.NoError(t, err)
 
