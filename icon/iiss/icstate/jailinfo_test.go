@@ -218,7 +218,7 @@ func TestJailInfo_OnMainPRepIn(t *testing.T) {
 			exp := arg.exp
 			ji := arg.ji
 			sc := NewStateContext(arg.bh, icmodule.RevisionPreIISS4, icmodule.RevisionIISS4)
-			err := ji.OnMainPRepIn(sc)
+			err := ji.OnMainPRepIn(sc, nil)
 			if exp.success {
 				assert.NoError(t, err)
 				assert.Zero(t, ji.Flags())

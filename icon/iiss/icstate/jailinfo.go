@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
@@ -35,6 +36,10 @@ func (ji *JailInfo) IsInJail() bool {
 
 func (ji *JailInfo) IsUnjailing() bool {
 	return icutils.MatchAll(ji.flags, JFlagUnjailing)
+}
+
+func (ji *JailInfo) IsUnjailable() bool {
+	return ji.flags&(JFlagInJail|JFlagUnjailing) == JFlagInJail
 }
 
 func (ji *JailInfo) IsInDoubleVotePenalty() bool {
@@ -113,7 +118,7 @@ func (ji *JailInfo) OnUnjailRequested(sc icmodule.StateContext) error {
 	return nil
 }
 
-func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext) error {
+func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext, owner module.Address) error {
 	if !sc.IsIISS4Activated() {
 		return nil
 	}
@@ -125,6 +130,9 @@ func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext) error {
 			ji.minDoubleVoteHeight = sc.BlockHeight()
 		}
 		ji.flags = 0
+		if err := sc.AddEventEnable(owner, icmodule.ESEnable); err != nil {
+			return err
+		}
 	}
 	return nil
 }

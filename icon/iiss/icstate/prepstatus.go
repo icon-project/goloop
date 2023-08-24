@@ -125,11 +125,11 @@ type prepStatusData struct {
 	lastState    VoteState
 	lastHeight   int64
 	dsaMask      int64
-
 	// Since IISS-4.0
 	ji JailInfo
 
 	effectiveDelegated *big.Int
+	owner module.Address
 }
 
 func (ps *prepStatusData) Bonded() *big.Int {
@@ -412,6 +412,10 @@ func (ps *prepStatusData) IsUnjailing() bool {
 	return ps.ji.IsUnjailing()
 }
 
+func (ps *prepStatusData) IsUnjailable() bool {
+	return ps.ji.IsUnjailable()
+}
+
 func (ps *prepStatusData) UnjailRequestHeight() int64 {
 	return ps.ji.UnjailRequestHeight()
 }
@@ -662,7 +666,7 @@ func (ps *PRepStatusState) OnMainPRepIn(sc icmodule.StateContext, limit int) err
 func (ps *PRepStatusState) onMainPRepIn(sc icmodule.StateContext, limit int) error {
 	ps.grade = GradeMain
 	ps.shiftVPenaltyMask(limit)
-	return ps.ji.OnMainPRepIn(sc)
+	return ps.ji.OnMainPRepIn(sc, ps.owner)
 }
 
 func (ps *PRepStatusState) onMainPRepOut(newGrade Grade) {
@@ -778,8 +782,4 @@ func NewPRepStats(owner module.Address, ps *PRepStatusState) *PRepStats {
 		owner:           owner,
 		PRepStatusState: ps,
 	}
-}
-
-func isIISS4Activated(termRevision int) bool {
-	return termRevision == icmodule.RevisionIISS4
 }
