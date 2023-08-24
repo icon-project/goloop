@@ -2009,7 +2009,9 @@ func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 		if err := ps.OnUnjailRequested(es.newStateContext(cc)); err != nil {
 			return err
 		}
-		// TODO: goldworm: Unjail-related event for icstage
+		if err := es.addEventEnable(cc.BlockHeight(), owner, icstage.ESUnjail); err != nil {
+			return err
+		}
 	}
 	return nil
 }

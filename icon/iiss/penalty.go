@@ -68,7 +68,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	}
 
 	// Record event for reward calculation
-	return es.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
+	return es.addEventEnable(blockHeight, owner, icstage.ESJail)
 }
 
 func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) error {
