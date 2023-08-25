@@ -717,7 +717,11 @@ func (ps *PRepStatusState) OnTermEnd(sc icmodule.StateContext, newGrade Grade, l
 }
 
 func (ps *PRepStatusState) OnUnjailRequested(sc icmodule.StateContext) error {
-	return ps.ji.OnUnjailRequested(sc)
+	if err := ps.ji.OnUnjailRequested(sc); err != nil {
+		return err
+	}
+	ps.setDirty()
+	return nil
 }
 
 // syncBlockVoteStats updates vote stats data at a given blockHeight
