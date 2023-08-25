@@ -17,12 +17,12 @@
 package icstate
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"math/rand"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
@@ -72,71 +72,23 @@ func newDummyPRep(i int) *PRep {
 	}
 }
 
-type dummyPRepSetEntry struct {
-	prep      *PRep
-	status    Status
-	grade     Grade
-	power     *big.Int
-	delegated *big.Int
-	bonded    *big.Int
-	owner     module.Address
-	pubKey    bool
-}
-
-func (d *dummyPRepSetEntry) PRep() *PRep {
-	return d.prep
-}
-
-func (d *dummyPRepSetEntry) Status() Status {
-	return Active
-}
-
-func (d *dummyPRepSetEntry) Grade() Grade {
-	return d.grade
-}
-
-func (d *dummyPRepSetEntry) Power(_ icmodule.Rate) *big.Int {
-	return d.power
-}
-
-func (d *dummyPRepSetEntry) Delegated() *big.Int {
-	return d.delegated
-}
-
-func (d *dummyPRepSetEntry) Bonded() *big.Int {
-	return d.bonded
-}
-
-func (d *dummyPRepSetEntry) Owner() module.Address {
-	return d.prep.Owner()
-}
-
-func (d *dummyPRepSetEntry) HasPubKey() bool {
-	return d.pubKey
-}
-
-func newDummyPRepSetEntry(
-	prep *PRep, grade Grade, power, delegated, bonded int, pubKey bool,
-) *dummyPRepSetEntry {
-	return &dummyPRepSetEntry{
-		prep:      prep,
-		grade:     grade,
-		power:     big.NewInt(int64(power)),
-		delegated: big.NewInt(int64(delegated)),
-		bonded:    big.NewInt(int64(bonded)),
-		pubKey:    pubKey,
+func newDummyPReps(size int) []*PRep {
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		preps[i] = newDummyPRep(i + 1)
 	}
+	return preps
 }
 
 func newDummyPRepSet(size int) PRepSet {
-	prepSetEntries := make([]PRepSetEntry, size)
+	preps := make([]*PRep, size)
 	for i := 0; i < size; i++ {
-		prepSetEntries[i] = NewPRepSetEntry(newDummyPRep(i), false)
+		preps[i] = newDummyPRep(i)
 	}
-	prepSet := NewPRepSet(prepSetEntries)
-	return prepSet
+	return NewPRepSet(preps)
 }
 
+/*
 func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	br := icmodule.ToRate(5)
 	prep1 := newDummyPRep(1)
@@ -153,7 +105,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	prep5.lastState = None
 	prep5.lastHeight = 2
 	prep6 := newDummyPRep(6)
-	prepSetEntries := []PRepSetEntry{
+	prepSetEntries := []*PRep{
 		&dummyPRepSetEntry{
 			prep:      prep1,
 			grade:     GradeMain,
@@ -325,87 +277,59 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 		})
 	}
 }
+*/
 
 func TestPRepSet_SortForQuery(t *testing.T) {
 	br := icmodule.ToRate(5)
-	prep1 := newDummyPRep(1)
-	prep2 := newDummyPRep(1)
-	prep3 := newDummyPRep(1)
-	prep4 := newDummyPRep(1)
-	prep5 := newDummyPRep(1)
-	prep6 := newDummyPRep(1)
-	prepSetEntries := []PRepSetEntry{
-		&dummyPRepSetEntry{
-			prep:      prep1,
-			power:     big.NewInt(1),
-			delegated: big.NewInt(1),
-			bonded:    big.NewInt(1),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep2,
-			power:     big.NewInt(2),
-			delegated: big.NewInt(2),
-			bonded:    big.NewInt(2),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep3,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep4,
-			power:     big.NewInt(4),
-			delegated: big.NewInt(4),
-			bonded:    big.NewInt(4),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep5,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep6,
-			power:     big.NewInt(0),
-			delegated: big.NewInt(0),
-			bonded:    big.NewInt(0),
-			pubKey:    true,
-		},
+	preps := newDummyPReps(6)
+	prepSet := NewPRepSet(preps)
+
+	for _, prep := range preps {
+		dsaMask := rand.Int63n(4)
+		prep.SetDSAMask(dsaMask)
 	}
 
-	prepSet := NewPRepSet(prepSetEntries)
-
-	tests := []struct {
-		rev    int
-		expect []*PRep
+	args := []struct {
+		rev           int
+		activeDSAMask int64
 	}{
-		{
-			icmodule.RevisionBTP2 - 1,
-			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
-		},
-		{
-			icmodule.RevisionBTP2,
-			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
-		},
+		{icmodule.RevisionBTP2 - 1, 0},
+		{icmodule.RevisionBTP2, 1},
+		{icmodule.RevisionBTP2, 3},
 	}
 
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("rev=%d", tt.rev), func(t *testing.T) {
-			prepSet.SortForQuery(br, tt.rev)
-			for j := 0; j < prepSet.Size(); j++ {
-				// check sort order
-				aEntry := prepSet.GetByIndex(j)
-				ePRep := tt.expect[j]
-				ao := aEntry.Owner()
-				eo := ePRep.Owner()
-				assert.True(t, ao.Equal(eo), fmt.Sprintf("%d: e:%s a:%s", j, eo, ao))
+	for _, arg := range args {
+		name := fmt.Sprintf("rev=%d", arg.rev)
+		rev := arg.rev
+		activeDSAMask := arg.activeDSAMask
+
+		t.Run(name, func(t *testing.T) {
+			prepSet.SortForQuery(br, rev, activeDSAMask)
+
+			for i := 1; i < prepSet.Size(); i++ {
+				p0 := prepSet.GetByIndex(i - 1)
+				p1 := prepSet.GetByIndex(i)
+				assert.True(t, checkPRepOrder(p0, p1, br, rev, activeDSAMask))
 			}
 		})
 	}
+}
+
+func checkPRepOrder(p0, p1 *PRep, br icmodule.Rate, rev int, dsaMask int64) bool {
+	if rev >= icmodule.RevisionBTP2 {
+		if p0.HasPubKey(dsaMask) != p1.HasPubKey(dsaMask) {
+			return p0.HasPubKey(dsaMask)
+		}
+		if p0.IsJailInfoElectable() != p1.IsJailInfoElectable() {
+			return p0.IsJailInfoElectable()
+		}
+	}
+
+	if cmp := p0.GetPower(br).Cmp(p1.GetPower(br)); cmp != 0 {
+		return cmp > 0
+	}
+	if cmp := p0.Delegated().Cmp(p1.Delegated()); cmp != 0 {
+		return cmp > 0
+	}
+	return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
 }

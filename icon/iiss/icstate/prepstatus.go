@@ -128,6 +128,7 @@ type prepStatusData struct {
 	// Since IISS-4.0
 	ji JailInfo
 
+	// Data not stored in DB
 	effectiveDelegated *big.Int
 	owner              module.Address
 }

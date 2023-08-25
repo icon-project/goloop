@@ -983,8 +983,9 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 
 	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
-	prepSet := es.State.GetPRepSet(wc.GetBTPContext(), revision)
-	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision)
+	dsaMask := icstate.GetActiveDSAMask(wc.GetBTPContext(), revision)
+	prepSet := es.State.GetPRepSet()
+	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision, dsaMask)
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
 		isDecentralized = es.State.IsDecentralizationConditionMet(revision, totalSupply, prepSet)
@@ -995,8 +996,8 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 		limit := es.State.GetConsistentValidationPenaltyMask()
 		sc := es.newStateContext(wc)
 
-		if err = prepSet.OnTermEnd(
-			sc, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br); err != nil {
+		if err = prepSet.OnTermEnd(sc,
+			mainPRepCount, subPRepCount, extraMainPRepCount, limit, br, dsaMask); err != nil {
 			return err
 		}
 	} else {
@@ -1605,7 +1606,7 @@ func calculateIRep(prepSet icstate.PRepSet) *big.Int {
 	value := new(big.Int)
 
 	for i := 0; i < mainPRepCount; i++ {
-		prep := prepSet.GetByIndex(i).PRep()
+		prep := prepSet.GetByIndex(i)
 		totalWeightedIrep.Add(totalWeightedIrep, value.Mul(prep.IRep(), prep.Delegated()))
 		totalDelegated.Add(totalDelegated, prep.Delegated())
 	}

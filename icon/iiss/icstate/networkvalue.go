@@ -476,7 +476,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 		jso["minimumBond"] = s.GetMinimumBond()
 	}
 
-	preps := s.GetPRepSet(nil, 0)
+	preps := s.GetPRepSet()
 	if preps != nil {
 		jso["totalBonded"] = preps.TotalBonded()
 		jso["totalDelegated"] = preps.TotalDelegated()

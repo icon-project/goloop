@@ -571,7 +571,7 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	br := s.GetBondRequirement()
 
 	if revision >= icmodule.RevisionDecentralize && preps.Size() >= predefinedMainPRepCount {
-		prep := preps.GetByIndex(predefinedMainPRepCount - 1).PRep()
+		prep := preps.GetByIndex(predefinedMainPRepCount - 1)
 		if prep == nil {
 			return false
 		}
@@ -580,19 +580,9 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	return false
 }
 
-func (s *State) GetPRepSet(bc state.BTPContext, revision int) PRepSet {
-	var dsaMask int64
-	if bc != nil && revision >= icmodule.RevisionBTP2 {
-		dsaMask = bc.GetActiveDSAMask()
-	}
+func (s *State) GetPRepSet() PRepSet {
 	preps := s.GetPReps(true)
-	prepSetEntries := make([]PRepSetEntry, 0, len(preps))
-	for _, prep := range preps {
-		pubKeyMask := prep.GetDSAMask()
-		entry := NewPRepSetEntry(prep, pubKeyMask&dsaMask == dsaMask)
-		prepSetEntries = append(prepSetEntries, entry)
-	}
-	return NewPRepSet(prepSetEntries)
+	return NewPRepSet(preps)
 }
 
 func (s *State) GetPReps(activeOnly bool) []*PRep {
@@ -655,9 +645,10 @@ func (s *State) GetPRepsInJSON(
 	bc state.BTPContext, sc icmodule.StateContext, start, end int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	revision := sc.Revision()
+	dsaMask := GetActiveDSAMask(bc, revision)
 
-	prepSet := s.GetPRepSet(bc, revision)
-	prepSet.SortForQuery(br, revision)
+	prepSet := s.GetPRepSet()
+	prepSet.SortForQuery(br, revision, dsaMask)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
@@ -683,12 +674,8 @@ func (s *State) GetPRepsInJSON(
 	jso := make(map[string]interface{})
 	prepList := make([]interface{}, 0, end)
 
-	var dsaMask int64
-	if bc != nil && revision >= icmodule.RevisionBTP2 {
-		dsaMask = bc.GetActiveDSAMask()
-	}
 	for i := start - 1; i < end; i++ {
-		prep := prepSet.GetByIndex(i).PRep()
+		prep := prepSet.GetByIndex(i)
 		prepJSO := prep.ToJSON(sc, br, dsaMask)
 		prepList = append(prepList, prepJSO)
 	}
@@ -791,4 +778,11 @@ func (s *State) InitCommissionInfo(owner module.Address, ci *CommissionInfo) err
 		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
 	}
 	return pb.InitCommissionInfo(ci)
+}
+
+func GetActiveDSAMask(bc state.BTPContext, revision int) int64 {
+	if bc != nil && revision >= icmodule.RevisionBTP2 {
+		return bc.GetActiveDSAMask()
+	}
+	return 0
 }

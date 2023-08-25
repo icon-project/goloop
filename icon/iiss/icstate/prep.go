@@ -73,6 +73,10 @@ func (p *PRep) Info() *PRepInfo {
 	return pb.info()
 }
 
+func (p *PRep) HasPubKey(dsaMask int64) bool {
+	return p.GetDSAMask()&dsaMask == dsaMask
+}
+
 func NewPRep(owner module.Address, state *State) *PRep {
 	prep := &PRep{owner: owner, state: state}
 	if err := prep.init(); err != nil {
@@ -84,109 +88,54 @@ func NewPRep(owner module.Address, state *State) *PRep {
 // ===============================================================
 
 type PRepSet interface {
-	OnTermEnd(sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error
+	OnTermEnd(sc icmodule.StateContext,
+		mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate, dsaMask int64) error
 	GetPRepSize(grade Grade) int
 	GetElectedPRepSize() int
 	Size() int
 	TotalBonded() *big.Int
 	TotalDelegated() *big.Int
 	GetTotalPower(br icmodule.Rate) *big.Int
-	GetByIndex(i int) PRepSetEntry
+	GetByIndex(i int) *PRep
 	ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PRepSnapshots
-	Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, revision int)
-	SortForQuery(br icmodule.Rate, revision int)
+	Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, revision int, dsaMask int64)
+	SortForQuery(br icmodule.Rate, revision int, dsaMask int64)
 }
 
-type PRepSetEntry interface {
-	PRep() *PRep
-	Status() Status
-	Grade() Grade
-	Power(br icmodule.Rate) *big.Int
-	Delegated() *big.Int
-	Bonded() *big.Int
-	Owner() module.Address
-	HasPubKey() bool
-}
-
-type prepSetEntry struct {
-	prep   *PRep
-	pubKey bool
-}
-
-func (p *prepSetEntry) PRep() *PRep {
-	return p.prep
-}
-
-func (p *prepSetEntry) Status() Status {
-	return p.prep.Status()
-}
-
-func (p *prepSetEntry) Grade() Grade {
-	return p.prep.Grade()
-}
-
-func (p *prepSetEntry) Power(br icmodule.Rate) *big.Int {
-	return p.prep.GetPower(br)
-}
-
-func (p *prepSetEntry) Delegated() *big.Int {
-	return p.prep.Delegated()
-}
-
-func (p *prepSetEntry) Bonded() *big.Int {
-	return p.prep.Bonded()
-}
-
-func (p *prepSetEntry) Owner() module.Address {
-	return p.prep.Owner()
-}
-
-func (p *prepSetEntry) HasPubKey() bool {
-	return p.pubKey
-}
-
-func isPRepElectable(p PRepSetEntry, br icmodule.Rate) bool {
-	if p.Power(br).Sign() <= 0 {
+func isPRepElectable(p *PRep, br icmodule.Rate, dsaMask int64) bool {
+	if p.GetPower(br).Sign() <= 0 {
 		return false
 	}
-	if !p.HasPubKey() {
+	if !p.HasPubKey(dsaMask) {
 		return false
 	}
-	prep := p.PRep()
-	return prep.IsJailInfoElectable()
-}
-
-func NewPRepSetEntry(prep *PRep, pubKey bool) *prepSetEntry {
-	return &prepSetEntry{
-		prep:   prep,
-		pubKey: pubKey,
-	}
+	return p.IsJailInfoElectable()
 }
 
 type prepSetImpl struct {
 	totalBonded    *big.Int
 	totalDelegated *big.Int // total delegated amount of all active P-Reps
 	mainPReps      int
-	subPReps       int
-	entries        []PRepSetEntry
+	subPReps int
+	preps    []*PRep
 }
 
 // OnTermEnd initializes all prep status including grade on term end
 func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext,
-	mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate) error {
+	mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate, dsaMask int64) error {
 	revision := sc.Revision()
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
 
 	var newGrade Grade
-	for i, entry := range p.entries {
-		if revision >= icmodule.RevisionBTP2 && !isPRepElectable(entry, br) {
+	for i, prep := range p.preps {
+		if revision >= icmodule.RevisionBTP2 && !isPRepElectable(prep, br, dsaMask) {
 			newGrade = GradeCandidate
 		} else if i < mainPRepCount {
 			newGrade = GradeMain
 			mainPReps++
-		} else if i < mainPRepCount+extraMainPRepCount && entry.Power(br).Sign() > 0 {
+		} else if i < mainPRepCount+extraMainPRepCount && prep.GetPower(br).Sign() > 0 {
 			// Prevent a prep with 0 power from being an extra main prep
 			newGrade = GradeMain
 			mainPReps++
@@ -197,7 +146,6 @@ func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext,
 			newGrade = GradeCandidate
 		}
 
-		prep := entry.PRep()
 		if err := prep.OnTermEnd(sc, newGrade, limit); err != nil {
 			return err
 		}
@@ -229,7 +177,7 @@ func (p *prepSetImpl) GetElectedPRepSize() int {
 }
 
 func (p *prepSetImpl) Size() int {
-	return len(p.entries)
+	return len(p.preps)
 }
 
 func (p *prepSetImpl) TotalBonded() *big.Int {
@@ -242,29 +190,29 @@ func (p *prepSetImpl) TotalDelegated() *big.Int {
 
 func (p *prepSetImpl) GetTotalPower(br icmodule.Rate) *big.Int {
 	totalPower := new(big.Int)
-	for _, entry := range p.entries {
-		totalPower.Add(totalPower, entry.Power(br))
+	for _, prep := range p.preps {
+		totalPower.Add(totalPower, prep.GetPower(br))
 	}
 	return totalPower
 }
 
-func (p *prepSetImpl) GetByIndex(i int) PRepSetEntry {
-	if i < 0 || i >= len(p.entries) {
+func (p *prepSetImpl) GetByIndex(i int) *PRep {
+	if i < 0 || i >= len(p.preps) {
 		return nil
 	}
-	return p.entries[i]
+	return p.preps[i]
 }
 
 func (p *prepSetImpl) ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PRepSnapshots {
-	size := icutils.Min(len(p.entries), electedPRepCount)
+	size := icutils.Min(len(p.preps), electedPRepCount)
 	if size == 0 {
 		return nil
 	}
 
 	ret := make(PRepSnapshots, size)
 	for i := 0; i < size; i++ {
-		entry := p.entries[i]
-		ret[i] = NewPRepSnapshot(entry.Owner(), entry.Power(br))
+		prep := p.preps[i]
+		ret[i] = NewPRepSnapshot(prep.Owner(), prep.GetPower(br))
 	}
 	return ret
 }
@@ -272,17 +220,17 @@ func (p *prepSetImpl) ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PR
 // Sort sorts the PRepSet based on predefined criteria that may change with each revision
 // PRepCount parameters are the metrics in configuration file
 // Ex) mainPRepCount(22), subPRepCount(78), extraMainPRepCount(3)
-func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, rev int) {
+func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, rev int, dsaMask int64) {
 	if rev < icmodule.RevisionExtraMainPReps {
-		p.sort(br, nil)
+		p.sort(br, dsaMask, nil)
 	} else if rev < icmodule.RevisionBTP2 {
-		p.sort(br, nil)
+		p.sort(br, dsaMask, nil)
 		p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 	} else {
-		p.sort(br, cmpByValidatorElectable)
+		p.sort(br, dsaMask, cmpByValidatorElectable)
 		var electable int
-		p.visitAll(func(idx int, e PRepSetEntry) bool {
-			ok := isPRepElectable(e, br)
+		p.visitAll(func(idx int, e *PRep) bool {
+			ok := isPRepElectable(e, br, dsaMask)
 			if ok {
 				electable += 1
 			}
@@ -297,33 +245,31 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 	}
 }
 
-func (p *prepSetImpl) SortForQuery(br icmodule.Rate, revision int) {
+func (p *prepSetImpl) SortForQuery(br icmodule.Rate, revision int, dsaMask int64) {
 	if revision >= icmodule.RevisionBTP2 {
-		p.sort(br, cmpByValidatorElectable)
+		p.sort(br, dsaMask, cmpByValidatorElectable)
 	} else {
-		p.sort(br, nil)
+		p.sort(br, dsaMask, nil)
 	}
 }
 
-func (p *prepSetImpl) sort(br icmodule.Rate, cmp func(i, j PRepSetEntry) int) {
-	sort.Slice(p.entries, func(i, j int) bool {
-		p0, p1 := p.entries[i], p.entries[j]
-		return lessByPower(p0, p1, br, cmp)
+func (p *prepSetImpl) sort(br icmodule.Rate, dsaMask int64, cmp func(i, j *PRep, dsaMask int64) int) {
+	sort.Slice(p.preps, func(i, j int) bool {
+		p0, p1 := p.preps[i], p.preps[j]
+		return lessByPower(p0, p1, br, dsaMask, cmp)
 	})
 }
 
-func cmpByValidatorElectable(e0, e1 PRepSetEntry) int {
-	if e0.HasPubKey() != e1.HasPubKey() {
-		if e0.HasPubKey() {
+func cmpByValidatorElectable(e0, e1 *PRep, dsaMask int64) int {
+	if e0.HasPubKey(dsaMask) != e1.HasPubKey(dsaMask) {
+		if e0.HasPubKey(dsaMask) {
 			return 1
 		}
 		return -1
 	}
 
-	p0 := e0.PRep()
-	p1 := e1.PRep()
-	if p0.IsJailInfoElectable() != p1.IsJailInfoElectable() {
-		if p0.IsJailInfoElectable() {
+	if e0.IsJailInfoElectable() != e1.IsJailInfoElectable() {
+		if e0.IsJailInfoElectable() {
 			return 1
 		}
 		return -1
@@ -331,26 +277,27 @@ func cmpByValidatorElectable(e0, e1 PRepSetEntry) int {
 	return 0
 }
 
-func lessByPower(e0, e1 PRepSetEntry, br icmodule.Rate, cmp func(i, j PRepSetEntry) int) bool {
+func lessByPower(p0, p1 *PRep, br icmodule.Rate, dsaMask int64,
+	cmp func(i, j *PRep, dsaMask int64) int) bool {
 	var ret int
 	if cmp != nil {
-		if ret = cmp(e0, e1); ret != 0 {
+		if ret = cmp(p0, p1, dsaMask); ret != 0 {
 			return ret > 0
 		}
 	}
-	if ret = e0.Power(br).Cmp(e1.Power(br)); ret != 0 {
+	if ret = p0.GetPower(br).Cmp(p1.GetPower(br)); ret != 0 {
 		return ret > 0
 	}
-	if ret = e0.Delegated().Cmp(e1.Delegated()); ret != 0 {
+	if ret = p0.Delegated().Cmp(p1.Delegated()); ret != 0 {
 		return ret > 0
 	}
-	return bytes.Compare(e0.Owner().Bytes(), e1.Owner().Bytes()) > 0
+	return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
 }
 
 func (p *prepSetImpl) sortForExtraMainPRep(
 	mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate) {
 	// All counts are configuration values; Default: 22, 78, 3
-	size := len(p.entries)
+	size := len(p.preps)
 	if size <= mainPRepCount || extraMainPRepCount == 0 {
 		// Not enough number of active preps to be extra main preps
 		return
@@ -367,22 +314,22 @@ func (p *prepSetImpl) sortForExtraMainPRep(
 		extraMainPRepCount = subPRepCount
 	}
 
-	// Copy sub preps from entries to subPReps
-	subPRepEntries := p.entries[mainPRepCount:electedPRepCount]
-	dupSubPRepEntries := make([]PRepSetEntry, len(subPRepEntries))
-	copy(dupSubPRepEntries, subPRepEntries)
+	// Copy sub preps from preps to subPReps
+	subPReps := p.preps[mainPRepCount:electedPRepCount]
+	dupSubPReps := make([]*PRep, len(subPReps))
+	copy(dupSubPReps, subPReps)
 
 	// sort subPReps by LRU logic
-	sortByLRU(subPRepEntries, br)
+	sortByLRU(subPReps, br)
 
 	// Add extra main preps to map
 	i := 0
 	extraMainPReps := make(map[string]bool)
-	for _, entry := range subPRepEntries {
-		if entry.Power(br).Sign() > 0 {
+	for _, prep := range subPReps {
+		if prep.GetPower(br).Sign() > 0 {
 			// Prevent the prep whose power is 0 from being an extra main prep
-			extraMainPReps[icutils.ToKey(entry.Owner())] = true
-			subPRepEntries[i] = entry
+			extraMainPReps[icutils.ToKey(prep.Owner())] = true
+			subPReps[i] = prep
 			i++
 			if i == extraMainPRepCount {
 				// All extra main preps are selected
@@ -392,26 +339,26 @@ func (p *prepSetImpl) sortForExtraMainPRep(
 	}
 
 	// Append remaining sub preps excluding extra main preps
-	for _, entry := range dupSubPRepEntries {
+	for _, prep := range dupSubPReps {
 		// If prep is not an extra main prep
-		if _, ok := extraMainPReps[icutils.ToKey(entry.Owner())]; !ok {
-			subPRepEntries[i] = entry
+		if _, ok := extraMainPReps[icutils.ToKey(prep.Owner())]; !ok {
+			subPReps[i] = prep
 			i++
 		}
 	}
 }
 
-func (p *prepSetImpl) visitAll(visit func(idx int, e1 PRepSetEntry) bool) {
-	for i, e := range p.entries {
+func (p *prepSetImpl) visitAll(visit func(idx int, e1 *PRep) bool) {
+	for i, e := range p.preps {
 		if ok := visit(i, e); !ok {
 			return
 		}
 	}
 }
 
-func sortByLRU(prepSet []PRepSetEntry, br icmodule.Rate) {
+func sortByLRU(prepSet []*PRep, br icmodule.Rate) {
 	sort.Slice(prepSet, func(i, j int) bool {
-		return lessByLRU(prepSet[i].PRep(), prepSet[j].PRep(), br)
+		return lessByLRU(prepSet[i], prepSet[j], br)
 	})
 }
 
@@ -452,17 +399,17 @@ func lessByLRU(p0, p1 *PRep, br icmodule.Rate) bool {
 	return cmp > 0
 }
 
-func NewPRepSet(prepList []PRepSetEntry) PRepSet {
+func NewPRepSet(prepList []*PRep) PRepSet {
 	prepSet := &prepSetImpl{
 		totalDelegated: new(big.Int),
 		totalBonded:    new(big.Int),
-		entries:        prepList,
+		preps:          prepList,
 	}
 
-	for _, entry := range prepList {
-		prepSet.totalBonded.Add(prepSet.totalBonded, entry.Bonded())
-		prepSet.totalDelegated.Add(prepSet.totalDelegated, entry.Delegated())
-		switch entry.Grade() {
+	for _, prep := range prepList {
+		prepSet.totalBonded.Add(prepSet.totalBonded, prep.Bonded())
+		prepSet.totalDelegated.Add(prepSet.totalDelegated, prep.Delegated())
+		switch prep.Grade() {
 		case GradeMain:
 			prepSet.mainPReps += 1
 		case GradeSub:
@@ -470,7 +417,7 @@ func NewPRepSet(prepList []PRepSetEntry) PRepSet {
 		case GradeCandidate:
 			// Nothing to do
 		default:
-			panic(errors.Errorf("Invalid grade: %d", entry.Grade()))
+			panic(errors.Errorf("Invalid grade: %d", prep.Grade()))
 		}
 	}
 	return prepSet
