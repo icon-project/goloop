@@ -153,10 +153,7 @@ func isPRepElectable(p PRepSetEntry, br icmodule.Rate) bool {
 		return false
 	}
 	prep := p.PRep()
-	if prep.IsInJail() && !prep.IsUnjailing() {
-		return false
-	}
-	return true
+	return prep.IsJailInfoElectable()
 }
 
 func NewPRepSetEntry(prep *PRep, pubKey bool) *prepSetEntry {
@@ -184,8 +181,7 @@ func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext,
 
 	var newGrade Grade
 	for i, entry := range p.entries {
-		if revision >= icmodule.RevisionBTP2 &&
-			(entry.Power(br).Sign() == 0 || entry.HasPubKey() == false) {
+		if revision >= icmodule.RevisionBTP2 && !isPRepElectable(entry, br) {
 			newGrade = GradeCandidate
 		} else if i < mainPRepCount {
 			newGrade = GradeMain
