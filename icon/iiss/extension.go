@@ -1337,9 +1337,9 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 	var irep *big.Int
 	irepHeight := int64(0)
 	blockHeight := cc.BlockHeight()
-	term := es.State.GetTermSnapshot()
 
 	if es.IsDecentralized() {
+		term := es.State.GetTermSnapshot()
 		irep = term.Irep()
 		irepHeight = blockHeight
 	} else {
@@ -1352,12 +1352,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		)
 	}
 
-	_, err = es.Front.AddEventEnable(
-		int(blockHeight-term.StartHeight()),
-		from,
-		icmodule.ESEnable,
-	)
-	if err != nil {
+	if err = es.addEventEnable(blockHeight, from, icmodule.ESEnable); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err, "Failed to add EventEnable: from=%v", from,
 		)

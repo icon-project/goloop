@@ -129,7 +129,7 @@ type prepStatusData struct {
 	ji JailInfo
 
 	effectiveDelegated *big.Int
-	owner module.Address
+	owner              module.Address
 }
 
 func (ps *prepStatusData) Bonded() *big.Int {
@@ -448,16 +448,13 @@ func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 		&ps.dsaMask,
 		&ps.ji,
 	)
-	if err == nil {
-		return nil
+	if err == io.EOF {
+		if n != 10 && n != 11 {
+			return icmodule.InvalidStateError.Errorf("InvalidFormat(n=%d)", n)
+		}
+		err = nil
 	}
-	if err != io.EOF {
-		return err
-	}
-	if n != 10 && n != 11 {
-		return icmodule.InvalidStateError.Errorf("InvalidFormat(n=%d)", n)
-	}
-	return nil
+	return err
 }
 
 func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
@@ -696,7 +693,7 @@ func (ps *PRepStatusState) OnPenaltyImposed(sc icmodule.StateContext, pt icmodul
 	ps.vPenaltyMask |= 1
 	ps.grade = GradeCandidate
 	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
-		 return err
+		return err
 	}
 	ps.setDirty()
 	return nil

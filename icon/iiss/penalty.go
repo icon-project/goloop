@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
@@ -67,7 +68,12 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	}
 
 	// Record event for reward calculation
-	return es.addEventEnable(blockHeight, owner, icmodule.ESJail)
+	term := es.State.GetTermSnapshot()
+	if term.GetIISSVersion() < icstate.IISSVersion4 {
+		return es.addEventEnable(blockHeight, owner, icmodule.ESDisableTemp)
+	} else {
+		return es.addEventEnable(blockHeight, owner, icmodule.ESJail)
+	}
 }
 
 func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) error {
