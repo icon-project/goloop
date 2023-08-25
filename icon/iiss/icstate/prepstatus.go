@@ -416,6 +416,10 @@ func (ps *prepStatusData) IsUnjailable() bool {
 	return ps.ji.IsUnjailable()
 }
 
+func (ps *prepStatusData) IsJailInfoElectable() bool {
+	return ps.ji.IsElectable()
+}
+
 func (ps *prepStatusData) UnjailRequestHeight() int64 {
 	return ps.ji.UnjailRequestHeight()
 }

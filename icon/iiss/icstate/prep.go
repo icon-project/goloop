@@ -283,7 +283,7 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 		p.sort(br, nil)
 		p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 	} else {
-		p.sort(br, cmpPubKey)
+		p.sort(br, cmpByValidatorElectable)
 		var electable int
 		p.visitAll(func(idx int, e PRepSetEntry) bool {
 			ok := isPRepElectable(e, br)
@@ -303,7 +303,7 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 
 func (p *prepSetImpl) SortForQuery(br icmodule.Rate, revision int) {
 	if revision >= icmodule.RevisionBTP2 {
-		p.sort(br, cmpPubKey)
+		p.sort(br, cmpByValidatorElectable)
 	} else {
 		p.sort(br, nil)
 	}
@@ -316,7 +316,7 @@ func (p *prepSetImpl) sort(br icmodule.Rate, cmp func(i, j PRepSetEntry) int) {
 	})
 }
 
-func cmpPubKey(e0, e1 PRepSetEntry) int {
+func cmpByValidatorElectable(e0, e1 PRepSetEntry) int {
 	if e0.HasPubKey() != e1.HasPubKey() {
 		if e0.HasPubKey() {
 			return 1
@@ -326,14 +326,8 @@ func cmpPubKey(e0, e1 PRepSetEntry) int {
 
 	p0 := e0.PRep()
 	p1 := e1.PRep()
-	if p0.IsInJail() != p1.IsInJail() {
-		if p0.IsInJail() {
-			return -1
-		}
-		 return 1
-	}
-	if p0.IsUnjailing() != p1.IsUnjailing() {
-		if p0.IsUnjailing() {
+	if p0.IsJailInfoElectable() != p1.IsJailInfoElectable() {
+		if p0.IsJailInfoElectable() {
 			return 1
 		}
 		return -1
@@ -429,8 +423,11 @@ func lessByLRU(p0, p1 *PRep, br icmodule.Rate) bool {
 	if p0.IsUnjailing() != p1.IsUnjailing() {
 		return p0.IsUnjailing()
 	}
-	if p0.UnjailRequestHeight() != p1.UnjailRequestHeight() {
-		return p0.UnjailRequestHeight() < p1.UnjailRequestHeight()
+	if p0.IsUnjailing() {
+		// If both of preps are unjailing, compare their unjailRequestHeight
+		if p0.UnjailRequestHeight() != p1.UnjailRequestHeight() {
+			return p0.UnjailRequestHeight() < p1.UnjailRequestHeight()
+		}
 	}
 
 	// Sort by lastState
