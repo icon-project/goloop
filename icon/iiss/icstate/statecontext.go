@@ -25,13 +25,16 @@ type stateContext struct {
 	blockHeight int64
 	revision int
 	termRevision int
+	eventLogger icmodule.EnableEventLogger
 }
 
-func NewStateContext(blockHeight int64, revision, termRevision int) icmodule.StateContext {
+func NewStateContext(
+	blockHeight int64, revision, termRevision int, eventLogger icmodule.EnableEventLogger) icmodule.StateContext {
 	return &stateContext{
 		blockHeight,
 		revision,
 		termRevision,
+		eventLogger,
 	}
 }
 
@@ -52,6 +55,9 @@ func (sc *stateContext) IsIISS4Activated() bool {
 	return sc.termRevision >= icmodule.RevisionIISS4
 }
 
-func (sc *stateContext) AddEventEnable(from module.Address, flag icmodule.EnableStatus) error {
+func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.EnableStatus) error {
+	if sc.eventLogger != nil {
+		return sc.eventLogger.AddEventEnable(sc.blockHeight, owner, status)
+	}
 	return nil
 }

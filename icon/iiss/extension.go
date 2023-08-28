@@ -528,12 +528,12 @@ func (es *ExtensionStateImpl) addEventDelegated(blockHeight int64, delta map[str
 	return err
 }
 
-func (es *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icmodule.EnableStatus) (err error) {
+func (es *ExtensionStateImpl) AddEventEnable(blockHeight int64, owner module.Address, status icmodule.EnableStatus) (err error) {
 	term := es.State.GetTermSnapshot()
 	_, err = es.Front.AddEventEnable(
 		int(blockHeight-term.StartHeight()),
-		from,
-		flag,
+		owner,
+		status,
 	)
 	return
 }
@@ -583,7 +583,7 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 	if err = es.State.DisablePRep(sc, owner, icstate.Unregistered); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 	}
-	if err = es.addEventEnable(blockHeight, owner, icmodule.ESDisablePermanent); err != nil {
+	if err = es.AddEventEnable(blockHeight, owner, icmodule.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
 
@@ -601,7 +601,7 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 	if err := es.State.DisablePRep(sc, address, icstate.Disqualified); err != nil {
 		return err
 	}
-	if err := es.addEventEnable(blockHeight, address, icmodule.ESDisablePermanent); err != nil {
+	if err := es.AddEventEnable(blockHeight, address, icmodule.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
 	ps := es.State.GetPRepStatusByOwner(address, false)
@@ -1353,7 +1353,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		)
 	}
 
-	if err = es.addEventEnable(blockHeight, from, icmodule.ESEnable); err != nil {
+	if err = es.AddEventEnable(blockHeight, from, icmodule.ESEnable); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err, "Failed to add EventEnable: from=%v", from,
 		)
@@ -1986,7 +1986,7 @@ func (es *ExtensionStateImpl) newStateContext(cc icmodule.WorldContext) icmodule
 	if term != nil {
 		termRevision = term.Revision()
 	}
-	return icstate.NewStateContext(cc.BlockHeight(), revision, termRevision)
+	return icstate.NewStateContext(cc.BlockHeight(), revision, termRevision, es)
 }
 
 func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
@@ -2005,7 +2005,7 @@ func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 		if err := ps.OnUnjailRequested(es.newStateContext(cc)); err != nil {
 			return err
 		}
-		if err := es.addEventEnable(cc.BlockHeight(), owner, icmodule.ESUnjail); err != nil {
+		if err := es.AddEventEnable(cc.BlockHeight(), owner, icmodule.ESUnjail); err != nil {
 			return err
 		}
 	}

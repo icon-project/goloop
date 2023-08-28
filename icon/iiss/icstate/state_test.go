@@ -456,7 +456,7 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			sc = NewStateContext(1000, arg.in.rev, arg.in.termRev)
+			sc = NewStateContext(1000, arg.in.rev, arg.in.termRev, nil)
 
 			state.Flush()
 			state.ClearCache()
@@ -479,7 +479,7 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 			if sc.Revision() < termRev {
 				termRev = sc.Revision()
 			}
-			sc = NewStateContext(sc.BlockHeight()+1, sc.Revision(), termRev)
+			sc = NewStateContext(sc.BlockHeight()+1, sc.Revision(), termRev, nil)
 
 			err = state.OnMainPRepReplaced(sc, owners[0], owners[1])
 			assert.NoError(t, err)
@@ -602,7 +602,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			state.Flush()
 			state.ClearCache()
 
-			sc := NewStateContext(10000, arg.in.rev, arg.in.termRev)
+			sc := NewStateContext(10000, arg.in.rev, arg.in.termRev, nil)
 			ps := state.GetPRepStatusByOwner(owner, false)
 			err = state.ImposePenalty(sc, arg.in.pt, owner, ps)
 			assert.NoError(t, err)
@@ -681,7 +681,7 @@ func TestState_DisablePRep(t *testing.T) {
 	assert.Equal(t, delegation, ps.Delegated().Int64())
 	assert.Equal(t, Active, ps.Status())
 
-	sc := NewStateContext(1000, icmodule.RevisionPreIISS4, icmodule.RevisionPreIISS4)
+	sc := NewStateContext(1000, icmodule.RevisionPreIISS4, icmodule.RevisionPreIISS4, nil)
 	err = state.DisablePRep(sc, owner, Unregistered)
 	assert.NoError(t, err)
 	state.Flush()

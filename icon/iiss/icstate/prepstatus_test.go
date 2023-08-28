@@ -668,7 +668,7 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 				vPenaltyMask: init.vpm,
 			}}
 
-			sc := NewStateContext(bh, revision, termRevision)
+			sc := NewStateContext(bh, revision, termRevision, nil)
 			err = ps.OnPenaltyImposed(sc, icmodule.PenaltyBlockValidation)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
@@ -752,7 +752,7 @@ func TestPRepStatusData_getPenaltyType(t *testing.T) {
 }
 
 func TestPRepStatusData_ToJSON(t *testing.T) {
-	sc := NewStateContext(100, icmodule.RevisionIISS4, icmodule.RevisionPreIISS4)
+	sc := NewStateContext(100, icmodule.RevisionIISS4, icmodule.RevisionPreIISS4, nil)
 
 	ps := NewPRepStatus()
 	jso := ps.ToJSON(sc, 5, 0)

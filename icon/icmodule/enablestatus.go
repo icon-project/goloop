@@ -16,6 +16,8 @@
 
 package icmodule
 
+import "github.com/icon-project/goloop/module"
+
 type EnableStatus int
 
 const (
@@ -62,4 +64,8 @@ func (ef EnableStatus) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+type EnableEventLogger interface {
+	AddEventEnable(blockHeight int64, owner module.Address, status EnableStatus) error
 }

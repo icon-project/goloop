@@ -70,9 +70,9 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	// Record event for reward calculation
 	term := es.State.GetTermSnapshot()
 	if term.GetIISSVersion() < icstate.IISSVersion4 {
-		return es.addEventEnable(blockHeight, owner, icmodule.ESDisableTemp)
+		return es.AddEventEnable(blockHeight, owner, icmodule.ESDisableTemp)
 	} else {
-		return es.addEventEnable(blockHeight, owner, icmodule.ESJail)
+		return es.AddEventEnable(blockHeight, owner, icmodule.ESJail)
 	}
 }
 

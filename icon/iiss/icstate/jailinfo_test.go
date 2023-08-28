@@ -118,7 +118,7 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 	}
 
 	var unjailRequestHeight int64
-	sc := NewStateContext(1000, icmodule.RevisionIISS4, icmodule.RevisionIISS4)
+	sc := NewStateContext(1000, icmodule.RevisionIISS4, icmodule.RevisionIISS4, nil)
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
@@ -180,7 +180,7 @@ func TestJailInfo_OnUnjailRequested(t *testing.T) {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
 			ji := arg.ji
-			sc := NewStateContext(arg.bh, icmodule.RevisionIISS4, icmodule.RevisionIISS4)
+			sc := NewStateContext(arg.bh, icmodule.RevisionIISS4, icmodule.RevisionIISS4, nil)
 			err := ji.OnUnjailRequested(sc)
 			if arg.success {
 				assert.NoError(t, err)
@@ -238,7 +238,7 @@ func TestJailInfo_OnMainPRepIn(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			exp := arg.exp
 			ji := arg.ji
-			sc := NewStateContext(arg.bh, icmodule.RevisionPreIISS4, icmodule.RevisionIISS4)
+			sc := NewStateContext(arg.bh, icmodule.RevisionPreIISS4, icmodule.RevisionIISS4, nil)
 			err := ji.OnMainPRepIn(sc, nil)
 			if exp.success {
 				assert.NoError(t, err)
