@@ -229,8 +229,8 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 	} else {
 		p.sort(br, dsaMask, cmpByValidatorElectable)
 		var electable int
-		p.visitAll(func(idx int, e *PRep) bool {
-			ok := isPRepElectable(e, br, dsaMask)
+		p.visitAll(func(idx int, prep *PRep) bool {
+			ok := isPRepElectable(prep, br, dsaMask)
 			if ok {
 				electable += 1
 			}
@@ -255,21 +255,20 @@ func (p *prepSetImpl) SortForQuery(br icmodule.Rate, revision int, dsaMask int64
 
 func (p *prepSetImpl) sort(br icmodule.Rate, dsaMask int64, cmp func(i, j *PRep, dsaMask int64) int) {
 	sort.Slice(p.preps, func(i, j int) bool {
-		p0, p1 := p.preps[i], p.preps[j]
-		return lessByPower(p0, p1, br, dsaMask, cmp)
+		return lessByPower(p.preps[i], p.preps[j], br, dsaMask, cmp)
 	})
 }
 
-func cmpByValidatorElectable(e0, e1 *PRep, dsaMask int64) int {
-	if e0.HasPubKey(dsaMask) != e1.HasPubKey(dsaMask) {
-		if e0.HasPubKey(dsaMask) {
+func cmpByValidatorElectable(p0, p1 *PRep, dsaMask int64) int {
+	if p0.HasPubKey(dsaMask) != p1.HasPubKey(dsaMask) {
+		if p0.HasPubKey(dsaMask) {
 			return 1
 		}
 		return -1
 	}
 
-	if e0.IsJailInfoElectable() != e1.IsJailInfoElectable() {
-		if e0.IsJailInfoElectable() {
+	if p0.IsJailInfoElectable() != p1.IsJailInfoElectable() {
+		if p0.IsJailInfoElectable() {
 			return 1
 		}
 		return -1
@@ -348,17 +347,17 @@ func (p *prepSetImpl) sortForExtraMainPRep(
 	}
 }
 
-func (p *prepSetImpl) visitAll(visit func(idx int, e1 *PRep) bool) {
-	for i, e := range p.preps {
-		if ok := visit(i, e); !ok {
+func (p *prepSetImpl) visitAll(visit func(idx int, prep *PRep) bool) {
+	for i, prep := range p.preps {
+		if ok := visit(i, prep); !ok {
 			return
 		}
 	}
 }
 
-func sortByLRU(prepSet []*PRep, br icmodule.Rate) {
-	sort.Slice(prepSet, func(i, j int) bool {
-		return lessByLRU(prepSet[i], prepSet[j], br)
+func sortByLRU(preps []*PRep, br icmodule.Rate) {
+	sort.Slice(preps, func(i, j int) bool {
+		return lessByLRU(preps[i], preps[j], br)
 	})
 }
 
@@ -399,14 +398,14 @@ func lessByLRU(p0, p1 *PRep, br icmodule.Rate) bool {
 	return cmp > 0
 }
 
-func NewPRepSet(prepList []*PRep) PRepSet {
+func NewPRepSet(preps []*PRep) PRepSet {
 	prepSet := &prepSetImpl{
 		totalDelegated: new(big.Int),
 		totalBonded:    new(big.Int),
-		preps:          prepList,
+		preps:          preps,
 	}
 
-	for _, prep := range prepList {
+	for _, prep := range preps {
 		prepSet.totalBonded.Add(prepSet.totalBonded, prep.Bonded())
 		prepSet.totalDelegated.Add(prepSet.totalDelegated, prep.Delegated())
 		switch prep.Grade() {

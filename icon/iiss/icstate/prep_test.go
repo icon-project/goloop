@@ -19,10 +19,11 @@ package icstate
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
