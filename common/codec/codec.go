@@ -114,6 +114,7 @@ var (
 	ErrNilValue      = errors.New("NilValueError")
 	ErrInvalidFormat = errors.New("InvalidFormatError")
 	ErrIllegalType   = errors.New("IllegalTypeError")
+	ErrPanicInCustom = errors.New("PanicInCustomError")
 )
 
 type encoderImpl struct {
@@ -499,6 +500,12 @@ func (d *decoderImpl) SetMaxBytes(sz int) bool {
 }
 
 func (d *decoderImpl) tryCustom(v reflect.Value) (consume bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			consume = true
+			err = cerrors.Wrapf(ErrPanicInCustom, "panic in custom decoder: %v", r)
+		}
+	}()
 	if v.CanInterface() {
 		switch value := v.Interface().(type) {
 		case DecodeSelfer:

@@ -50,6 +50,7 @@ func init() {
 
 type RocksDB struct {
 	lock    sync.RWMutex
+	bkLock  sync.Mutex
 	buckets map[BucketID]*RocksBucket
 
 	db *C.rocksdb_t
@@ -151,6 +152,10 @@ func (db *RocksDB) Close() error {
 	if db.db == nil {
 		return ErrAlreadyClosed
 	}
+
+	db.bkLock.Lock()
+	defer db.bkLock.Unlock()
+
 	for _, bk := range db.buckets {
 		C.rocksdb_column_family_handle_destroy(bk.cf)
 	}
@@ -160,12 +165,15 @@ func (db *RocksDB) Close() error {
 }
 
 func (db *RocksDB) GetBucket(id BucketID) (Bucket, error) {
-	db.lock.Lock()
-	defer db.lock.Unlock()
+	db.lock.RLock()
+	defer db.lock.RUnlock()
 
 	if db.db == nil {
 		return nil, ErrAlreadyClosed
 	}
+
+	db.bkLock.Lock()
+	defer db.bkLock.Unlock()
 
 	if bk, ok := db.buckets[id]; ok {
 		return bk, nil
