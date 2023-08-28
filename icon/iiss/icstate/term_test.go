@@ -17,7 +17,7 @@ import (
 )
 
 func newPRepSnapshot(owner module.Address, delegated int64, bond int64) *PRepSnapshot {
-	status := NewPRepStatus()
+	status := NewPRepStatus(owner)
 	status.SetDelegated(big.NewInt(delegated))
 	status.SetBonded(big.NewInt(bond))
 

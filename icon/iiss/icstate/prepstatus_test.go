@@ -33,7 +33,9 @@ import (
 
 func TestPRepStatus_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
-	ss1 := NewPRepStatus().GetSnapshot()
+	owner := newDummyAddress(1)
+
+	ss1 := NewPRepStatus(owner).GetSnapshot()
 
 	o1 := icobject.New(TypePRepStatus, ss1)
 	serialized := o1.Bytes()
@@ -71,12 +73,12 @@ func TestPRepStatus_GetBondedDelegation(t *testing.T) {
 			int64(0),
 		},
 	}
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			br := icmodule.ToRate(5)
 			in := tt.args
 
-			ps := NewPRepStatus()
+			ps := NewPRepStatus(newDummyAddress(i + 1))
 			ps.SetDelegated(big.NewInt(in.delegated))
 			ps.SetBonded(big.NewInt(in.bonded))
 			assert.Equal(t, in.delegated, ps.Delegated().Int64())
@@ -707,7 +709,7 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
-			state := NewPRepStatus()
+			state := NewPRepStatus(newDummyAddress(i + 1))
 			state.dsaMask = arg.dsaMask
 			state.ji = *newJailInfo(arg.jailFlags, arg.unjailRequestHeight, arg.minDoubleVoteHeight)
 			state.setDirty()
@@ -734,7 +736,7 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 }
 
 func TestPRepStatusData_getPenaltyType(t *testing.T) {
-	ps := NewPRepStatus()
+	ps := NewPRepStatus(newDummyAddress(1))
 	assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
 
 	for i := 0; i < 10; i += 2 {
@@ -754,7 +756,7 @@ func TestPRepStatusData_getPenaltyType(t *testing.T) {
 func TestPRepStatusData_ToJSON(t *testing.T) {
 	sc := NewStateContext(100, icmodule.RevisionIISS4, icmodule.RevisionPreIISS4, nil)
 
-	ps := NewPRepStatus()
+	ps := NewPRepStatus(newDummyAddress(1))
 	jso := ps.ToJSON(sc, 5, 0)
 
 	penalty, ok := jso["penalty"].(int)
@@ -774,8 +776,25 @@ func TestPRepStatusData_ToJSON(t *testing.T) {
 	assert.Zero(t, power.Sign())
 }
 
+func TestNewPRepStatus(t *testing.T) {
+	owner := newDummyAddress(1)
+	ps := NewPRepStatus(owner)
+	assert.True(t, ps.Owner() == owner)
+
+	ps.SetStatus(Active)
+	ps.SetBonded(big.NewInt(100))
+	ps.SetDelegated(big.NewInt(200))
+	ps.SetDSAMask(1)
+	ps.SetEffectiveDelegated(big.NewInt(300))
+	ps.SetVTotal(1000)
+
+	ps2 := NewPRepStatusWithSnapshot(owner, ps.GetSnapshot())
+	assert.True(t, ps2.Owner() == owner)
+	assert.True(t, ps.GetSnapshot().Equal(ps2.GetSnapshot()))
+}
+
 func TestPRepStats_ToJSON(t *testing.T) {
-	ps := NewPRepStatus()
+	ps := NewPRepStatus(newDummyAddress(1))
 	owner := newDummyAddress(1)
 
 	stats := NewPRepStats(owner, ps)

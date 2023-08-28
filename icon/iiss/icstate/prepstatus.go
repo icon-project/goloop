@@ -130,7 +130,6 @@ type prepStatusData struct {
 
 	// Data not stored in DB
 	effectiveDelegated *big.Int
-	owner              module.Address
 }
 
 func (ps *prepStatusData) Bonded() *big.Int {
@@ -250,7 +249,6 @@ func (ps *prepStatusData) equal(other *prepStatusData) bool {
 	if ps == other {
 		return true
 	}
-
 	return ps.grade == other.grade &&
 		ps.status == other.status &&
 		ps.delegated.Cmp(other.delegated) == 0 &&
@@ -280,6 +278,7 @@ func (ps *prepStatusData) clone() prepStatusData {
 		dsaMask:      ps.dsaMask,
 		ji:           ps.ji,
 
+		// Data not stored in DB
 		effectiveDelegated: ps.effectiveDelegated,
 	}
 }
@@ -512,16 +511,25 @@ var emptyPRepStatusSnapshot = &PRepStatusSnapshot{
 }
 
 type PRepStatusState struct {
+	owner module.Address
 	prepStatusData
 	last *PRepStatusSnapshot
+}
+
+func (ps *PRepStatusState) Owner() module.Address {
+	return ps.owner
 }
 
 func (ps *PRepStatusState) Reset(ss *PRepStatusSnapshot) *PRepStatusState {
 	if ps.last != ss {
 		ed := ps.effectiveDelegated
+		owner := ps.owner
+
 		ps.last = ss
 		ps.prepStatusData = ss.prepStatusData.clone()
+
 		ps.effectiveDelegated = ed
+		ps.owner = owner
 	}
 	return ps
 }
@@ -758,12 +766,13 @@ func newPRepStatusWithTag(_ icobject.Tag) *PRepStatusSnapshot {
 	return new(PRepStatusSnapshot)
 }
 
-func NewPRepStatusWithSnapshot(snapshot *PRepStatusSnapshot) *PRepStatusState {
-	return new(PRepStatusState).Reset(snapshot)
+func NewPRepStatusWithSnapshot(owner module.Address, snapshot *PRepStatusSnapshot) *PRepStatusState {
+	ps := &PRepStatusState{owner: owner}
+	return ps.Reset(snapshot)
 }
 
-func NewPRepStatus() *PRepStatusState {
-	return new(PRepStatusState).Reset(emptyPRepStatusSnapshot)
+func NewPRepStatus(owner module.Address) *PRepStatusState {
+	return NewPRepStatusWithSnapshot(owner, emptyPRepStatusSnapshot)
 }
 
 type PRepStats struct {
