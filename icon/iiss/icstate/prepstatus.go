@@ -525,13 +525,9 @@ func (ps *PRepStatusState) Owner() module.Address {
 func (ps *PRepStatusState) Reset(ss *PRepStatusSnapshot) *PRepStatusState {
 	if ps.last != ss {
 		ed := ps.effectiveDelegated
-		owner := ps.owner
-
 		ps.last = ss
 		ps.prepStatusData = ss.prepStatusData.clone()
-
 		ps.effectiveDelegated = ed
-		ps.owner = owner
 	}
 	return ps
 }
