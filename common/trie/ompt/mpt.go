@@ -490,10 +490,10 @@ func (m *mpt) Equal(object trie.ImmutableForObject, exact bool) bool {
 		if m == m2 {
 			return true
 		}
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-		m2.mutex.Lock()
-		defer m2.mutex.Unlock()
+		m.mutex.RLock()
+		defer m.mutex.RUnlock()
+		m2.mutex.RLock()
+		defer m2.mutex.RUnlock()
 
 		if m2.root == m.root {
 			return true
