@@ -308,7 +308,9 @@ func (ps *prepStatusData) getPenaltyType() icmodule.PenaltyType {
 	if ps.status == Disqualified {
 		return icmodule.PenaltyPRepDisqualification
 	}
-
+	if ps.ji.IsInDoubleVotePenalty() {
+		return icmodule.PenaltyDoubleVote
+	}
 	if (ps.vPenaltyMask & 1) == 0 {
 		return icmodule.PenaltyNone
 	} else {
