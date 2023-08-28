@@ -130,19 +130,19 @@ func TestWriter_AddMultipleAndFlush(t *testing.T) {
 		dbase: w.Database(),
 		operations: scenario1,
 	}
-	w.Add(item1);
+	w.Add(item1)
 	item2 := &testFlusher{
 		dbase: w.Database(),
 		operations: scenario2,
 	}
-	w.Add(item2);
+	w.Add(item2)
 	err := w.Flush()
 	assert.NoError(t, err)
 	s1, s2 := 0, 0
 	for _, rec := range dbase.record {
-		if reflect.DeepEqual(exp1[s1], rec) {
+		if s1 < len(exp1) && reflect.DeepEqual(exp1[s1], rec) {
 			s1 += 1
-		} else if reflect.DeepEqual(exp2[s2], rec) {
+		} else if s2 < len(exp2) && reflect.DeepEqual(exp2[s2], rec) {
 			s2 += 1
 		} else {
 			t.Failed()
