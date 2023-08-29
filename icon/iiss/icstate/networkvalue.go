@@ -355,25 +355,16 @@ func (s *State) SetConsistentValidationPenaltyMask(value int64) error {
 	return setValue(s.store, VarConsistentValidationPenaltyMask, value)
 }
 
-func (s *State) GetConsistentValidationPenaltySlashRate(revision int) icmodule.Rate {
-	if revision < icmodule.RevisionPreIISS4 {
-		v := getValue(s.store, VarConsistentValidationPenaltySlashRate).Int64()
-		return icmodule.ToRate(v)
-	} else {
-		rate, _ := s.GetSlashingRate(icmodule.PenaltyAccumulatedValidationFailure)
-		return rate
-	}
+func (s *State) getConsistentValidationPenaltySlashRate() icmodule.Rate {
+	v := getValue(s.store, VarConsistentValidationPenaltySlashRate).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetConsistentValidationPenaltySlashRate(revision int, value icmodule.Rate) error {
-	if revision < icmodule.RevisionPreIISS4 {
-		if !value.IsValid() {
-			return errors.IllegalArgumentError.New("Invalid range")
-		}
-		return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
-	} else {
-		return s.SetSlashingRate(icmodule.PenaltyAccumulatedValidationFailure, value)
+func (s *State) setConsistentValidationPenaltySlashRate(value icmodule.Rate) error {
+	if !value.IsValid() {
+		 return errors.IllegalArgumentError.New("Invalid range")
 	}
+	return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
 }
 
 func (s *State) GetDelegationSlotMax() int {
@@ -385,32 +376,35 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func (s *State) GetNonVotePenaltySlashRate(revision int) icmodule.Rate {
-	if revision < icmodule.RevisionPreIISS4 {
-		v := getValue(s.store, VarNonVotePenaltySlashRate).Int64()
-		return icmodule.ToRate(v)
-	} else {
-		rate, _ := s.GetSlashingRate(icmodule.PenaltyMissedNetworkProposalVote)
-		return rate
-	}
+func (s *State) getNonVotePenaltySlashRate() icmodule.Rate {
+	v := getValue(s.store, VarNonVotePenaltySlashRate).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetNonVotePenaltySlashRate(revision int, value icmodule.Rate) error {
+func (s *State) setNonVotePenaltySlashRate(value icmodule.Rate) error {
+	if !value.IsValid() {
+		 return errors.IllegalArgumentError.New("Invalid range")
+	}
+	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
+}
+
+func (s *State) GetSlashingRate(revision int, penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
 	if revision < icmodule.RevisionPreIISS4 {
-		if !value.IsValid() {
-			return errors.IllegalArgumentError.New("Invalid range")
+		switch penaltyType {
+		case icmodule.PenaltyAccumulatedValidationFailure:
+			return s.getConsistentValidationPenaltySlashRate(), nil
+		case icmodule.PenaltyMissedNetworkProposalVote:
+			return s.getNonVotePenaltySlashRate(), nil
 		}
-		return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
-	} else {
-		return s.SetSlashingRate(icmodule.PenaltyMissedNetworkProposalVote, value)
 	}
+	return s.getSlashingRate(penaltyType)
 }
 
-func (s *State) GetSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
+func (s *State) getSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
 	if !penaltyType.IsValid() {
 		return 0, scoreresult.InvalidParameterError.Errorf("InvalidPenaltyType(%d)", penaltyType)
 	}
-	var rate icmodule.Rate
+	rate := icmodule.Rate(0)
 	db := s.getDictDB(DictSlashingRate)
 	if v := db.Get(int(penaltyType)); v != nil {
 		rate = icmodule.Rate(v.Int64())
@@ -418,7 +412,19 @@ func (s *State) GetSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate
 	return rate, nil
 }
 
-func (s *State) SetSlashingRate(penaltyType icmodule.PenaltyType, rate icmodule.Rate) error {
+func (s *State) SetSlashingRate(revision int, penaltyType icmodule.PenaltyType, rate icmodule.Rate) error {
+	if revision < icmodule.RevisionPreIISS4 {
+		switch penaltyType {
+		case icmodule.PenaltyAccumulatedValidationFailure:
+			return s.setConsistentValidationPenaltySlashRate(rate)
+		case icmodule.PenaltyMissedNetworkProposalVote:
+			return s.setNonVotePenaltySlashRate(rate)
+		}
+	}
+	return s.setSlashingRate(penaltyType, rate)
+}
+
+func (s *State) setSlashingRate(penaltyType icmodule.PenaltyType, rate icmodule.Rate) error {
 	if !penaltyType.IsValid() {
 		return scoreresult.InvalidParameterError.Errorf("InvalidPenaltyType(%d)", penaltyType)
 	}
@@ -468,10 +474,16 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()
 	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
-	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRate(revision).Percent()
+
+	rate, _ := s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
+	jso["consistentValidationPenaltySlashRatio"] = rate.Percent()
+
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
-	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRate(revision).Percent()
+
+	rate, _ = s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
+	jso["proposalNonVotePenaltySlashRatio"] = rate.Percent()
+
 	if revision >= icmodule.RevisionPreIISS4 {
 		jso["minimumBond"] = s.GetMinimumBond()
 	}

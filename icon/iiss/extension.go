@@ -616,8 +616,10 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 	if ps == nil {
 		return icmodule.NotFoundError.Errorf("PRepNotFound(%s)", address)
 	}
-	recordPenaltyImposedEvent(cc, ps, icmodule.PenaltyMissedNetworkProposalVote)
-	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate(cc.Revision().Value()))
+	pt := icmodule.PenaltyMissedNetworkProposalVote
+	recordPenaltyImposedEvent(cc, ps, pt)
+	rate, _ := es.State.GetSlashingRate(cc.Revision().Value(), pt)
+	return es.slash(cc, address, rate)
 }
 
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
@@ -1846,14 +1848,15 @@ func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values m
 		rates[pt] = rate
 	}
 
+	revision := cc.Revision().Value()
 	for _, pt = range icmodule.GetPenaltyTypes() {
 		if rate, ok := rates[pt]; ok {
-			oldRate, err := es.State.GetSlashingRate(pt)
+			oldRate, err := es.State.GetSlashingRate(revision, pt)
 			if err != nil {
 				return err
 			}
 			if oldRate != rate {
-				if err = es.State.SetSlashingRate(pt, rate); err != nil {
+				if err = es.State.SetSlashingRate(revision, pt, rate); err != nil {
 					return err
 				}
 				// Record slashingRateChangedV2 eventLogs in PenaltyType order
@@ -1864,14 +1867,16 @@ func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values m
 	return nil
 }
 
-func (es *ExtensionStateImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
+func (es *ExtensionStateImpl) GetSlashingRates(
+	cc icmodule.CallContext, penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
 	if len(penaltyTypes) == 0 {
 		penaltyTypes = icmodule.GetPenaltyTypes()
 	}
 
+	revision := cc.Revision().Value()
 	jso := make(map[string]interface{})
 	for _, pt := range penaltyTypes {
-		if rate, err := es.State.GetSlashingRate(pt); err == nil {
+		if rate, err := es.State.GetSlashingRate(revision, pt); err == nil {
 			jso[pt.String()] = rate.NumInt64()
 		} else {
 			return nil, err

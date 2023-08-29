@@ -12,13 +12,13 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, r1, r2 int) error {
-	if r1 >= r2 {
+func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, oldRev, newRev int) error {
+	if oldRev >= newRev {
 		return nil
 	}
-	for rev := r1 + 1; rev <= r2; rev++ {
+	for rev := oldRev + 1; rev <= newRev; rev++ {
 		if handler, ok := sim.revHandlers[rev]; ok {
-			if err := handler(ws, r1, rev); err != nil {
+			if err := handler(ws); err != nil {
 				return err
 			}
 		}
@@ -26,7 +26,8 @@ func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, r1, r2 int) 
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev5(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
+	revision := icmodule.Revision5
 	as := ws.GetAccountState(state.SystemID)
 
 	// enable Fee sharing 2.0
@@ -42,70 +43,69 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState, r1, r2 int) error {
 			return err
 		}
 	}
-	return sim.handleRevIISS(ws, r1, r2)
-}
 
-func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
-	config := sim.config
+	cfg := sim.config
 	ws.GetExtensionState().Reset(iiss.NewExtensionSnapshot(ws.Database(), nil))
 	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion2); err != nil {
 		return err
 	}
-	if err := es.State.SetTermPeriod(config.TermPeriod); err != nil {
+	if err := es.State.SetTermPeriod(cfg.TermPeriod); err != nil {
 		return err
 	}
-	if err := es.State.SetIRep(big.NewInt(config.Irep)); err != nil {
+	if err := es.State.SetIRep(big.NewInt(cfg.Irep)); err != nil {
 		return err
 	}
-	if err := es.State.SetRRep(big.NewInt(config.Rrep)); err != nil {
+	if err := es.State.SetRRep(big.NewInt(cfg.Rrep)); err != nil {
 		return err
 	}
-	if err := es.State.SetMainPRepCount(config.MainPRepCount); err != nil {
+	if err := es.State.SetMainPRepCount(cfg.MainPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetSubPRepCount(config.SubPRepCount); err != nil {
+	if err := es.State.SetSubPRepCount(cfg.SubPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(icmodule.ToRate(config.BondRequirement)); err != nil {
+	if err := es.State.SetBondRequirement(icmodule.ToRate(cfg.BondRequirement)); err != nil {
 		return err
 	}
-	if err := es.State.SetLockVariables(big.NewInt(config.LockMinMultiplier), big.NewInt(config.LockMaxMultiplier)); err != nil {
+	if err := es.State.SetLockVariables(big.NewInt(cfg.LockMinMultiplier), big.NewInt(cfg.LockMaxMultiplier)); err != nil {
 		return err
 	}
-	if err := es.State.SetUnbondingPeriodMultiplier(config.UnbondingPeriodMultiplier); err != nil {
+	if err := es.State.SetUnbondingPeriodMultiplier(cfg.UnbondingPeriodMultiplier); err != nil {
 		return err
 	}
-	if err := es.State.SetDelegationSlotMax(config.DelegationSlotMax); err != nil {
+	if err := es.State.SetDelegationSlotMax(cfg.DelegationSlotMax); err != nil {
 		return err
 	}
-	if err := applyRewardFund(config, es.State); err != nil {
+	if err := applyRewardFund(cfg, es.State); err != nil {
 		return err
 	}
-	if err := es.State.SetUnstakeSlotMax(config.UnstakeSlotMax); err != nil {
+	if err := es.State.SetUnstakeSlotMax(cfg.UnstakeSlotMax); err != nil {
 		return err
 	}
-	if err := es.State.SetUnbondingMax(config.UnbondingMax); err != nil {
+	if err := es.State.SetUnbondingMax(cfg.UnbondingMax); err != nil {
 		return err
 	}
-	if err := es.State.SetValidationPenaltyCondition(config.ValidationPenaltyCondition); err != nil {
+	if err := es.State.SetValidationPenaltyCondition(cfg.ValidationPenaltyCondition); err != nil {
 		return err
 	}
 	if err := es.State.SetConsistentValidationPenaltyCondition(
-		config.ConsistentValidationPenaltyCondition); err != nil {
+		cfg.ConsistentValidationPenaltyCondition); err != nil {
 		return err
 	}
 	if err := es.State.SetConsistentValidationPenaltyMask(
-		config.ConsistentValidationPenaltyMask); err != nil {
+		cfg.ConsistentValidationPenaltyMask); err != nil {
 		return err
 	}
-	if err := es.State.SetConsistentValidationPenaltySlashRate(
-		r2, icmodule.ToRate(int64(config.ConsistentValidationPenaltySlashRate))); err != nil {
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		icmodule.ToRate(int64(cfg.ConsistentValidationPenaltySlashRate))); err != nil {
 		return err
 	}
 
-	return es.GenesisTerm(sim.blockHeight, r2)
+	return es.GenesisTerm(sim.blockHeight, revision)
 }
 
 func applyRewardFund(config *config, s *icstate.State) error {
@@ -126,7 +126,7 @@ func applyRewardFund(config *config, s *icstate.State) error {
 }
 
 // handleRev6: icmodule.RevisionDecentralize
-func (sim *simulatorImpl) handleRev6(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev6(ws state.WorldState) error {
 	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
@@ -136,7 +136,7 @@ func (sim *simulatorImpl) handleRev6(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev9(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev9(ws state.WorldState) error {
 	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
 		if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
@@ -158,11 +158,11 @@ func (sim *simulatorImpl) handleRev9(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev10(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev10(ws state.WorldState) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev14(ws state.WorldState) error {
 	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
 	as := ws.GetAccountState(state.SystemID)
 
@@ -188,7 +188,7 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev15(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev15(ws state.WorldState) error {
 	as := ws.GetAccountState(state.SystemID)
 
 	if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(icon.EETypesJavaAndPython); err != nil {
@@ -197,6 +197,6 @@ func (sim *simulatorImpl) handleRev15(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev17(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev17(ws state.WorldState) error {
 	return nil
 }

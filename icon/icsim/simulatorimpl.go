@@ -81,7 +81,7 @@ type simulatorImpl struct {
 	revision    module.Revision
 	stepPrice   *big.Int
 	wss         state.WorldSnapshot
-	revHandlers map[int]func(wc state.WorldState, r1, r2 int) error
+	revHandlers map[int]func(wc state.WorldState) error
 }
 
 func (sim *simulatorImpl) init(validators []module.Validator, balances map[string]*big.Int) error {
@@ -124,7 +124,7 @@ func (sim *simulatorImpl) init(validators []module.Validator, balances map[strin
 }
 
 func (sim *simulatorImpl) initRevHandler() {
-	sim.revHandlers = map[int]func(wc state.WorldState, r1, r2 int) error{
+	sim.revHandlers = map[int]func(wc state.WorldState) error{
 		icmodule.Revision5:  sim.handleRev5,
 		icmodule.Revision6:  sim.handleRev6,
 		icmodule.Revision9:  sim.handleRev9,
