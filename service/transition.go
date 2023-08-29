@@ -86,6 +86,7 @@ type transitionContext struct {
 	tsc   *TxTimestampChecker
 	sass  state.AccountSnapshot
 	tim   TXIDManager
+	dsm   DSRManager
 }
 
 func (tc *transitionContext) onWorldFinalize(wss state.WorldSnapshot) {
@@ -106,6 +107,7 @@ func (tc *transitionContext) onWorldFinalize(wss state.WorldSnapshot) {
 			tc.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
 			tc.tim.OnThresholdChange()
 		}
+		tc.dsm.OnFinalizeState(ass)
 		tc.sass = ass
 	}
 	tc.plt.OnExtensionSnapshotFinalization(wss.GetExtensionSnapshot(), tc.log)
@@ -149,6 +151,8 @@ type transition struct {
 	ntxIDs   TXIDLogger
 	ptxCount int
 	ntxCount int
+
+	dsrTracker DSRTracker
 }
 
 func patchTransition(t *transition, bi module.BlockInfo, patchTXs module.TransactionList) *transition {
@@ -237,6 +241,7 @@ func newInitTransition(dbase db.Database,
 	logger log.Logger, plt base.Platform,
 	tsc *TxTimestampChecker,
 	tim TXIDManager,
+	dsm DSRManager,
 ) (*transition, error) {
 	wss, err := newWorldSnapshot(dbase, plt, result, validatorList)
 	if err != nil {
@@ -258,12 +263,14 @@ func newInitTransition(dbase db.Database,
 			plt:   plt,
 			tsc:   tsc,
 			tim:   tim,
+			dsm:   dsm,
 		},
 		step:          stepComplete,
 		result:        result,
 		worldSnapshot: wss,
 		ptxIDs:        tim.NewLogger(module.TransactionGroupPatch, 0, 0),
 		ntxIDs:        tim.NewLogger(module.TransactionGroupNormal, 0, 0),
+		dsrTracker:    dsm.NewTracker(),
 	}
 	return tr, nil
 }
@@ -531,8 +538,58 @@ func (t *transition) commitTXIDs(group module.TransactionGroup) error {
 	}
 }
 
+func (t *transition) ensureRecordDoubleSignReports(wc state.WorldContext) error {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	return t.ensureRecordDoubleSignReportsInLock(wc)
+}
+
+func (t *transition) ensureRecordDoubleSignReportsInLock(wc state.WorldContext) error {
+	if t.dsrTracker != nil {
+		return nil
+	}
+	t.dsrTracker = t.parent.dsrTracker.New()
+
+	if wc == nil {
+		var err error
+		wc, err = t.newWorldContext(false)
+		if err != nil {
+			return err
+		}
+	}
+	if wc.Revision().Has(module.ReportDoubleSign) {
+		for i := t.normalTransactions.Iterator(); i.Has(); _ = i.Next() {
+			tx, _, err := i.Get()
+			if err != nil {
+				return err
+			}
+			if height, signer, ok := transaction.TryGetDoubleSignReportInfo(wc, tx) ; ok {
+				t.dsrTracker.Add(height, signer)
+			}
+		}
+	}
+	return nil
+}
+
+func (t *transition) commitDSRs() error {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if err := t.ensureRecordDoubleSignReportsInLock(nil); err != nil {
+		return err
+	}
+
+	t.dsrTracker.Commit()
+	return nil
+}
+
 func (t *transition) doForceSync() {
 	if err := t.ensureRecordTXIDs(true); err != nil {
+		t.reportValidation(err)
+		return
+	}
+	if err := t.ensureRecordDoubleSignReports(nil); err != nil {
 		t.reportValidation(err)
 		return
 	}
@@ -611,6 +668,11 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			return
 		}
 
+		if err = t.ensureRecordDoubleSignReports(wc); err != nil {
+			t.reportValidation(err)
+			return
+		}
+
 		var tsr TimestampRange
 		if t.pbi != nil {
 			tsr = NewTimestampRange(t.pbi.Timestamp(),
@@ -640,7 +702,13 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			t.reportValidation(err)
 			return
 		}
+
 		if err := t.plt.OnValidateTransactions(wc, t.patchTransactions, t.normalTransactions); err != nil {
+			t.reportValidation(err)
+			return
+		}
+
+		if err = t.ensureRecordDoubleSignReports(wc); err != nil {
 			t.reportValidation(err)
 			return
 		}
@@ -728,6 +796,19 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.bs = bs
 	}
 
+	if ctx.Revision().Has(module.ReportDoubleSign) {
+		vl := ctx.GetValidatorState()
+		dsch, err := contract.NewDSContextHistoryDB(ctx.GetAccountState(state.SystemID))
+		if err != nil {
+			t.reportExecution(err)
+			return
+		}
+		if err := dsch.Push(ctx.BlockHeight(), vl.GetSnapshot().Hash()); err != nil {
+			t.reportExecution(err)
+			return
+		}
+	}
+
 	t.worldSnapshot = ctx.GetSnapshot()
 
 	txDuration := time.Since(startTime)
@@ -808,6 +889,9 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 
 func (t *transition) finalizeNormalTransaction() error {
 	if err := t.commitTXIDs(module.TransactionGroupNormal); err != nil {
+		return err
+	}
+	if err := t.commitDSRs(); err != nil {
 		return err
 	}
 	return t.normalTransactions.Flush()
@@ -922,10 +1006,11 @@ func NewInitTransition(
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
 	tim, err := NewTXIDManager(db, tsc, nil)
+	dsm := newDSRManager()
 	if err != nil {
 		return nil, err
 	}
-	if tr, err := newInitTransition(db, result, vl, cm, em, chain, logger, plt, tsc, tim); err != nil {
+	if tr, err := newInitTransition(db, result, vl, cm, em, chain, logger, plt, tsc, tim, dsm); err != nil {
 		return nil, err
 	} else {
 		return tr, nil

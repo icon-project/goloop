@@ -30,4 +30,10 @@ type DoubleSignData interface {
 	IsConflictWith(other DoubleSignData) bool
 }
 
+type DoubleSignContext interface {
+	AddressOf(signer []byte) Address
+	Hash() []byte
+	Bytes() []byte
+}
+
 type DoubleSignDataDecoder func (t string, d []byte) (DoubleSignData, error)

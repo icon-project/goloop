@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -39,6 +40,8 @@ const (
 	VarNextBlockVersion   = "next_block_version"
 	VarEnabledEETypes     = "enabled_ee_types"
 	VarSystemDepositUsage = "system_deposit_usage"
+
+	VarDSRContextHistory = "dsr_context_history"
 )
 
 const (
@@ -118,6 +121,8 @@ type WorldContext interface {
 
 	EnableSkipTransaction()
 	SkipTransactionEnabled() bool
+
+	DecodeDoubleSignData(t string, d[]byte) (module.DoubleSignData, error)
 }
 
 type TransactionInfo struct {
@@ -154,6 +159,8 @@ type worldContext struct {
 	nextTxSalt *big.Int
 
 	platform Platform
+
+	dsDecoder module.DoubleSignDataDecoder
 }
 
 func (c *worldContext) WorldVirtualState() WorldVirtualState {
@@ -458,9 +465,30 @@ func (c *worldContext) UpdateSystemInfo() {
 	}
 }
 
+func (c *worldContext) DecodeDoubleSignData(t string, d []byte) (module.DoubleSignData, error) {
+	if c.dsDecoder == nil {
+		return nil, errors.UnsupportedError.New("NoDoubleSignDataDecoder")
+	}
+	return c.dsDecoder(t, d)
+}
+
 type Platform interface {
 	ToRevision(value int) module.Revision
 }
+
+type PlatformWithDoubleSignDecoder interface {
+	Platform
+	DoubleSignDecoder() module.DoubleSignDataDecoder
+}
+
+func getDoubleSignDataDecoder(plt Platform) module.DoubleSignDataDecoder {
+	if p, ok := plt.(PlatformWithDoubleSignDecoder) ; ok {
+		return p.DoubleSignDecoder()
+	} else {
+		return nil
+	}
+}
+
 
 func NewWorldContext(ws WorldState, bi module.BlockInfo, csi module.ConsensusInfo, plt Platform) WorldContext {
 	var governance, treasury module.Address
@@ -484,6 +512,7 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo, csi module.ConsensusInf
 		blockInfo:    bi,
 		csInfo:       csi,
 		platform:     plt,
+		dsDecoder: 	  getDoubleSignDataDecoder(plt),
 	}
 	ws.EnableAccountNodeCache(SystemID)
 	wc.UpdateSystemInfo()

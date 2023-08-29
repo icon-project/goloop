@@ -80,6 +80,7 @@ const (
 	DataTypeDeploy  = "deploy"
 	DataTypeDeposit = "deposit"
 	DataTypePatch   = "patch"
+	DataTypeDSR     = "dsr"		// for double sign report(DSR)
 )
 
 func IsCallableDataType(dt *string) bool {

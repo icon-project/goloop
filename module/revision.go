@@ -36,6 +36,7 @@ const (
 	PurgeEnumCache
 	ContractSetEvent
 	FixMapValues
+	ReportDoubleSign
 	LastRevisionBit
 )
 
