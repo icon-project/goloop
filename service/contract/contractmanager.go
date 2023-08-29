@@ -42,6 +42,7 @@ type (
 		GetCallHandler(from, to module.Address, value *big.Int, ctype int, paramObj *codec.TypedObj) (ContractHandler, error)
 		PrepareContractStore(ws state.WorldState, contract state.ContractState) (ContractStore, error)
 		GetSystemScore(contentID string, cc CallContext, from module.Address, value *big.Int) (SystemScore, error)
+		Logger() log.Logger
 	}
 
 	ContractStore interface {
@@ -315,6 +316,10 @@ func (cm *contractManager) DefaultEnabledEETypes() state.EETypes {
 
 func (cm *contractManager) GenesisTo() module.Address {
 	return state.SystemAddress
+}
+
+func (cm *contractManager) Logger() log.Logger {
+	return cm.log
 }
 
 func NewContractManager(db db.Database, contractDir string, log log.Logger) (ContractManager, error) {
