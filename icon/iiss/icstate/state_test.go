@@ -514,7 +514,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4 - 1,
 				icmodule.RevisionIISS4 - 1,
-				icmodule.PenaltyBlockValidation,
+				icmodule.PenaltyValidationFailure,
 			},
 			output{0},
 		},
@@ -522,7 +522,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4,
 				icmodule.RevisionIISS4 - 1,
-				icmodule.PenaltyBlockValidation,
+				icmodule.PenaltyValidationFailure,
 			},
 			output{0},
 		},
@@ -530,7 +530,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4,
 				icmodule.RevisionIISS4,
-				icmodule.PenaltyBlockValidation,
+				icmodule.PenaltyValidationFailure,
 			},
 			output{JFlagInJail},
 		},
@@ -538,7 +538,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4 + 1,
 				icmodule.RevisionIISS4,
-				icmodule.PenaltyBlockValidation,
+				icmodule.PenaltyValidationFailure,
 			},
 			output{JFlagInJail},
 		},
@@ -546,7 +546,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4 + 1,
 				icmodule.RevisionIISS4 + 1,
-				icmodule.PenaltyBlockValidation,
+				icmodule.PenaltyValidationFailure,
 			},
 			output{JFlagInJail},
 		},

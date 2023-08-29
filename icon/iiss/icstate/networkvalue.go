@@ -360,7 +360,7 @@ func (s *State) GetConsistentValidationPenaltySlashRate(revision int) icmodule.R
 		v := getValue(s.store, VarConsistentValidationPenaltySlashRate).Int64()
 		return icmodule.ToRate(v)
 	} else {
-		rate, _ := s.GetSlashingRate(icmodule.PenaltyContinuousBlockValidation)
+		rate, _ := s.GetSlashingRate(icmodule.PenaltyAccumulatedValidationFailure)
 		return rate
 	}
 }
@@ -372,7 +372,7 @@ func (s *State) SetConsistentValidationPenaltySlashRate(revision int, value icmo
 		}
 		return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
 	} else {
-		return s.SetSlashingRate(icmodule.PenaltyContinuousBlockValidation, value)
+		return s.SetSlashingRate(icmodule.PenaltyAccumulatedValidationFailure, value)
 	}
 }
 
@@ -390,7 +390,7 @@ func (s *State) GetNonVotePenaltySlashRate(revision int) icmodule.Rate {
 		v := getValue(s.store, VarNonVotePenaltySlashRate).Int64()
 		return icmodule.ToRate(v)
 	} else {
-		rate, _ := s.GetSlashingRate(icmodule.PenaltyMissingNetworkProposalVote)
+		rate, _ := s.GetSlashingRate(icmodule.PenaltyMissedNetworkProposalVote)
 		return rate
 	}
 }
@@ -402,7 +402,7 @@ func (s *State) SetNonVotePenaltySlashRate(revision int, value icmodule.Rate) er
 		}
 		return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
 	} else {
-		return s.SetSlashingRate(icmodule.PenaltyMissingNetworkProposalVote, value)
+		return s.SetSlashingRate(icmodule.PenaltyMissedNetworkProposalVote, value)
 	}
 }
 

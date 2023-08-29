@@ -671,7 +671,7 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 			}}
 
 			sc := NewStateContext(bh, revision, termRevision, nil)
-			err = ps.OnPenaltyImposed(sc, icmodule.PenaltyBlockValidation)
+			err = ps.OnPenaltyImposed(sc, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
@@ -746,7 +746,7 @@ func TestPRepStatusData_getPenaltyType(t *testing.T) {
 
 	for i := 1; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
-		assert.Equal(t, icmodule.PenaltyBlockValidation, ps.getPenaltyType())
+		assert.Equal(t, icmodule.PenaltyValidationFailure, ps.getPenaltyType())
 	}
 
 	ps.SetStatus(Disqualified)

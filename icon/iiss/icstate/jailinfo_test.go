@@ -80,11 +80,11 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 		out output
 	}{
 		{
-			input{0, icmodule.PenaltyBlockValidation},
+			input{0, icmodule.PenaltyValidationFailure},
 			output{JFlagInJail, true},
 		},
 		{
-			input{JFlagInJail | JFlagDoubleVote, icmodule.PenaltyBlockValidation},
+			input{JFlagInJail | JFlagDoubleVote, icmodule.PenaltyValidationFailure},
 			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
@@ -100,11 +100,11 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
-			input{0, icmodule.PenaltyContinuousBlockValidation},
+			input{0, icmodule.PenaltyAccumulatedValidationFailure},
 			output{0, false},
 		},
 		{
-			input{JFlagInJail, icmodule.PenaltyContinuousBlockValidation},
+			input{JFlagInJail, icmodule.PenaltyAccumulatedValidationFailure},
 			output{JFlagInJail, false},
 		},
 		{

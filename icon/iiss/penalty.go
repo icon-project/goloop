@@ -45,7 +45,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 
 	// Impose penalty
 	sc := es.newStateContext(cc)
-	if err = es.State.ImposePenalty(sc, icmodule.PenaltyBlockValidation, owner, ps); err != nil {
+	if err = es.State.ImposePenalty(sc, icmodule.PenaltyValidationFailure, owner, ps); err != nil {
 		return err
 	}
 
@@ -54,7 +54,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyBlockValidation)),
+			intconv.Int64ToBytes(int64(icmodule.PenaltyValidationFailure)),
 		},
 	)
 

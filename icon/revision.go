@@ -296,9 +296,9 @@ func onRevision23(s *chainScore, _ int) error {
 			rate icmodule.Rate
 		}{
 			{icmodule.PenaltyPRepDisqualification, icmodule.DefaultPRepDisqualificationSlashingRate},
-			{icmodule.PenaltyContinuousBlockValidation, icmodule.DefaultContinuousBlockValidationSlashingRate},
-			{icmodule.PenaltyBlockValidation, icmodule.DefaultBlockValidationSlashingRate},
-			{icmodule.PenaltyMissingNetworkProposalVote, icmodule.DefaultMissingNetworkProposalVoteSlashingRate},
+			{icmodule.PenaltyAccumulatedValidationFailure, icmodule.DefaultContinuousBlockValidationSlashingRate},
+			{icmodule.PenaltyValidationFailure, icmodule.DefaultBlockValidationSlashingRate},
+			{icmodule.PenaltyMissedNetworkProposalVote, icmodule.DefaultMissingNetworkProposalVoteSlashingRate},
 			{icmodule.PenaltyDoubleVote, icmodule.DefaultDoubleVoteSlashingRate},
 		}
 		for _, item := range items {

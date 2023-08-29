@@ -314,7 +314,7 @@ func (ps *prepStatusData) getPenaltyType() icmodule.PenaltyType {
 	if (ps.vPenaltyMask & 1) == 0 {
 		return icmodule.PenaltyNone
 	} else {
-		return icmodule.PenaltyBlockValidation
+		return icmodule.PenaltyValidationFailure
 	}
 }
 

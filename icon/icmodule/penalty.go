@@ -21,9 +21,9 @@ type PenaltyType int
 const (
 	PenaltyNone PenaltyType = iota
 	PenaltyPRepDisqualification
-	PenaltyContinuousBlockValidation
-	PenaltyBlockValidation
-	PenaltyMissingNetworkProposalVote
+	PenaltyAccumulatedValidationFailure
+	PenaltyValidationFailure
+	PenaltyMissedNetworkProposalVote
 	PenaltyDoubleVote
 	PenaltyReserved
 )
@@ -31,17 +31,17 @@ const (
 var penaltyNames = []string{
 	"",
 	"prepDisqualification",
-	"continuousValidation",
-	"validation",
-	"missingNetworkProposalVote",
+	"accumulatedValidationFailure",
+	"validationFailure",
+	"missedNetworkProposalVote",
 	"doubleVote",
 }
 
 var penaltyTypes = []PenaltyType {
 	PenaltyPRepDisqualification,
-	PenaltyContinuousBlockValidation,
-	PenaltyBlockValidation,
-	PenaltyMissingNetworkProposalVote,
+	PenaltyAccumulatedValidationFailure,
+	PenaltyValidationFailure,
+	PenaltyMissedNetworkProposalVote,
 	PenaltyDoubleVote,
 }
 
@@ -71,5 +71,4 @@ func PenaltyNames() []string {
 
 func GetPenaltyTypes() []PenaltyType {
 	return penaltyTypes
-
 }

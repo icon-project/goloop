@@ -85,7 +85,7 @@ func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.Penal
 		return nil
 	}
 	switch pt {
-	case icmodule.PenaltyBlockValidation:
+	case icmodule.PenaltyValidationFailure:
 		ji.turnFlag(JFlagInJail, true)
 	case icmodule.PenaltyDoubleVote:
 		ji.turnFlag(JFlagInJail|JFlagDoubleVote, true)
