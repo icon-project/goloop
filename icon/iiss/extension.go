@@ -606,27 +606,17 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 	}
 	ps := es.State.GetPRepStatusByOwner(address, false)
 	// Record PenaltyImposed eventlog
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyPRepDisqualification)),
-		},
-	)
+	recordPenaltyImposedEvent(cc, ps, icmodule.PenaltyPRepDisqualification)
 	return nil
 }
 
 func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address module.Address) error {
 	// Record PenaltyImposed eventlog
 	ps := es.State.GetPRepStatusByOwner(address, false)
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyMissedNetworkProposalVote)),
-		},
-	)
-
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepNotFound(%s)", address)
+	}
+	recordPenaltyImposedEvent(cc, ps, icmodule.PenaltyMissedNetworkProposalVote)
 	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate(cc.Revision().Value()))
 }
 

@@ -19,6 +19,7 @@ package iiss
 import (
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -51,6 +52,16 @@ func recordCommissionRateChangedEvent(
 		[][]byte{[]byte("CommissionRateChanged(Address,int)"), owner.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(rate.NumInt64()),
+		},
+	)
+}
+
+func recordPenaltyImposedEvent(cc icmodule.CallContext, ps *icstate.PRepStatusState, pt icmodule.PenaltyType) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), ps.Owner().Bytes()},
+		[][]byte{
+			intconv.Int64ToBytes(int64(ps.Status())),
+			intconv.Int64ToBytes(int64(pt)),
 		},
 	)
 }

@@ -50,13 +50,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	}
 
 	// Record PenaltyImposed eventlog
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyValidationFailure)),
-		},
-	)
+	recordPenaltyImposedEvent(cc, ps, icmodule.PenaltyValidationFailure)
 
 	// Slashing
 	revision := cc.Revision().Value()
