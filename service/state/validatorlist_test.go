@@ -471,3 +471,109 @@ func TestValidatorState_GetSnapshot(t *testing.T) {
 	vs.Reset(vss)
 	assert.True(t, vss == vs.GetSnapshot())
 }
+
+func TestNewValidatorListFromBytes(t *testing.T) {
+	dbase := db.NewMapDB()
+	vs := newDummyValidatorsFrom(100, 20)
+	vss, err := ValidatorSnapshotFromSlice(dbase, vs)
+	assert.NoError(t, err)
+
+	vl1, err := NewValidatorListFromBytes(vss.Bytes())
+	assert.NoError(t, err)
+	for i, v := range vs {
+		i2 := vl1.IndexOf(v.Address())
+		assert.Equal(t, i, i2)
+		v2, ok := vl1.Get(i)
+		assert.True(t, ok)
+		assert.Equal(t, v.Address(), v2.Address())
+	}
+	assert.Equal(t, vss.Bytes(), vl1.Bytes())
+
+	vl2, err := ToValidatorList(vss)
+	assert.NoError(t, err)
+	for i, v := range vs {
+		i2 := vl1.IndexOf(v.Address())
+		assert.Equal(t, i, i2)
+	}
+	assert.Equal(t, vss.Bytes(), vl2.Bytes())
+	assert.Equal(t, vss.Hash(), vl2.Hash())
+
+	_, err = NewValidatorListFromBytes([]byte{0x00,0x12})
+	assert.Error(t, err)
+
+	_, err = NewValidatorListFromBytes([]byte{0xC0,0x12})
+	assert.Error(t, err)
+}
+
+func TestToValidatorList(t *testing.T) {
+	dbase := db.NewMapDB()
+
+	// nil validator list conversion
+	vl0, err := ToValidatorList(nil)
+	assert.NoError(t, err)
+	assert.Nil(t, vl0)
+
+	// empty validator list conversion
+	vss, err := ValidatorSnapshotFromSlice(dbase, nil)
+	assert.NoError(t, err)
+
+	vl1, err := ToValidatorList(vss)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, vl1.Len())
+	assert.Equal(t, vss.Hash(), vl1.Hash())
+
+	// normal validator list conversion
+	vs := newDummyValidatorsFrom(100, 20)
+	vss, err = ValidatorSnapshotFromSlice(dbase, vs)
+	assert.NoError(t, err)
+
+	// may differ but not required.
+	vl2, err := ToValidatorList(vss)
+	assert.NoError(t, err)
+
+	// should be same
+	vl3, err := ToValidatorList(vl2)
+	assert.NoError(t, err)
+	assert.Equal(t, vl2, vl3)
+}
+
+func TestValidatorSnapshotFromList(t *testing.T) {
+	dbase := db.NewMapDB()
+
+	vss0, err := ValidatorSnapshotFromList(dbase, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, vss0)
+
+	vs := newDummyValidatorsFrom(100, 20)
+	vss1, err := ValidatorSnapshotFromSlice(dbase, vs)
+	assert.NoError(t, err)
+
+	vl0, err := ToValidatorList(vss1)
+	assert.NoError(t, err)
+	assert.NotNil(t, vl0)
+
+	vss2, err := ValidatorSnapshotFromList(dbase, vl0)
+	err = vss2.Flush()
+	assert.NoError(t, err)
+
+	vss3, err := ValidatorSnapshotFromHash(dbase, vss2.Hash())
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, vl0.Len(), vss1.Len(), vss2.Len(), vss3.Len())
+	for i:=0 ; i < vl0.Len() ; i++ {
+		v0, ok := vl0.Get(i)
+		assert.True(t, ok)
+		v1, ok := vss1.Get(i)
+		assert.True(t, ok)
+		v2, ok := vss2.Get(i)
+		assert.True(t, ok)
+		v3, ok := vss3.Get(i)
+		assert.True(t, ok)
+
+		assert.EqualValues(t, v0, v1, v2, v3)
+	}
+
+	vss4, err := ValidatorSnapshotFromList(dbase, vss3)
+	assert.NoError(t, err)
+	assert.Equal(t, vss3, vss4)
+}

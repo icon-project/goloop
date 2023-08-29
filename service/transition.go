@@ -221,7 +221,11 @@ func newWorldSnapshot(database db.Database, plt base.Platform, result []byte, vl
 	if plt != nil {
 		ess = plt.NewExtensionSnapshot(database, extensionData)
 	}
-	return state.NewWorldSnapshot(database, stateHash, vl, ess, btpHash), nil
+	vss, err := state.ValidatorSnapshotFromList(database, vl)
+	if err != nil {
+		return nil, err
+	}
+	return state.NewWorldSnapshot(database, stateHash, vss, ess, btpHash), nil
 }
 
 // all parameters should be valid.
