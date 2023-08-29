@@ -735,22 +735,23 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 	}
 }
 
-func TestPRepStatusData_getPenaltyType(t *testing.T) {
+func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
+	sc := NewStateContext(100, icmodule.RevisionPreIISS4, icmodule.RevisionPreIISS4, nil)
 	ps := NewPRepStatus(newDummyAddress(1))
-	assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
+	assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
 
 	for i := 0; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
-		assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType())
+		assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
 	}
 
 	for i := 1; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
-		assert.Equal(t, icmodule.PenaltyValidationFailure, ps.getPenaltyType())
+		assert.Equal(t, int(icmodule.PenaltyValidationFailure), ps.getPenaltyType(sc))
 	}
 
 	ps.SetStatus(Disqualified)
-	assert.Equal(t, icmodule.PenaltyPRepDisqualification, ps.getPenaltyType())
+	assert.Equal(t, int(icmodule.PenaltyPRepDisqualification), ps.getPenaltyType(sc))
 }
 
 func TestPRepStatusData_ToJSON(t *testing.T) {

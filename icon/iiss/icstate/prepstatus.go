@@ -289,7 +289,7 @@ func (ps *prepStatusData) ToJSON(
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
-	jso["penalty"] = int(ps.getPenaltyType())
+	jso["penalty"] = ps.getPenaltyType(sc)
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
@@ -304,18 +304,36 @@ func (ps *prepStatusData) ToJSON(
 	return jso
 }
 
-func (ps *prepStatusData) getPenaltyType() icmodule.PenaltyType {
+func (ps *prepStatusData) getPenaltyType(sc icmodule.StateContext) int {
+	if sc.IsIISS4Activated() {
+		return ps.getPenaltyTypeV1()
+	}
+	return int(ps.getPenaltyTypeV0())
+}
+
+func (ps *prepStatusData) getPenaltyTypeV0() icmodule.PenaltyType {
 	if ps.status == Disqualified {
 		return icmodule.PenaltyPRepDisqualification
-	}
-	if ps.ji.IsInDoubleVotePenalty() {
-		return icmodule.PenaltyDoubleVote
 	}
 	if (ps.vPenaltyMask & 1) == 0 {
 		return icmodule.PenaltyNone
 	} else {
 		return icmodule.PenaltyValidationFailure
 	}
+}
+
+func (ps *prepStatusData) getPenaltyTypeV1() int {
+	ptBits := 0
+	if ps.status == Disqualified {
+		ptBits |= 1 << icmodule.PenaltyPRepDisqualification
+	}
+	if (ps.vPenaltyMask & 1) != 0 {
+		ptBits |= 1 << icmodule.PenaltyValidationFailure
+	}
+	if ps.ji.IsInDoubleVotePenalty() {
+		ptBits |= 1 << icmodule.PenaltyDoubleVote
+	}
+	return ptBits
 }
 
 func (ps *prepStatusData) GetStatsInJSON(blockHeight int64) map[string]interface{} {
