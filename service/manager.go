@@ -87,7 +87,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		logger.Warnf("FAIL to create TXIDManager : %v\n", err)
 		return nil, err
 	}
-	dsm := newDSRManager()
+	dsm := newDSRManager(logger)
 	pTxPool := NewTransactionPool(module.TransactionGroupPatch, chain.PatchTxPoolSize(), tim, pMetric, logger)
 	nTxPool := NewTransactionPool(module.TransactionGroupNormal, chain.NormalTxPoolSize(), tim, nMetric, logger)
 	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, tim, logger)

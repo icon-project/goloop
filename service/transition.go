@@ -1006,7 +1006,7 @@ func NewInitTransition(
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
 	tim, err := NewTXIDManager(db, tsc, nil)
-	dsm := newDSRManager()
+	dsm := newDSRManager(logger)
 	if err != nil {
 		return nil, err
 	}

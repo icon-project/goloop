@@ -120,6 +120,7 @@ type doubleSignReport struct {
 const InvalidFirstHeight = -1
 type dsrManager struct {
 	lock        sync.Mutex
+	log         log.Logger
 	todo        list.List
 	done        list.List
 	reports     map[string]*list.Element
@@ -146,7 +147,8 @@ func (m *dsrManager) Add(data []module.DoubleSignData, ctx module.DoubleSignCont
 
 	height := data[0].Height()
 	if m.firstHeight == InvalidFirstHeight || height < m.firstHeight {
-		// ignore
+		m.log.Infof("DROP DSR: feature is not enabled or out of history first=%d, height=%d",
+			m.firstHeight, height)
 		return nil
 	}
 
@@ -163,7 +165,7 @@ func (m *dsrManager) Add(data []module.DoubleSignData, ctx module.DoubleSignCont
 	key := keyForDSR(data[0].Height(), signer)
 
 	if _, ok := m.reports[key] ; ok {
-		// ignor
+		m.log.Infof("DROP DSR: already reported key=%s", key)
 		return nil
 	}
 
@@ -281,7 +283,7 @@ func (m *dsrManager) OnFinalizeState(ass state.AccountSnapshot) {
 	as :=  scoredb.NewStateStoreWith(ass)
 	cdb, err := contract.NewDSContextHistoryDB(as)
 	if err != nil {
-		log.Warnf("Fail to build DSContextHistoryDB err=%+v", err)
+		m.log.Warnf("Fail to build DSContextHistoryDB err=%+v", err)
 		return
 	}
 	if height, ok := cdb.FirstHeight(); ok {
@@ -295,8 +297,9 @@ func (m *dsrManager) NewTracker() DSRTracker {
 	}
 }
 
-func newDSRManager() *dsrManager {
+func newDSRManager(logger log.Logger) *dsrManager {
 	s := &dsrManager{
+		log:         logger,
 		reports:     make(map[string]*list.Element),
 		firstHeight: InvalidFirstHeight,
 	}
