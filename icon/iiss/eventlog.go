@@ -25,9 +25,9 @@ import (
 
 func recordSlashingRateChangedV2Event(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateChangedV2(str,int)")},
+		[][]byte{[]byte("SlashingRateChangedV2(int,int)")},
 		[][]byte{
-			[]byte(penaltyType.String()),
+			intconv.Int64ToBytes(int64(penaltyType)),
 			intconv.Int64ToBytes(rate.NumInt64()),
 		},
 	)
