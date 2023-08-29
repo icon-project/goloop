@@ -939,6 +939,9 @@ func getBTPProof(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	}
 
 	blk, err := c.GetBlockByHeight(param.Height)
+	if err != nil {
+		return nil, err
+	}
 	_, proof, err := c.cs.GetBTPBlockHeaderAndProof(blk, nid, module.FlagBTPBlockProof)
 	if errors.NotFoundError.Equals(err) {
 		err = errors.NotFoundError.Wrapf(
