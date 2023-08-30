@@ -121,6 +121,7 @@ type prepStatusData struct {
 	vTotal       int64
 	vFail        int64
 	vFailCont    int64
+	// ValidationFailurePenaltyMask
 	vPenaltyMask uint32
 	lastState    VoteState
 	lastHeight   int64
@@ -330,7 +331,10 @@ func (ps *prepStatusData) getPenaltyTypeV1() int {
 	if (ps.vPenaltyMask & 1) != 0 {
 		ptBits |= 1 << icmodule.PenaltyValidationFailure
 	}
-	if ps.ji.IsInDoubleVotePenalty() {
+	if icutils.MatchAll(ps.ji.Flags(), JFlagAccumulatedValidationFailure) {
+		ptBits |= 1 << icmodule.PenaltyAccumulatedValidationFailure
+	}
+	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleVote) {
 		ptBits |= 1 << icmodule.PenaltyDoubleVote
 	}
 	return ptBits
@@ -714,17 +718,26 @@ func (ps *PRepStatusState) OnValidatorOut(blockHeight int64) error {
 }
 
 func (ps *PRepStatusState) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
+	if pt.IsTypeOfValidationFailurePenalty() {
+		if err := ps.onValidationFailurePenaltyImposed(sc); err != nil {
+			return err
+		}
+	}
+	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
+		return err
+	}
+	ps.grade = GradeCandidate
+	ps.setDirty()
+	return nil
+}
+
+func (ps *PRepStatusState) onValidationFailurePenaltyImposed(sc icmodule.StateContext) error {
 	blockHeight := sc.BlockHeight()
 	if err := ps.syncBlockVoteStats(blockHeight); err != nil {
 		return err
 	}
 	ps.vFailCont = 0
 	ps.vPenaltyMask |= 1
-	ps.grade = GradeCandidate
-	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
-		return err
-	}
-	ps.setDirty()
 	return nil
 }
 

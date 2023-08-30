@@ -69,6 +69,60 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	}
 }
 
+func (es *ExtensionStateImpl) handlePenalty2(cc icmodule.CallContext, owner module.Address) error {
+	var err error
+
+	ps := es.State.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return nil
+	}
+
+	blockHeight := cc.BlockHeight()
+	penaltyTypes := make([]icmodule.PenaltyType, 0, 2)
+
+	// ValidationFailurePenalty check
+	if !es.State.CheckValidationPenalty(ps, blockHeight) {
+		return nil
+	}
+	penaltyTypes = append(penaltyTypes, icmodule.PenaltyValidationFailure)
+
+	// AccumulatedValidationFailurePenalty check
+	revision := cc.Revision().Value()
+	if es.State.CheckConsistentValidationPenalty(revision, ps) {
+		penaltyTypes = append(penaltyTypes, icmodule.PenaltyAccumulatedValidationFailure)
+	}
+
+	// Impose penalty
+	sc := es.newStateContext(cc)
+	if err = es.State.ImposePenalty(sc, penaltyTypes[len(penaltyTypes)-1], owner, ps); err != nil {
+		return err
+	}
+
+	term := es.State.GetTermSnapshot()
+	isIISS4Activated := term.GetIISSVersion() >= icstate.IISSVersion4
+
+	for _, penaltyType := range penaltyTypes {
+		if penaltyType == icmodule.PenaltyValidationFailure || isIISS4Activated {
+			// Record PenaltyImposed eventlog
+			recordPenaltyImposedEvent(cc, ps, penaltyType)
+		}
+
+		// Slashing
+		if slashRate, _ := es.State.GetSlashingRate(revision, penaltyType); slashRate > 0 {
+			if err = es.slash(cc, owner, slashRate); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Record event for reward calculation
+	if isIISS4Activated {
+		return es.AddEventEnable(blockHeight, owner, icmodule.ESJail)
+	} else {
+		return es.AddEventEnable(blockHeight, owner, icmodule.ESDisableTemp)
+	}
+}
+
 func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) error {
 	if !rate.IsValid() {
 		return errors.Errorf("Invalid slashRate %d", rate.Percent())

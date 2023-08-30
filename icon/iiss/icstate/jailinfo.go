@@ -13,6 +13,7 @@ import (
 const (
 	JFlagInJail = 1 << iota
 	JFlagUnjailing
+	JFlagAccumulatedValidationFailure
 	JFlagDoubleVote
 	JFlagMax
 )
@@ -41,10 +42,6 @@ func (ji *JailInfo) IsUnjailable() bool {
 
 func (ji *JailInfo) IsElectable() bool {
 	return !ji.IsUnjailable()
-}
-
-func (ji *JailInfo) IsInDoubleVotePenalty() bool {
-	return icutils.MatchAll(ji.flags, JFlagDoubleVote)
 }
 
 func (ji *JailInfo) UnjailRequestHeight() int64 {
@@ -87,6 +84,8 @@ func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.Penal
 	switch pt {
 	case icmodule.PenaltyValidationFailure:
 		ji.turnFlag(JFlagInJail, true)
+	case icmodule.PenaltyAccumulatedValidationFailure:
+		ji.turnFlag(JFlagInJail|JFlagAccumulatedValidationFailure, true)
 	case icmodule.PenaltyDoubleVote:
 		ji.turnFlag(JFlagInJail|JFlagDoubleVote, true)
 	default:

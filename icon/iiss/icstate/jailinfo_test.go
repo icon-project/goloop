@@ -96,16 +96,31 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
+			input{JFlagInJail | JFlagAccumulatedValidationFailure, icmodule.PenaltyDoubleVote},
+			output{JFlagInJail | JFlagAccumulatedValidationFailure | JFlagDoubleVote, true},
+		},
+		{
 			input{JFlagInJail | JFlagUnjailing, icmodule.PenaltyDoubleVote},
 			output{JFlagInJail | JFlagDoubleVote, true},
 		},
 		{
 			input{0, icmodule.PenaltyAccumulatedValidationFailure},
-			output{0, false},
+			output{JFlagInJail | JFlagAccumulatedValidationFailure, true},
 		},
 		{
 			input{JFlagInJail, icmodule.PenaltyAccumulatedValidationFailure},
-			output{JFlagInJail, false},
+			output{JFlagInJail | JFlagAccumulatedValidationFailure, true},
+		},
+		{
+			input{JFlagInJail | JFlagDoubleVote, icmodule.PenaltyAccumulatedValidationFailure},
+			output{JFlagInJail | JFlagAccumulatedValidationFailure | JFlagDoubleVote, true},
+		},
+		{
+			input{
+				JFlagInJail | JFlagDoubleVote | JFlagUnjailing,
+				icmodule.PenaltyAccumulatedValidationFailure,
+			},
+			output{JFlagInJail | JFlagAccumulatedValidationFailure | JFlagDoubleVote, true},
 		},
 		{
 			input{0, icmodule.PenaltyPRepDisqualification},
@@ -113,6 +128,14 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 		},
 		{
 			input{JFlagInJail, icmodule.PenaltyPRepDisqualification},
+			output{JFlagInJail, false},
+		},
+		{
+			input{0, icmodule.PenaltyMissedNetworkProposalVote},
+			output{0, false},
+		},
+		{
+			input{JFlagInJail, icmodule.PenaltyMissedNetworkProposalVote},
 			output{JFlagInJail, false},
 		},
 	}
@@ -372,7 +395,7 @@ func TestJailInfo_IsFunctions(t *testing.T) {
 			assert.Equal(t, arg.out.electable, ji.IsElectable())
 			assert.Equal(t, arg.out.inJail, ji.IsInJail())
 			assert.Equal(t, arg.out.unjailing, ji.IsUnjailing())
-			assert.Equal(t, arg.out.inDoubleVotePenalty, ji.IsInDoubleVotePenalty())
+			assert.Equal(t, arg.out.inDoubleVotePenalty, icutils.MatchAll(ji.Flags(), JFlagDoubleVote))
 		})
 	}
 }

@@ -754,6 +754,47 @@ func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
 	assert.Equal(t, int(icmodule.PenaltyPRepDisqualification), ps.getPenaltyType(sc))
 }
 
+func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
+	sc := NewStateContext(100, icmodule.RevisionIISS4, icmodule.RevisionIISS4, nil)
+	ps := NewPRepStatus(newDummyAddress(1))
+
+	assert.True(t, sc.IsIISS4Activated())
+
+	type input struct {
+		status Status
+		pt     icmodule.PenaltyType
+	}
+	type output struct {
+		success bool
+		ptBits  int
+	}
+	args := []struct {
+		in  input
+		out output
+	}{
+		{
+			input{Active, icmodule.PenaltyValidationFailure},
+			output{true, 1 << icmodule.PenaltyValidationFailure},
+		},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			pt := arg.in.pt
+			err := ps.OnPenaltyImposed(sc, pt)
+			if arg.out.success {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+
+			ret := ps.getPenaltyType(sc)
+			assert.Equal(t, ret, arg.out.ptBits)
+		})
+	}
+}
+
 func TestPRepStatusData_ToJSON(t *testing.T) {
 	sc := NewStateContext(100, icmodule.RevisionIISS4, icmodule.RevisionPreIISS4, nil)
 

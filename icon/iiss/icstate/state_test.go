@@ -596,6 +596,7 @@ func TestState_ImposePenalty(t *testing.T) {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
 			state := newDummyState(false)
+			pt := arg.in.pt
 
 			err = state.RegisterPRep(owner, ri, icmodule.BigIntZero, 1234)
 			assert.NoError(t, err)
@@ -604,14 +605,17 @@ func TestState_ImposePenalty(t *testing.T) {
 
 			sc := NewStateContext(10000, arg.in.rev, arg.in.termRev, nil)
 			ps := state.GetPRepStatusByOwner(owner, false)
-			err = state.ImposePenalty(sc, arg.in.pt, owner, ps)
+			err = state.ImposePenalty(sc, pt, owner, ps)
 			assert.NoError(t, err)
 			state.Flush()
 			state.ClearCache()
 
 			ps = state.GetPRepStatusByOwner(owner, false)
-			assert.Equal(t, 1, ps.GetVPenaltyCount())
-			assert.True(t, ps.IsAlreadyPenalized())
+			if pt.IsTypeOfValidationFailurePenalty() {
+				assert.Equal(t, 1, ps.GetVPenaltyCount())
+				assert.True(t, ps.IsAlreadyPenalized())
+			}
+
 			assert.Equal(t, arg.out.jailFlags, ps.JailFlags())
 			assert.Zero(t, ps.UnjailRequestHeight())
 			assert.Zero(t, ps.MinDoubleVoteHeight())

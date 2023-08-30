@@ -214,7 +214,7 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 		if err = es.State.OnBlockVote(voter, voted[i], blockHeight); err != nil {
 			return err
 		}
-		if !voted[i] {
+		if voted[i] == false {
 			if err = es.handlePenalty(cc, voter); err != nil {
 				return err
 			}

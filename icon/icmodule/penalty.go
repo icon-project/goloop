@@ -56,6 +56,10 @@ func (p PenaltyType) IsValid() bool {
 	return p > PenaltyNone && p < PenaltyReserved
 }
 
+func (p PenaltyType) IsTypeOfValidationFailurePenalty() bool {
+	return p == PenaltyValidationFailure || p == PenaltyAccumulatedValidationFailure
+}
+
 func ToPenaltyType(name string) PenaltyType {
 	for i, penaltyName := range penaltyNames {
 		if name == penaltyName {
