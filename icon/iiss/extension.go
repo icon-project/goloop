@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/icmodule"
@@ -587,10 +586,7 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
 
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepUnregistered(Address)")},
-		[][]byte{owner.Bytes()},
-	)
+	recordPRepUnregisteredEvent(cc, owner)
 	return nil
 }
 
@@ -1351,10 +1347,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		)
 	}
 
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepRegistered(Address)")},
-		[][]byte{from.Bytes()},
-	)
+	recordPRepRegisteredEvent(cc, from)
 	return nil
 }
 
@@ -1388,10 +1381,7 @@ func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRe
 	if err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", from)
 	}
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepSet(Address)")},
-		[][]byte{from.Bytes()},
-	)
+	recordPRepSetEvent(cc, from)
 
 	if icmodule.Revision8 <= revision && revision < icmodule.RevisionStopICON1Support && nodeUpdate {
 		// ICON1 update term when main P-Rep modify p2p endpoint or node address
@@ -1483,7 +1473,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	}
 	if iScore.Sign() == 0 {
 		// there is no IScore to claim
-		ClaimEventLog(cc, from, new(big.Int), new(big.Int))
+		RecordIScoreClaimEvent(cc, from, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 
@@ -1522,7 +1512,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 		}
 		es.claimed[icutils.ToKey(from)] = newClaimed(cc.TransactionID(), claim)
 	}
-	ClaimEventLog(cc, from, claim, icx)
+	RecordIScoreClaimEvent(cc, from, claim, icx)
 	return nil
 }
 
@@ -1562,32 +1552,6 @@ func (es *ExtensionStateImpl) getIScore(from module.Address) (*big.Int, error) {
 		}
 	}
 	return iScore, nil
-}
-
-func ClaimEventLog(cc icmodule.CallContext, address module.Address, claim *big.Int, icx *big.Int) {
-	revision := cc.Revision().Value()
-	if revision < icmodule.Revision9 {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("IScoreClaimed(int,int)"),
-			},
-			[][]byte{
-				intconv.BigIntToBytes(claim),
-				intconv.BigIntToBytes(icx),
-			},
-		)
-	} else {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("IScoreClaimedV2(Address,int,int)"),
-				address.Bytes(),
-			},
-			[][]byte{
-				intconv.BigIntToBytes(claim),
-				intconv.BigIntToBytes(icx),
-			},
-		)
-	}
 }
 
 func calculateIRep(prepSet icstate.PRepSet) *big.Int {
@@ -1759,15 +1723,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {
 				return err
 			}
-			cc.OnEvent(state.SystemAddress,
-				[][]byte{[]byte("RewardFundTransferred(str,Address,Address,int)")},
-				[][]byte{
-					[]byte(k.key),
-					from.Bytes(),
-					to.Bytes(),
-					intconv.BigIntToBytes(amount),
-				},
-			)
+			recordRewardFundTransferredEvent(cc, k.key, from, to, amount)
 		} else {
 			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
 				if err := cc.Withdraw(from, amount, module.Burn); err != nil {
@@ -1779,14 +1735,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			if err := cc.HandleBurn(from, amount); err != nil {
 				return err
 			}
-			cc.OnEvent(state.SystemAddress,
-				[][]byte{[]byte("RewardFundBurned(str,Address,int)")},
-				[][]byte{
-					[]byte(k.key),
-					from.Bytes(),
-					intconv.BigIntToBytes(amount),
-				},
-			)
+			recordRewardFundBurnedEvent(cc, k.key, from, amount)
 			es.logger.Warnf("Burn %s for %s", amount, k.key)
 		}
 	}

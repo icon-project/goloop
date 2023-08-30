@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -294,36 +293,12 @@ func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byt
 	}
 
 	// make event log
-	if prep != nil {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("PRepIssued(int,int,int,int)")},
-			[][]byte{
-				intconv.BigIntToBytes(prep.GetIRep()),
-				intconv.BigIntToBytes(prep.GetRRep()),
-				intconv.BigIntToBytes(prep.GetTotalDelegation()),
-				intconv.BigIntToBytes(prep.GetValue()),
-			},
-		)
-	}
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("ICXIssued(int,int,int,int)")},
-		[][]byte{
-			intconv.BigIntToBytes(result.GetByFee()),
-			intconv.BigIntToBytes(result.GetByOverIssuedICX()),
-			intconv.BigIntToBytes(result.GetIssue()),
-			intconv.BigIntToBytes(issue.GetOverIssuedICX()),
-		},
-	)
+	recordPRepIssuedEvent(cc, prep)
+	recordICXIssuedEvent(cc, result, issue)
+
 	term := es.State.GetTermSnapshot()
 	if cc.BlockHeight() == term.StartHeight() {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("TermStarted(int,int,int)")},
-			[][]byte{
-				intconv.Int64ToBytes(int64(term.Sequence())),
-				intconv.Int64ToBytes(term.StartHeight()),
-				intconv.Int64ToBytes(term.GetEndHeight()),
-			},
-		)
+		recordTermStartedEvent(cc, term)
 	}
 	return nil
 }

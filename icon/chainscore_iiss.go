@@ -435,7 +435,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	cc := s.newCallContext(s.cc)
 	if bytes.Compare(cc.TransactionID(), skippedClaimTX) == 0 {
 		// Skip this TX like ICON1 mainnet.
-		iiss.ClaimEventLog(cc, s.from, new(big.Int), new(big.Int))
+		iiss.RecordIScoreClaimEvent(cc, s.from, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 	es, err := s.getExtensionState()

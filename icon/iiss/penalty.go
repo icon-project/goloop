@@ -20,7 +20,6 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -129,11 +128,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		}
 
 		// Record Slashed eventlog
-		cc.OnEvent(
-			state.SystemAddress,
-			[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
-			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(slashedStake)},
-		)
+		recordSlashedEvent(cc, owner, bonder, slashedStake)
 		// slashedStake is the same as the sum of slashedBond and slashedUnbond
 		logger.TSystemf(
 			"IISS bonder slash loop end bonder=%s slashedBond=%v slashedUnbond=%v slashedStake=%v",
