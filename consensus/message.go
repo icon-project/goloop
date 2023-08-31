@@ -138,7 +138,11 @@ func (msg *BlockPartMessage) Verify() error {
 	if msg.Height <= 0 {
 		return errors.Errorf("bad height %v", msg.Height)
 	}
-	return nil
+	if len(msg.BlockPart) > ConfigBlockPartSize*2 {
+		return errors.Errorf("bad height %v", msg.Height)
+	}
+	_, err := NewPart(msg.BlockPart)
+	return err
 }
 
 func (msg *BlockPartMessage) subprotocol() uint16 {
