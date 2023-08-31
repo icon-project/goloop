@@ -56,6 +56,7 @@ const (
 	configCommitWALID                 = "commit"
 	configCommitWALDataSize           = 1024 * 500
 	configRoundTimeoutThresholdFactor = 2
+	configBPMCacheSize                = 1 << 20 // 1MB
 )
 
 type hrs struct {
@@ -85,6 +86,7 @@ type consensus struct {
 	nid         []byte
 	bpp         fastsync.BlockProofProvider
 	srcUID      []byte
+	bpmCache    bpmCache
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -154,6 +156,7 @@ func New(
 		nid:          codec.MustMarshalToBytes(c.NID()),
 		bpp:          bpp,
 		srcUID:       module.GetSourceNetworkUID(c),
+		bpmCache:     makeBPMCache(configBPMCacheSize),
 		lastVoteData: lastVoteData,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
@@ -344,13 +347,26 @@ func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) 
 	cs.proposalPOLRound = msg.proposal.POLRound
 	cs.currentBlockParts.SetByPartSetID(msg.proposal.BlockPartSetID)
 
+	for i := uint16(0); i < msg.proposal.BlockPartSetID.Count; i++ {
+		bpm := cs.bpmCache.Get(msg.proposal.BlockPartSetID.Hash, i)
+		if bpm != nil {
+			_, _ = cs.currentBlockParts.AddPartFromBytes(bpm.BlockPart, cs.c.BlockManager())
+		}
+	}
+
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
+	} else if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
+		cs.commitAndEnterNewHeight()
 	}
 	return nil
 }
 
 func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool) (int, error) {
+	const cacheLimit = 3
+	if cs.height <= msg.Height && msg.Height < cs.height+cacheLimit {
+		_ = cs.bpmCache.Put(msg)
+	}
 	if msg.Height != cs.height {
 		return -1, nil
 	}
@@ -358,19 +374,9 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool
 		return -1, nil
 	}
 
-	bp, err := NewPart(msg.BlockPart)
-	if err != nil {
+	bp, err := cs.currentBlockParts.AddPartFromBytes(msg.BlockPart, cs.c.BlockManager())
+	if bp == nil {
 		return -1, err
-	}
-	if cs.currentBlockParts.GetPart(bp.Index()) != nil {
-		return -1, nil
-	}
-	added, err := cs.currentBlockParts.AddPart(bp, cs.c.BlockManager())
-	if !added && err != nil {
-		return -1, err
-	}
-	if added && err != nil {
-		cs.log.Warnf("fail to create block. %+v", err)
 	}
 
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
@@ -902,6 +908,15 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 	cs.currentBlockParts.SetByPartSetID(partSetID)
 
 	cs.notifySyncer()
+
+	if !cs.currentBlockParts.IsComplete() {
+		for i := uint16(0); i < partSetID.Count; i++ {
+			bpm := cs.bpmCache.Get(partSetID.Hash, i)
+			if bpm != nil {
+				_, _ = cs.currentBlockParts.AddPartFromBytes(bpm.BlockPart, cs.c.BlockManager())
+			}
+		}
+	}
 
 	if cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()

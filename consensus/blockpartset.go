@@ -128,3 +128,24 @@ func (bps *blockPartSet) setValidatedBlock(bc module.BlockCandidate) {
 func (bps *blockPartSet) HasValidatedBlock() bool {
 	return bps.validatedBlock != nil
 }
+
+// AddPartFromBytes adds block part from block part bytes.
+// Returns Part if the part is successfully added or nil if the part is not
+// added.
+func (bps *blockPartSet) AddPartFromBytes(bpBytes []byte, bm module.BlockManager) (Part, error) {
+	bp, err := NewPart(bpBytes)
+	if err != nil {
+		return nil, err
+	}
+	if bps.GetPart(bp.Index()) != nil {
+		return nil, nil
+	}
+	added, err := bps.AddPart(bp, bm)
+	if !added && err != nil {
+		return nil, err
+	}
+	if added && err != nil {
+		log.Warnf("fail to create block. %+v", err)
+	}
+	return bp, nil
+}

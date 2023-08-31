@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+	"unsafe"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -143,6 +144,12 @@ func (msg *BlockPartMessage) Verify() error {
 	}
 	_, err := NewPart(msg.BlockPart)
 	return err
+}
+
+const bpmHeaderLen = int(unsafe.Sizeof(BlockPartMessage{}))
+
+func (msg *BlockPartMessage) Cost() int {
+	return bpmHeaderLen + len(msg.BlockPart)
 }
 
 func (msg *BlockPartMessage) subprotocol() uint16 {
