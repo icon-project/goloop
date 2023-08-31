@@ -93,7 +93,8 @@
     * [PENALTY_TYPE](#penaltytype)
     * [NETWORK_SCORE_TYPE](#networkscoretype)
     * [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)
-    </details>
+
+</details>
 
 # Basic
 
@@ -163,7 +164,7 @@ def getStepCosts() -> dict:
 
 ### getMaxStepLimit
 
-Returns the maximum value of step limit for a given `contextType`.
+Returns the maximum value of step limit for the given `contextType`.
 
 ```python
 def getMaxStepLimit(contextType: str) -> int:
@@ -399,7 +400,7 @@ def ICXBurnedV2(address: Address, amount: int, total_supply: int) -> None:
 
 ### setScoreOwner
 
-Updates the owner of SCORE. Not allowed for blocked or disabled SCORE.
+Updates the owner of the SCORE. Not allowed for blocked or disabled SCORE.
 
 ```python
 def setScoreOwner(score: Address, owner: Address) -> None:
@@ -420,7 +421,7 @@ def setScoreOwner(score: Address, owner: Address) -> None:
 
 ### getStake
 
-Returns the stake status of a given `address`.
+Returns the stake status of the given `address`.
 
 ```python
 def getStake(address: Address) -> dict:
@@ -443,7 +444,7 @@ def getStake(address: Address) -> dict:
 
 ### getDelegation
 
-Returns the delegation status of a given `address`.
+Returns the delegation status of the given `address`.
 
 ```python
 def getDelegation(address: Address) -> dict:
@@ -467,7 +468,7 @@ def getDelegation(address: Address) -> dict:
 
 ### getBond
 
-Returns the bond status of a given `address`.
+Returns the bond status of the given `address`.
 
 ```python
 def getBond(address: Address) -> dict:
@@ -492,7 +493,7 @@ def getBond(address: Address) -> dict:
 
 ### queryIScore
 
-Returns the amount of I-Score that an `address` has received as a reward.
+Returns the amount of I-Score that `address` has received as a reward.
 
 ```python
 def queryIScore(address: Address) -> dict:
@@ -516,7 +517,7 @@ def queryIScore(address: Address) -> dict:
 
 ### getPRep
 
-Returns P-Rep register information of a given `address`.
+Returns P-Rep register information of the given `address`.
 
 ```python
 def getPRep(address: Address) -> dict:
@@ -636,7 +637,7 @@ def getPRepTerm() -> dict:
 | totalDelegated   | int                                   | total delegation amount of `preps`                          |
 | totalPower       | int                                   | total power amount of `preps`                               |
 | period           | int                                   | term period                                                 |
-| rewqrdFund       | [RewardFund](#rewardfund)             | reward fund information for the term                        |
+| rewardFund       | [RewardFund](#rewardfund)             | reward fund information for the term                        |
 | bondRequirement  | int                                   | bondRequriement for the term                                |
 | revision         | int                                   | revision for the term                                       |
 | isDecentralized  | bool                                  | `true` if network is decentralized                          |
@@ -650,7 +651,7 @@ def getPRepTerm() -> dict:
 
 ### getBonderList
 
-Returns the allowed bonder list of a given `address`.
+Returns the list of allowed bonders for the given `address`.
 
 ```python
 def getBonderList(address: Address) -> dict:
@@ -665,7 +666,7 @@ def getBonderList(address: Address) -> dict:
 *Returns:*
 
 | Key        | Value Type    | Description                                        |
-| :--------- | :------------ | :------------------------------------------------- |
+|:-----------|:--------------|:---------------------------------------------------|
 | bonderList | List[Address] | addresses of ICONist who can bond to the `address` |
 
 *Revision:* 13 ~
@@ -689,7 +690,7 @@ def getPRepStats() -> dict:
 
 ### getNetworkInfo
 
-Returns the configuration and status of network.
+Returns the configuration and status of the network.
 
 ```python
 def getNetworkInfo() -> dict:
@@ -697,30 +698,30 @@ def getNetworkInfo() -> dict:
 
 *Returns:*
 
-| Key                    | Value Type                | Description                                |
-|:-----------------------|:--------------------------|:-------------------------------------------|
-| mainPRepCount          | int                       | Main P-Reps count                          |
-| extraPRepCount         | int                       | Extra Main P-Reps count                    |
-| subPRepCount           | int                       | Sub Main P-Reps count                      |
-| iissVersion            | int                       | IISS version                               |
-| termPeriod             | int                       | period of term                             |
-| bondRequirement        | int                       | bond requirement                           |
-| lockMinMultiplier      | int                       | multiplier for minimum unstake lock period |
-| lockMaxMultiplier      | int                       | multiplier for maximum unstake lock period |
-| unstakeSlotMax         | int                       | maximum unstakes count of a account        |
-| delegationSlotMax      | int                       | maximum delegation count of a account      |
-| rewqrdFund             | [RewardFund](#rewardfund) | reward fund information                    |
-| totalStake             | int                       | total stakes of ICONist                    |
-| totalBonded            | int                       | total bonded amount of P-Rep               |
-| totalDelegated         | int                       | total delegated amount of P-Rep            |
-| totalPower             | int                       | total power amount of P-Rep                |
-| preps                  | int                       | count of all P-Reps                        |
+| Key               | Value Type                | Description                                |
+|:------------------|:--------------------------|:-------------------------------------------|
+| mainPRepCount     | int                       | Main P-Reps count                          |
+| extraPRepCount    | int                       | Extra Main P-Reps count                    |
+| subPRepCount      | int                       | Sub Main P-Reps count                      |
+| iissVersion       | int                       | IISS version                               |
+| termPeriod        | int                       | period of term                             |
+| bondRequirement   | int                       | bond requirement                           |
+| lockMinMultiplier | int                       | multiplier for minimum unstake lock period |
+| lockMaxMultiplier | int                       | multiplier for maximum unstake lock period |
+| unstakeSlotMax    | int                       | maximum unstakes count of a account        |
+| delegationSlotMax | int                       | maximum delegation count of a account      |
+| rewardFund        | [RewardFund](#rewardfund) | reward fund information                    |
+| totalStake        | int                       | total stakes of ICONist                    |
+| totalBonded       | int                       | total bonded amount of P-Rep               |
+| totalDelegated    | int                       | total delegated amount of P-Rep            |
+| totalPower        | int                       | total power amount of P-Rep                |
+| preps             | int                       | count of all P-Reps                        |
 
 *Revision:* 13 ~
 
 ### getNetworkScores
 
-* Returns the list of network SCOREs
+Returns the list of network SCOREs
 
 ```python
 def getNetworkScores() -> dict:
@@ -736,7 +737,7 @@ def getNetworkScores() -> dict:
 
 ### getPRepStatsOf
 
-* Returns the list of block validation statistics for a given PRep
+Returns the list of block validation statistics for the given PRep
 
 ```python
 def getPRepStatsOf(address: Address) -> dict:
@@ -750,16 +751,16 @@ def getPRepStatsOf(address: Address) -> dict:
 
 *Returns:*
 
-| Key         | Type                            | Description                                          |
-|:------------|:--------------------------------|:-----------------------------------------------------|
-| blockHeight | int                             | state blockHeight                                    |
-| preps       | List\[[PRepStats](#prepstats)\] | List of block validation statistics for a given PRep |
+| Key         | Type                            | Description                                            |
+|:------------|:--------------------------------|:-------------------------------------------------------|
+| blockHeight | int                             | state blockHeight                                      |
+| preps       | List\[[PRepStats](#prepstats)\] | List of block validation statistics for the given PRep |
 
 *Revision:* 22 ~
 
 ### getSlashingRates
 
-* Returns slashing rates for given `names`
+Returns slashing rates for given `names`
 
 ```python
 def getSlashingRates(names: List[str]) -> dict:
@@ -781,7 +782,7 @@ def getSlashingRates(names: List[str]) -> dict:
 
 ### getMinimumBond
 
-* Returns the minimum amount of bond that can earn minimum wage
+Returns the minimum bond amount required to earn the minimum wage
 
 ```python
 def getMinimumBond() -> int:
@@ -797,7 +798,7 @@ def getMinimumBond() -> int:
 
 ### setStake
 
-Stake some amount of ICX.
+Stakes some amount of ICX.
 
 ```python
 def setStake(value: int) -> None:
@@ -813,7 +814,7 @@ def setStake(value: int) -> None:
 
 ### setDelegation
 
-Delegate some amount of stake to P-Reps.
+Delegates some amount of stake to P-Reps.
 
 - Maximum number of P-Reps to delegate is 100
 - The transaction which has duplicated P-Rep addresses will be failed
@@ -833,7 +834,7 @@ def setDelegation(delegations: List[Vote]) -> None:
 
 ### setBond
 
-Bond some amount of stake to P-Reps.
+Bonds some amount of stake to P-Reps.
 
 - Maximum number of P-Reps to bond is 100
 - The transaction which has duplicated P-Rep addresses will be failed
@@ -853,7 +854,7 @@ def setBond(bonds: List[Vote]) -> None:
 
 ### claimIScore
 
-Claim the total reward that a ICONist has received.
+Claims the total reward that a ICONist has received.
 
 ```python
 def claimIScore() -> None:
@@ -876,7 +877,7 @@ def IScoreClaimedV2(address: Address, iscore: int, icx: int) -> None:
 
 ### registerPRep
 
-Register an ICONist as a P-Rep.
+Registers an ICONist as a P-Rep.
 
 - 2000 ICX are required as a registration fee
 
@@ -913,7 +914,7 @@ def PRepRegistered(address: Address) -> None:
 
 ### setPRep
 
-Update a P-Rep register information.
+Updates P-Rep's register information.
 
 ```python
 def setPRep(name: str, email: str, website: str, country: str, city: str, details: str, p2pEndpoint: str,
@@ -948,7 +949,7 @@ def PRepSet(address: Address) -> None:
 
 ### unregisterPRep
 
-Unregister a P-Rep.
+Unregisters the P-Rep.
 
 ```python
 def unregisterPRep() -> None:
@@ -969,7 +970,7 @@ def PRepUnregistered(address: Address) -> None:
 
 ### disqualifyPRep
 
-Disqualify a P-Rep. Governance Only.
+Disqualify the P-Rep. Governance Only.
 
 ```python
 def disqualifyPRep(address: Address) -> None:
@@ -988,7 +989,7 @@ def disqualifyPRep(address: Address) -> None:
 
 ### setBonderList
 
-Set allowed bonder list of P-Rep.
+Updates allowed bonder list of P-Rep.
 
 - Maximum number of allowed ICONist to bond is 10
 - This transaction overwrites the previous bonder list information
@@ -1007,7 +1008,7 @@ def setBonderList(bonderList: List[Address]) -> None:
 
 ### setRewardFund
 
-Updates size of reward fund. Governance only.
+Updates the size of the reward fund. Governance only.
 
 ```python
 def setRewardFund(iglobal: int) -> None:
@@ -1073,9 +1074,9 @@ def setNetworkScore(role: str, address: Address) -> None:
 
 *Parameters:*
 
-| Name    | Type            | Description                                                  |
-| :------ | :-------------- | :----------------------------------------------------------- |
-| role    | str             | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype) |
+| Name    | Type            | Description                                                                                        |
+|:--------|:----------------|:---------------------------------------------------------------------------------------------------|
+| role    | str             | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype)                 |
 | address | List\[Address\] | (Optional from revision 17) address of Network SCORE. Do not pass `address` to clear Network SCORE |
 
 *Revision:* 15 ~
@@ -1227,7 +1228,7 @@ def requestUnjail() -> None:
 
 ### getBTPNetworkTypeID
 
-Returns BTP Network Type ID of a given `name`.
+Returns BTP Network Type ID of the given `name`.
 
 ```python
 def getBTPNetworkTypeID(name: str) -> int:
@@ -1514,16 +1515,16 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## ContractStatus
 
-| KEY          | VALUE type        | Description                                                  |
-| :----------- | :---------------- | :----------------------------------------------------------- |
+| KEY          | VALUE type        | Description                                                           |
+|:-------------|:------------------|:----------------------------------------------------------------------|
 | status       | str               | status of the contract. (`inactive`, `active`, `pending`, `rejected`) |
-| deployTxHash | [T_HASH](#T_HASH) | TX Hash for deploy                                           |
-| auditTxHash  | [T_HASH](#T_HASH) | (Optional) TX Hash for audit                                 |
+| deployTxHash | [T_HASH](#T_HASH) | TX Hash for deploy                                                    |
+| auditTxHash  | [T_HASH](#T_HASH) | (Optional) TX Hash for audit                                          |
 
 ## DepositInfo
 
 | KEY                  | VALUE type                  | Description                         |
-| :------------------- | :-------------------------- | :---------------------------------- |
+|:---------------------|:----------------------------|:------------------------------------|
 | availableDeposit     | [T_INT](#T_INT)             | available deposit amount            |
 | availableVirtualStep | [T_INT](#T_INT)             | available virtual steps(deprecated) |
 | deposits             | List\[[Deposit](#deposit)\] | remaining deposits                  |
@@ -1533,7 +1534,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 ### Deposit V1
 
 | KEY               | VALUE type        | Description              |
-| :---------------- | :---------------- | :----------------------- |
+|:------------------|:------------------|:-------------------------|
 | id                | [T_HASH](#T_HASH) | ID of deposit            |
 | depositRemain     | [T_INT](#T_INT)   | available deposit amount |
 | depositUsed       | [T_INT](#T_INT)   | used deposit amount      |
@@ -1544,7 +1545,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 ### Deposit V2
 
 | KEY           | VALUE type      | Description              |
-| :------------ | :-------------- | :----------------------- |
+|:--------------|:----------------|:-------------------------|
 | depositRemain | [T_INT](#T_INT) | available deposit amount |
 
 ## RewardFund
