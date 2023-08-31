@@ -1419,24 +1419,24 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## StepCosts
 
-| Key            | Value Type | Description                                   |
-|:---------------|:-----------|:----------------------------------------------|
-| schema         | int        | Version of step costing system                |
-| default        | int        | Default cost for TX                           |
-| input          | int        | Byte cost for input data                      |
-| get            | int        | Byte cost for getting data                    |
-| getBase        | int        | Default cost for getting data                 |
-| set            | int        | Byte cost for adding new data                 |
-| setBase        | int        | Default cost for addiing new data             |
-| delete         | int        | Byte cost for deleting data                   |
-| deleteBase     | int        | Default cost for deleting  data               |
-| log            | int        | Byte cost for event log data                  |
-| logBase        | int        | Default cost for event log                    |
-| apiCall        | int        | Cost for calling SCORE API. Python SCORE only |
-| contractCall   | int        | Cost for calling external method of SCORE     |
-| contractCreate | int        | Cost for create SCORE                         |
-| contractUpdate | int        | Cost for update SCORE                         |
-| contractSet    | int        | Byte cost for SCORE code                      |
+| Key            | Value Type | Description                                                      |
+|:---------------|:-----------|:-----------------------------------------------------------------|
+| schema         | int        | Schema version (currently fixed at 1)                            |
+| default        | int        | Default cost charged each time transaction is executed           |
+| contractCall   | int        | Cost to call the smart contract function                         |
+| contractCreate | int        | Cost to call the smart contract code generation function         |
+| contractUpdate | int        | Cost to call the smart contract code update function             |
+| contractSet    | int        | Cost to store the generated/updated smart contract code per byte |
+| get            | int        | Cost to get values from the state database per byte              |
+| getBase        | int        | Default cost charged each time `get` is called                   |
+| set            | int        | Cost to set values newly in the state database per byte          |
+| setBase        | int        | Default cost charged each time `set` is called                   |
+| delete         | int        | Cost to delete values in the state database per byte             |
+| deleteBase     | int        | Default cost charged each time `delete` is called                |
+| input          | int        | Cost charged for input data included in transaction per byte     |
+| log            | int        | Cost to emit event logs per byte                                 |
+| logBase        | int        | Default cost charged each time `log` is called                   |
+| apiCall        | int        | Cost charged for heavy API calls (e.g. hash functions)           |
 
 ## Unstake
 
