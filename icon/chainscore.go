@@ -85,7 +85,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Address,
 		},
-	}, 0, 0},
+	}, 0, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "addressToTxHashes",
 		scoreapi.FlagReadOnly, 1,
@@ -95,7 +95,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.List,
 		},
-	}, 0, 0},
+	}, 0, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "acceptScore",
 		scoreapi.FlagExternal, 1,
@@ -273,7 +273,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "getIRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -281,7 +281,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "getRRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -289,7 +289,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setStake",
 		scoreapi.FlagExternal, 1,
@@ -525,7 +525,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Bool,
 		},
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "disqualifyPRep",
 		scoreapi.FlagExternal, 1,
@@ -568,7 +568,7 @@ var chainMethods = []*chainMethod{
 			{"ivoter", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R0, 0},
+	}, icmodule.RevisionICON2R0, icmodule.RevisionIISS4 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setRewardFundAllocation2",
 		scoreapi.FlagExternal, 1,
