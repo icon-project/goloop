@@ -124,7 +124,7 @@ def getStepPrice() -> int:
 
 *Returns:*
 
-* the price of step
+* the price of step in loop
 
 *Revision:* 0 ~
 
@@ -279,7 +279,7 @@ def setStepPrice(price: int) -> None:
 
 ### setStepCost
 
-Updates the step cost of given `type` step type.
+Updates the step cost of given `type` step type. Governance only.
 
 ```python
 def setStepCost(type: str, cost: int) -> None:
@@ -296,7 +296,7 @@ def setStepCost(type: str, cost: int) -> None:
 
 ### setMaxStepLimit
 
-Updates the maximum step limit of given `contextType`.
+Updates the maximum step limit of given `contextType`. Governance only.
 
 ```python
 def setMaxStepLimit(contextType: str, limit: int) -> None:
@@ -313,7 +313,7 @@ def setMaxStepLimit(contextType: str, limit: int) -> None:
 
 ### disableScore
 
-Disables the SCORE.
+Disables the SCORE. Allowed only from the SCORE owner.
 
 ```python
 def disableScore(address: Address) -> None:
@@ -329,7 +329,7 @@ def disableScore(address: Address) -> None:
 
 ### enableScore
 
-Enables the SCORE.
+Enables the SCORE. Allowed only from the SCORE owner.
 
 ```python
 def enableScore(address: Address) -> None:
@@ -400,7 +400,9 @@ def ICXBurnedV2(address: Address, amount: int, total_supply: int) -> None:
 
 ### setScoreOwner
 
-Updates the owner of the SCORE. Not allowed for blocked or disabled SCORE.
+Updates the owner of the SCORE. Allowed only from the SCORE owner.
+
+- Not allowed for blocked or disabled SCORE.
 
 ```python
 def setScoreOwner(score: Address, owner: Address) -> None:
@@ -1099,7 +1101,7 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 
 ### setMinimumBond
 
-Updates the minimum amount of bond that can earn minimum wage.
+Updates the minimum amount of bond that can earn minimum wage. Governance only.
 
 ```python
 def setMinimumBond(bond: int) -> None:
@@ -1201,7 +1203,7 @@ def setSlashingRates(rate: int) -> None:
 *Event Log:*
 
 ```python
-@eventlog(indexed=1)
+@eventlog(indexed=0)
 def SlashingRateChangedV2(type: str, rate: int) -> None:
 ```
 
@@ -1491,7 +1493,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 | Key       | Value Type | Description                                                                                      |
 |:----------|:-----------|:-------------------------------------------------------------------------------------------------|
-| name      | str        | P-Rep name                                                                                       
+| name      | str        | P-Rep name                                                                                       |
 | address   | Address    | P-Rep address                                                                                    |
 | delegated | int        | delegation amount that a P-Rep receives from ICONist                                             |
 | power     | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20)) |
