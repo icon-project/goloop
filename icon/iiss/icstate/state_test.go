@@ -29,6 +29,33 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+type dummyStateContext struct {
+	stateContext
+}
+
+func (d *dummyStateContext) IncreaseBlockHeightBy(amount int64) int64 {
+	d.blockHeight += amount
+	return d.blockHeight
+}
+
+func newDummyStateContext(params ...interface{}) *dummyStateContext {
+	sc := &dummyStateContext{}
+	for i, param := range params {
+		switch i {
+		case 0:
+			sc.blockHeight = param.(int64)
+		case 1:
+			sc.revision = param.(int)
+			sc.termRevision = sc.revision
+		case 2:
+			sc.termRevision = param.(int)
+		case 3:
+			sc.stateContext.eventLogger = param.(icmodule.EnableEventLogger)
+		}
+	}
+	return sc
+}
+
 func newNodeOnlyRegInfo(node module.Address) *PRepInfo {
 	return &PRepInfo{
 		Node: node,
@@ -226,7 +253,7 @@ func TestState_SetIssue(t *testing.T) {
 	err = state.SetIssue(issue)
 	assert.NoError(t, err)
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	issue2, err := state.GetIssue()
@@ -247,7 +274,7 @@ func TestState_SetTermSnapshot(t *testing.T) {
 	err := state.SetTermSnapshot(term)
 	assert.NoError(t, err)
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	term2 := state.GetTermSnapshot()
@@ -278,7 +305,7 @@ func TestState_SetRewardCalcInfo(t *testing.T) {
 	err = state.SetRewardCalcInfo(rc)
 	assert.NoError(t, err)
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	orc, err = state.GetRewardCalcInfo()
@@ -311,7 +338,7 @@ func TestState_SetTotalDelegation(t *testing.T) {
 	value = big.NewInt(100)
 	err := state.SetTotalDelegation(value)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	value2 := state.GetTotalDelegation()
@@ -327,7 +354,7 @@ func TestState_SetTotalBond(t *testing.T) {
 	value = big.NewInt(100)
 	err := state.SetTotalBond(value)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	value2 := state.GetTotalBond()
@@ -347,7 +374,7 @@ func TestState_GetOwnerByNode(t *testing.T) {
 	err = state.RegisterPRep(owner, ri, irep, 1234)
 	assert.NoError(t, err)
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	address = state.GetOwnerByNode(owner)
@@ -361,7 +388,7 @@ func TestState_GetOwnerByNode(t *testing.T) {
 	assert.True(t, update)
 	assert.NoError(t, err)
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	address = state.GetOwnerByNode(node)
@@ -374,51 +401,54 @@ func TestState_OnBlockVote(t *testing.T) {
 	owner := newDummyAddress(1)
 	state := newDummyState(false)
 
-	err = state.OnBlockVote(owner, true, 1000)
+	sc := newDummyStateContext(int64(1000))
+	err = state.OnBlockVote(sc, owner, true)
 	assert.Error(t, err)
 
 	ri := newDummyPRepInfo(1)
 	err = state.RegisterPRep(owner, ri, irep, 1234)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
-	blockHeight := int64(1000)
 	for i := 0; i < 5; i++ {
-		err = state.OnBlockVote(owner, true, blockHeight)
+		err = state.OnBlockVote(sc, owner, true)
 		assert.NoError(t, err)
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 
+		blockHeight := sc.BlockHeight()
 		ps := state.GetPRepStatusByOwner(owner, false)
 		assert.Equal(t, Success, ps.LastState())
 		assert.Equal(t, int64(i+1), ps.GetVTotal(blockHeight))
 		assert.Zero(t, ps.GetVFail(blockHeight))
 		assert.Zero(t, ps.GetVFailCont(blockHeight))
 
-		blockHeight++
+		sc.IncreaseBlockHeightBy(1)
 	}
 
 	for i := 0; i < 5; i++ {
-		err = state.OnBlockVote(owner, false, blockHeight)
+		err = state.OnBlockVote(sc, owner, false)
 		assert.NoError(t, err)
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 
+		blockHeight := sc.BlockHeight()
 		ps := state.GetPRepStatusByOwner(owner, false)
 		assert.Equal(t, Failure, ps.LastState())
 		assert.Equal(t, int64(i+6), ps.GetVTotal(blockHeight))
 		assert.Equal(t, int64(i+1), ps.GetVFail(blockHeight))
 		assert.Equal(t, int64(i+1), ps.GetVFailCont(blockHeight))
 
-		blockHeight++
+		sc.IncreaseBlockHeightBy(1)
 	}
 
-	state.OnBlockVote(owner, true, blockHeight)
+	err = state.OnBlockVote(sc, owner, true)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
+	blockHeight := sc.BlockHeight()
 	ps := state.GetPRepStatusByOwner(owner, false)
 	assert.Equal(t, Success, ps.LastState())
 	assert.Equal(t, int64(11), ps.GetVTotal(blockHeight))
@@ -428,7 +458,7 @@ func TestState_OnBlockVote(t *testing.T) {
 
 func TestState_OnMainPRepReplaced(t *testing.T) {
 	var err error
-	var sc icmodule.StateContext
+	var sc *dummyStateContext
 	limit := 30
 
 	type input struct {
@@ -456,9 +486,8 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			sc = NewStateContext(1000, arg.in.rev, arg.in.termRev, nil)
-
-			state.Flush()
+			sc = newDummyStateContext(int64(1000), arg.in.rev, arg.in.termRev)
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
 			ps := state.GetPRepStatusByOwner(owners[1], false)
@@ -467,9 +496,9 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 			err = state.OnMainPRepReplaced(sc, owners[0], owners[1])
 			assert.Error(t, err) // Invalid: C -> M
 
-			err = ps.OnTermEnd(sc, GradeSub, limit)
+			err = ps.onTermEnd(sc, GradeSub, limit)
 			assert.NoError(t, err)
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
 			ps = state.GetPRepStatusByOwner(owners[1], false)
@@ -479,12 +508,12 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 			if sc.Revision() < termRev {
 				termRev = sc.Revision()
 			}
-			sc = NewStateContext(sc.BlockHeight()+1, sc.Revision(), termRev, nil)
 
+			sc.IncreaseBlockHeightBy(1)
 			err = state.OnMainPRepReplaced(sc, owners[0], owners[1])
 			assert.NoError(t, err)
 
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
 			ps = state.GetPRepStatusByOwner(owners[1], false)
@@ -600,14 +629,14 @@ func TestState_ImposePenalty(t *testing.T) {
 
 			err = state.RegisterPRep(owner, ri, icmodule.BigIntZero, 1234)
 			assert.NoError(t, err)
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
 			sc := NewStateContext(10000, arg.in.rev, arg.in.termRev, nil)
 			ps := state.GetPRepStatusByOwner(owner, false)
 			err = state.ImposePenalty(sc, pt, owner, ps)
 			assert.NoError(t, err)
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
 			ps = state.GetPRepStatusByOwner(owner, false)
@@ -632,23 +661,23 @@ func TestState_ReducePRepBonded(t *testing.T) {
 	ri := newDummyPRepInfo(1)
 	err = state.RegisterPRep(owner, ri, new(big.Int), 1234)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	err = state.SetTotalBond(big.NewInt(totalBond))
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	ps := state.GetPRepStatusByOwner(owner, false)
 	ps.SetBonded(big.NewInt(totalBond))
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	amount := int64(10)
 	err = state.ReducePRepBonded(owner, big.NewInt(amount))
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	assert.Equal(t, totalBond-amount, state.GetTotalBond().Int64())
 
@@ -665,12 +694,12 @@ func TestState_DisablePRep(t *testing.T) {
 	ri := newDummyPRepInfo(1)
 	err = state.RegisterPRep(owner, ri, new(big.Int), 1234)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	err = state.SetTotalDelegation(big.NewInt(totalDelegation))
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	assert.Equal(t, totalDelegation, state.GetTotalDelegation().Int64())
@@ -678,7 +707,7 @@ func TestState_DisablePRep(t *testing.T) {
 	delegation := totalDelegation
 	ps := state.GetPRepStatusByOwner(owner, false)
 	ps.SetDelegated(big.NewInt(delegation))
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	ps = state.GetPRepStatusByOwner(owner, false)
@@ -688,7 +717,7 @@ func TestState_DisablePRep(t *testing.T) {
 	sc := NewStateContext(1000, icmodule.RevisionPreIISS4, icmodule.RevisionPreIISS4, nil)
 	err = state.DisablePRep(sc, owner, Unregistered)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	assert.Zero(t, state.GetTotalDelegation().Int64())
@@ -709,15 +738,16 @@ func TestState_CheckValidationPenalty(t *testing.T) {
 	ri := newDummyPRepInfo(1)
 	err = state.RegisterPRep(owner, ri, new(big.Int), 1234)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	blockHeight := int64(1000)
+	sc := newDummyStateContext(blockHeight)
 	ps := state.GetPRepStatusByOwner(owner, false)
 	for i := 0; i < condition; i++ {
-		err = ps.OnBlockVote(blockHeight, false)
+		err = ps.onBlockVote(sc, false)
 		assert.NoError(t, err)
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 
 		isPenalized := state.CheckValidationPenalty(ps, blockHeight)
@@ -740,7 +770,7 @@ func TestState_CheckConsistentValidationPenalty(t *testing.T) {
 	ri := newDummyPRepInfo(1)
 	err = state.RegisterPRep(owner, ri, new(big.Int), 1234)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	ps := state.GetPRepStatusByOwner(owner, false)
@@ -767,7 +797,7 @@ func TestState_GetUnstakeLockPeriod(t *testing.T) {
 	err = state.SetTermPeriod(termPeriod)
 	assert.NoError(t, err)
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	prevPeriod := int64(0)
@@ -780,7 +810,7 @@ func TestState_GetUnstakeLockPeriod(t *testing.T) {
 		err = state.SetTotalStake(big.NewInt(totalStake))
 		assert.NoError(t, err)
 
-		state.Flush()
+		assert.NoError(t,state.Flush())
 		state.ClearCache()
 
 		periodInBlock := state.GetUnstakeLockPeriod(rev, totalSupply)
@@ -816,7 +846,7 @@ func TestState_SetIllegalDelegation(t *testing.T) {
 	err := state.SetIllegalDelegation(o)
 	assert.NoError(t, err)
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	o = state.GetIllegalDelegation(addr)
@@ -839,7 +869,7 @@ func TestState_SetPRepIllegalDelegated(t *testing.T) {
 		err := state.SetPRepIllegalDelegated(addrs[i], big.NewInt(v))
 		assert.NoError(t, err)
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 
 		v2 := state.GetPRepIllegalDelegated(addrs[i])
@@ -857,7 +887,7 @@ func TestState_SetLastBlockVotersSnapshot(t *testing.T) {
 	bvs = NewBlockVotersSnapshot(voters)
 	err := state.SetLastBlockVotersSnapshot(bvs)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	bvs2 := state.GetLastBlockVotersSnapshot()
@@ -892,26 +922,29 @@ func TestState_OnValidatorOut(t *testing.T) {
 			owner := newDummyAddress(1)
 			state := newDummyState(false)
 
-			err = state.OnValidatorOut(blockHeight, owner)
+			sc := newDummyStateContext(blockHeight)
+			err = state.OnValidatorOut(sc, owner)
 			assert.Error(t, err)
 
 			ri := newDummyPRepInfo(1)
 			err = state.RegisterPRep(owner, ri, irep, 1234)
 			assert.NoError(t, err)
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
 			for _, vote := range a.votes {
 				ps := state.GetPRepStatusByOwner(owner, false)
-				ps.OnBlockVote(blockHeight, vote)
-				state.Flush()
+				err = ps.onBlockVote(sc, vote)
+				assert.NoError(t, err)
+				assert.NoError(t, state.Flush())
 				state.ClearCache()
-				blockHeight++
+
+				sc.IncreaseBlockHeightBy(1)
 			}
 
-			err = state.OnValidatorOut(blockHeight-1, owner)
+			err = state.OnValidatorOut(sc, owner)
 			assert.NoError(t, err)
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
 			ps := state.GetPRepStatusByOwner(owner, false)

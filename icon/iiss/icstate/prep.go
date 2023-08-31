@@ -146,7 +146,7 @@ func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext,
 			newGrade = GradeCandidate
 		}
 
-		if err := prep.OnTermEnd(sc, newGrade, limit); err != nil {
+		if err := prep.NotifyEvent(sc, icmodule.PRepEventTermEnd, newGrade, limit); err != nil {
 			return err
 		}
 		if revision == icmodule.RevisionResetPenaltyMask {

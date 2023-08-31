@@ -206,12 +206,12 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 	cc icmodule.CallContext, voters *icstate.BlockVotersSnapshot, voted []bool) error {
 
 	var err error
-	blockHeight := cc.BlockHeight()
+	sc := es.newStateContext(cc)
 
 	size := voters.Len()
 	for i := 0; i < size; i++ {
 		voter := voters.Get(i)
-		if err = es.State.OnBlockVote(voter, voted[i], blockHeight); err != nil {
+		if err = es.State.OnBlockVote(sc, voter, voted[i]); err != nil {
 			return err
 		}
 		if voted[i] == false {
@@ -227,7 +227,7 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 		for i := 0; i < size; i++ {
 			voter := lastVoters.Get(i)
 			if voters.IndexOf(voter) < 0 {
-				if err = es.State.OnValidatorOut(blockHeight-1, voter); err != nil {
+				if err = es.State.OnValidatorOut(sc, voter); err != nil {
 					return err
 				}
 			}

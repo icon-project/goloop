@@ -27,6 +27,7 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+/*
 func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
 	var err error
 
@@ -68,8 +69,9 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 		return es.AddEventEnable(blockHeight, owner, icmodule.ESJail)
 	}
 }
+ */
 
-func (es *ExtensionStateImpl) handlePenalty2(cc icmodule.CallContext, owner module.Address) error {
+func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
 	var err error
 
 	ps := es.State.GetPRepStatusByOwner(owner, false)

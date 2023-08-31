@@ -114,13 +114,13 @@ func (vs VoteState) String() string {
 }
 
 type prepStatusData struct {
-	grade        Grade
-	status       Status
-	delegated    *big.Int
-	bonded       *big.Int
-	vTotal       int64
-	vFail        int64
-	vFailCont    int64
+	grade     Grade
+	status    Status
+	delegated *big.Int
+	bonded    *big.Int
+	vTotal    int64
+	vFail     int64
+	vFailCont int64
 	// ValidationFailurePenaltyMask
 	vPenaltyMask uint32
 	lastState    VoteState
@@ -636,7 +636,28 @@ func (ps *PRepStatusState) ResetVPenaltyMask() {
 	}
 }
 
-func (ps *PRepStatusState) OnBlockVote(blockHeight int64, voted bool) error {
+func (ps *PRepStatusState) NotifyEvent(
+	sc icmodule.StateContext, event icmodule.PRepEvent, data ...interface{}) error {
+	switch event {
+	case icmodule.PRepEventBlockVote:
+		return ps.onBlockVote(sc, data[0].(bool))
+	case icmodule.PRepEventMainIn:
+		return ps.onMainPRepIn(sc, data[0].(int), false)
+	case icmodule.PRepEventImposePenalty:
+		return ps.onPenaltyImposed(sc, data[0].(icmodule.PenaltyType))
+	case icmodule.PRepEventRequestUnjail:
+		return ps.onUnjailRequested(sc)
+	case icmodule.PRepEventTermEnd:
+		return ps.onTermEnd(sc, data[0].(Grade), data[1].(int))
+	case icmodule.PRepEventValidatorOut:
+		return ps.onValidatorOut(sc)
+	default:
+		panic("UnknownPRepEvent")
+	}
+	return nil
+}
+
+func (ps *PRepStatusState) onBlockVote(sc icmodule.StateContext, voted bool) error {
 	voteState := Success
 	if !voted {
 		voteState = Failure
@@ -646,65 +667,45 @@ func (ps *PRepStatusState) OnBlockVote(blockHeight int64, voted bool) error {
 		return nil
 	}
 
-	var err error
+	blockHeight := sc.BlockHeight()
+	if err := ps.syncBlockVoteStats(blockHeight - 1); err != nil {
+		return err
+	}
+
 	if voted {
-		err = ps.onTrueBlockVote(blockHeight)
+		ps.vFailCont = 0
 	} else {
-		err = ps.onFalseBlockVote(blockHeight)
+		ps.vFail++
+		ps.vFailCont++
 	}
-	if err == nil {
-		ps.setDirty()
-	}
-	return err
-}
 
-func (ps *PRepStatusState) onFalseBlockVote(blockHeight int64) error {
-	if err := ps.syncBlockVoteStats(blockHeight - 1); err != nil {
-		return err
-	}
-	ps.vFail++
-	ps.vFailCont++
+	// Common part
 	ps.vTotal++
 	ps.lastHeight = blockHeight
-	ps.lastState = Failure
+	ps.lastState = voteState
+	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) onTrueBlockVote(blockHeight int64) error {
-	if err := ps.syncBlockVoteStats(blockHeight - 1); err != nil {
-		return err
+func (ps *PRepStatusState) onMainPRepIn(sc icmodule.StateContext, limit int, termEnd bool) error {
+	if termEnd == false {
+		if ps.grade != GradeSub {
+			return errors.Errorf("Invalid grade: %v -> M", ps.grade)
+		}
 	}
-	ps.vFailCont = 0
-	ps.vTotal++
-	ps.lastHeight = blockHeight
-	ps.lastState = Success
-	return nil
-}
 
-// OnMainPRepIn is called only in case of penalized main prep replacement
-func (ps *PRepStatusState) OnMainPRepIn(sc icmodule.StateContext, limit int) error {
-	if ps.grade != GradeSub {
-		return errors.Errorf("Invalid grade: %v -> M", ps.grade)
-	}
-	if err := ps.onMainPRepIn(sc, limit); err != nil {
+	ps.grade = GradeMain
+	ps.shiftVPenaltyMask(limit)
+	if err := ps.ji.OnMainPRepIn(sc, ps.owner); err != nil {
 		return err
 	}
 	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) onMainPRepIn(sc icmodule.StateContext, limit int) error {
-	ps.grade = GradeMain
-	ps.shiftVPenaltyMask(limit)
-	return ps.ji.OnMainPRepIn(sc, ps.owner)
-}
-
-func (ps *PRepStatusState) onMainPRepOut(newGrade Grade) {
-	ps.grade = newGrade
-}
-
 // OnValidatorOut is called when this PRep node address disappears from ConsensusInfo
-func (ps *PRepStatusState) OnValidatorOut(blockHeight int64) error {
+func (ps *PRepStatusState) onValidatorOut(sc icmodule.StateContext) error {
+	blockHeight := sc.BlockHeight() - 1
 	lh := ps.lastHeight
 	if blockHeight < lh {
 		return errors.Errorf("blockHeight(%d) < lastHeight(%d)", blockHeight, lh)
@@ -717,11 +718,14 @@ func (ps *PRepStatusState) OnValidatorOut(blockHeight int64) error {
 	return nil
 }
 
-func (ps *PRepStatusState) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
+func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
 	if pt.IsTypeOfValidationFailurePenalty() {
-		if err := ps.onValidationFailurePenaltyImposed(sc); err != nil {
+		blockHeight := sc.BlockHeight()
+		if err := ps.syncBlockVoteStats(blockHeight); err != nil {
 			return err
 		}
+		ps.vFailCont = 0
+		ps.vPenaltyMask |= 1
 	}
 	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
 		return err
@@ -731,31 +735,24 @@ func (ps *PRepStatusState) OnPenaltyImposed(sc icmodule.StateContext, pt icmodul
 	return nil
 }
 
-func (ps *PRepStatusState) onValidationFailurePenaltyImposed(sc icmodule.StateContext) error {
-	blockHeight := sc.BlockHeight()
-	if err := ps.syncBlockVoteStats(blockHeight); err != nil {
-		return err
-	}
-	ps.vFailCont = 0
-	ps.vPenaltyMask |= 1
-	return nil
-}
-
-func (ps *PRepStatusState) OnTermEnd(sc icmodule.StateContext, newGrade Grade, limit int) error {
+func (ps *PRepStatusState) onTermEnd(sc icmodule.StateContext, newGrade Grade, limit int) error {
 	ps.resetVFailCont()
 	if newGrade == GradeMain {
-		if err := ps.onMainPRepIn(sc, limit); err != nil {
+		if err := ps.onMainPRepIn(sc, limit, true); err != nil {
 			return err
 		}
 	} else {
-		ps.onMainPRepOut(newGrade)
+		ps.grade = newGrade
 	}
 	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) OnUnjailRequested(sc icmodule.StateContext) error {
+func (ps *PRepStatusState) onUnjailRequested(sc icmodule.StateContext) error {
 	if err := ps.ji.OnUnjailRequested(sc); err != nil {
+		return err
+	}
+	if err := sc.AddEventEnable(ps.owner, icmodule.ESUnjail); err != nil {
 		return err
 	}
 	ps.setDirty()

@@ -386,7 +386,8 @@ func (s *State) GetNodeByOwner(owner module.Address) module.Address {
 	return pb.GetNode(owner)
 }
 
-func (s *State) OnBlockVote(owner module.Address, voted bool, blockHeight int64) error {
+func (s *State) OnBlockVote(sc icmodule.StateContext, owner module.Address, voted bool) error {
+	blockHeight := sc.BlockHeight()
 	if !voted {
 		s.logger.Debugf("Nil vote: bh=%d owner=%s", blockHeight, owner)
 	}
@@ -394,8 +395,8 @@ func (s *State) OnBlockVote(owner module.Address, voted bool, blockHeight int64)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	err := ps.OnBlockVote(blockHeight, voted)
-	s.logger.Tracef("OnBlockVote() bh=%d voted=%t owner=%v %+v", blockHeight, voted, owner, ps)
+	err := ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, voted)
+	s.logger.Tracef("onBlockVote() bh=%d voted=%t owner=%v %+v", blockHeight, voted, owner, ps)
 	return err
 }
 
@@ -411,18 +412,18 @@ func (s *State) OnMainPRepReplaced(sc icmodule.StateContext, oldOwner, newOwner 
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", newOwner)
 	}
-	err := ps.OnMainPRepIn(sc, s.GetConsistentValidationPenaltyMask())
+	err := ps.NotifyEvent(sc, icmodule.PRepEventMainIn, s.GetConsistentValidationPenaltyMask())
 	s.logger.Tracef("OnMainPRepReplaced()   end: bh=%d old=%v new=%v %+v", blockHeight, oldOwner, newOwner, ps)
 	return err
 }
 
-func (s *State) OnValidatorOut(blockHeight int64, owner module.Address) error {
+func (s *State) OnValidatorOut(sc icmodule.StateContext, owner module.Address) error {
 	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	err := ps.OnValidatorOut(blockHeight)
-	s.logger.Tracef("OnValidatorOut(): bh=%d owner=%v %+v", blockHeight, owner, ps)
+	err := ps.NotifyEvent(sc, icmodule.PRepEventValidatorOut)
+	s.logger.Tracef("OnValidatorOut(): bh=%d owner=%v %+v", sc.BlockHeight(), owner, ps)
 
 	return err
 }
@@ -476,8 +477,9 @@ func (s *State) ImposePenalty(
 	// Update status of the penalized main prep
 	s.logger.Debugf("OnPenaltyImposed() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
 
+	// Update the state of PRepStatus
 	oldGrade := ps.Grade()
-	err = ps.OnPenaltyImposed(sc, pt)
+	err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, pt)
 	s.logger.Debugf("OnPenaltyImposed() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
 	if err != nil {
 		return err

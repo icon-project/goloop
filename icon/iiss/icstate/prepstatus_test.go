@@ -438,6 +438,7 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 			out := tt.out
 			bh := in.bh
 
+			sc := NewStateContext(bh, 0, 0, nil)
 			ps := &PRepStatusState{prepStatusData: prepStatusData{
 				vFail:        init.vf,
 				vTotal:       init.vt,
@@ -447,7 +448,7 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 				vPenaltyMask: init.vpm,
 			}}
 
-			err = ps.OnBlockVote(in.bh, in.voted)
+			err = ps.onBlockVote(sc, in.voted)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
@@ -610,7 +611,7 @@ func TestPRepStatus_syncBlockVoteStats(t *testing.T) {
 	}
 }
 
-func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
+func TestPRepStatus_onPenaltyImposed(t *testing.T) {
 	type attr struct {
 		lh  int64
 		ls  VoteState
@@ -671,7 +672,7 @@ func TestPRepStatus_OnPenaltyImposed(t *testing.T) {
 			}}
 
 			sc := NewStateContext(bh, revision, termRevision, nil)
-			err = ps.OnPenaltyImposed(sc, icmodule.PenaltyValidationFailure)
+			err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
@@ -722,7 +723,7 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 			e := codec.BC.NewEncoder(buf)
 			err = snapshot0.RLPEncodeFields(e)
 			assert.NoError(t, err)
-			e.Close()
+			assert.NoError(t, e.Close())
 
 			snapshot1 := &PRepStatusSnapshot{}
 			d := codec.BC.NewDecoder(bytes.NewReader(buf.Bytes()))
@@ -730,7 +731,7 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.True(t, snapshot0.Equal(snapshot1))
-			d.Close()
+			assert.NoError(t, d.Close())
 		})
 	}
 }
@@ -782,7 +783,7 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
 			pt := arg.in.pt
-			err := ps.OnPenaltyImposed(sc, pt)
+			err := ps.onPenaltyImposed(sc, pt)
 			if arg.out.success {
 				assert.NoError(t, err)
 			} else {
@@ -861,4 +862,154 @@ func TestPRepStats_ToJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPRepStatusState_DisableAs(t *testing.T) {
+	owner := newDummyAddress(1)
+
+	for _, oldGrade := range []Grade{GradeMain, GradeSub, GradeCandidate} {
+		for _, status := range []Status{Unregistered, Disqualified} {
+			ps := NewPRepStatus(owner)
+			ps.grade = oldGrade
+			assert.NoError(t, ps.Activate())
+
+			assert.True(t, ps.Owner().Equal(owner))
+			assert.Equal(t, oldGrade, ps.Grade())
+			assert.True(t, ps.IsActive())
+
+			grade, err := ps.DisableAs(status)
+			assert.NoError(t, err)
+			assert.Equal(t, oldGrade, grade)
+			assert.Equal(t, status, ps.Status())
+			assert.Equal(t, GradeNone, ps.Grade())
+			assert.False(t, ps.IsActive())
+		}
+	}
+}
+
+func TestPRepStatusState_NotifyEvent(t *testing.T) {
+	var err error
+	limit := 30
+	owner := newDummyAddress(1)
+	sc := newDummyStateContext(int64(1000), icmodule.RevisionIISS4)
+
+	ps := NewPRepStatus(owner)
+	assert.NoError(t, ps.Activate())
+	assert.Equal(t, GradeCandidate, ps.Grade())
+	assert.Equal(t, None, ps.LastState())
+	assert.True(t, ps.IsActive())
+
+	err = ps.NotifyEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
+	assert.NoError(t, err)
+	assert.Equal(t, GradeMain, ps.Grade())
+	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
+
+	// 3 consecutive false blockVotes (3 blocks)
+	for j := 0; j < 3; j++ {
+		oTotal := ps.GetVTotal(sc.BlockHeight())
+		oFail := ps.GetVFail(sc.BlockHeight())
+		oFailCont := ps.GetVFailCont(sc.BlockHeight())
+
+		sc.IncreaseBlockHeightBy(1)
+		err = ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, false)
+		assert.NoError(t, err)
+		assert.Equal(t, Failure, ps.LastState())
+
+		assert.Equal(t, oTotal+1, ps.GetVTotal(sc.BlockHeight()))
+		assert.Equal(t, oFail+1, ps.GetVFail(sc.BlockHeight()))
+		assert.Equal(t, oFailCont+1, ps.GetVFailCont(sc.BlockHeight()))
+	}
+
+	// Impose penalty
+	err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+	assert.NoError(t, err)
+	assert.Equal(t, GradeCandidate, ps.Grade())
+	assert.True(t, ps.IsAlreadyPenalized())
+	assert.True(t, ps.IsActive())
+	assert.Equal(t, 1, ps.GetVPenaltyCount())
+	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
+	assert.True(t, ps.IsInJail())
+	assert.True(t, ps.IsUnjailable())
+	assert.False(t, ps.IsJailInfoElectable())
+	assert.Zero(t, ps.UnjailRequestHeight())
+	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Equal(t, JFlagInJail, ps.JailFlags())
+
+	// 2 more false blockVotes (2 blocks)
+	for j := 0; j < 2; j++ {
+		oTotal := ps.GetVTotal(sc.BlockHeight())
+		oFail := ps.GetVFail(sc.BlockHeight())
+		oFailCont := ps.GetVFailCont(sc.BlockHeight())
+
+		sc.IncreaseBlockHeightBy(1)
+		err = ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, false)
+		assert.NoError(t, err)
+
+		assert.Equal(t, oTotal+1, ps.GetVTotal(sc.BlockHeight()))
+		assert.Equal(t, oFail+1, ps.GetVFail(sc.BlockHeight()))
+		assert.Equal(t, oFailCont+1, ps.GetVFailCont(sc.BlockHeight()))
+	}
+
+	// ValidatorOutEvent (1 block)
+	oTotal := ps.GetVTotal(sc.BlockHeight())
+	oFail := ps.GetVFail(sc.BlockHeight())
+	oFailCont := ps.GetVFailCont(sc.BlockHeight())
+
+	sc.IncreaseBlockHeightBy(1)
+	err = ps.NotifyEvent(sc, icmodule.PRepEventValidatorOut)
+	assert.NoError(t, err)
+	assert.Equal(t, None, ps.LastState())
+	assert.Equal(t, GradeCandidate, ps.Grade())
+	assert.True(t, ps.IsAlreadyPenalized())
+	assert.True(t, ps.IsActive())
+	assert.Equal(t, 1, ps.GetVPenaltyCount())
+	assert.True(t, ps.IsInJail())
+	assert.True(t, ps.IsUnjailable())
+	assert.False(t, ps.IsJailInfoElectable())
+	assert.Zero(t, ps.UnjailRequestHeight())
+	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Equal(t, JFlagInJail, ps.JailFlags())
+	assert.Equal(t, oTotal, ps.GetVTotal(sc.BlockHeight()))
+	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
+	assert.Equal(t, oFailCont, ps.GetVFailCont(sc.BlockHeight()))
+
+	// Request Unjail after 1 block
+	sc.IncreaseBlockHeightBy(1)
+	err = ps.NotifyEvent(sc, icmodule.PRepEventRequestUnjail)
+	assert.NoError(t, err)
+	assert.Equal(t, None, ps.LastState())
+	assert.Equal(t, GradeCandidate, ps.Grade())
+	assert.True(t, ps.IsAlreadyPenalized())
+	assert.True(t, ps.IsActive())
+	assert.Equal(t, 1, ps.GetVPenaltyCount())
+	assert.True(t, ps.IsInJail())
+	assert.False(t, ps.IsUnjailable())
+	assert.True(t, ps.IsJailInfoElectable())
+	assert.Equal(t, sc.BlockHeight(), ps.UnjailRequestHeight())
+	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Equal(t, oTotal, ps.GetVTotal(sc.BlockHeight()))
+	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
+	assert.Equal(t, oFailCont, ps.GetVFailCont(sc.BlockHeight()))
+
+	// TermEnd after 10 blocks
+	sc.IncreaseBlockHeightBy(10)
+	assert.Equal(t, oTotal, ps.GetVTotal(sc.BlockHeight()))
+	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
+	assert.Equal(t, oFailCont, ps.GetVFailCont(sc.BlockHeight()))
+
+	err = ps.NotifyEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
+	assert.NoError(t, err)
+	assert.Equal(t, GradeMain, ps.Grade())
+	assert.Equal(t, None, ps.LastState())
+	assert.False(t, ps.IsAlreadyPenalized())
+	assert.True(t, ps.IsActive())
+	assert.Equal(t, 1, ps.GetVPenaltyCount())
+	assert.False(t, ps.IsInJail())
+	assert.False(t, ps.IsUnjailable())
+	assert.True(t, ps.IsJailInfoElectable())
+	assert.Zero(t, ps.UnjailRequestHeight())
+	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Equal(t, oTotal, ps.GetVTotal(sc.BlockHeight()))
+	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
+	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
 }

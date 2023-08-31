@@ -1945,13 +1945,6 @@ func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 	if !ps.IsActive() {
 		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
 	}
-	if ps.IsUnjailable() {
-		if err := ps.OnUnjailRequested(es.newStateContext(cc)); err != nil {
-			return err
-		}
-		if err := es.AddEventEnable(cc.BlockHeight(), owner, icmodule.ESUnjail); err != nil {
-			return err
-		}
-	}
-	return nil
+
+	return ps.NotifyEvent(es.newStateContext(cc), icmodule.PRepEventRequestUnjail)
 }
