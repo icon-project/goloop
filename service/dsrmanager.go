@@ -302,7 +302,5 @@ func newDSRManager(logger log.Logger) *dsrManager {
 		reports:     make(map[string]*list.Element),
 		firstHeight: InvalidFirstHeight,
 	}
-	s.todo.Init()
-	s.done.Init()
 	return s
 }
