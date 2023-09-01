@@ -45,6 +45,10 @@ func (v *dsVote) Signer() []byte {
 	return v.msg.address().ID()
 }
 
+func (v *dsVote) ValidateNetwork(nid int) bool {
+	return true
+}
+
 func (v *dsVote) IsConflictWith(other module.DoubleSignData) bool {
 	v2, ok := other.(*dsVote)
 	if !ok {
@@ -87,6 +91,10 @@ func (d *dsProposal) Height() int64 {
 
 func (d *dsProposal) Signer() []byte {
 	return d.msg.address().ID()
+}
+
+func (v *dsProposal) ValidateNetwork(nid int) bool {
+	return true
 }
 
 func (d *dsProposal) Bytes() []byte {

@@ -27,6 +27,7 @@ type DoubleSignData interface {
 	Height() int64
 	Signer() []byte
 	Bytes() []byte
+	ValidateNetwork(nid int) bool
 	IsConflictWith(other DoubleSignData) bool
 }
 

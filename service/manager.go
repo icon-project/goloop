@@ -153,7 +153,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	if err != nil {
 		return nil, err
 	}
-	dsrTxs, err := m.dsm.Candidate(pt.dsrTracker, wc)
+	dsrTxs, err := m.dsm.Candidate(pt.dsrTracker, wc, m.chain.NID())
 	if err != nil {
 		return nil, err
 	}

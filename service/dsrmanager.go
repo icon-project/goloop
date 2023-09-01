@@ -179,9 +179,9 @@ func (m *dsrManager) Add(data []module.DoubleSignData, ctx module.DoubleSignCont
 	return nil
 }
 
-func (m *dsrManager) Candidate(tracker DSRTracker, wc state.WorldContext) ([]module.Transaction, error) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+func (m *dsrManager) Candidate(tracker DSRTracker, wc state.WorldContext, nid int) ([]module.Transaction, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 
 	as := wc.GetAccountState(state.SystemID)
 	ch, err := contract.NewDSContextHistoryDB(as)
@@ -203,7 +203,7 @@ func (m *dsrManager) Candidate(tracker DSRTracker, wc state.WorldContext) ([]mod
 		if tracker.Has(r.Height, r.Signer) {
 			continue
 		}
-		tx := transaction.NewDoubleSignReportTx(r.Data, r.Context, wc.BlockTimeStamp())
+		tx := transaction.NewDoubleSignReportTx(r.Data, r.Context, nid, wc.BlockTimeStamp())
 		txs = append(txs, tx)
 	}
 	return txs, nil
