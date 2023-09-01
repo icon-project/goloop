@@ -35,17 +35,28 @@ func TestNewDoubleSignContext_Basic(t *testing.T) {
 	assert.NoError(t, err)
 	ws := NewWorldState(dbase, nil, vss0, nil, nil)
 
-	root, err := getDoubleSignContextRootOf(ws, module.AllRevision)
+	root, err := getDoubleSignContextRootOf(ws, 0)
 	assert.NoError(t, err)
+	assert.Nil(t, err)
+
+	root, err = getDoubleSignContextRootOf(ws, module.AllRevision)
+	assert.NoError(t, err)
+
 
 	dsc1, err := root.ContextOf(module.DSTProposal)
 	assert.NoError(t, err)
-	bs := dsc1.Bytes()
 
+	_, err = root.ContextOf(module.DSTProposal+".INVALID")
+	assert.Error(t, err)
+
+	assert.EqualValues(t, root.Hash(), dsc1.Hash())
+
+	bs := dsc1.Bytes()
 	dsc2, err := decodeDoubleSignContext(module.DSTProposal, bs)
 	assert.NoError(t, err)
 
-	assert.EqualValues(t, dsc1, dsc2)
+	assert.EqualValues(t, dsc1.Hash(), dsc2.Hash())
+	assert.EqualValues(t, dsc1.Bytes(), dsc2.Bytes())
 
 	signer0 := vs0[0].Address()
 	signer1 := dsc2.AddressOf(signer0.ID())
