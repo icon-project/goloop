@@ -141,15 +141,14 @@ func (m *dsrManager) Add(data []module.DoubleSignData, ctx module.DoubleSignCont
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	if len(data)!=2 {
+	if len(data)!=2 || ctx == nil {
 		return errors.IllegalArgumentError.Errorf("InvalidDataLength(len=%d)", len(data))
 	}
 
 	height := data[0].Height()
 	if m.firstHeight == InvalidFirstHeight || height < m.firstHeight {
-		m.log.Infof("DROP DSR: feature is not enabled or out of history first=%d, height=%d",
+		return errors.InvalidStateError.Errorf("InvalidState(first=%d,height=%d)",
 			m.firstHeight, height)
-		return nil
 	}
 
 	if !data[0].IsConflictWith(data[1]) {
