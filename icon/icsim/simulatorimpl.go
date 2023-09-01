@@ -559,6 +559,15 @@ func (sim *simulatorImpl) ValidatorList() []module.Validator {
 	return vl
 }
 
+func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
+	return icstate.NewStateContext(
+		sim.BlockHeight(),
+		sim.Revision().Value(),
+		sim.Revision().Value(),
+		nil,
+	)
+}
+
 func NewSimulator(
 	revision module.Revision, initValidators []module.Validator, initBalances map[string]*big.Int, config *config,
 ) Simulator {

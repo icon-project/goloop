@@ -20,6 +20,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 )
@@ -75,6 +76,7 @@ type Simulator interface {
 	TotalStake() *big.Int
 	TotalSupply() *big.Int
 	ValidatorList() []module.Validator
+	GetStateContext() icmodule.StateContext
 
 	GetPRepTerm() map[string]interface{}
 	GetMainPReps() map[string]interface{}

@@ -111,7 +111,6 @@ func assertPower(t *testing.T, p map[string]interface{}) bool {
 	return true
 }
 
-/*
 func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	const (
 		termPeriod                           = 100
@@ -209,6 +208,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+/*
 func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	const (
 		termPeriod                           = 100
@@ -423,6 +423,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	prep = sim.GetPRep(env.preps[0])
 	assert.Zero(t, prep.GetVPenaltyCount())
 }
+ */
 
 func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	const (
@@ -707,8 +708,9 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	address := env.preps[0]
 
 	// Check getPRep
+	sc := sim.GetStateContext()
 	prep = sim.GetPRep(address)
-	jso = prep.ToJSON(sim.BlockHeight(), br, 0)
+	jso = prep.ToJSON(sc, br, 0)
 	assertPower(t, jso)
 
 	// Check getPReps
@@ -752,4 +754,3 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	_, ok = jso["totalPower"].(*big.Int)
 	assert.True(t, ok)
 }
- */
