@@ -39,6 +39,13 @@ type DSRHandler struct {
 // Its signature looks like "handleDoubleSignReport(type:str,height:int,signer:Address)".
 const HandleDoubleSignReport = "handleDoubleSignReport"
 
+func (h *DSRHandler) Prepare(ctx Context) (state.WorldContext, error) {
+	lq := []state.LockRequest{
+		{ state.WorldIDStr, state.AccountWriteLock },
+	}
+	return ctx.GetFuture(lq), nil
+}
+
 func (h *DSRHandler) ExecuteSync(cc CallContext) (err error, ro *codec.TypedObj, _ module.Address) {
 	h.Log.TSystemf("DSR start from=%s", h.From)
 	defer h.Log.TSystemf("DSR done status=%v", err)
@@ -59,6 +66,10 @@ func (h *DSRHandler) verifyHashOfHeight(cc CallContext, height int64, hash []byt
 }
 
 func (h *DSRHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
+	if h.From != nil {
+		return scoreresult.AccessDeniedError.Errorf(
+			"AccessDeniedToReportDSR(from=%s)", h.From.String()), nil, nil
+	}
 	dsds, dsc, err := h.dsr.Decode(cc, true)
 	if err != nil {
 		return scoreresult.InvalidParameterError.Wrap(err, "InvalidFormat"), nil, nil
@@ -85,7 +96,7 @@ func (h *DSRHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, modu
 	ch := NewCommonHandler(state.SystemAddress, state.SystemAddress, nil, true, h.Log)
 	ah := newCallHandlerWithParams(ch, HandleDoubleSignReport, params, false)
 
-	err, _, _, _ = cc.Call(ah, cc.GetStepLimit(state.StepLimitTypeInvoke))
+	err, _, _, _ = cc.Call(ah, cc.StepAvailable())
 	return err, nil, nil
 }
 

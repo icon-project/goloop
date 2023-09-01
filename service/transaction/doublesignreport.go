@@ -220,10 +220,7 @@ type dsrTxHandler struct {
 }
 
 func (th *dsrTxHandler) Prepare(ctx contract.Context) (state.WorldContext, error) {
-	lq := []state.LockRequest{
-		{ state.WorldIDStr, state.AccountWriteLock },
-	}
-	return ctx.GetFuture(lq), nil
+	return th.handler.Prepare(ctx)
 }
 
 func (th *dsrTxHandler) Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error) {
