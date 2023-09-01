@@ -119,7 +119,7 @@ type doubleSignReport struct {
 
 const InvalidFirstHeight = -1
 type dsrManager struct {
-	lock        sync.Mutex
+	lock        sync.RWMutex
 	log         log.Logger
 	todo        list.List
 	done        list.List
@@ -264,8 +264,8 @@ func (m *dsrManager) Commit(rs []DSRLocator) {
 }
 
 func (m *dsrManager) Has(height int64, signer module.Address) bool {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 
 	key := keyForDSR(height, signer)
 	if e, ok := m.reports[key]; ok {
