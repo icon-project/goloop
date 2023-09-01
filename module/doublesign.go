@@ -36,4 +36,9 @@ type DoubleSignContext interface {
 	Bytes() []byte
 }
 
+type DoubleSignContextRoot interface {
+	Hash() []byte
+	ContextOf(tn string) (DoubleSignContext, error)
+}
+
 type DoubleSignDataDecoder func (t string, d []byte) (DoubleSignData, error)

@@ -912,14 +912,21 @@ func (m *manager) GetStepPrice(result []byte) (*big.Int, error) {
 }
 
 func (m *manager) SendDoubleSignReport(result []byte, vh []byte, data []module.DoubleSignData)  error {
-	wss, err := m.trc.GetWorldSnapshot(result, vh)
+	wc, err := m.trc.GetWorldContext(result, vh)
 	if err != nil {
 		return err
 	}
 	if len(data) < 1 || data[0] == nil {
 		return errors.IllegalArgumentError.New("InvalidDSData")
 	}
-	ctx, err := state.NewDoubleSignContext(wss, data[0].Type())
+	root, err := wc.GetDoubleSignContextRoot()
+	if err != nil {
+		return err
+	}
+	if root == nil {
+		return errors.IllegalArgumentError.New("DoubleSignReportIsNotEnabled")
+	}
+	ctx, err := root.ContextOf(data[0].Type())
 	if err != nil {
 		return err
 	}

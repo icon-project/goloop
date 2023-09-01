@@ -49,20 +49,7 @@ func (c *dsValidators) Hash() []byte {
 	return c.vl.Hash()
 }
 
-func NewDoubleSignContext(wss WorldSnapshot, t string) (module.DoubleSignContext, error) {
-	switch t {
-	case module.DSTProposal, module.DSTVote:
-		vl, err := ToValidatorList(wss.GetValidatorSnapshot())
-		if err != nil {
-			return nil, err
-		}
-		return &dsValidators{vl, nil }, nil
-	default:
-		return nil, errors.IllegalArgumentError.Errorf("UnknownContextType(type=%s)", t)
-	}
-}
-
-func DecodeDoubleSignContext(t string, d []byte) (module.DoubleSignContext, error) {
+func decodeDoubleSignContext(t string, d []byte) (module.DoubleSignContext, error) {
 	switch t {
 	case module.DSTProposal, module.DSTVote:
 		var proof [][]byte
@@ -83,4 +70,36 @@ func DecodeDoubleSignContext(t string, d []byte) (module.DoubleSignContext, erro
 	default:
 		return nil, errors.IllegalArgumentError.Errorf("InvalidType(type=%s)", t)
 	}
+}
+
+type dsContextRoot struct {
+	vl module.ValidatorList
+}
+
+func (d *dsContextRoot) Hash() []byte {
+	return d.vl.Hash()
+}
+
+func (d *dsContextRoot) ContextOf(tn string) (module.DoubleSignContext, error) {
+	switch tn {
+	case module.DSTProposal, module.DSTVote:
+		return &dsValidators {
+			vl: d.vl,
+		}, nil
+	default:
+		return nil, errors.IllegalArgumentError.Errorf("UnknownType(tn=%s)", tn)
+	}
+}
+
+func getDoubleSignContextRootOf(ws WorldState, revision module.Revision) (module.DoubleSignContextRoot, error) {
+	if revision.Has(module.ReportDoubleSign) {
+		vl, err := ToValidatorList(ws.GetValidatorState().GetSnapshot())
+		if err != nil {
+			return nil, err
+		}
+		return &dsContextRoot{
+			vl: vl,
+		}, nil
+	}
+	return nil, nil
 }

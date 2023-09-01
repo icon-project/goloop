@@ -34,13 +34,15 @@ func TestNewDoubleSignContext_Basic(t *testing.T) {
 	vss0, err := ValidatorSnapshotFromSlice(dbase, vs0)
 	assert.NoError(t, err)
 	ws := NewWorldState(dbase, nil, vss0, nil, nil)
-	wss := ws.GetSnapshot()
 
-	dsc1, err := NewDoubleSignContext(wss, module.DSTProposal)
+	root, err := getDoubleSignContextRootOf(ws, module.AllRevision)
+	assert.NoError(t, err)
+
+	dsc1, err := root.ContextOf(module.DSTProposal)
 	assert.NoError(t, err)
 	bs := dsc1.Bytes()
 
-	dsc2, err := DecodeDoubleSignContext(module.DSTProposal, bs)
+	dsc2, err := decodeDoubleSignContext(module.DSTProposal, bs)
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, dsc1, dsc2)
@@ -79,7 +81,7 @@ func TestDecodeDoubleSignContext(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(fmt.Sprint(c.name), func(t *testing.T) {
-			_, err := DecodeDoubleSignContext(c.dst, c.data)
+			_, err := decodeDoubleSignContext(c.dst, c.data)
 			if c.valid {
 				assert.NoError(t, err)
 			} else {

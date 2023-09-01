@@ -122,7 +122,9 @@ type WorldContext interface {
 	EnableSkipTransaction()
 	SkipTransactionEnabled() bool
 
+	DecodeDoubleSignContext(t string, d[]byte) (module.DoubleSignContext, error)
 	DecodeDoubleSignData(t string, d[]byte) (module.DoubleSignData, error)
+	GetDoubleSignContextRoot() (module.DoubleSignContextRoot, error)
 }
 
 type TransactionInfo struct {
@@ -487,6 +489,14 @@ func getDoubleSignDataDecoder(plt Platform) module.DoubleSignDataDecoder {
 	} else {
 		return nil
 	}
+}
+
+func (c *worldContext) DecodeDoubleSignContext(t string, d []byte) (module.DoubleSignContext, error) {
+	return decodeDoubleSignContext(t, d)
+}
+
+func (c *worldContext) GetDoubleSignContextRoot() (module.DoubleSignContextRoot, error) {
+	return getDoubleSignContextRootOf(c, c.Revision())
 }
 
 

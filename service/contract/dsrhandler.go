@@ -132,7 +132,7 @@ func (dsr *DoubleSignReport) Decode(wc state.WorldContext, force bool) ([]module
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "InvalidData2")
 		}
-		dsc, err := state.DecodeDoubleSignContext(dsr.Type, dsr.Context.Bytes())
+		dsc, err := wc.DecodeDoubleSignContext(dsr.Type, dsr.Context.Bytes())
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "InvalidContext")
 		}
