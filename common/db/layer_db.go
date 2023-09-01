@@ -210,7 +210,6 @@ func NewLayerDB(database Database) LayerDB {
 		real:    database,
 		buckets: make(map[string]*layerBucket),
 	}
-	ldb.list.List.Init()
 
 	if ctx, ok := database.(Context); ok {
 		return &layerDBContext{ldb, ctx.Flags()}

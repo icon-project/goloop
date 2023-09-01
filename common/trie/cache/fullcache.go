@@ -135,7 +135,6 @@ func NewFullCache() *FullCache {
 		nodes:  make([][2][]byte, fullCacheBranchSize),
 		hash2e: make(map[string]*list.Element),
 	}
-	fc.lru.Init()
 	return fc
 }
 
@@ -154,6 +153,5 @@ func NewFullCacheFromBranch(bc *BranchCache) *FullCache {
 		nodes:  nodes,
 		hash2e: make(map[string]*list.Element),
 	}
-	fc.lru.Init()
 	return fc
 }
