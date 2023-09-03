@@ -719,7 +719,7 @@ func (ps *PRepStatusState) onValidatorOut(sc icmodule.StateContext) error {
 }
 
 func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
-	if pt.IsTypeOfValidationFailurePenalty() {
+	if pt == icmodule.PenaltyValidationFailure {
 		blockHeight := sc.BlockHeight()
 		if err := ps.syncBlockVoteStats(blockHeight); err != nil {
 			return err

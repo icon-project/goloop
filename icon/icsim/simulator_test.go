@@ -26,6 +26,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -208,7 +209,6 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-/*
 func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	const (
 		termPeriod                           = 100
@@ -281,6 +281,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Zero(t, prep.GetVPenaltyCount())
 
+		// 1st validator does not vote for 5 consecutive blocks
 		vl = sim.ValidatorList()
 		voted[0] = false
 		csi = newConsensusInfo(sim.Database(), vl, voted)
@@ -323,7 +324,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Equal(t, i, prep.GetVPenaltyCount())
 
-		// Create a scenario when prep0 fails to vote for blocks to validate
+		// Create a scenario when prep0 fails to vote for 5 blocks to validate
 		vl = sim.ValidatorList()
 		voted[0] = false
 		csi = newConsensusInfo(sim.Database(), vl, voted)
@@ -332,6 +333,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 		// Check if prep0 got penalized after 5 blocks
 		prep = sim.GetPRep(vl[0].Address())
+		assert.True(t, prep.Owner().Equal(vl[0].Address()))
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, i+1, prep.GetVPenaltyCount())
 
@@ -423,7 +425,6 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	prep = sim.GetPRep(env.preps[0])
 	assert.Zero(t, prep.GetVPenaltyCount())
 }
- */
 
 func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	const (

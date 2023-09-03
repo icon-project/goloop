@@ -640,7 +640,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			state.ClearCache()
 
 			ps = state.GetPRepStatusByOwner(owner, false)
-			if pt.IsTypeOfValidationFailurePenalty() {
+			if pt == icmodule.PenaltyValidationFailure {
 				assert.Equal(t, 1, ps.GetVPenaltyCount())
 				assert.True(t, ps.IsAlreadyPenalized())
 			}

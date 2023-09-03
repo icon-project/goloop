@@ -88,16 +88,21 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	}
 	penaltyTypes = append(penaltyTypes, icmodule.PenaltyValidationFailure)
 
+	// Impose ValidationFailurePenalty
+	sc := es.newStateContext(cc)
+	if err = es.State.ImposePenalty(sc, penaltyTypes[0], owner, ps); err != nil {
+		return err
+	}
+
 	// AccumulatedValidationFailurePenalty check
 	revision := cc.Revision().Value()
 	if es.State.CheckConsistentValidationPenalty(revision, ps) {
 		penaltyTypes = append(penaltyTypes, icmodule.PenaltyAccumulatedValidationFailure)
-	}
 
-	// Impose penalty
-	sc := es.newStateContext(cc)
-	if err = es.State.ImposePenalty(sc, penaltyTypes[len(penaltyTypes)-1], owner, ps); err != nil {
-		return err
+		// Impose AccumulatedValidationFailurePenalty
+		if err = es.State.ImposePenalty(sc, penaltyTypes[1], owner, ps); err != nil {
+			return err
+		}
 	}
 
 	term := es.State.GetTermSnapshot()
