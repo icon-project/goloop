@@ -57,6 +57,13 @@ const (
 	configCommitWALDataSize           = 1024 * 500
 	configRoundTimeoutThresholdFactor = 2
 	configBPMCacheSize                = 1 << 20 // 1MB
+	configBPMCacheLimit               = 3
+	configDSMLogSize                  = 1 << 20 // 1MB
+
+	// DSM is cached for the open range
+	// [cur+configDSMLogBegin, cur+configDSMLogEnd).
+	configDSMLogBegin = -9
+	configDSMLogEnd   = 10
 )
 
 type hrs struct {
@@ -87,6 +94,7 @@ type consensus struct {
 	bpp         fastsync.BlockProofProvider
 	srcUID      []byte
 	bpmCache    bpmCache
+	dsmLog      dsmLog
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -157,6 +165,7 @@ func New(
 		bpp:          bpp,
 		srcUID:       module.GetSourceNetworkUID(c),
 		bpmCache:     makeBPMCache(configBPMCacheSize),
+		dsmLog:       makeDSMLog(configDSMLogSize),
 		lastVoteData: lastVoteData,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
@@ -327,7 +336,41 @@ func (cs *consensus) OnLeave(id module.PeerID) {
 	cs.log.Debugf("OnLeave(peer:%v)\n", common.HexPre(id.Bytes()))
 }
 
+func (cs *consensus) logAndCheckProposalMessage(msg *ProposalMessage) error {
+	var blk module.Block
+	var vl module.ValidatorList
+
+	if cs.height+configDSMLogBegin <= msg.Height {
+		var err error
+		blk, err = cs.c.BlockManager().GetBlockByHeight(msg.Height - 1)
+		if err != nil {
+			return err
+		}
+		vl = blk.NextValidators()
+	} else if msg.Height < cs.height+configDSMLogEnd {
+		blk = cs.lastBlock
+		vl = cs.validators
+	} else {
+		return nil
+	}
+
+	idx := vl.IndexOf(msg.address())
+	if idx < 0 {
+		return errors.Errorf("not a validator addr=%s height=%d", msg.address(), msg.Height)
+	}
+	dsd := cs.dsmLog.LogAndCheckProposalMessage(msg)
+	if dsd != nil {
+		err := cs.c.ServiceManager().SendDoubleSignReport(blk.Result(), blk.NextValidatorsHash(), dsd)
+		return err
+	}
+	return nil
+}
+
 func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) error {
+	err := cs.logAndCheckProposalMessage(msg)
+	if err != nil {
+		cs.log.Debugf("log or report failed: %+v", err)
+	}
 	if msg.Height != cs.height || msg.Round != cs.round || cs.step >= stepCommit {
 		return nil
 	}
@@ -362,9 +405,38 @@ func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) 
 	return nil
 }
 
+func (cs *consensus) logAndCheckVoteMessage(msg *VoteMessage) error {
+	var blk module.Block
+	var vl module.ValidatorList
+
+	if cs.height+configDSMLogBegin <= msg.Height {
+		var err error
+		blk, err = cs.c.BlockManager().GetBlockByHeight(msg.Height - 1)
+		if err != nil {
+			return err
+		}
+		vl = blk.NextValidators()
+	} else if msg.Height < cs.height+configDSMLogEnd {
+		blk = cs.lastBlock
+		vl = cs.validators
+	} else {
+		return nil
+	}
+
+	idx := vl.IndexOf(msg.address())
+	if idx < 0 {
+		return errors.Errorf("not a validator addr=%s height=%d", msg.address(), msg.Height)
+	}
+	dsd := cs.dsmLog.LogAndCheckVoteMessage(msg)
+	if dsd != nil {
+		err := cs.c.ServiceManager().SendDoubleSignReport(blk.Result(), blk.NextValidatorsHash(), dsd)
+		return err
+	}
+	return nil
+}
+
 func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool) (int, error) {
-	const cacheLimit = 3
-	if cs.height <= msg.Height && msg.Height < cs.height+cacheLimit {
+	if cs.height <= msg.Height && msg.Height < cs.height+configBPMCacheLimit {
 		_ = cs.bpmCache.Put(msg)
 	}
 	if msg.Height != cs.height {
@@ -407,6 +479,11 @@ func (cs *consensus) ReceiveVoteMessage(msg *VoteMessage, unicast bool) (int, er
 		}
 	}
 
+	err := cs.logAndCheckVoteMessage(msg)
+	if err != nil {
+		cs.log.Debugf("log or report failed: %+v", err)
+	}
+
 	if msg.Height != cs.height {
 		return -1, nil
 	}
@@ -414,7 +491,7 @@ func (cs *consensus) ReceiveVoteMessage(msg *VoteMessage, unicast bool) (int, er
 	if index < 0 {
 		return -1, errors.Errorf("bad voter %v", msg.address())
 	}
-	err := msg.VerifyNTSDProofParts(cs.nextPCM, cs.srcUID, index)
+	err = msg.VerifyNTSDProofParts(cs.nextPCM, cs.srcUID, index)
 	if err != nil {
 		return -1, err
 	}

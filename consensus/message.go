@@ -101,6 +101,10 @@ func NewProposalMessage() *ProposalMessage {
 	return msg
 }
 
+func (msg *ProposalMessage) Cost() int {
+	return int(unsafe.Sizeof(ProposalMessage{})) + 256 + 40
+}
+
 func (msg *ProposalMessage) Verify() error {
 	if err := msg._HR.verify(); err != nil {
 		return err
@@ -180,6 +184,15 @@ type VoteMessage struct {
 	voteBase
 	Timestamp      int64
 	NTSDProofParts [][]byte
+}
+
+func (msg *VoteMessage) Cost() int {
+	l := int(unsafe.Sizeof(VoteMessage{})) + 256 +
+		len(msg.voteBase.NTSVoteBases)*40
+	for i := range msg.NTSDProofParts {
+		l += len(msg.NTSDProofParts[i])
+	}
+	return l
 }
 
 func newVoteMessage() *VoteMessage {
