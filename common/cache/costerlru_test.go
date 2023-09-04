@@ -32,10 +32,14 @@ type getter[K comparable, V Coster] interface {
 	Get(K) (val V, ok bool)
 }
 
-func assertGetEqual[K comparable, V Coster](t assert.TestingT, exp1 V, exp2 bool, sc getter[K, V], key K) {
+func assertGetEqualGeneric[K comparable, V Coster](t assert.TestingT, exp1 V, exp2 bool, sc getter[K, V], key K) {
 	val, ok := sc.Get(key)
 	assert.Equal(t, exp1, val)
 	assert.Equal(t, exp2, ok)
+}
+
+func assertGetEqual(t assert.TestingT, exp1 value, exp2 bool, sc getter[string, value], key string) {
+	assertGetEqualGeneric[string, value](t, exp1, exp2, sc, key)
 }
 
 func TestCosterLRU_Basics(t *testing.T) {

@@ -17,14 +17,19 @@
 package cache
 
 import (
-	"slices"
 	"testing"
 )
 
 type stackRandSource []uint64
 
+func Reverse[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
 func sourceOf(nextRands ...uint64) *stackRandSource {
-	slices.Reverse(nextRands)
+	Reverse(nextRands)
 	ret := new(stackRandSource)
 	*ret = nextRands
 	return ret
