@@ -222,19 +222,19 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 	}
 
 	lastVoters := es.State.GetLastBlockVotersSnapshot()
-	if lastVoters != nil {
-		size = lastVoters.Len()
-		for i := 0; i < size; i++ {
-			voter := lastVoters.Get(i)
-			if voters.IndexOf(voter) < 0 {
-				if err = es.State.OnValidatorOut(sc, voter); err != nil {
-					return err
+	if !voters.Equal(lastVoters) {
+		if lastVoters != nil {
+			size = lastVoters.Len()
+			for i := 0; i < size; i++ {
+				voter := lastVoters.Get(i)
+				if voters.IndexOf(voter) < 0 {
+					if err = es.State.OnValidatorOut(sc, voter); err != nil {
+						return err
+					}
 				}
 			}
 		}
-	}
 
-	if lastVoters == nil || !voters.Equal(lastVoters) {
 		return es.State.SetLastBlockVotersSnapshot(voters)
 	}
 	return nil

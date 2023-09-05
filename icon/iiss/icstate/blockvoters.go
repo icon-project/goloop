@@ -134,6 +134,9 @@ func (bvs *BlockVotersSnapshot) Equal(object icobject.Impl) bool {
 	if bvs == other {
 		return true
 	}
+	if bvs == nil || other == nil {
+		return false
+	}
 	return bvs.equal(other.blockVotersData)
 }
 
