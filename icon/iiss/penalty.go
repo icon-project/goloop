@@ -27,50 +27,6 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-/*
-func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
-	var err error
-
-	ps := es.State.GetPRepStatusByOwner(owner, false)
-	if ps == nil {
-		return nil
-	}
-
-	blockHeight := cc.BlockHeight()
-
-	// Penalty check
-	if !es.State.CheckValidationPenalty(ps, blockHeight) {
-		return nil
-	}
-
-	// Impose penalty
-	sc := es.newStateContext(cc)
-	if err = es.State.ImposePenalty(sc, icmodule.PenaltyValidationFailure, owner, ps); err != nil {
-		return err
-	}
-
-	// Record PenaltyImposed eventlog
-	recordPenaltyImposedEvent(cc, ps, icmodule.PenaltyValidationFailure)
-
-	// Slashing
-	revision := cc.Revision().Value()
-	if es.State.CheckConsistentValidationPenalty(revision, ps) {
-		slashRate, _ := es.State.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
-		if err = es.slash(cc, owner, slashRate); err != nil {
-			return err
-		}
-	}
-
-	// Record event for reward calculation
-	term := es.State.GetTermSnapshot()
-	if term.GetIISSVersion() < icstate.IISSVersion4 {
-		return es.AddEventEnable(blockHeight, owner, icmodule.ESDisableTemp)
-	} else {
-		return es.AddEventEnable(blockHeight, owner, icmodule.ESJail)
-	}
-}
- */
-
 func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
 	var err error
 
