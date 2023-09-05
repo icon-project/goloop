@@ -23,7 +23,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -349,10 +348,7 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
 		return err
 	}
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), s.from.Bytes()},
-		[][]byte{intconv.BigIntToBytes(irep.Value())},
-	)
+	iiss.RecordGovernanceVariablesSetEvent(s.newCallContext(s.cc), s.from, irep.Value())
 	return nil
 }
 
@@ -827,29 +823,14 @@ func (s *chainScore) Ex_penalizeNonvoters(params []interface{}) error {
 }
 
 func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	if !slashingRate.IsInt64() {
-		return icmodule.IllegalArgumentError.Errorf("Invalid range")
-	}
-	es, err := s.getExtensionState()
-	if err != nil {
-		return err
-	}
-	rate := icmodule.ToRate(slashingRate.Int64())
-	if err = es.State.SetSlashingRate(
-		s.cc.Revision().Value(), icmodule.PenaltyAccumulatedValidationFailure, rate); err != nil {
-		if errors.IllegalArgumentError.Equals(err) {
-			return icmodule.IllegalArgumentError.Errorf("Invalid range")
-		}
-		return err
-	}
-	s.onSlashingRateChangedEvent("ConsistentValidationPenalty", rate)
-	return nil
+	return s.setLegacySlashingRate(icmodule.PenaltyAccumulatedValidationFailure, slashingRate)
 }
 
 func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) error {
+	return s.setLegacySlashingRate(icmodule.PenaltyMissedNetworkProposalVote, slashingRate)
+}
+
+func (s *chainScore) setLegacySlashingRate(penaltyType icmodule.PenaltyType, slashingRate *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -860,15 +841,16 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	if err != nil {
 		return err
 	}
+	cc := s.newCallContext(s.cc)
 	rate := icmodule.ToRate(slashingRate.Int64())
 	if err = es.State.SetSlashingRate(
-		s.cc.Revision().Value(), icmodule.PenaltyMissedNetworkProposalVote, rate); err != nil {
+		cc.Revision().Value(), penaltyType, rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
 		return err
 	}
-	s.onSlashingRateChangedEvent("NonVotePenalty", rate)
+	iiss.RecordSlashingRateChangedEvent(cc, penaltyType, rate)
 	return nil
 }
 
@@ -933,13 +915,6 @@ func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]inter
 	return es.GetSlashingRates(s.newCallContext(s.cc), penaltyTypes)
 }
 
-func (s *chainScore) onSlashingRateChangedEvent(name string, rate icmodule.Rate) {
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
-		[][]byte{intconv.Int64ToBytes(rate.Percent())},
-	)
-}
-
 func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
 	if err := s.tryChargeCall(true); err != nil {
 		return icmodule.BigIntZero, err
@@ -981,10 +956,7 @@ func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
 			nBond,
 		)
 	}
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("MinimumBondChanged(int)")},
-		[][]byte{intconv.BigIntToBytes(nBond)},
-	)
+	iiss.RecordMinimumBondChangedEvent(s.newCallContext(s.cc), nBond)
 	return nil
 }
 

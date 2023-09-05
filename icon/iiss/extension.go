@@ -1809,7 +1809,7 @@ func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values m
 					return err
 				}
 				// Record slashingRateChangedV2 eventLogs in PenaltyType order
-				recordSlashingRateChangedV2Event(cc, pt, rate)
+				RecordSlashingRateChangedEvent(cc, pt, rate)
 			}
 		}
 	}

@@ -26,7 +26,24 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-func recordSlashingRateChangedV2Event(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
+func RecordSlashingRateChangedEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
+	if cc.Revision().Value() < icmodule.RevisionPreIISS4 {
+		var name string
+		switch penaltyType {
+		case icmodule.PenaltyMissedNetworkProposalVote:
+			name = "NonVotePenalty"
+		case icmodule.PenaltyAccumulatedValidationFailure:
+			name = "ConsistentValidationPenalty"
+		default:
+			return
+		}
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
+			[][]byte{intconv.Int64ToBytes(rate.Percent())},
+		)
+		return
+	}
+
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("SlashingRateChangedV2(int,int)")},
 		[][]byte{
@@ -181,4 +198,83 @@ func recordPRepUnregisteredEvent(cc icmodule.CallContext, owner module.Address) 
 		[][]byte{[]byte("PRepUnregistered(Address)")},
 		[][]byte{owner.Bytes()},
 	)
+}
+
+func RecordBTPNetworkTypeActivatedEvent(cc icmodule.CallContext, networkTypeName string, ntid int64) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{
+			[]byte("BTPNetworkTypeActivated(str,int)"),
+			[]byte(networkTypeName),
+			intconv.Int64ToBytes(ntid),
+		},
+		nil,
+	)
+}
+
+func RecordBTPNetworkOpenedEvent(cc icmodule.CallContext, ntid, nid int64) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{
+			[]byte("BTPNetworkOpened(int,int)"),
+			intconv.Int64ToBytes(ntid),
+			intconv.Int64ToBytes(nid),
+		},
+		nil,
+	)
+}
+
+func RecordBTPNetworkClosedEvent(cc icmodule.CallContext, ntid, nid int64) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{
+			[]byte("BTPNetworkClosed(int,int)"),
+			intconv.Int64ToBytes(ntid),
+			intconv.Int64ToBytes(nid),
+		},
+		nil,
+	)
+}
+
+func RecordBTPMessageEvent(cc icmodule.CallContext, nid, sn int64) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{
+			[]byte("BTPMessage(int,int)"),
+			intconv.Int64ToBytes(nid),
+			intconv.Int64ToBytes(sn),
+		},
+		nil,
+	)
+}
+
+func RecordGovernanceVariablesSetEvent(cc icmodule.CallContext, from module.Address, irep *big.Int) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), from.Bytes()},
+		[][]byte{intconv.BigIntToBytes(irep)},
+	)
+}
+
+func RecordMinimumBondChangedEvent(cc icmodule.CallContext, bond *big.Int) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("MinimumBondChanged(int)")},
+		[][]byte{intconv.BigIntToBytes(bond)},
+	)
+}
+
+func recordICXBurnedEvent(cc icmodule.CallContext, from module.Address, amount, ts *big.Int) {
+	rev := cc.Revision().Value()
+	if rev < icmodule.RevisionBurnV2 {
+		var burnSig string
+		if rev < icmodule.RevisionFixBurnEventSignature {
+			burnSig = "ICXBurned"
+		} else {
+			burnSig = "ICXBurned(int)"
+		}
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{[]byte(burnSig)},
+			[][]byte{intconv.BigIntToBytes(amount)},
+		)
+	} else {
+		cc.OnEvent(state.SystemAddress,
+			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), from.Bytes()},
+			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
+		)
+	}
 }
