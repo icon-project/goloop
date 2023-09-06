@@ -140,9 +140,11 @@ func (r *reward) processEvents() error {
 		switch type_ {
 		case icstage.TypeEventEnable:
 			obj := icstage.ToEventEnable(o)
+			r.Logger().Debugf("get event at %d %+v", int(r.Global().GetStartHeight())+keyOffset, obj)
 			r.pi.SetStatus(obj.Target(), obj.Status())
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
+			r.Logger().Debugf("get event at %d %+v", int(r.Global().GetStartHeight())+keyOffset, obj)
 			vType := vtDelegate
 			if type_ == icstage.TypeEventBond {
 				vType = vtBond
@@ -158,6 +160,9 @@ func (r *reward) processEvents() error {
 
 func (r *reward) UpdateIScore(addr module.Address, amount *big.Int, t rc.RewardType) error {
 	r.c.Logger().Debugf("Update IScore of %s, %d by %s", addr, amount, t.String())
+	if amount.Sign() == 0 {
+		return nil
+	}
 	temp := r.c.Temp()
 	iScore, err := temp.GetIScore(addr)
 	if err != nil {
