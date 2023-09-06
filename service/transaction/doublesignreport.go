@@ -134,7 +134,7 @@ func (tx *doubleSignReportTx) ToJSON(version module.JSONVersion) (interface{}, e
 		"dataType": tx.data.DataType,
 		"data": tx.data.Data,
 		"nid": tx.data.NID,
-		"txHash": tx.ID(),
+		"txHash": common.HexBytes(tx.ID()),
 		"timestamp": tx.data.Timestamp,
 		"version": tx.data.Version,
 	}
@@ -210,7 +210,7 @@ func NewDoubleSignReportTx(data []module.DoubleSignData, context module.DoubleSi
 	tx.data.Timestamp.Value = ts
 	tx.data.DataType = contract.DataTypeDSR
 	tx.data.Data = contract.NewDoubleSignReport(data, context)
-	return tx
+	return Wrap(tx)
 }
 
 type dsrTxHandler struct {
@@ -283,7 +283,10 @@ func init() {
 }
 
 func TryGetDoubleSignReportInfo(wc state.WorldContext, tx module.Transaction) (int64, module.Address, bool) {
-	dsr := Unwrap(tx).(*doubleSignReportTx)
+	dsr, ok := Unwrap(tx).(*doubleSignReportTx)
+	if !ok {
+		return 0, nil, false
+	}
 	data, context, err := dsr.decodeDoubleSignReport(wc)
 	if err != nil {
 		return 0, nil, false
