@@ -478,14 +478,14 @@ type Platform interface {
 	ToRevision(value int) module.Revision
 }
 
-type PlatformWithDoubleSignDecoder interface {
+type PlatformWithDoubleSignDataDecoder interface {
 	Platform
-	DoubleSignDecoder() module.DoubleSignDataDecoder
+	DoubleSignDataDecoder() module.DoubleSignDataDecoder
 }
 
 func getDoubleSignDataDecoder(plt Platform) module.DoubleSignDataDecoder {
-	if p, ok := plt.(PlatformWithDoubleSignDecoder) ; ok {
-		return p.DoubleSignDecoder()
+	if p, ok := plt.(PlatformWithDoubleSignDataDecoder) ; ok {
+		return p.DoubleSignDataDecoder()
 	} else {
 		return nil
 	}
