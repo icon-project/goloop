@@ -496,6 +496,7 @@ func (c *worldContext) DecodeDoubleSignContext(t string, d []byte) (module.Doubl
 }
 
 func (c *worldContext) GetDoubleSignContextRoot() (module.DoubleSignContextRoot, error) {
+	c.UpdateSystemInfo()
 	return getDoubleSignContextRootOf(c, c.Revision())
 }
 
