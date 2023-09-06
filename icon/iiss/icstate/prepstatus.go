@@ -696,9 +696,20 @@ func (ps *PRepStatusState) onMainPRepIn(sc icmodule.StateContext, limit int, ter
 
 	ps.grade = GradeMain
 	ps.shiftVPenaltyMask(limit)
-	if err := ps.ji.OnMainPRepIn(sc, ps.owner); err != nil {
+	if ps.ji.IsUnjailing() {
+		status := icmodule.ESEnable
+		if termEnd {
+			status = icmodule.ESEnableAtNextTerm
+		}
+		if err := sc.AddEventEnable(ps.owner, status); err != nil {
+			return err
+		}
+	}
+
+	if err := ps.ji.OnMainPRepIn(sc); err != nil {
 		return err
 	}
+
 	ps.setDirty()
 	return nil
 }

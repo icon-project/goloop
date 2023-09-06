@@ -26,6 +26,7 @@ const (
 	ESDisablePermanent
 	ESJail
 	ESUnjail
+	ESEnableAtNextTerm
 	ESMax
 )
 
@@ -52,15 +53,17 @@ func (ef EnableStatus) IsUnjail() bool {
 func (ef EnableStatus) String() string {
 	switch ef {
 	case ESEnable:
-		return "Enabled"
+		return "Enable"
 	case ESDisableTemp:
-		return "DisabledTemporarily"
+		return "DisableTemporarily"
 	case ESDisablePermanent:
-		return "DisabledPermanently"
+		return "DisablePermanently"
 	case ESJail:
 		return "Jail"
 	case ESUnjail:
 		return "Unjail"
+	case ESEnableAtNextTerm:
+		return "EnableAtNextTerm"
 	default:
 		return "Unknown"
 	}

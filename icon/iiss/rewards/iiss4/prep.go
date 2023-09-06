@@ -185,7 +185,11 @@ func (p *PRep) Bigger(p1 *PRep) bool {
 
 func (p *PRep) ToVoted() *icreward.Voted {
 	voted := icreward.NewVotedV2()
-	voted.SetStatus(p.status)
+	if p.Status() == icmodule.ESEnableAtNextTerm {
+		voted.SetStatus(icmodule.ESEnable)
+	} else {
+		voted.SetStatus(p.status)
+	}
 	voted.SetBonded(p.bonded)
 	voted.SetDelegated(p.delegated)
 	voted.SetCommissionRate(p.commissionRate)
@@ -307,6 +311,7 @@ func (p *PRepInfo) Add(target module.Address, status icmodule.EnableStatus, dele
 }
 
 func (p *PRepInfo) SetStatus(target module.Address, status icmodule.EnableStatus) {
+	p.log.Debugf("SetStatus: %s to %d", target, status)
 	key := icutils.ToKey(target)
 	if prep, ok := p.preps[key]; ok {
 		prep.SetStatus(status)
