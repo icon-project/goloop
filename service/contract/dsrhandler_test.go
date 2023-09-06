@@ -259,7 +259,7 @@ func TestDSRHandler_ExecuteSync(t *testing.T) {
 	height := int64(4567)
 
 	dsr := newTestDSR(height, "TEST1")
-	handler := NewDSRHandler(nil, dsr, log.GlobalLogger())
+	handler := NewDSRHandler(state.SystemAddress, dsr, log.GlobalLogger())
 
 	cc := &testRSCallContext{
 		height: height,

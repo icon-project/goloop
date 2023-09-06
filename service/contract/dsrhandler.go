@@ -66,7 +66,7 @@ func (h *DSRHandler) verifyHashOfHeight(cc CallContext, height int64, hash []byt
 }
 
 func (h *DSRHandler) DoExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
-	if h.From != nil {
+	if !common.AddressEqual(state.SystemAddress, h.From) {
 		return scoreresult.AccessDeniedError.Errorf(
 			"AccessDeniedToReportDSR(from=%s)", h.From.String()), nil, nil
 	}
