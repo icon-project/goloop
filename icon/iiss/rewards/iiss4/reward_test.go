@@ -113,7 +113,7 @@ func (t *testCalculator) SetDelegating(addr module.Address, delegating *icreward
 	return t.reward.SetDelegating(addr, delegating)
 }
 
-func (t *testCalculator) AddEventEnable(offset int, target module.Address, status icstage.EnableStatus) (int64, error) {
+func (t *testCalculator) AddEventEnable(offset int, target module.Address, status icmodule.EnableStatus) (int64, error) {
 	return t.stage.AddEventEnable(offset, target, status)
 }
 
@@ -216,20 +216,20 @@ func TestReward(t *testing.T) {
 	addrs := []module.Address{a1, a2, a3, a4, a5}
 
 	v1 := icreward.NewVotedV2()
-	v1.SetStatus(icstage.ESEnable)
+	v1.SetStatus(icmodule.ESEnable)
 	v1.SetCommissionRate(icmodule.ToRate(10))
 	v2 := icreward.NewVotedV2()
-	v2.SetStatus(icstage.ESEnable)
+	v2.SetStatus(icmodule.ESEnable)
 	v2.SetCommissionRate(icmodule.ToRate(5))
 	v2.SetBonded(big.NewInt(20))
 	v2.SetDelegated(big.NewInt(20))
 	v3 := icreward.NewVotedV2()
-	v3.SetStatus(icstage.ESUnjail)
+	v3.SetStatus(icmodule.ESUnjail)
 	v3.SetBonded(big.NewInt(30))
 	v3.SetDelegated(big.NewInt(30))
 	v4 := icreward.NewVotedV2()
 	v5 := icreward.NewVotedV2()
-	v5.SetStatus(icstage.ESEnable)
+	v5.SetStatus(icmodule.ESEnable)
 	v5.SetBonded(big.NewInt(50))
 	v5.SetDelegated(big.NewInt(50))
 	voteds := map[string]*icreward.Voted{
@@ -320,32 +320,32 @@ func TestReward(t *testing.T) {
 
 	// processEvents()
 	enables := []struct {
-		status icstage.EnableStatus
+		status icmodule.EnableStatus
 		offset int
 		target module.Address
 	}{
 		{
-			icstage.ESJail,
+			icmodule.ESJail,
 			10,
 			a1,
 		},
 		{
-			icstage.ESUnjail,
+			icmodule.ESUnjail,
 			30,
 			a1,
 		},
 		{
-			icstage.ESEnable,
+			icmodule.ESEnable,
 			50,
 			a4,
 		},
 		{
-			icstage.ESDisablePermanent,
+			icmodule.ESDisablePermanent,
 			60,
 			a5,
 		},
 		{
-			icstage.ESEnable,
+			icmodule.ESEnable,
 			100,
 			a3,
 		},
@@ -418,13 +418,13 @@ func TestReward(t *testing.T) {
 	sExpects := []struct {
 		name   string
 		addr   module.Address
-		status icstage.EnableStatus
+		status icmodule.EnableStatus
 	}{
-		{"Enable->Jail->Unjail", a1, icstage.ESUnjail},
-		{"Enable->", a2, icstage.ESEnable},
-		{"Unjail->Enable", a3, icstage.ESEnable},
-		{"New", a4, icstage.ESEnable},
-		{"Enable->Disable", a5, icstage.ESDisablePermanent},
+		{"Enable->Jail->Unjail", a1, icmodule.ESUnjail},
+		{"Enable->", a2, icmodule.ESEnable},
+		{"Unjail->Enable", a3, icmodule.ESEnable},
+		{"New", a4, icmodule.ESEnable},
+		{"Enable->Disable", a5, icmodule.ESDisablePermanent},
 	}
 	for _, e := range sExpects {
 		t.Run(fmt.Sprintf("processEvent-Status:%s", e.name), func(t *testing.T) {
@@ -556,7 +556,7 @@ func TestReward(t *testing.T) {
 
 	for _, p := range rr.pi.preps {
 		t.Run(fmt.Sprintf("prepReward-%s", p.Owner()), func(t *testing.T) {
-			rewardable := p.Rank() <= rr.pi.ElectedPRepCount() && p.Status() == icstage.ESEnable && p.AccumulatedPower().Sign() == 1
+			rewardable := p.Rank() <= rr.pi.ElectedPRepCount() && p.Status() == icmodule.ESEnable && p.AccumulatedPower().Sign() == 1
 			if p.CommissionRate() == 0 {
 				assert.Equal(t, 0, p.Commission().Sign())
 			} else {

@@ -281,6 +281,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Zero(t, prep.GetVPenaltyCount())
 
+		// 1st validator does not vote for 5 consecutive blocks
 		vl = sim.ValidatorList()
 		voted[0] = false
 		csi = newConsensusInfo(sim.Database(), vl, voted)
@@ -323,7 +324,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Equal(t, i, prep.GetVPenaltyCount())
 
-		// Create a scenario when prep0 fails to vote for blocks to validate
+		// Create a scenario when prep0 fails to vote for 5 blocks to validate
 		vl = sim.ValidatorList()
 		voted[0] = false
 		csi = newConsensusInfo(sim.Database(), vl, voted)
@@ -332,6 +333,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 		// Check if prep0 got penalized after 5 blocks
 		prep = sim.GetPRep(vl[0].Address())
+		assert.True(t, prep.Owner().Equal(vl[0].Address()))
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, i+1, prep.GetVPenaltyCount())
 
@@ -707,8 +709,9 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	address := env.preps[0]
 
 	// Check getPRep
+	sc := sim.GetStateContext()
 	prep = sim.GetPRep(address)
-	jso = prep.ToJSON(sim.BlockHeight(), br, 0)
+	jso = prep.ToJSON(sc, br, 0)
 	assertPower(t, jso)
 
 	// Check getPReps

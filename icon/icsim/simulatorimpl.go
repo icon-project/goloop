@@ -81,7 +81,7 @@ type simulatorImpl struct {
 	revision    module.Revision
 	stepPrice   *big.Int
 	wss         state.WorldSnapshot
-	revHandlers map[int]func(wc state.WorldState, r1, r2 int) error
+	revHandlers map[int]func(wc state.WorldState) error
 }
 
 func (sim *simulatorImpl) init(validators []module.Validator, balances map[string]*big.Int) error {
@@ -124,7 +124,7 @@ func (sim *simulatorImpl) init(validators []module.Validator, balances map[strin
 }
 
 func (sim *simulatorImpl) initRevHandler() {
-	sim.revHandlers = map[int]func(wc state.WorldState, r1, r2 int) error{
+	sim.revHandlers = map[int]func(wc state.WorldState) error{
 		icmodule.Revision5:  sim.handleRev5,
 		icmodule.Revision6:  sim.handleRev6,
 		icmodule.Revision9:  sim.handleRev9,
@@ -494,7 +494,7 @@ func (sim *simulatorImpl) QueryIScore(address module.Address) *big.Int {
 
 func (sim *simulatorImpl) GetPRepTerm() map[string]interface{} {
 	es := sim.getExtensionState(true)
-	jso, _ := es.GetPRepTermInJSON(sim.BlockHeight())
+	jso, _ := es.GetPRepTermInJSON(sim.newCallContext())
 	return jso
 }
 
@@ -557,6 +557,15 @@ func (sim *simulatorImpl) ValidatorList() []module.Validator {
 		vl[i] = v
 	}
 	return vl
+}
+
+func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
+	return icstate.NewStateContext(
+		sim.BlockHeight(),
+		sim.Revision().Value(),
+		sim.Revision().Value(),
+		nil,
+	)
 }
 
 func NewSimulator(

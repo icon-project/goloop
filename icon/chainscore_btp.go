@@ -19,7 +19,6 @@ package icon
 import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -150,6 +149,7 @@ func (s *chainScore) Ex_openBTPNetwork(networkTypeName string, name string, owne
 	if bs, err := s.getBTPState(); err != nil {
 		return 0, err
 	} else {
+		cc := s.newCallContext(s.cc)
 		bc := s.newBTPContext()
 		ntActivated := false
 		if bc.GetNetworkTypeIDByName(networkTypeName) <= 0 {
@@ -164,26 +164,12 @@ func (s *chainScore) Ex_openBTPNetwork(networkTypeName string, name string, owne
 			if es, err = s.getExtensionState(); err != nil {
 				return 0, err
 			}
-			if err = es.OnOpenBTPNetwork(s.newCallContext(s.cc), bc, networkTypeName); err != nil {
+			if err = es.OnOpenBTPNetwork(cc, bc, networkTypeName); err != nil {
 				return 0, err
 			}
-			s.cc.OnEvent(state.SystemAddress,
-				[][]byte{
-					[]byte("BTPNetworkTypeActivated(str,int)"),
-					[]byte(networkTypeName),
-					intconv.Int64ToBytes(ntid),
-				},
-				nil,
-			)
+			iiss.RecordBTPNetworkTypeActivatedEvent(cc, networkTypeName, ntid)
 		}
-		s.cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("BTPNetworkOpened(int,int)"),
-				intconv.Int64ToBytes(ntid),
-				intconv.Int64ToBytes(nid),
-			},
-			nil,
-		)
+		iiss.RecordBTPNetworkOpenedEvent(cc, ntid, nid)
 		return nid, nil
 	}
 }
@@ -199,14 +185,7 @@ func (s *chainScore) Ex_closeBTPNetwork(id *common.HexInt) error {
 		if ntid, err := bs.CloseNetwork(s.newBTPContext(), nid); err != nil {
 			return err
 		} else {
-			s.cc.OnEvent(state.SystemAddress,
-				[][]byte{
-					[]byte("BTPNetworkClosed(int,int)"),
-					intconv.Int64ToBytes(ntid),
-					intconv.Int64ToBytes(nid),
-				},
-				nil,
-			)
+			iiss.RecordBTPNetworkClosedEvent(s.newCallContext(s.cc), ntid, nid)
 		}
 	}
 	return nil
@@ -228,14 +207,7 @@ func (s *chainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte)
 			return err
 		}
 		s.cc.OnBTPMessage(nid, message)
-		s.cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("BTPMessage(int,int)"),
-				intconv.Int64ToBytes(nid),
-				intconv.Int64ToBytes(sn),
-			},
-			nil,
-		)
+		iiss.RecordBTPMessageEvent(s.newCallContext(s.cc), nid, sn)
 		return nil
 	}
 }

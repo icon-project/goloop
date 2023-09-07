@@ -140,6 +140,12 @@ func TestBlockVotersSnapshot_Equal(t *testing.T) {
 	bvs0r := NewBlockVotersSnapshot(voters0r)
 	assert.False(t, bvs0.Equal(bvs0r))
 	assert.False(t, bvs0r.Equal(bvs0))
+
+	bvs0r = nil
+	assert.False(t, bvs0.Equal(bvs0r))
+	bvs0 = nil
+	assert.True(t, bvs0.Equal(bvs0r))
+	assert.False(t, bvs0.Equal(bvs1))
 }
 
 func TestBlockVotersSnapshot_RLPDecodeFields(t *testing.T) {

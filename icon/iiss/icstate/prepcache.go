@@ -124,7 +124,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 	o := c.dict.Get(owner)
 	if o == nil {
 		if createIfNotExist {
-			status = NewPRepStatus()
+			status = NewPRepStatus(owner)
 			c.statuses[key] = status
 		} else {
 			// return nil
@@ -132,7 +132,7 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 	} else {
 		snapshot := ToPRepStatus(o.Object())
 		if snapshot != nil {
-			status = NewPRepStatusWithSnapshot(snapshot)
+			status = NewPRepStatusWithSnapshot(owner, snapshot)
 			if value := c.illegal.Get(owner); value != nil {
 				status.SetEffectiveDelegated(new(big.Int).Add(status.Delegated(), value.BigInt()))
 			}

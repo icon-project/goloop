@@ -32,7 +32,7 @@ import (
 )
 
 type PRep struct {
-	status         icstage.EnableStatus
+	status         icmodule.EnableStatus
 	delegated      *big.Int
 	bonded         *big.Int
 	commissionRate icmodule.Rate
@@ -49,18 +49,18 @@ type PRep struct {
 }
 
 func (p *PRep) Electable() bool {
-	return p.pubkey && (p.status == icstage.ESEnable || p.status == icstage.ESUnjail)
+	return p.pubkey && (p.status == icmodule.ESEnable || p.status == icmodule.ESUnjail)
 }
 
 func (p *PRep) Rewardable(electedPRepCount int) bool {
-	return p.status == icstage.ESEnable && p.rank <= electedPRepCount && p.accumulatedPower.Sign() == 1
+	return p.status == icmodule.ESEnable && p.rank <= electedPRepCount && p.accumulatedPower.Sign() == 1
 }
 
-func (p *PRep) Status() icstage.EnableStatus {
+func (p *PRep) Status() icmodule.EnableStatus {
 	return p.status
 }
 
-func (p *PRep) SetStatus(status icstage.EnableStatus) {
+func (p *PRep) SetStatus(status icmodule.EnableStatus) {
 	p.status = status
 }
 
@@ -185,7 +185,11 @@ func (p *PRep) Bigger(p1 *PRep) bool {
 
 func (p *PRep) ToVoted() *icreward.Voted {
 	voted := icreward.NewVotedV2()
-	voted.SetStatus(p.status)
+	if p.Status() == icmodule.ESEnableAtNextTerm {
+		voted.SetStatus(icmodule.ESEnable)
+	} else {
+		voted.SetStatus(p.status)
+	}
 	voted.SetBonded(p.bonded)
 	voted.SetDelegated(p.delegated)
 	voted.SetCommissionRate(p.commissionRate)
@@ -245,7 +249,7 @@ func (p *PRep) Format(f fmt.State, c rune) {
 	}
 }
 
-func NewPRep(owner module.Address, status icstage.EnableStatus, delegated, bonded *big.Int,
+func NewPRep(owner module.Address, status icmodule.EnableStatus, delegated, bonded *big.Int,
 	commissionRate icmodule.Rate, pubkey bool) *PRep {
 	return &PRep{
 		owner:             owner,
@@ -299,14 +303,15 @@ func (p *PRepInfo) BondRequirement() icmodule.Rate {
 	return p.bondRequirement
 }
 
-func (p *PRepInfo) Add(target module.Address, status icstage.EnableStatus, delegated, bonded *big.Int,
+func (p *PRepInfo) Add(target module.Address, status icmodule.EnableStatus, delegated, bonded *big.Int,
 	commissionRate icmodule.Rate, pubkey bool) {
 	prep := NewPRep(target, status, delegated, bonded, commissionRate, pubkey)
 	prep.UpdatePower(p.bondRequirement)
 	p.preps[icutils.ToKey(target)] = prep
 }
 
-func (p *PRepInfo) SetStatus(target module.Address, status icstage.EnableStatus) {
+func (p *PRepInfo) SetStatus(target module.Address, status icmodule.EnableStatus) {
+	p.log.Debugf("SetStatus: %s to %d", target, status)
 	key := icutils.ToKey(target)
 	if prep, ok := p.preps[key]; ok {
 		prep.SetStatus(status)

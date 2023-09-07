@@ -116,7 +116,10 @@ func onRevision5(s *chainScore, targetRev int) error {
 		return err
 	}
 	// 10% slashRate is hardcoded for backward compatibility
-	if err := es.State.SetConsistentValidationPenaltySlashRate(icmodule.RevisionIISS, icmodule.ToRate(10)); err != nil {
+	if err := es.State.SetSlashingRate(
+		icmodule.RevisionIISS,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		icmodule.ToRate(10)); err != nil {
 		return err
 	}
 
@@ -250,12 +253,16 @@ func onRevision17(s *chainScore, _ int) error {
 	iconConfig := s.loadIconConfig()
 
 	// Set slash rate of Non Vote Penalty
-	if err := es.State.SetConsistentValidationPenaltySlashRate(
-		revision, icmodule.ToRate(iconConfig.ConsistentValidationPenaltySlashRate.Int64())); err != nil {
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		icmodule.ToRate(iconConfig.ConsistentValidationPenaltySlashRate.Int64())); err != nil {
 		return err
 	}
-	if err := es.State.SetNonVotePenaltySlashRate(
-		revision, icmodule.ToRate(iconConfig.NonVotePenaltySlashRate.Int64())); err != nil {
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyMissedNetworkProposalVote,
+		icmodule.ToRate(iconConfig.NonVotePenaltySlashRate.Int64())); err != nil {
 		return err
 	}
 
@@ -276,6 +283,7 @@ func onRevision21(s *chainScore, _ int) error {
 }
 
 func onRevision23(s *chainScore, _ int) error {
+	revision := icmodule.RevisionPreIISS4
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RewardFundAllocation2
@@ -296,13 +304,13 @@ func onRevision23(s *chainScore, _ int) error {
 			rate icmodule.Rate
 		}{
 			{icmodule.PenaltyPRepDisqualification, icmodule.DefaultPRepDisqualificationSlashingRate},
-			{icmodule.PenaltyContinuousBlockValidation, icmodule.DefaultContinuousBlockValidationSlashingRate},
-			{icmodule.PenaltyBlockValidation, icmodule.DefaultBlockValidationSlashingRate},
-			{icmodule.PenaltyMissingNetworkProposalVote, icmodule.DefaultMissingNetworkProposalVoteSlashingRate},
+			{icmodule.PenaltyAccumulatedValidationFailure, icmodule.DefaultContinuousBlockValidationSlashingRate},
+			{icmodule.PenaltyValidationFailure, icmodule.DefaultBlockValidationSlashingRate},
+			{icmodule.PenaltyMissedNetworkProposalVote, icmodule.DefaultMissingNetworkProposalVoteSlashingRate},
 			{icmodule.PenaltyDoubleVote, icmodule.DefaultDoubleVoteSlashingRate},
 		}
 		for _, item := range items {
-			if err := es.State.SetSlashingRate(item.pt, item.rate); err != nil {
+			if err := es.State.SetSlashingRate(revision, item.pt, item.rate); err != nil {
 				return err
 			}
 		}

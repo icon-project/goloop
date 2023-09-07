@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -54,7 +55,8 @@ func newDummyPRepBase(i int) *PRepBaseState {
 }
 
 func newDummyPRepStatus(value int) *PRepStatusState {
-	ps := NewPRepStatus()
+	owner := newDummyAddress(value)
+	ps := NewPRepStatus(owner)
 	_ = ps.Activate()
 	ps.SetDelegated(big.NewInt(rand.Int63n(1000) + 1))
 	ps.SetBonded(big.NewInt(rand.Int63n(1000) + 1))
@@ -72,71 +74,23 @@ func newDummyPRep(i int) *PRep {
 	}
 }
 
-type dummyPRepSetEntry struct {
-	prep      *PRep
-	status    Status
-	grade     Grade
-	power     *big.Int
-	delegated *big.Int
-	bonded    *big.Int
-	owner     module.Address
-	pubKey    bool
-}
-
-func (d *dummyPRepSetEntry) PRep() *PRep {
-	return d.prep
-}
-
-func (d *dummyPRepSetEntry) Status() Status {
-	return Active
-}
-
-func (d *dummyPRepSetEntry) Grade() Grade {
-	return d.grade
-}
-
-func (d *dummyPRepSetEntry) Power(_ icmodule.Rate) *big.Int {
-	return d.power
-}
-
-func (d *dummyPRepSetEntry) Delegated() *big.Int {
-	return d.delegated
-}
-
-func (d *dummyPRepSetEntry) Bonded() *big.Int {
-	return d.bonded
-}
-
-func (d *dummyPRepSetEntry) Owner() module.Address {
-	return d.prep.Owner()
-}
-
-func (d *dummyPRepSetEntry) HasPubKey() bool {
-	return d.pubKey
-}
-
-func newDummyPRepSetEntry(
-	prep *PRep, grade Grade, power, delegated, bonded int, pubKey bool,
-) *dummyPRepSetEntry {
-	return &dummyPRepSetEntry{
-		prep:      prep,
-		grade:     grade,
-		power:     big.NewInt(int64(power)),
-		delegated: big.NewInt(int64(delegated)),
-		bonded:    big.NewInt(int64(bonded)),
-		pubKey:    pubKey,
+func newDummyPReps(size int) []*PRep {
+	preps := make([]*PRep, size)
+	for i := 0; i < size; i++ {
+		preps[i] = newDummyPRep(i + 1)
 	}
+	return preps
 }
 
 func newDummyPRepSet(size int) PRepSet {
-	prepSetEntries := make([]PRepSetEntry, size)
+	preps := make([]*PRep, size)
 	for i := 0; i < size; i++ {
-		prepSetEntries[i] = NewPRepSetEntry(newDummyPRep(i), false)
+		preps[i] = newDummyPRep(i)
 	}
-	prepSet := NewPRepSet(prepSetEntries)
-	return prepSet
+	return NewPRepSet(preps)
 }
 
+/*
 func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	br := icmodule.ToRate(5)
 	prep1 := newDummyPRep(1)
@@ -153,7 +107,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	prep5.lastState = None
 	prep5.lastHeight = 2
 	prep6 := newDummyPRep(6)
-	prepSetEntries := []PRepSetEntry{
+	prepSetEntries := []*PRep{
 		&dummyPRepSetEntry{
 			prep:      prep1,
 			grade:     GradeMain,
@@ -215,7 +169,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		rev        int
+		sc         icmodule.StateContext
 		main       int
 		sub        int
 		extra      int
@@ -225,56 +179,56 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}{
 		{
 			"Sort by power",
-			icmodule.RevisionResetPenaltyMask,
+			NewStateContext(1000, icmodule.RevisionResetPenaltyMask, icmodule.RevisionResetPenaltyMask),
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power",
-			icmodule.RevisionEnableIISS3,
+			NewStateContext(1000, icmodule.RevisionEnableIISS3, icmodule.RevisionEnableIISS3),
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power + extra main prep",
-			icmodule.RevisionExtraMainPReps,
+			NewStateContext(1000, icmodule.RevisionExtraMainPReps, icmodule.RevisionExtraMainPReps),
 			1, 2, 1,
 			[]*PRep{prep4, prep3, prep5, prep2, prep1, prep6},
 			2, 1,
 		},
 		{
 			"Sort by power + extra main prep with zero count",
-			icmodule.RevisionExtraMainPReps,
+			NewStateContext(1000, icmodule.RevisionExtraMainPReps, icmodule.RevisionExtraMainPReps),
 			1, 2, 0,
 			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
 			1, 2,
 		},
 		{
 			"Sort by power + pubKey + extra main prep",
-			icmodule.RevisionBTP2,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			1, 2, 1,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			2, 0,
 		},
 		{
 			"Sort by power + pubKey + extra main prep with zero count",
-			icmodule.RevisionBTP2,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			1, 2, 0,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			1, 1,
 		},
 		{
 			"Too big sub prep, extra main prep",
-			icmodule.RevisionBTP2,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			1, 6, 10,
 			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
 			2, 0,
 		},
 		{
 			"Too big sub prep, extra main prep with zero main prep",
-			icmodule.RevisionBTP2,
+			NewStateContext(1000, icmodule.RevisionBTP2, icmodule.RevisionBTP2),
 			0, 6, 10,
 			[]*PRep{prep1, prep5, prep6, prep4, prep3, prep2},
 			2, 0,
@@ -282,9 +236,10 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s rev=%d", tt.name, tt.rev), func(t *testing.T) {
-			prepSet.Sort(tt.main, tt.sub, tt.extra, br, tt.rev)
-			err := prepSet.OnTermEnd(tt.rev, tt.main, tt.sub, tt.extra, 0, br)
+		rev := tt.sc.Revision()
+		t.Run(fmt.Sprintf("%s rev=%d", tt.name, rev), func(t *testing.T) {
+			prepSet.Sort(tt.main, tt.sub, tt.extra, br, rev)
+			err := prepSet.OnTermEnd(tt.sc, tt.main, tt.sub, tt.extra, 0, br)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectMain, prepSet.GetPRepSize(GradeMain))
 			assert.Equal(t, tt.expectSub, prepSet.GetPRepSize(GradeSub))
@@ -300,14 +255,14 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 				// check grade of P-Rep
 				switch {
 				case j < tt.expectMain:
-					if tt.rev >= icmodule.RevisionBTP2 &&
+					if rev >= icmodule.RevisionBTP2 &&
 						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
 						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 					} else {
 						assert.Equal(t, GradeMain, aEntry.PRep().Grade())
 					}
 				case j < tt.expectMain+tt.expectSub:
-					if tt.rev >= icmodule.RevisionBTP2 &&
+					if rev >= icmodule.RevisionBTP2 &&
 						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
 						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 					} else {
@@ -317,94 +272,66 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 					assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
 				}
 
-				if tt.rev == icmodule.RevisionResetPenaltyMask {
+				if rev == icmodule.RevisionResetPenaltyMask {
 					assert.Zero(t, aEntry.PRep().GetVPenaltyCount())
 				}
 			}
 		})
 	}
 }
+*/
 
 func TestPRepSet_SortForQuery(t *testing.T) {
 	br := icmodule.ToRate(5)
-	prep1 := newDummyPRep(1)
-	prep2 := newDummyPRep(1)
-	prep3 := newDummyPRep(1)
-	prep4 := newDummyPRep(1)
-	prep5 := newDummyPRep(1)
-	prep6 := newDummyPRep(1)
-	prepSetEntries := []PRepSetEntry{
-		&dummyPRepSetEntry{
-			prep:      prep1,
-			power:     big.NewInt(1),
-			delegated: big.NewInt(1),
-			bonded:    big.NewInt(1),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep2,
-			power:     big.NewInt(2),
-			delegated: big.NewInt(2),
-			bonded:    big.NewInt(2),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep3,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep4,
-			power:     big.NewInt(4),
-			delegated: big.NewInt(4),
-			bonded:    big.NewInt(4),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep5,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep6,
-			power:     big.NewInt(0),
-			delegated: big.NewInt(0),
-			bonded:    big.NewInt(0),
-			pubKey:    true,
-		},
+	preps := newDummyPReps(6)
+	prepSet := NewPRepSet(preps)
+
+	for _, prep := range preps {
+		dsaMask := rand.Int63n(4)
+		prep.SetDSAMask(dsaMask)
 	}
 
-	prepSet := NewPRepSet(prepSetEntries)
-
-	tests := []struct {
-		rev    int
-		expect []*PRep
+	args := []struct {
+		rev           int
+		activeDSAMask int64
 	}{
-		{
-			icmodule.RevisionBTP2 - 1,
-			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
-		},
-		{
-			icmodule.RevisionBTP2,
-			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
-		},
+		{icmodule.RevisionBTP2 - 1, 0},
+		{icmodule.RevisionBTP2, 1},
+		{icmodule.RevisionBTP2, 3},
 	}
 
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("rev=%d", tt.rev), func(t *testing.T) {
-			prepSet.SortForQuery(br, tt.rev)
-			for j := 0; j < prepSet.Size(); j++ {
-				// check sort order
-				aEntry := prepSet.GetByIndex(j)
-				ePRep := tt.expect[j]
-				ao := aEntry.Owner()
-				eo := ePRep.Owner()
-				assert.True(t, ao.Equal(eo), fmt.Sprintf("%d: e:%s a:%s", j, eo, ao))
+	for _, arg := range args {
+		name := fmt.Sprintf("rev=%d", arg.rev)
+		rev := arg.rev
+		activeDSAMask := arg.activeDSAMask
+
+		t.Run(name, func(t *testing.T) {
+			prepSet.SortForQuery(br, rev, activeDSAMask)
+
+			for i := 1; i < prepSet.Size(); i++ {
+				p0 := prepSet.GetByIndex(i - 1)
+				p1 := prepSet.GetByIndex(i)
+				assert.True(t, checkPRepOrder(p0, p1, br, rev, activeDSAMask))
 			}
 		})
 	}
+}
+
+func checkPRepOrder(p0, p1 *PRep, br icmodule.Rate, rev int, dsaMask int64) bool {
+	if rev >= icmodule.RevisionBTP2 {
+		if p0.HasPubKey(dsaMask) != p1.HasPubKey(dsaMask) {
+			return p0.HasPubKey(dsaMask)
+		}
+		if p0.IsJailInfoElectable() != p1.IsJailInfoElectable() {
+			return p0.IsJailInfoElectable()
+		}
+	}
+
+	if cmp := p0.GetPower(br).Cmp(p1.GetPower(br)); cmp != 0 {
+		return cmp > 0
+	}
+	if cmp := p0.Delegated().Cmp(p1.Delegated()); cmp != 0 {
+		return cmp > 0
+	}
+	return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
 }

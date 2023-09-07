@@ -24,6 +24,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -356,15 +357,15 @@ func TestVoter(t *testing.T) {
 
 	preps := []struct {
 		owner       module.Address
-		status      icstage.EnableStatus
+		status      icmodule.EnableStatus
 		accVoted    int64
 		accPower    int64
 		voterReward int64
 	}{
-		{a1, icstage.ESEnable, 100_000, 100_000, 1_000_000},
-		{a2, icstage.ESJail, 200_000, 200_000, 0},
-		{a3, icstage.ESUnjail, 300_000, 300_000, 0},
-		{a4, icstage.ESDisablePermanent, 400_000, 400_000, 0},
+		{a1, icmodule.ESEnable, 100_000, 100_000, 1_000_000},
+		{a2, icmodule.ESJail, 200_000, 200_000, 0},
+		{a3, icmodule.ESUnjail, 300_000, 300_000, 0},
+		{a4, icmodule.ESDisablePermanent, 400_000, 400_000, 0},
 	}
 	pInfo := NewPRepInfo(5, 3, 100, log.New())
 	for _, p := range preps {

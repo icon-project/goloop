@@ -39,3 +39,11 @@ type CallContext interface {
 	FrameLogger() *trace.Logger
 	TransactionInfo() *state.TransactionInfo
 }
+
+type StateContext interface {
+	BlockHeight() int64
+	Revision() int
+	TermRevision() int
+	IsIISS4Activated() bool
+	AddEventEnable(from module.Address, status EnableStatus) error
+}

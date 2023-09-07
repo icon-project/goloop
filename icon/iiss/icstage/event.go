@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -289,58 +290,10 @@ func NewEventDelegationV2(addr *common.Address, delegated VoteList, delegating V
 	}
 }
 
-type EnableStatus int
-
-const (
-	ESEnable EnableStatus = iota
-	ESDisableTemp
-	ESDisablePermanent
-	ESJail
-	ESUnjail
-	ESMax
-)
-
-func (ef EnableStatus) IsEnabled() bool {
-	return ef == ESEnable
-}
-
-func (ef EnableStatus) IsDisabledTemporarily() bool {
-	return ef == ESDisableTemp
-}
-
-func (ef EnableStatus) IsDisabledPermanently() bool {
-	return ef == ESDisablePermanent
-}
-
-func (ef EnableStatus) IsJail() bool {
-	return ef == ESJail
-}
-
-func (ef EnableStatus) IsUnjail() bool {
-	return ef == ESUnjail
-}
-
-func (ef EnableStatus) String() string {
-	switch ef {
-	case ESEnable:
-		return "Enabled"
-	case ESDisableTemp:
-		return "DisabledTemporarily"
-	case ESDisablePermanent:
-		return "DisabledPermanently"
-	case ESJail:
-		return "Jail"
-	case ESUnjail:
-		return "Unjail"
-	default:
-		return "Unknown"
-	}
-}
-
 type EventEnable struct {
 	icobject.NoDatabase
 	target *common.Address
-	status EnableStatus
+	status icmodule.EnableStatus
 }
 
 func (ee *EventEnable) Version() int {
@@ -351,7 +304,7 @@ func (ee *EventEnable) Target() *common.Address {
 	return ee.target
 }
 
-func (ee *EventEnable) Status() EnableStatus {
+func (ee *EventEnable) Status() icmodule.EnableStatus {
 	return ee.status
 }
 
@@ -393,7 +346,7 @@ func newEventEnable(_ icobject.Tag) *EventEnable {
 	return new(EventEnable)
 }
 
-func NewEventEnable(target *common.Address, status EnableStatus) *EventEnable {
+func NewEventEnable(target *common.Address, status icmodule.EnableStatus) *EventEnable {
 	return &EventEnable{
 		target: target,
 		status: status,

@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/icon/icmodule"
@@ -296,11 +295,13 @@ func (es *ExtensionStateImpl) GetPRepInJSON(cc icmodule.CallContext, address mod
 			dsaMask = bc.GetActiveDSAMask()
 		}
 	}
-	return prep.ToJSON(cc.BlockHeight(), es.State.GetBondRequirement(), dsaMask), nil
+	sc := es.newStateContext(cc)
+	return prep.ToJSON(sc, es.State.GetBondRequirement(), dsaMask), nil
 }
 
 func (es *ExtensionStateImpl) GetPRepsInJSON(cc icmodule.CallContext, start, end int) (map[string]interface{}, error) {
-	return es.State.GetPRepsInJSON(cc.GetBTPContext(), cc.BlockHeight(), start, end, cc.Revision().Value())
+	sc := es.newStateContext(cc)
+	return es.State.GetPRepsInJSON(cc.GetBTPContext(), sc, start, end)
 }
 
 func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
@@ -526,12 +527,12 @@ func (es *ExtensionStateImpl) addEventDelegated(blockHeight int64, delta map[str
 	return err
 }
 
-func (es *ExtensionStateImpl) addEventEnable(blockHeight int64, from module.Address, flag icstage.EnableStatus) (err error) {
+func (es *ExtensionStateImpl) AddEventEnable(blockHeight int64, owner module.Address, status icmodule.EnableStatus) (err error) {
 	term := es.State.GetTermSnapshot()
 	_, err = es.Front.AddEventEnable(
 		int(blockHeight-term.StartHeight()),
-		from,
-		flag,
+		owner,
+		status,
 	)
 	return
 }
@@ -576,53 +577,45 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 	var err error
 	blockHeight := cc.BlockHeight()
 	owner := cc.From()
+	sc := es.newStateContext(cc)
 
-	if err = es.State.DisablePRep(owner, icstate.Unregistered, blockHeight); err != nil {
+	if err = es.State.DisablePRep(sc, owner, icstate.Unregistered); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
 	}
-	if err = es.addEventEnable(blockHeight, owner, icstage.ESDisablePermanent); err != nil {
+	if err = es.AddEventEnable(blockHeight, owner, icmodule.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
 
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepUnregistered(Address)")},
-		[][]byte{owner.Bytes()},
-	)
+	recordPRepUnregisteredEvent(cc, owner)
 	return nil
 }
 
 func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address module.Address) error {
 	blockHeight := cc.BlockHeight()
-	if err := es.State.DisablePRep(address, icstate.Disqualified, blockHeight); err != nil {
+	sc := es.newStateContext(cc)
+
+	if err := es.State.DisablePRep(sc, address, icstate.Disqualified); err != nil {
 		return err
 	}
-	if err := es.addEventEnable(blockHeight, address, icstage.ESDisablePermanent); err != nil {
+	if err := es.AddEventEnable(blockHeight, address, icmodule.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
 	ps := es.State.GetPRepStatusByOwner(address, false)
 	// Record PenaltyImposed eventlog
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyPRepDisqualification)),
-		},
-	)
+	recordPenaltyImposedEvent(cc, ps, icmodule.PenaltyPRepDisqualification)
 	return nil
 }
 
 func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address module.Address) error {
 	// Record PenaltyImposed eventlog
 	ps := es.State.GetPRepStatusByOwner(address, false)
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), address.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyMissingNetworkProposalVote)),
-		},
-	)
-
-	return es.slash(cc, address, es.State.GetNonVotePenaltySlashRate(cc.Revision().Value()))
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepNotFound(%s)", address)
+	}
+	pt := icmodule.PenaltyMissedNetworkProposalVote
+	recordPenaltyImposedEvent(cc, ps, pt)
+	rate, _ := es.State.GetSlashingRate(cc.Revision().Value(), pt)
+	return es.slash(cc, address, rate)
 }
 
 func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
@@ -978,8 +971,9 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 
 	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
-	prepSet := es.State.GetPRepSet(wc.GetBTPContext(), revision)
-	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision)
+	dsaMask := icstate.GetActiveDSAMask(wc.GetBTPContext(), revision)
+	prepSet := es.State.GetPRepSet()
+	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision, dsaMask)
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
 		isDecentralized = es.State.IsDecentralizationConditionMet(revision, totalSupply, prepSet)
@@ -988,8 +982,10 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	if isDecentralized {
 		// Reset the status of all active preps ordered by power
 		limit := es.State.GetConsistentValidationPenaltyMask()
+		sc := es.newStateContext(wc)
 
-		if err = prepSet.OnTermEnd(revision, mainPRepCount, subPRepCount, extraMainPRepCount, limit, br); err != nil {
+		if err = prepSet.OnTermEnd(sc,
+			mainPRepCount, subPRepCount, extraMainPRepCount, limit, br, dsaMask); err != nil {
 			return err
 		}
 	} else {
@@ -1173,14 +1169,15 @@ func (es *ExtensionStateImpl) updateValidators(wc icmodule.WorldContext, isTermE
 	return err
 }
 
-func (es *ExtensionStateImpl) GetPRepTermInJSON(blockHeight int64) (map[string]interface{}, error) {
+func (es *ExtensionStateImpl) GetPRepTermInJSON(cc icmodule.CallContext) (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
-	jso := term.ToJSON(blockHeight, es.State)
-	jso["blockHeight"] = blockHeight
+	sc := es.newStateContext(cc)
+	jso := term.ToJSON(sc, es.State)
+	jso["blockHeight"] = cc.BlockHeight()
 	return jso, nil
 }
 
@@ -1329,9 +1326,9 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 	var irep *big.Int
 	irepHeight := int64(0)
 	blockHeight := cc.BlockHeight()
-	term := es.State.GetTermSnapshot()
 
 	if es.IsDecentralized() {
+		term := es.State.GetTermSnapshot()
 		irep = term.Irep()
 		irepHeight = blockHeight
 	} else {
@@ -1344,21 +1341,13 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		)
 	}
 
-	_, err = es.Front.AddEventEnable(
-		int(blockHeight-term.StartHeight()),
-		from,
-		icstage.ESEnable,
-	)
-	if err != nil {
+	if err = es.AddEventEnable(blockHeight, from, icmodule.ESEnable); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(
 			err, "Failed to add EventEnable: from=%v", from,
 		)
 	}
 
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepRegistered(Address)")},
-		[][]byte{from.Bytes()},
-	)
+	recordPRepRegisteredEvent(cc, from)
 	return nil
 }
 
@@ -1392,10 +1381,7 @@ func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRe
 	if err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", from)
 	}
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepSet(Address)")},
-		[][]byte{from.Bytes()},
-	)
+	recordPRepSetEvent(cc, from)
 
 	if icmodule.Revision8 <= revision && revision < icmodule.RevisionStopICON1Support && nodeUpdate {
 		// ICON1 update term when main P-Rep modify p2p endpoint or node address
@@ -1487,7 +1473,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	}
 	if iScore.Sign() == 0 {
 		// there is no IScore to claim
-		ClaimEventLog(cc, from, new(big.Int), new(big.Int))
+		RecordIScoreClaimEvent(cc, from, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 
@@ -1526,7 +1512,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 		}
 		es.claimed[icutils.ToKey(from)] = newClaimed(cc.TransactionID(), claim)
 	}
-	ClaimEventLog(cc, from, claim, icx)
+	RecordIScoreClaimEvent(cc, from, claim, icx)
 	return nil
 }
 
@@ -1568,32 +1554,6 @@ func (es *ExtensionStateImpl) getIScore(from module.Address) (*big.Int, error) {
 	return iScore, nil
 }
 
-func ClaimEventLog(cc icmodule.CallContext, address module.Address, claim *big.Int, icx *big.Int) {
-	revision := cc.Revision().Value()
-	if revision < icmodule.Revision9 {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("IScoreClaimed(int,int)"),
-			},
-			[][]byte{
-				intconv.BigIntToBytes(claim),
-				intconv.BigIntToBytes(icx),
-			},
-		)
-	} else {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{
-				[]byte("IScoreClaimedV2(Address,int,int)"),
-				address.Bytes(),
-			},
-			[][]byte{
-				intconv.BigIntToBytes(claim),
-				intconv.BigIntToBytes(icx),
-			},
-		)
-	}
-}
-
 func calculateIRep(prepSet icstate.PRepSet) *big.Int {
 	irep := new(big.Int)
 	mainPRepCount := prepSet.GetPRepSize(icstate.GradeMain)
@@ -1602,7 +1562,7 @@ func calculateIRep(prepSet icstate.PRepSet) *big.Int {
 	value := new(big.Int)
 
 	for i := 0; i < mainPRepCount; i++ {
-		prep := prepSet.GetByIndex(i).PRep()
+		prep := prepSet.GetByIndex(i)
 		totalWeightedIrep.Add(totalWeightedIrep, value.Mul(prep.IRep(), prep.Delegated()))
 		totalDelegated.Add(totalDelegated, prep.Delegated())
 	}
@@ -1763,15 +1723,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {
 				return err
 			}
-			cc.OnEvent(state.SystemAddress,
-				[][]byte{[]byte("RewardFundTransferred(str,Address,Address,int)")},
-				[][]byte{
-					[]byte(k.key),
-					from.Bytes(),
-					to.Bytes(),
-					intconv.BigIntToBytes(amount),
-				},
-			)
+			recordRewardFundTransferredEvent(cc, k.key, from, to, amount)
 		} else {
 			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
 				if err := cc.Withdraw(from, amount, module.Burn); err != nil {
@@ -1783,14 +1735,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			if err := cc.HandleBurn(from, amount); err != nil {
 				return err
 			}
-			cc.OnEvent(state.SystemAddress,
-				[][]byte{[]byte("RewardFundBurned(str,Address,int)")},
-				[][]byte{
-					[]byte(k.key),
-					from.Bytes(),
-					intconv.BigIntToBytes(amount),
-				},
-			)
+			recordRewardFundBurnedEvent(cc, k.key, from, amount)
 			es.logger.Warnf("Burn %s for %s", amount, k.key)
 		}
 	}
@@ -1852,32 +1797,35 @@ func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values m
 		rates[pt] = rate
 	}
 
+	revision := cc.Revision().Value()
 	for _, pt = range icmodule.GetPenaltyTypes() {
 		if rate, ok := rates[pt]; ok {
-			oldRate, err := es.State.GetSlashingRate(pt)
+			oldRate, err := es.State.GetSlashingRate(revision, pt)
 			if err != nil {
 				return err
 			}
 			if oldRate != rate {
-				if err = es.State.SetSlashingRate(pt, rate); err != nil {
+				if err = es.State.SetSlashingRate(revision, pt, rate); err != nil {
 					return err
 				}
 				// Record slashingRateChangedV2 eventLogs in PenaltyType order
-				recordSlashingRateChangedV2Event(cc, pt, rate)
+				RecordSlashingRateChangedEvent(cc, pt, rate)
 			}
 		}
 	}
 	return nil
 }
 
-func (es *ExtensionStateImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
+func (es *ExtensionStateImpl) GetSlashingRates(
+	cc icmodule.CallContext, penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
 	if len(penaltyTypes) == 0 {
 		penaltyTypes = icmodule.GetPenaltyTypes()
 	}
 
+	revision := cc.Revision().Value()
 	jso := make(map[string]interface{})
 	for _, pt := range penaltyTypes {
-		if rate, err := es.State.GetSlashingRate(pt); err == nil {
+		if rate, err := es.State.GetSlashingRate(revision, pt); err == nil {
 			jso[pt.String()] = rate.NumInt64()
 		} else {
 			return nil, err
@@ -1973,4 +1921,30 @@ func (es *ExtensionStateImpl) getOldCommissionRate(owner module.Address) (icmodu
 	}
 	// It is not allowed to call setCommissionRate() during the term when commissionInfo is initialized.
 	return icmodule.Rate(0), icmodule.NotFoundError.Errorf("OldCommissionRateNotFound(%s)", owner)
+}
+
+func (es *ExtensionStateImpl) newStateContext(cc icmodule.WorldContext) icmodule.StateContext {
+	revision := cc.Revision().Value()
+	termRevision := revision
+	term := es.State.GetTermSnapshot()
+	if term != nil {
+		termRevision = term.Revision()
+	}
+	return icstate.NewStateContext(cc.BlockHeight(), revision, termRevision, es)
+}
+
+func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
+	owner := cc.From()
+	if owner == nil {
+		return scoreresult.InvalidParameterError.Errorf("InvalidOwner(%s)", owner)
+	}
+	ps := es.State.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
+	}
+	if !ps.IsActive() {
+		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
+	}
+
+	return ps.NotifyEvent(es.newStateContext(cc), icmodule.PRepEventRequestUnjail)
 }

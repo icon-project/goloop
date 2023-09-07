@@ -231,7 +231,7 @@ func TestCalculator_varForVotedReward(t *testing.T) {
 	}
 }
 
-func newVotedDataForTest(status icstage.EnableStatus, delegated, bonded, bondRequirement int64, iScore int64) *votedData {
+func newVotedDataForTest(status icmodule.EnableStatus, delegated, bonded, bondRequirement int64, iScore int64) *votedData {
 	voted := icreward.NewVoted()
 	voted.SetStatus(status)
 	voted.SetDelegated(big.NewInt(delegated))
@@ -244,11 +244,11 @@ func newVotedDataForTest(status icstage.EnableStatus, delegated, bonded, bondReq
 }
 
 func TestDelegatedData_compare(t *testing.T) {
-	d1 := newVotedDataForTest(icstage.ESEnable, 10, 0, 0, 10)
-	d2 := newVotedDataForTest(icstage.ESEnable, 20, 0, 0, 20)
-	d3 := newVotedDataForTest(icstage.ESEnable, 20, 0, 0, 21)
-	d4 := newVotedDataForTest(icstage.ESDisablePermanent, 30, 0, 0, 30)
-	d5 := newVotedDataForTest(icstage.ESDisableTemp, 31, 0, 0, 31)
+	d1 := newVotedDataForTest(icmodule.ESEnable, 10, 0, 0, 10)
+	d2 := newVotedDataForTest(icmodule.ESEnable, 20, 0, 0, 20)
+	d3 := newVotedDataForTest(icmodule.ESEnable, 20, 0, 0, 21)
+	d4 := newVotedDataForTest(icmodule.ESDisablePermanent, 30, 0, 0, 30)
+	d5 := newVotedDataForTest(icmodule.ESDisableTemp, 31, 0, 0, 31)
 	type args struct {
 		d1 *votedData
 		d2 *votedData
@@ -300,9 +300,9 @@ func TestDelegatedData_compare(t *testing.T) {
 func TestVotedInfo_setEnable(t *testing.T) {
 	totalVoted := new(big.Int)
 	vInfo := newVotedInfo(100)
-	status := icstage.ESDisablePermanent
+	status := icmodule.ESDisablePermanent
 	for i := int64(1); i < 6; i += 1 {
-		status = status % icstage.ESMax
+		status = status % icmodule.ESMax
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(status, i, i, 1, 0)
 		vInfo.AddVotedData(addr, data)
@@ -312,9 +312,9 @@ func TestVotedInfo_setEnable(t *testing.T) {
 	}
 	assert.Equal(t, 0, totalVoted.Cmp(vInfo.TotalVoted()))
 
-	status = icstage.ESEnable
+	status = icmodule.ESEnable
 	for key, vData := range vInfo.PReps() {
-		status = status % icstage.ESMax
+		status = status % icmodule.ESMax
 		addr, err := common.NewAddress([]byte(key))
 		assert.NoError(t, err)
 
@@ -332,7 +332,7 @@ func TestVotedInfo_setEnable(t *testing.T) {
 	}
 
 	addr := common.MustNewAddressFromString("hx123412341234")
-	vInfo.SetEnable(addr, icstage.ESDisablePermanent)
+	vInfo.SetEnable(addr, icmodule.ESDisablePermanent)
 	prep := vInfo.GetPRepByAddress(addr)
 	assert.Equal(t, false, prep.Enable())
 	assert.True(t, prep.IsEmpty())
@@ -343,9 +343,9 @@ func TestVotedInfo_setEnable(t *testing.T) {
 func TestVotedInfo_updateDelegated(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	votes := make([]*icstage.Vote, 0)
-	status := icstage.ESEnable
+	status := icmodule.ESEnable
 	for i := int64(1); i < 6; i += 1 {
-		status = status % icstage.ESDisablePermanent
+		status = status % icmodule.ESDisablePermanent
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(status, i, i, 1, 0)
 		vInfo.AddVotedData(addr, data)
@@ -375,9 +375,9 @@ func TestVotedInfo_updateDelegated(t *testing.T) {
 func TestVotedInfo_updateBonded(t *testing.T) {
 	vInfo := newVotedInfo(100)
 	votes := make([]*icstage.Vote, 0)
-	status := icstage.ESEnable
+	status := icmodule.ESEnable
 	for i := int64(1); i < 6; i += 1 {
-		status = status % icstage.ESDisableTemp
+		status = status % icmodule.ESDisableTemp
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
 		data := newVotedDataForTest(status, i, i, 1, 0)
 		vInfo.AddVotedData(addr, data)
@@ -412,7 +412,7 @@ func TestVotedInfo_SortAndUpdateTotalBondedDelegationAndCalculateReward(t *testi
 	rankCount := 0
 	for i := int64(1); i <= maxIndex; i += 1 {
 		addr := common.MustNewAddressFromString(fmt.Sprintf("hx%d", i))
-		data := newVotedDataForTest(icstage.ESEnable, i, i, 5, 0)
+		data := newVotedDataForTest(icmodule.ESEnable, i, i, 5, 0)
 		if rankCount < maxRank {
 			total += i * 2
 			rankCount++

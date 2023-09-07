@@ -114,18 +114,22 @@ func (vs VoteState) String() string {
 }
 
 type prepStatusData struct {
-	grade        Grade
-	status       Status
-	delegated    *big.Int
-	bonded       *big.Int
-	vTotal       int64
-	vFail        int64
-	vFailCont    int64
+	grade     Grade
+	status    Status
+	delegated *big.Int
+	bonded    *big.Int
+	vTotal    int64
+	vFail     int64
+	vFailCont int64
+	// ValidationFailurePenaltyMask
 	vPenaltyMask uint32
 	lastState    VoteState
 	lastHeight   int64
 	dsaMask      int64
+	// Since IISS-4.0
+	ji JailInfo
 
+	// Data not stored in DB
 	effectiveDelegated *big.Int
 }
 
@@ -246,7 +250,6 @@ func (ps *prepStatusData) equal(other *prepStatusData) bool {
 	if ps == other {
 		return true
 	}
-
 	return ps.grade == other.grade &&
 		ps.status == other.status &&
 		ps.delegated.Cmp(other.delegated) == 0 &&
@@ -257,7 +260,8 @@ func (ps *prepStatusData) equal(other *prepStatusData) bool {
 		ps.vPenaltyMask == other.vPenaltyMask &&
 		ps.lastState == other.lastState &&
 		ps.lastHeight == other.lastHeight &&
-		ps.dsaMask == other.dsaMask
+		ps.dsaMask == other.dsaMask &&
+		ps.ji == other.ji
 }
 
 func (ps *prepStatusData) clone() prepStatusData {
@@ -273,16 +277,20 @@ func (ps *prepStatusData) clone() prepStatusData {
 		lastState:    ps.lastState,
 		lastHeight:   ps.lastHeight,
 		dsaMask:      ps.dsaMask,
+		ji:           ps.ji,
 
+		// Data not stored in DB
 		effectiveDelegated: ps.effectiveDelegated,
 	}
 }
 
-func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement icmodule.Rate, dsaMask int64) map[string]interface{} {
+func (ps *prepStatusData) ToJSON(
+	sc icmodule.StateContext, bondRequirement icmodule.Rate, dsaMask int64) map[string]interface{} {
+	blockHeight := sc.BlockHeight()
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
-	jso["penalty"] = int64(ps.getPenaltyType())
+	jso["penalty"] = ps.getPenaltyType(sc)
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
@@ -293,19 +301,43 @@ func (ps *prepStatusData) ToJSON(blockHeight int64, bondRequirement icmodule.Rat
 	if dsaMask != 0 {
 		jso["hasPublicKey"] = (ps.GetDSAMask() & dsaMask) == dsaMask
 	}
+	ps.ji.ToJSON(sc, jso)
 	return jso
 }
 
-func (ps *prepStatusData) getPenaltyType() icmodule.PenaltyType {
+func (ps *prepStatusData) getPenaltyType(sc icmodule.StateContext) int {
+	if sc.IsIISS4Activated() {
+		return ps.getPenaltyTypeV1()
+	}
+	return int(ps.getPenaltyTypeV0())
+}
+
+func (ps *prepStatusData) getPenaltyTypeV0() icmodule.PenaltyType {
 	if ps.status == Disqualified {
 		return icmodule.PenaltyPRepDisqualification
 	}
-
 	if (ps.vPenaltyMask & 1) == 0 {
 		return icmodule.PenaltyNone
 	} else {
-		return icmodule.PenaltyBlockValidation
+		return icmodule.PenaltyValidationFailure
 	}
+}
+
+func (ps *prepStatusData) getPenaltyTypeV1() int {
+	ptBits := 0
+	if ps.status == Disqualified {
+		ptBits |= 1 << icmodule.PenaltyPRepDisqualification
+	}
+	if (ps.vPenaltyMask & 1) != 0 {
+		ptBits |= 1 << icmodule.PenaltyValidationFailure
+	}
+	if icutils.MatchAll(ps.ji.Flags(), JFlagAccumulatedValidationFailure) {
+		ptBits |= 1 << icmodule.PenaltyAccumulatedValidationFailure
+	}
+	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleVote) {
+		ptBits |= 1 << icmodule.PenaltyDoubleVote
+	}
+	return ptBits
 }
 
 func (ps *prepStatusData) GetStatsInJSON(blockHeight int64) map[string]interface{} {
@@ -334,12 +366,14 @@ func (ps *prepStatusData) IsEmpty() bool {
 		ps.lastState == None &&
 		ps.lastHeight == 0 &&
 		ps.status == NotReady &&
-		ps.dsaMask == 0
+		ps.dsaMask == 0 &&
+		ps.ji.IsEmpty()
 }
 
 func (ps *prepStatusData) String() string {
 	return fmt.Sprintf(
-		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d dd=%s bd=%s vote=%s ed=%d dm=%d",
+		"st=%s grade=%s ls=%s lh=%d vf=%d vt=%d vpc=%d vfco=%d "+
+			"dd=%s bd=%s vote=%s ed=%d dm=%d ji=%v",
 		ps.status,
 		ps.grade,
 		ps.lastState,
@@ -353,6 +387,7 @@ func (ps *prepStatusData) String() string {
 		ps.getVoted(),
 		ps.effectiveDelegated,
 		ps.dsaMask,
+		ps.ji,
 	)
 }
 
@@ -364,9 +399,9 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			format = "PRepStatus{" +
 				"status=%s grade=%s lastState=%s lastHeight=%d " +
 				"vFail=%d vTotal=%d vPenaltyCount=%d vFailCont=%d " +
-				"delegated=%s bonded=%s effectiveDelegated=%d dsaMask=%d}"
+				"delegated=%s bonded=%s effectiveDelegated=%d dsaMask=%d ji=%v}"
 		} else {
-			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s %d %d}"
+			format = "PRepStatus{%s %s %s %d %d %d %d %d %s %s %d %d %v}"
 		}
 		_, _ = fmt.Fprintf(
 			f, format,
@@ -382,10 +417,39 @@ func (ps *prepStatusData) Format(f fmt.State, c rune) {
 			ps.bonded,
 			ps.effectiveDelegated,
 			ps.dsaMask,
+			ps.ji,
 		)
 	case 's':
 		_, _ = fmt.Fprint(f, ps.String())
 	}
+}
+
+func (ps *prepStatusData) JailFlags() int {
+	return ps.ji.Flags()
+}
+
+func (ps *prepStatusData) IsInJail() bool {
+	return ps.ji.IsInJail()
+}
+
+func (ps *prepStatusData) IsUnjailing() bool {
+	return ps.ji.IsUnjailing()
+}
+
+func (ps *prepStatusData) IsUnjailable() bool {
+	return ps.ji.IsUnjailable()
+}
+
+func (ps *prepStatusData) IsJailInfoElectable() bool {
+	return ps.ji.IsElectable()
+}
+
+func (ps *prepStatusData) UnjailRequestHeight() int64 {
+	return ps.ji.UnjailRequestHeight()
+}
+
+func (ps *prepStatusData) MinDoubleVoteHeight() int64 {
+	return ps.ji.MinDoubleVoteHeight()
 }
 
 type PRepStatusSnapshot struct {
@@ -398,7 +462,7 @@ func (ps *PRepStatusSnapshot) Version() int {
 }
 
 func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
-	if n, err := decoder.DecodeMulti(
+	n, err := decoder.DecodeMulti(
 		&ps.grade,
 		&ps.status,
 		&ps.delegated,
@@ -410,11 +474,15 @@ func (ps *PRepStatusSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 		&ps.lastState,
 		&ps.lastHeight,
 		&ps.dsaMask,
-	); err == nil || (n == 10 && err == io.EOF) {
-		return nil
-	} else {
-		return err
+		&ps.ji,
+	)
+	if err == io.EOF {
+		if n != 10 && n != 11 {
+			return icmodule.InvalidStateError.Errorf("InvalidFormat(n=%d)", n)
+		}
+		err = nil
 	}
+	return err
 }
 
 func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
@@ -432,10 +500,15 @@ func (ps *PRepStatusSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 	); err != nil {
 		return err
 	}
-	if ps.dsaMask == 0 {
-		return nil
+
+	if !ps.ji.IsEmpty() {
+		return encoder.EncodeMulti(ps.dsaMask, &ps.ji)
+	} else {
+		if ps.dsaMask != 0 {
+			return encoder.Encode(ps.dsaMask)
+		}
 	}
-	return encoder.Encode(ps.dsaMask)
+	return nil
 }
 
 func (ps *PRepStatusSnapshot) Equal(o icobject.Impl) bool {
@@ -462,8 +535,13 @@ var emptyPRepStatusSnapshot = &PRepStatusSnapshot{
 }
 
 type PRepStatusState struct {
+	owner module.Address
 	prepStatusData
 	last *PRepStatusSnapshot
+}
+
+func (ps *PRepStatusState) Owner() module.Address {
+	return ps.owner
 }
 
 func (ps *PRepStatusState) Reset(ss *PRepStatusSnapshot) *PRepStatusState {
@@ -558,7 +636,28 @@ func (ps *PRepStatusState) ResetVPenaltyMask() {
 	}
 }
 
-func (ps *PRepStatusState) OnBlockVote(blockHeight int64, voted bool) error {
+func (ps *PRepStatusState) NotifyEvent(
+	sc icmodule.StateContext, event icmodule.PRepEvent, data ...interface{}) error {
+	switch event {
+	case icmodule.PRepEventBlockVote:
+		return ps.onBlockVote(sc, data[0].(bool))
+	case icmodule.PRepEventMainIn:
+		return ps.onMainPRepIn(sc, data[0].(int), false)
+	case icmodule.PRepEventImposePenalty:
+		return ps.onPenaltyImposed(sc, data[0].(icmodule.PenaltyType))
+	case icmodule.PRepEventRequestUnjail:
+		return ps.onUnjailRequested(sc)
+	case icmodule.PRepEventTermEnd:
+		return ps.onTermEnd(sc, data[0].(Grade), data[1].(int))
+	case icmodule.PRepEventValidatorOut:
+		return ps.onValidatorOut(sc)
+	default:
+		panic("UnknownPRepEvent")
+	}
+	return nil
+}
+
+func (ps *PRepStatusState) onBlockVote(sc icmodule.StateContext, voted bool) error {
 	voteState := Success
 	if !voted {
 		voteState = Failure
@@ -568,62 +667,56 @@ func (ps *PRepStatusState) OnBlockVote(blockHeight int64, voted bool) error {
 		return nil
 	}
 
-	var err error
+	blockHeight := sc.BlockHeight()
+	if err := ps.syncBlockVoteStats(blockHeight - 1); err != nil {
+		return err
+	}
+
 	if voted {
-		err = ps.onTrueBlockVote(blockHeight)
+		ps.vFailCont = 0
 	} else {
-		err = ps.onFalseBlockVote(blockHeight)
+		ps.vFail++
+		ps.vFailCont++
 	}
-	if err == nil {
-		ps.setDirty()
-	}
-	return err
-}
 
-func (ps *PRepStatusState) onFalseBlockVote(blockHeight int64) error {
-	if err := ps.syncBlockVoteStats(blockHeight - 1); err != nil {
-		return err
-	}
-	ps.vFail++
-	ps.vFailCont++
+	// Common part
 	ps.vTotal++
 	ps.lastHeight = blockHeight
-	ps.lastState = Failure
-	return nil
-}
-
-func (ps *PRepStatusState) onTrueBlockVote(blockHeight int64) error {
-	if err := ps.syncBlockVoteStats(blockHeight - 1); err != nil {
-		return err
-	}
-	ps.vFailCont = 0
-	ps.vTotal++
-	ps.lastHeight = blockHeight
-	ps.lastState = Success
-	return nil
-}
-
-// OnMainPRepIn is called only in case of penalized main prep replacement
-func (ps *PRepStatusState) OnMainPRepIn(limit int) error {
-	if ps.grade != GradeSub {
-		return errors.Errorf("Invalid grade: %v -> M", ps.grade)
-	}
-	ps.onMainPRepIn(limit)
+	ps.lastState = voteState
 	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) onMainPRepIn(limit int) {
+func (ps *PRepStatusState) onMainPRepIn(sc icmodule.StateContext, limit int, termEnd bool) error {
+	if termEnd == false {
+		if ps.grade != GradeSub {
+			return errors.Errorf("Invalid grade: %v -> M", ps.grade)
+		}
+	}
+
 	ps.grade = GradeMain
 	ps.shiftVPenaltyMask(limit)
-}
+	if ps.ji.IsUnjailing() {
+		status := icmodule.ESEnable
+		if termEnd {
+			status = icmodule.ESEnableAtNextTerm
+		}
+		if err := sc.AddEventEnable(ps.owner, status); err != nil {
+			return err
+		}
+	}
 
-func (ps *PRepStatusState) onMainPRepOut(newGrade Grade) {
-	ps.grade = newGrade
+	if err := ps.ji.OnMainPRepIn(sc); err != nil {
+		return err
+	}
+
+	ps.setDirty()
+	return nil
 }
 
 // OnValidatorOut is called when this PRep node address disappears from ConsensusInfo
-func (ps *PRepStatusState) OnValidatorOut(blockHeight int64) error {
+func (ps *PRepStatusState) onValidatorOut(sc icmodule.StateContext) error {
+	blockHeight := sc.BlockHeight() - 1
 	lh := ps.lastHeight
 	if blockHeight < lh {
 		return errors.Errorf("blockHeight(%d) < lastHeight(%d)", blockHeight, lh)
@@ -636,29 +729,47 @@ func (ps *PRepStatusState) OnValidatorOut(blockHeight int64) error {
 	return nil
 }
 
-func (ps *PRepStatusState) OnPenaltyImposed(blockHeight int64) error {
-	if err := ps.syncBlockVoteStats(blockHeight); err != nil {
+func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
+	if pt == icmodule.PenaltyValidationFailure {
+		blockHeight := sc.BlockHeight()
+		if err := ps.syncBlockVoteStats(blockHeight); err != nil {
+			return err
+		}
+		ps.vFailCont = 0
+		ps.vPenaltyMask |= 1
+	}
+	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
 		return err
 	}
-	ps.vFailCont = 0
-	ps.vPenaltyMask |= 1
 	ps.grade = GradeCandidate
 	ps.setDirty()
 	return nil
 }
 
-func (ps *PRepStatusState) OnTermEnd(newGrade Grade, limit int) error {
+func (ps *PRepStatusState) onTermEnd(sc icmodule.StateContext, newGrade Grade, limit int) error {
 	ps.resetVFailCont()
 	if newGrade == GradeMain {
-		ps.onMainPRepIn(limit)
+		if err := ps.onMainPRepIn(sc, limit, true); err != nil {
+			return err
+		}
 	} else {
-		ps.onMainPRepOut(newGrade)
+		ps.grade = newGrade
 	}
 	ps.setDirty()
 	return nil
 }
 
-// TODO: This function will be deprecated
+func (ps *PRepStatusState) onUnjailRequested(sc icmodule.StateContext) error {
+	if err := ps.ji.OnUnjailRequested(sc); err != nil {
+		return err
+	}
+	if err := sc.AddEventEnable(ps.owner, icmodule.ESUnjail); err != nil {
+		return err
+	}
+	ps.setDirty()
+	return nil
+}
+
 // syncBlockVoteStats updates vote stats data at a given blockHeight
 func (ps *PRepStatusState) syncBlockVoteStats(blockHeight int64) error {
 	if blockHeight < ps.lastHeight {
@@ -692,12 +803,13 @@ func newPRepStatusWithTag(_ icobject.Tag) *PRepStatusSnapshot {
 	return new(PRepStatusSnapshot)
 }
 
-func NewPRepStatusWithSnapshot(snapshot *PRepStatusSnapshot) *PRepStatusState {
-	return new(PRepStatusState).Reset(snapshot)
+func NewPRepStatusWithSnapshot(owner module.Address, snapshot *PRepStatusSnapshot) *PRepStatusState {
+	ps := &PRepStatusState{owner: owner}
+	return ps.Reset(snapshot)
 }
 
-func NewPRepStatus() *PRepStatusState {
-	return new(PRepStatusState).Reset(emptyPRepStatusSnapshot)
+func NewPRepStatus(owner module.Address) *PRepStatusState {
+	return NewPRepStatusWithSnapshot(owner, emptyPRepStatusSnapshot)
 }
 
 type PRepStats struct {
