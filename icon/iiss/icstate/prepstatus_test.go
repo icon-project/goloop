@@ -438,7 +438,7 @@ func TestPRepStatus_UpdateBlockVoteStats(t *testing.T) {
 			out := tt.out
 			bh := in.bh
 
-			sc := newMockStateContext(bh, 0)
+			sc := newMockStateContext(map[string]interface{}{"blockHeight": bh, "revision": 0})
 			ps := &PRepStatusState{prepStatusData: prepStatusData{
 				vFail:        init.vf,
 				vTotal:       init.vt,
@@ -671,7 +671,11 @@ func TestPRepStatus_onPenaltyImposed(t *testing.T) {
 				vPenaltyMask: init.vpm,
 			}}
 
-			sc := newMockStateContext(bh, revision, termRevision)
+			sc := newMockStateContext(map[string]interface{}{
+				"blockHeight":  bh,
+				"revision":     revision,
+				"termRevision": termRevision,
+			})
 			err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
@@ -737,7 +741,10 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 }
 
 func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
-	sc := newMockStateContext(100, icmodule.RevisionPreIISS4)
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight": int64(100),
+		"revision":    icmodule.RevisionPreIISS4,
+	})
 	ps := NewPRepStatus(newDummyAddress(1))
 	assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
 
@@ -756,10 +763,8 @@ func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
 }
 
 func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
-	sc := newMockStateContext(100, icmodule.RevisionIISS4)
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4})
 	ps := NewPRepStatus(newDummyAddress(1))
-
-	assert.True(t, sc.IsIISS4Activated())
 
 	type input struct {
 		status Status
@@ -797,7 +802,7 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 }
 
 func TestPRepStatusData_ToJSON(t *testing.T) {
-	sc := newMockStateContext(100, icmodule.RevisionIISS4)
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4})
 
 	ps := NewPRepStatus(newDummyAddress(1))
 	jso := ps.ToJSON(sc)
@@ -891,7 +896,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	var err error
 	limit := 30
 	owner := newDummyAddress(1)
-	sc := newMockStateContext(int64(1000), icmodule.RevisionIISS4)
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4})
 
 	ps := NewPRepStatus(owner)
 	assert.NoError(t, ps.Activate())

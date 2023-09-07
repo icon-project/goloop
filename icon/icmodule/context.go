@@ -45,7 +45,7 @@ type StateContext interface {
 	BlockHeight() int64
 	Revision() int
 	TermRevision() int
-	IsIISS4Activated() bool
+	TermIISSVersion() int
 	GetActiveDSAMask() int64
 	GetBondRequirement() Rate
 	AddEventEnable(from module.Address, status EnableStatus) error

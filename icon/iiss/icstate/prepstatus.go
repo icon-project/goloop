@@ -308,7 +308,7 @@ func (ps *prepStatusData) ToJSON(sc icmodule.StateContext) map[string]interface{
 }
 
 func (ps *prepStatusData) getPenaltyType(sc icmodule.StateContext) int {
-	if sc.IsIISS4Activated() {
+	if sc.TermIISSVersion() >= IISSVersion4 {
 		return ps.getPenaltyTypeV1()
 	}
 	return int(ps.getPenaltyTypeV0())

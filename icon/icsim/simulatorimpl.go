@@ -42,11 +42,12 @@ func newWorldState(wss state.WorldSnapshot, readonly bool) state.WorldState {
 }
 
 type mockStateContext struct {
-	blockHeight   int64
-	revision      int
-	termRevision  int
-	activeDSAMask int64
-	br            icmodule.Rate
+	blockHeight     int64
+	revision        int
+	termRevision    int
+	termIISSVersion int
+	activeDSAMask   int64
+	br              icmodule.Rate
 }
 
 func (m mockStateContext) BlockHeight() int64 {
@@ -61,8 +62,8 @@ func (m mockStateContext) TermRevision() int {
 	return m.termRevision
 }
 
-func (m mockStateContext) IsIISS4Activated() bool {
-	return m.termRevision >= icmodule.RevisionIISS4
+func (m mockStateContext) TermIISSVersion() int {
+	return m.termIISSVersion
 }
 
 func (m mockStateContext) GetActiveDSAMask() int64 {
@@ -586,6 +587,7 @@ func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 		sim.BlockHeight(),
 		sim.Revision().Value(),
 		sim.Revision().Value(),
+		icstate.IISSVersion3,
 		int64(0),
 		icmodule.ToRate(5),
 	}

@@ -51,11 +51,11 @@ func (sc *stateContext) TermRevision() int {
 	return 0
 }
 
-func (sc *stateContext) IsIISS4Activated() bool {
+func (sc *stateContext) TermIISSVersion() int {
 	if term := sc.getTermSnapshot(); term != nil {
-		return term.GetIISSVersion() >= icstate.IISSVersion4
+		return term.GetIISSVersion()
 	}
-	return false
+	return 0
 }
 
 func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.EnableStatus) error {

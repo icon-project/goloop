@@ -30,12 +30,13 @@ import (
 )
 
 type mockStateContext struct {
-	blockHeight   int64
-	revision      int
-	termRevision  int
-	activeDSAMask int64
-	br            icmodule.Rate
-	eventLogger   icmodule.EnableEventLogger
+	blockHeight     int64
+	revision        int
+	termRevision    int
+	termIISSVersion int
+	activeDSAMask   int64
+	br              icmodule.Rate
+	eventLogger     icmodule.EnableEventLogger
 }
 
 func (m *mockStateContext) BlockHeight() int64 {
@@ -50,8 +51,8 @@ func (m *mockStateContext) TermRevision() int {
 	return m.termRevision
 }
 
-func (m *mockStateContext) IsIISS4Activated() bool {
-	return m.termRevision >= icmodule.RevisionIISS4
+func (m *mockStateContext) TermIISSVersion() int {
+	return m.termIISSVersion
 }
 
 func (m *mockStateContext) GetActiveDSAMask() int64 {
@@ -71,33 +72,36 @@ func (m *mockStateContext) IncreaseBlockHeightBy(amount int64) int64 {
 	return m.blockHeight
 }
 
-func newMockStateContext(blockHeight int64, revision int, params ...interface{}) *mockStateContext {
-	termRevision := revision
-	activeDSAMask := int64(0)
-	br := icmodule.ToRate(5)
-	var eventLogger icmodule.EnableEventLogger
+func newMockStateContext(params map[string]interface{}) *mockStateContext {
+	sc := &mockStateContext{
+		termIISSVersion: IISSVersion3,
+		br:              icmodule.ToRate(5),
+	}
 
-	for i, param := range params {
-		switch i {
-		case 0:
-			termRevision = param.(int)
-		case 1:
-			activeDSAMask = param.(int64)
-		case 2:
-			br = param.(icmodule.Rate)
-		case 3:
-			eventLogger = param.(icmodule.EnableEventLogger)
+	for k, v := range params {
+		switch k {
+		case "blockHeight":
+			sc.blockHeight = v.(int64)
+		case "revision":
+			sc.revision = v.(int)
+		case "termRevision":
+			sc.termRevision = v.(int)
+		case "activeDSAMask":
+			sc.activeDSAMask = v.(int64)
+		case "bondRequirement":
+			sc.br = v.(icmodule.Rate)
+		case "eventLogger":
+			sc.eventLogger = v.(icmodule.EnableEventLogger)
 		}
 	}
 
-	return &mockStateContext{
-		blockHeight,
-		revision,
-		termRevision,
-		activeDSAMask,
-		br,
-		eventLogger,
+	if sc.termRevision == 0 {
+		sc.termRevision = sc.revision
 	}
+	if sc.termRevision >= icmodule.RevisionIISS4 {
+		sc.termIISSVersion = IISSVersion4
+	}
+	return sc
 }
 
 func newNodeOnlyRegInfo(node module.Address) *PRepInfo {
@@ -445,7 +449,10 @@ func TestState_OnBlockVote(t *testing.T) {
 	owner := newDummyAddress(1)
 	state := newDummyState(false)
 
-	sc := newMockStateContext(int64(1000), icmodule.RevisionPreIISS4-1)
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight": int64(1000),
+		"revision":    icmodule.RevisionPreIISS4 - 1,
+	})
 	err = state.OnBlockVote(sc, owner, true)
 	assert.Error(t, err)
 
@@ -530,7 +537,11 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			sc = newMockStateContext(int64(1000), arg.in.rev, arg.in.termRev)
+			sc = newMockStateContext(map[string]interface{}{
+				"blockHeight":  int64(1000),
+				"revision":     arg.in.rev,
+				"termRevision": arg.in.termRev,
+			})
 			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
@@ -676,7 +687,11 @@ func TestState_ImposePenalty(t *testing.T) {
 			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
-			sc := newMockStateContext(10000, arg.in.rev, arg.in.termRev)
+			sc := newMockStateContext(map[string]interface{}{
+				"blockHeight":  int64(10000),
+				"revision":     arg.in.rev,
+				"termRevision": arg.in.termRev,
+			})
 			ps := state.GetPRepStatusByOwner(owner, false)
 			err = state.ImposePenalty(sc, pt, owner, ps)
 			assert.NoError(t, err)
@@ -758,7 +773,7 @@ func TestState_DisablePRep(t *testing.T) {
 	assert.Equal(t, delegation, ps.Delegated().Int64())
 	assert.Equal(t, Active, ps.Status())
 
-	sc := newMockStateContext(1000, icmodule.RevisionPreIISS4)
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionPreIISS4})
 	err = state.DisablePRep(sc, owner, Unregistered)
 	assert.NoError(t, err)
 	assert.NoError(t, state.Flush())
@@ -786,7 +801,10 @@ func TestState_CheckValidationPenalty(t *testing.T) {
 	state.ClearCache()
 
 	blockHeight := int64(1000)
-	sc := newMockStateContext(blockHeight, icmodule.RevisionPreIISS4-1)
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight": blockHeight,
+		"revision":    icmodule.RevisionPreIISS4 - 1,
+	})
 	ps := state.GetPRepStatusByOwner(owner, false)
 	for i := 0; i < condition; i++ {
 		err = ps.onBlockVote(sc, false)
@@ -966,7 +984,10 @@ func TestState_OnValidatorOut(t *testing.T) {
 			owner := newDummyAddress(1)
 			state := newDummyState(false)
 
-			sc := newMockStateContext(blockHeight, icmodule.RevisionPreIISS4-1)
+			sc := newMockStateContext(map[string]interface{}{
+				"blockHeight": blockHeight,
+				"revision":    icmodule.RevisionPreIISS4 - 1,
+			})
 			err = state.OnValidatorOut(sc, owner)
 			assert.Error(t, err)
 

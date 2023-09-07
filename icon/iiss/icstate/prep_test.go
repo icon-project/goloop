@@ -302,9 +302,13 @@ func TestPRepSet_SortForQuery(t *testing.T) {
 
 	for _, arg := range args {
 		name := fmt.Sprintf("rev=%d", arg.rev)
-		rev := arg.rev
 		activeDSAMask := arg.activeDSAMask
-		sc := newMockStateContext(int64(1000), rev, rev, activeDSAMask, br)
+		sc := newMockStateContext(map[string]interface{}{
+			"blockHeight": int64(1000),
+			"revision": arg.rev,
+			"activeDSAMask": activeDSAMask,
+			"bondRequirement": br,
+		})
 
 		t.Run(name, func(t *testing.T) {
 			prepSet.SortForQuery(sc)
