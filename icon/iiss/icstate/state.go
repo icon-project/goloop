@@ -643,12 +643,8 @@ func (s *State) GetPRepStatsOfInJSON(
 }
 
 func (s *State) GetPRepsInJSON(sc icmodule.StateContext, start, end int) (map[string]interface{}, error) {
-	br := s.GetBondRequirement()
-	revision := sc.Revision()
-	activeDSAMask := sc.GetActiveDSAMask()
-
 	prepSet := s.GetPRepSet()
-	prepSet.SortForQuery(br, revision, activeDSAMask)
+	prepSet.SortForQuery(sc)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
@@ -676,7 +672,7 @@ func (s *State) GetPRepsInJSON(sc icmodule.StateContext, start, end int) (map[st
 
 	for i := start - 1; i < end; i++ {
 		prep := prepSet.GetByIndex(i)
-		prepJSO := prep.ToJSON(sc, br)
+		prepJSO := prep.ToJSON(sc)
 		prepList = append(prepList, prepJSO)
 	}
 

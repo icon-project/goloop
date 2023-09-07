@@ -694,7 +694,6 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	var prep *icstate.PRep
 	var jso map[string]interface{}
 	var ok bool
-	var br = icmodule.ToRate(5) // 5%
 
 	c := NewConfig()
 	c.MainPRepCount = mainPRepCount
@@ -711,7 +710,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	// Check getPRep
 	sc := sim.GetStateContext()
 	prep = sim.GetPRep(address)
-	jso = prep.ToJSON(sc, br)
+	jso = prep.ToJSON(sc)
 	assertPower(t, jso)
 
 	// Check getPReps

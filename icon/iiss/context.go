@@ -195,6 +195,15 @@ func (ctx *worldContextImpl) GetBTPContext() state.BTPContext {
 	return state.NewBTPContext(ctx.WorldContext, as)
 }
 
+func (ctx *worldContextImpl) GetActiveDSAMask() int64 {
+	if ctx.Revision().Value() >= icmodule.RevisionBTP2 {
+		if bc := ctx.GetBTPContext(); bc != nil {
+			return bc.GetActiveDSAMask()
+		}
+	}
+	return 0
+}
+
 func NewWorldContext(ctx state.WorldContext, logger log.Logger) icmodule.WorldContext {
 	tlog := trace.LoggerOf(logger)
 	return &worldContextImpl{

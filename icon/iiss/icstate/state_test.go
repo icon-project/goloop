@@ -34,6 +34,7 @@ type mockStateContext struct {
 	revision      int
 	termRevision  int
 	activeDSAMask int64
+	br            icmodule.Rate
 	eventLogger   icmodule.EnableEventLogger
 }
 
@@ -57,6 +58,10 @@ func (m *mockStateContext) GetActiveDSAMask() int64 {
 	return m.activeDSAMask
 }
 
+func (m *mockStateContext) GetBondRequirement() icmodule.Rate {
+	return m.br
+}
+
 func (m *mockStateContext) AddEventEnable(module.Address, icmodule.EnableStatus) error {
 	return nil
 }
@@ -69,6 +74,7 @@ func (m *mockStateContext) IncreaseBlockHeightBy(amount int64) int64 {
 func newMockStateContext(blockHeight int64, revision int, params ...interface{}) *mockStateContext {
 	termRevision := revision
 	activeDSAMask := int64(0)
+	br := icmodule.ToRate(5)
 	var eventLogger icmodule.EnableEventLogger
 
 	for i, param := range params {
@@ -78,6 +84,8 @@ func newMockStateContext(blockHeight int64, revision int, params ...interface{})
 		case 1:
 			activeDSAMask = param.(int64)
 		case 2:
+			br = param.(icmodule.Rate)
+		case 3:
 			eventLogger = param.(icmodule.EnableEventLogger)
 		}
 	}
@@ -87,6 +95,7 @@ func newMockStateContext(blockHeight int64, revision int, params ...interface{})
 		revision,
 		termRevision,
 		activeDSAMask,
+		br,
 		eventLogger,
 	}
 }
@@ -845,7 +854,7 @@ func TestState_GetUnstakeLockPeriod(t *testing.T) {
 		err = state.SetTotalStake(big.NewInt(totalStake))
 		assert.NoError(t, err)
 
-		assert.NoError(t,state.Flush())
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 
 		periodInBlock := state.GetUnstakeLockPeriod(rev, totalSupply)

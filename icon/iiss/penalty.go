@@ -45,7 +45,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	penaltyTypes = append(penaltyTypes, icmodule.PenaltyValidationFailure)
 
 	// Impose ValidationFailurePenalty
-	sc := es.newStateContext(cc)
+	sc := NewStateContext(cc, es)
 	if err = es.State.ImposePenalty(sc, penaltyTypes[0], owner, ps); err != nil {
 		return err
 	}

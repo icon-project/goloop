@@ -304,23 +304,28 @@ func TestPRepSet_SortForQuery(t *testing.T) {
 		name := fmt.Sprintf("rev=%d", arg.rev)
 		rev := arg.rev
 		activeDSAMask := arg.activeDSAMask
+		sc := newMockStateContext(int64(1000), rev, rev, activeDSAMask, br)
 
 		t.Run(name, func(t *testing.T) {
-			prepSet.SortForQuery(br, rev, activeDSAMask)
+			prepSet.SortForQuery(sc)
 
 			for i := 1; i < prepSet.Size(); i++ {
 				p0 := prepSet.GetByIndex(i - 1)
 				p1 := prepSet.GetByIndex(i)
-				assert.True(t, checkPRepOrder(p0, p1, br, rev, activeDSAMask))
+				assert.True(t, checkPRepOrder(sc, p0, p1))
 			}
 		})
 	}
 }
 
-func checkPRepOrder(p0, p1 *PRep, br icmodule.Rate, rev int, dsaMask int64) bool {
+func checkPRepOrder(sc icmodule.StateContext, p0, p1 *PRep) bool {
+	rev := sc.Revision()
+	br := sc.GetBondRequirement()
+	activeDSAMask := sc.GetActiveDSAMask()
+
 	if rev >= icmodule.RevisionBTP2 {
-		if p0.HasPubKey(dsaMask) != p1.HasPubKey(dsaMask) {
-			return p0.HasPubKey(dsaMask)
+		if p0.HasPubKey(activeDSAMask) != p1.HasPubKey(activeDSAMask) {
+			return p0.HasPubKey(activeDSAMask)
 		}
 		if p0.IsJailInfoElectable() != p1.IsJailInfoElectable() {
 			return p0.IsJailInfoElectable()

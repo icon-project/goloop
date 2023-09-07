@@ -207,6 +207,15 @@ func (ctx *worldContext) GetBTPContext() state.BTPContext {
 	return state.NewBTPContext(nil, as)
 }
 
+func (ctx *worldContext) GetActiveDSAMask() int64 {
+	if ctx.Revision().Value() >= icmodule.RevisionBTP2 {
+		if bc := ctx.GetBTPContext(); bc != nil {
+			return bc.GetActiveDSAMask()
+		}
+	}
+	return 0
+}
+
 func NewWorldContext(
 	ws state.WorldState, blockHeight int64, revision module.Revision,
 	csi module.ConsensusInfo, stepPrice *big.Int,

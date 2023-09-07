@@ -18,18 +18,25 @@ package iiss
 
 import (
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 )
 
 type stateContext struct {
 	icmodule.WorldContext
-	termRevision int
+	*icstate.State
 	eventLogger icmodule.EnableEventLogger
+
+	// Cache
+	term *icstate.TermSnapshot
 }
 
-func NewStateContext(
-	wc icmodule.WorldContext, termRevision int, eventLogger icmodule.EnableEventLogger) icmodule.StateContext {
-	return &stateContext{wc, termRevision, eventLogger}
+func NewStateContext(wc icmodule.WorldContext, es *ExtensionStateImpl) icmodule.StateContext {
+	return &stateContext{
+		WorldContext: wc,
+		State: es.State,
+		eventLogger: es,
+	}
 }
 
 func (sc *stateContext) Revision() int {
@@ -38,15 +45,14 @@ func (sc *stateContext) Revision() int {
 
 // TermRevision returns revision stored in TermSnapshot
 func (sc *stateContext) TermRevision() int {
-	return sc.termRevision
+	if term := sc.getTermSnapshot(); term != nil {
+		return term.Revision()
+	}
+	return 0
 }
 
 func (sc *stateContext) IsIISS4Activated() bool {
-	return sc.termRevision >= icmodule.RevisionIISS4
-}
-
-func (sc *stateContext) GetActiveDSAMask() int64 {
-	return GetActiveDSAMask(sc.WorldContext)
+	return sc.TermRevision() >= icmodule.RevisionIISS4
 }
 
 func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.EnableStatus) error {
@@ -56,11 +62,9 @@ func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.Ena
 	return nil
 }
 
-func GetActiveDSAMask(cc icmodule.WorldContext) int64 {
-	if cc.Revision().Value() >= icmodule.RevisionBTP2 {
-		if bc := cc.GetBTPContext(); bc != nil {
-			return bc.GetActiveDSAMask()
-		}
+func (sc *stateContext) getTermSnapshot() *icstate.TermSnapshot {
+	if sc.term == nil {
+		sc.term = sc.State.GetTermSnapshot()
 	}
-	return 0
+	return sc.term
 }

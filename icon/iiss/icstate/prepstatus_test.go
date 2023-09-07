@@ -800,7 +800,7 @@ func TestPRepStatusData_ToJSON(t *testing.T) {
 	sc := newMockStateContext(100, icmodule.RevisionIISS4)
 
 	ps := NewPRepStatus(newDummyAddress(1))
-	jso := ps.ToJSON(sc, 5, 0)
+	jso := ps.ToJSON(sc)
 
 	penalty, ok := jso["penalty"].(int)
 	assert.True(t, ok)

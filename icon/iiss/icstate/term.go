@@ -328,7 +328,6 @@ func (term *termData) ToJSON(sc icmodule.StateContext, state *State) map[string]
 }
 
 func (term *termData) prepsToJSON(sc icmodule.StateContext, state *State) []interface{} {
-	br := state.GetBondRequirement()
 	jso := make([]interface{}, 0, len(term.prepSnapshots))
 	for _, pss := range term.prepSnapshots {
 		prep := state.GetPRepByOwner(pss.Owner())
@@ -337,7 +336,7 @@ func (term *termData) prepsToJSON(sc icmodule.StateContext, state *State) []inte
 		}
 		grade := prep.Grade()
 		if grade == GradeMain || grade == GradeSub {
-			prepInJSON := prep.ToJSON(sc, br)
+			prepInJSON := prep.ToJSON(sc)
 			jso = append(jso, prepInJSON)
 		}
 	}

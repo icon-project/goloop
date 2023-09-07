@@ -289,12 +289,12 @@ func (es *ExtensionStateImpl) GetPRepInJSON(cc icmodule.CallContext, address mod
 	if prep == nil {
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
-	sc := es.newStateContext(cc)
-	return prep.ToJSON(sc, es.State.GetBondRequirement()), nil
+	sc := NewStateContext(cc, es)
+	return prep.ToJSON(sc), nil
 }
 
 func (es *ExtensionStateImpl) GetPRepsInJSON(cc icmodule.CallContext, start, end int) (map[string]interface{}, error) {
-	sc := es.newStateContext(cc)
+	sc := NewStateContext(cc, es)
 	return es.State.GetPRepsInJSON(sc, start, end)
 }
 
@@ -571,7 +571,7 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 	var err error
 	blockHeight := cc.BlockHeight()
 	owner := cc.From()
-	sc := es.newStateContext(cc)
+	sc := NewStateContext(cc, es)
 
 	if err = es.State.DisablePRep(sc, owner, icstate.Unregistered); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to unregister P-Rep %s", owner)
@@ -586,7 +586,7 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 
 func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address module.Address) error {
 	blockHeight := cc.BlockHeight()
-	sc := es.newStateContext(cc)
+	sc := NewStateContext(cc, es)
 
 	if err := es.State.DisablePRep(sc, address, icstate.Disqualified); err != nil {
 		return err
@@ -954,7 +954,6 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var err error
 
 	revision := wc.Revision().Value()
-	br := es.State.GetBondRequirement()
 	mainPRepCount := int(es.State.GetMainPRepCount())
 	subPRepCount := int(es.State.GetSubPRepCount())
 	extraMainPRepCount := 0
@@ -965,9 +964,10 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 
 	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
-	activeDSAMask := GetActiveDSAMask(wc)
+	sc := NewStateContext(wc, es)
+
 	prepSet := es.State.GetPRepSet()
-	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision, activeDSAMask)
+	prepSet.Sort(sc, mainPRepCount, subPRepCount, extraMainPRepCount)
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
 		isDecentralized = es.State.IsDecentralizationConditionMet(revision, totalSupply, prepSet)
@@ -976,10 +976,7 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	if isDecentralized {
 		// Reset the status of all active preps ordered by power
 		limit := es.State.GetConsistentValidationPenaltyMask()
-		sc := es.newStateContext(wc)
-
-		if err = prepSet.OnTermEnd(sc,
-			mainPRepCount, subPRepCount, extraMainPRepCount, limit, br, activeDSAMask); err != nil {
+		if err = prepSet.OnTermEnd(sc, mainPRepCount, subPRepCount, extraMainPRepCount, limit); err != nil {
 			return err
 		}
 	} else {
@@ -1169,7 +1166,7 @@ func (es *ExtensionStateImpl) GetPRepTermInJSON(cc icmodule.CallContext) (map[st
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
-	sc := es.newStateContext(cc)
+	sc := NewStateContext(cc, es)
 	jso := term.ToJSON(sc, es.State)
 	jso["blockHeight"] = cc.BlockHeight()
 	return jso, nil
@@ -1917,16 +1914,6 @@ func (es *ExtensionStateImpl) getOldCommissionRate(owner module.Address) (icmodu
 	return icmodule.Rate(0), icmodule.NotFoundError.Errorf("OldCommissionRateNotFound(%s)", owner)
 }
 
-func (es *ExtensionStateImpl) newStateContext(cc icmodule.WorldContext) icmodule.StateContext {
-	revision := cc.Revision().Value()
-	termRevision := revision
-	term := es.State.GetTermSnapshot()
-	if term != nil {
-		termRevision = term.Revision()
-	}
-	return NewStateContext(cc, termRevision, es)
-}
-
 func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 	owner := cc.From()
 	if owner == nil {
@@ -1940,5 +1927,5 @@ func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
 	}
 
-	return ps.NotifyEvent(es.newStateContext(cc), icmodule.PRepEventRequestUnjail)
+	return ps.NotifyEvent(NewStateContext(cc, es), icmodule.PRepEventRequestUnjail)
 }
