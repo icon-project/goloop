@@ -77,6 +77,16 @@ func (p *PRep) HasPubKey(dsaMask int64) bool {
 	return p.GetDSAMask()&dsaMask == dsaMask
 }
 
+func (p *PRep) IsElectable(br icmodule.Rate, dsaMask int64) bool {
+	if p.GetPower(br).Sign() <= 0 {
+		return false
+	}
+	if !p.HasPubKey(dsaMask) {
+		return false
+	}
+	return p.IsJailInfoElectable()
+}
+
 func NewPRep(owner module.Address, state *State) *PRep {
 	prep := &PRep{owner: owner, state: state}
 	if err := prep.init(); err != nil {
@@ -102,22 +112,12 @@ type PRepSet interface {
 	SortForQuery(br icmodule.Rate, revision int, dsaMask int64)
 }
 
-func isPRepElectable(p *PRep, br icmodule.Rate, dsaMask int64) bool {
-	if p.GetPower(br).Sign() <= 0 {
-		return false
-	}
-	if !p.HasPubKey(dsaMask) {
-		return false
-	}
-	return p.IsJailInfoElectable()
-}
-
 type prepSetImpl struct {
 	totalBonded    *big.Int
 	totalDelegated *big.Int // total delegated amount of all active P-Reps
 	mainPReps      int
-	subPReps int
-	preps    []*PRep
+	subPReps       int
+	preps          []*PRep
 }
 
 // OnTermEnd initializes all prep status including grade on term end
@@ -130,7 +130,7 @@ func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext,
 
 	var newGrade Grade
 	for i, prep := range p.preps {
-		if revision >= icmodule.RevisionBTP2 && !isPRepElectable(prep, br, dsaMask) {
+		if revision >= icmodule.RevisionBTP2 && !prep.IsElectable(br, dsaMask) {
 			newGrade = GradeCandidate
 		} else if i < mainPRepCount {
 			newGrade = GradeMain
@@ -230,7 +230,7 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 		p.sort(br, dsaMask, cmpByValidatorElectable)
 		var electable int
 		p.visitAll(func(idx int, prep *PRep) bool {
-			ok := isPRepElectable(prep, br, dsaMask)
+			ok := prep.IsElectable(br, dsaMask)
 			if ok {
 				electable += 1
 			}

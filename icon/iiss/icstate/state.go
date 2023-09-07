@@ -396,7 +396,7 @@ func (s *State) OnBlockVote(sc icmodule.StateContext, owner module.Address, vote
 		return errors.Errorf("PRep not found: %s", owner)
 	}
 	err := ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, voted)
-	s.logger.Tracef("onBlockVote() bh=%d voted=%t owner=%v %+v", blockHeight, voted, owner, ps)
+	s.logger.Tracef("OnBlockVote() bh=%d voted=%t owner=%v %+v", blockHeight, voted, owner, ps)
 	return err
 }
 
