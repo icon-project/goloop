@@ -153,19 +153,22 @@ func (ldb *layerDB) Flush(write bool) error {
 		}
 	}()
 
-	for element := ldb.list.Front() ; element != nil ; element = element.Next() {
-		item := element.Value.(*layerBucketItem)
+	if write {
+		for element := ldb.list.Front() ; element != nil ; element = element.Next() {
+			item := element.Value.(*layerBucketItem)
 
-		if item.value != nil {
-			if err := item.bk.real.Set([]byte(item.key), item.value ); err != nil {
-				return err
-			}
-		} else {
-			if err := item.bk.real.Delete([]byte(item.key)); err != nil {
-				return err
+			if item.value != nil {
+				if err := item.bk.real.Set([]byte(item.key), item.value ); err != nil {
+					return err
+				}
+			} else {
+				if err := item.bk.real.Delete([]byte(item.key)); err != nil {
+					return err
+				}
 			}
 		}
 	}
+
 	for _, bk := range ldb.buckets {
 		bk.data = nil
 		bk.list = nil
