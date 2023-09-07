@@ -711,7 +711,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	// Check getPRep
 	sc := sim.GetStateContext()
 	prep = sim.GetPRep(address)
-	jso = prep.ToJSON(sc, br, 0)
+	jso = prep.ToJSON(sc, br)
 	assertPower(t, jso)
 
 	// Check getPReps

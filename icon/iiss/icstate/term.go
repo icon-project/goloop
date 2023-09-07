@@ -337,7 +337,7 @@ func (term *termData) prepsToJSON(sc icmodule.StateContext, state *State) []inte
 		}
 		grade := prep.Grade()
 		if grade == GradeMain || grade == GradeSub {
-			prepInJSON := prep.ToJSON(sc, br, 0)
+			prepInJSON := prep.ToJSON(sc, br)
 			jso = append(jso, prepInJSON)
 		}
 	}

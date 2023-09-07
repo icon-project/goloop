@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package icstate
+package iiss
 
 import (
 	"github.com/icon-project/goloop/icon/icmodule"
@@ -22,28 +22,18 @@ import (
 )
 
 type stateContext struct {
-	blockHeight int64
-	revision int
+	icmodule.WorldContext
 	termRevision int
 	eventLogger icmodule.EnableEventLogger
 }
 
 func NewStateContext(
-	blockHeight int64, revision, termRevision int, eventLogger icmodule.EnableEventLogger) icmodule.StateContext {
-	return &stateContext{
-		blockHeight,
-		revision,
-		termRevision,
-		eventLogger,
-	}
-}
-
-func (sc *stateContext) BlockHeight() int64 {
-	return sc.blockHeight
+	wc icmodule.WorldContext, termRevision int, eventLogger icmodule.EnableEventLogger) icmodule.StateContext {
+	return &stateContext{wc, termRevision, eventLogger}
 }
 
 func (sc *stateContext) Revision() int {
-	return sc.revision
+	return sc.WorldContext.Revision().Value()
 }
 
 // TermRevision returns revision stored in TermSnapshot
@@ -55,9 +45,22 @@ func (sc *stateContext) IsIISS4Activated() bool {
 	return sc.termRevision >= icmodule.RevisionIISS4
 }
 
+func (sc *stateContext) GetActiveDSAMask() int64 {
+	return GetActiveDSAMask(sc.WorldContext)
+}
+
 func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.EnableStatus) error {
 	if sc.eventLogger != nil {
-		return sc.eventLogger.AddEventEnable(sc.blockHeight, owner, status)
+		return sc.eventLogger.AddEventEnable(sc.BlockHeight(), owner, status)
 	}
 	return nil
+}
+
+func GetActiveDSAMask(cc icmodule.WorldContext) int64 {
+	if cc.Revision().Value() >= icmodule.RevisionBTP2 {
+		if bc := cc.GetBTPContext(); bc != nil {
+			return bc.GetActiveDSAMask()
+		}
+	}
+	return 0
 }

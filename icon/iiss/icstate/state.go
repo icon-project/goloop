@@ -33,7 +33,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"github.com/icon-project/goloop/service/state"
 )
 
 var (
@@ -643,14 +642,13 @@ func (s *State) GetPRepStatsOfInJSON(
 	}, nil
 }
 
-func (s *State) GetPRepsInJSON(
-	bc state.BTPContext, sc icmodule.StateContext, start, end int) (map[string]interface{}, error) {
+func (s *State) GetPRepsInJSON(sc icmodule.StateContext, start, end int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	revision := sc.Revision()
-	dsaMask := GetActiveDSAMask(bc, revision)
+	activeDSAMask := sc.GetActiveDSAMask()
 
 	prepSet := s.GetPRepSet()
-	prepSet.SortForQuery(br, revision, dsaMask)
+	prepSet.SortForQuery(br, revision, activeDSAMask)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
@@ -678,7 +676,7 @@ func (s *State) GetPRepsInJSON(
 
 	for i := start - 1; i < end; i++ {
 		prep := prepSet.GetByIndex(i)
-		prepJSO := prep.ToJSON(sc, br, dsaMask)
+		prepJSO := prep.ToJSON(sc, br)
 		prepList = append(prepList, prepJSO)
 	}
 
@@ -780,11 +778,4 @@ func (s *State) InitCommissionInfo(owner module.Address, ci *CommissionInfo) err
 		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
 	}
 	return pb.InitCommissionInfo(ci)
-}
-
-func GetActiveDSAMask(bc state.BTPContext, revision int) int64 {
-	if bc != nil && revision >= icmodule.RevisionBTP2 {
-		return bc.GetActiveDSAMask()
-	}
-	return 0
 }

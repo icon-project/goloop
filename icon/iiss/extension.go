@@ -289,19 +289,13 @@ func (es *ExtensionStateImpl) GetPRepInJSON(cc icmodule.CallContext, address mod
 	if prep == nil {
 		return nil, errors.Errorf("PRep not found: %s", address)
 	}
-	var dsaMask int64
-	if cc.Revision().Value() >= icmodule.RevisionBTP2 {
-		if bc := cc.GetBTPContext(); bc != nil {
-			dsaMask = bc.GetActiveDSAMask()
-		}
-	}
 	sc := es.newStateContext(cc)
-	return prep.ToJSON(sc, es.State.GetBondRequirement(), dsaMask), nil
+	return prep.ToJSON(sc, es.State.GetBondRequirement()), nil
 }
 
 func (es *ExtensionStateImpl) GetPRepsInJSON(cc icmodule.CallContext, start, end int) (map[string]interface{}, error) {
 	sc := es.newStateContext(cc)
-	return es.State.GetPRepsInJSON(cc.GetBTPContext(), sc, start, end)
+	return es.State.GetPRepsInJSON(sc, start, end)
 }
 
 func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
@@ -971,9 +965,9 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 
 	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
-	dsaMask := icstate.GetActiveDSAMask(wc.GetBTPContext(), revision)
+	activeDSAMask := GetActiveDSAMask(wc)
 	prepSet := es.State.GetPRepSet()
-	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision, dsaMask)
+	prepSet.Sort(mainPRepCount, subPRepCount, extraMainPRepCount, br, revision, activeDSAMask)
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
 		isDecentralized = es.State.IsDecentralizationConditionMet(revision, totalSupply, prepSet)
@@ -985,7 +979,7 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 		sc := es.newStateContext(wc)
 
 		if err = prepSet.OnTermEnd(sc,
-			mainPRepCount, subPRepCount, extraMainPRepCount, limit, br, dsaMask); err != nil {
+			mainPRepCount, subPRepCount, extraMainPRepCount, limit, br, activeDSAMask); err != nil {
 			return err
 		}
 	} else {
@@ -1930,7 +1924,7 @@ func (es *ExtensionStateImpl) newStateContext(cc icmodule.WorldContext) icmodule
 	if term != nil {
 		termRevision = term.Revision()
 	}
-	return icstate.NewStateContext(cc.BlockHeight(), revision, termRevision, es)
+	return NewStateContext(cc, termRevision, es)
 }
 
 func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {

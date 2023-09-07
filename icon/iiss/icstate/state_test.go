@@ -29,31 +29,66 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-type dummyStateContext struct {
-	stateContext
+type mockStateContext struct {
+	blockHeight   int64
+	revision      int
+	termRevision  int
+	activeDSAMask int64
+	eventLogger   icmodule.EnableEventLogger
 }
 
-func (d *dummyStateContext) IncreaseBlockHeightBy(amount int64) int64 {
-	d.blockHeight += amount
-	return d.blockHeight
+func (m *mockStateContext) BlockHeight() int64 {
+	return m.blockHeight
 }
 
-func newDummyStateContext(params ...interface{}) *dummyStateContext {
-	sc := &dummyStateContext{}
+func (m *mockStateContext) Revision() int {
+	return m.revision
+}
+
+func (m *mockStateContext) TermRevision() int {
+	return m.termRevision
+}
+
+func (m *mockStateContext) IsIISS4Activated() bool {
+	return m.termRevision >= icmodule.RevisionIISS4
+}
+
+func (m *mockStateContext) GetActiveDSAMask() int64 {
+	return m.activeDSAMask
+}
+
+func (m *mockStateContext) AddEventEnable(module.Address, icmodule.EnableStatus) error {
+	return nil
+}
+
+func (m *mockStateContext) IncreaseBlockHeightBy(amount int64) int64 {
+	m.blockHeight += amount
+	return m.blockHeight
+}
+
+func newMockStateContext(blockHeight int64, revision int, params ...interface{}) *mockStateContext {
+	termRevision := revision
+	activeDSAMask := int64(0)
+	var eventLogger icmodule.EnableEventLogger
+
 	for i, param := range params {
 		switch i {
 		case 0:
-			sc.blockHeight = param.(int64)
+			termRevision = param.(int)
 		case 1:
-			sc.revision = param.(int)
-			sc.termRevision = sc.revision
+			activeDSAMask = param.(int64)
 		case 2:
-			sc.termRevision = param.(int)
-		case 3:
-			sc.stateContext.eventLogger = param.(icmodule.EnableEventLogger)
+			eventLogger = param.(icmodule.EnableEventLogger)
 		}
 	}
-	return sc
+
+	return &mockStateContext{
+		blockHeight,
+		revision,
+		termRevision,
+		activeDSAMask,
+		eventLogger,
+	}
 }
 
 func newNodeOnlyRegInfo(node module.Address) *PRepInfo {
@@ -401,7 +436,7 @@ func TestState_OnBlockVote(t *testing.T) {
 	owner := newDummyAddress(1)
 	state := newDummyState(false)
 
-	sc := newDummyStateContext(int64(1000))
+	sc := newMockStateContext(int64(1000), icmodule.RevisionPreIISS4-1)
 	err = state.OnBlockVote(sc, owner, true)
 	assert.Error(t, err)
 
@@ -458,7 +493,7 @@ func TestState_OnBlockVote(t *testing.T) {
 
 func TestState_OnMainPRepReplaced(t *testing.T) {
 	var err error
-	var sc *dummyStateContext
+	var sc *mockStateContext
 	limit := 30
 
 	type input struct {
@@ -486,7 +521,7 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			sc = newDummyStateContext(int64(1000), arg.in.rev, arg.in.termRev)
+			sc = newMockStateContext(int64(1000), arg.in.rev, arg.in.termRev)
 			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
@@ -632,7 +667,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			assert.NoError(t, state.Flush())
 			state.ClearCache()
 
-			sc := NewStateContext(10000, arg.in.rev, arg.in.termRev, nil)
+			sc := newMockStateContext(10000, arg.in.rev, arg.in.termRev)
 			ps := state.GetPRepStatusByOwner(owner, false)
 			err = state.ImposePenalty(sc, pt, owner, ps)
 			assert.NoError(t, err)
@@ -714,7 +749,7 @@ func TestState_DisablePRep(t *testing.T) {
 	assert.Equal(t, delegation, ps.Delegated().Int64())
 	assert.Equal(t, Active, ps.Status())
 
-	sc := NewStateContext(1000, icmodule.RevisionPreIISS4, icmodule.RevisionPreIISS4, nil)
+	sc := newMockStateContext(1000, icmodule.RevisionPreIISS4)
 	err = state.DisablePRep(sc, owner, Unregistered)
 	assert.NoError(t, err)
 	assert.NoError(t, state.Flush())
@@ -742,7 +777,7 @@ func TestState_CheckValidationPenalty(t *testing.T) {
 	state.ClearCache()
 
 	blockHeight := int64(1000)
-	sc := newDummyStateContext(blockHeight)
+	sc := newMockStateContext(blockHeight, icmodule.RevisionPreIISS4-1)
 	ps := state.GetPRepStatusByOwner(owner, false)
 	for i := 0; i < condition; i++ {
 		err = ps.onBlockVote(sc, false)
@@ -922,7 +957,7 @@ func TestState_OnValidatorOut(t *testing.T) {
 			owner := newDummyAddress(1)
 			state := newDummyState(false)
 
-			sc := newDummyStateContext(blockHeight)
+			sc := newMockStateContext(blockHeight, icmodule.RevisionPreIISS4-1)
 			err = state.OnValidatorOut(sc, owner)
 			assert.Error(t, err)
 
