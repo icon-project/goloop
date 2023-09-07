@@ -39,12 +39,9 @@ func (p *PRep) NodeAddress() module.Address {
 	return pb.GetNode(p.owner)
 }
 
-func (p *PRep) ToJSON(sc icmodule.StateContext, bondRequirement icmodule.Rate, activeDSAMask int64) map[string]interface{} {
+func (p *PRep) ToJSON(sc icmodule.StateContext) map[string]interface{} {
 	pb := p.getPRepBaseState()
-	jso := icutils.MergeMaps(
-		pb.ToJSON(p.owner),
-		p.PRepStatusState.ToJSON(sc, bondRequirement, activeDSAMask),
-	)
+	jso := icutils.MergeMaps(pb.ToJSON(p.owner), p.PRepStatusState.ToJSON(sc))
 	jso["address"] = p.owner
 	return jso
 }
@@ -98,8 +95,7 @@ func NewPRep(owner module.Address, state *State) *PRep {
 // ===============================================================
 
 type PRepSet interface {
-	OnTermEnd(sc icmodule.StateContext,
-		mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate, dsaMask int64) error
+	OnTermEnd(sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount, limit int) error
 	GetPRepSize(grade Grade) int
 	GetElectedPRepSize() int
 	Size() int
@@ -108,8 +104,8 @@ type PRepSet interface {
 	GetTotalPower(br icmodule.Rate) *big.Int
 	GetByIndex(i int) *PRep
 	ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PRepSnapshots
-	Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, revision int, dsaMask int64)
-	SortForQuery(br icmodule.Rate, revision int, dsaMask int64)
+	Sort(sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount int)
+	SortForQuery(sc icmodule.StateContext)
 }
 
 type prepSetImpl struct {
@@ -121,16 +117,18 @@ type prepSetImpl struct {
 }
 
 // OnTermEnd initializes all prep status including grade on term end
-func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext,
-	mainPRepCount, subPRepCount, extraMainPRepCount, limit int, br icmodule.Rate, dsaMask int64) error {
+func (p *prepSetImpl) OnTermEnd(
+	sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount, limit int) error {
 	revision := sc.Revision()
+	br := sc.GetBondRequirement()
+	activeDSAMask := sc.GetActiveDSAMask()
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
 
 	var newGrade Grade
 	for i, prep := range p.preps {
-		if revision >= icmodule.RevisionBTP2 && !prep.IsElectable(br, dsaMask) {
+		if revision >= icmodule.RevisionBTP2 && !prep.IsElectable(br, activeDSAMask) {
 			newGrade = GradeCandidate
 		} else if i < mainPRepCount {
 			newGrade = GradeMain
@@ -220,17 +218,21 @@ func (p *prepSetImpl) ToPRepSnapshots(electedPRepCount int, br icmodule.Rate) PR
 // Sort sorts the PRepSet based on predefined criteria that may change with each revision
 // PRepCount parameters are the metrics in configuration file
 // Ex) mainPRepCount(22), subPRepCount(78), extraMainPRepCount(3)
-func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate, rev int, dsaMask int64) {
+func (p *prepSetImpl) Sort(sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount int) {
+	rev := sc.Revision()
+	br := sc.GetBondRequirement()
+	activeDSAMask := sc.GetActiveDSAMask()
+
 	if rev < icmodule.RevisionExtraMainPReps {
-		p.sort(br, dsaMask, nil)
+		p.sort(br, activeDSAMask, nil)
 	} else if rev < icmodule.RevisionBTP2 {
-		p.sort(br, dsaMask, nil)
+		p.sort(br, activeDSAMask, nil)
 		p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
 	} else {
-		p.sort(br, dsaMask, cmpByValidatorElectable)
+		p.sort(br, activeDSAMask, cmpByValidatorElectable)
 		var electable int
 		p.visitAll(func(idx int, prep *PRep) bool {
-			ok := prep.IsElectable(br, dsaMask)
+			ok := prep.IsElectable(br, activeDSAMask)
 			if ok {
 				electable += 1
 			}
@@ -245,12 +247,12 @@ func (p *prepSetImpl) Sort(mainPRepCount, subPRepCount, extraMainPRepCount int, 
 	}
 }
 
-func (p *prepSetImpl) SortForQuery(br icmodule.Rate, revision int, dsaMask int64) {
-	if revision >= icmodule.RevisionBTP2 {
-		p.sort(br, dsaMask, cmpByValidatorElectable)
-	} else {
-		p.sort(br, dsaMask, nil)
+func (p *prepSetImpl) SortForQuery(sc icmodule.StateContext) {
+	var cmp func(p0, p1 *PRep, dsaMask int64) int
+	if sc.Revision() >= icmodule.RevisionBTP2 {
+		cmp = cmpByValidatorElectable
 	}
+	p.sort(sc.GetBondRequirement(), sc.GetActiveDSAMask(), cmp)
 }
 
 func (p *prepSetImpl) sort(br icmodule.Rate, dsaMask int64, cmp func(i, j *PRep, dsaMask int64) int) {

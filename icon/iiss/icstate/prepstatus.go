@@ -284,9 +284,11 @@ func (ps *prepStatusData) clone() prepStatusData {
 	}
 }
 
-func (ps *prepStatusData) ToJSON(
-	sc icmodule.StateContext, bondRequirement icmodule.Rate, dsaMask int64) map[string]interface{} {
+func (ps *prepStatusData) ToJSON(sc icmodule.StateContext) map[string]interface{} {
 	blockHeight := sc.BlockHeight()
+	br := sc.GetBondRequirement()
+	activeDSAMask := sc.GetActiveDSAMask()
+
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
@@ -294,19 +296,19 @@ func (ps *prepStatusData) ToJSON(
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
-	jso["power"] = ps.GetPower(bondRequirement)
+	jso["power"] = ps.GetPower(br)
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
 	jso["validatedBlocks"] = totalBlocks - ps.GetVFail(blockHeight)
-	if dsaMask != 0 {
-		jso["hasPublicKey"] = (ps.GetDSAMask() & dsaMask) == dsaMask
+	if activeDSAMask != 0 {
+		jso["hasPublicKey"] = (ps.GetDSAMask() & activeDSAMask) == activeDSAMask
 	}
 	ps.ji.ToJSON(sc, jso)
 	return jso
 }
 
 func (ps *prepStatusData) getPenaltyType(sc icmodule.StateContext) int {
-	if sc.IsIISS4Activated() {
+	if sc.TermIISSVersion() >= IISSVersion4 {
 		return ps.getPenaltyTypeV1()
 	}
 	return int(ps.getPenaltyTypeV0())

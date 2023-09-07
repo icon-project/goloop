@@ -56,7 +56,7 @@ func (ji *JailInfo) IsEmpty() bool {
 }
 
 func (ji *JailInfo) ToJSON(sc icmodule.StateContext, jso map[string]interface{}) map[string]interface{} {
-	if sc.IsIISS4Activated() {
+	if sc.TermIISSVersion() >= IISSVersion4 {
 		if jso == nil {
 			jso = make(map[string]interface{})
 		}
@@ -77,7 +77,7 @@ func (ji *JailInfo) RLPEncodeSelf(e codec.Encoder) error {
 }
 
 func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
-	if !sc.IsIISS4Activated() {
+	if sc.TermIISSVersion() < IISSVersion4 {
 		return nil
 	}
 	switch pt {
@@ -95,7 +95,7 @@ func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.Penal
 }
 
 func (ji *JailInfo) OnUnjailRequested(sc icmodule.StateContext) error {
-	if !sc.IsIISS4Activated() {
+	if sc.TermIISSVersion() < IISSVersion4 {
 		return icmodule.NotReadyError.New("IISS4NotReady")
 	}
 	blockHeight := sc.BlockHeight()
@@ -110,7 +110,7 @@ func (ji *JailInfo) OnUnjailRequested(sc icmodule.StateContext) error {
 }
 
 func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext) error {
-	if !sc.IsIISS4Activated() {
+	if sc.TermIISSVersion() < IISSVersion4 {
 		return nil
 	}
 	if icutils.MatchAll(ji.flags, JFlagInJail) {

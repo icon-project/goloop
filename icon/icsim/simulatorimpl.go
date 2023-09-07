@@ -19,7 +19,6 @@ package icsim
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -42,6 +41,43 @@ func newWorldState(wss state.WorldSnapshot, readonly bool) state.WorldState {
 	return state.NewWorldState(dbase, stateHash, vss, ess, nil)
 }
 
+type mockStateContext struct {
+	blockHeight     int64
+	revision        int
+	termRevision    int
+	termIISSVersion int
+	activeDSAMask   int64
+	br              icmodule.Rate
+}
+
+func (m mockStateContext) BlockHeight() int64 {
+	return m.blockHeight
+}
+
+func (m mockStateContext) Revision() int {
+	return m.revision
+}
+
+func (m mockStateContext) TermRevision() int {
+	return m.termRevision
+}
+
+func (m mockStateContext) TermIISSVersion() int {
+	return m.termIISSVersion
+}
+
+func (m mockStateContext) GetActiveDSAMask() int64 {
+	return m.activeDSAMask
+}
+
+func (m mockStateContext) GetBondRequirement() icmodule.Rate {
+	return m.br
+}
+
+func (m mockStateContext) AddEventEnable(module.Address, icmodule.EnableStatus) error {
+	return nil
+}
+
 type transactionImpl struct {
 	txType TxType
 	args   []interface{}
@@ -58,19 +94,6 @@ func (t *transactionImpl) Args() []interface{} {
 func NewTransaction(txType TxType, args []interface{}) Transaction {
 	return &transactionImpl{txType, args}
 }
-
-// ==========================================================
-
-type emptyConsensusInfoMaker struct{}
-
-var emptyConsensusInfo = common.NewConsensusInfo(nil, nil, nil)
-
-func (maker *emptyConsensusInfoMaker) Run(
-	wss state.WorldSnapshot, blockHeight int64, revision module.Revision) module.ConsensusInfo {
-	return nil
-}
-
-// ==========================================================
 
 type simulatorImpl struct {
 	config *config
@@ -560,12 +583,14 @@ func (sim *simulatorImpl) ValidatorList() []module.Validator {
 }
 
 func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
-	return icstate.NewStateContext(
+	return &mockStateContext{
 		sim.BlockHeight(),
 		sim.Revision().Value(),
 		sim.Revision().Value(),
-		nil,
-	)
+		icstate.IISSVersion3,
+		int64(0),
+		icmodule.ToRate(5),
+	}
 }
 
 func NewSimulator(

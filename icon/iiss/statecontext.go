@@ -14,50 +14,60 @@
  * limitations under the License.
  */
 
-package icstate
+package iiss
 
 import (
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 )
 
 type stateContext struct {
-	blockHeight int64
-	revision int
-	termRevision int
+	icmodule.WorldContext
+	*icstate.State
 	eventLogger icmodule.EnableEventLogger
+
+	// Cache
+	term *icstate.TermSnapshot
 }
 
-func NewStateContext(
-	blockHeight int64, revision, termRevision int, eventLogger icmodule.EnableEventLogger) icmodule.StateContext {
+func NewStateContext(wc icmodule.WorldContext, es *ExtensionStateImpl) icmodule.StateContext {
 	return &stateContext{
-		blockHeight,
-		revision,
-		termRevision,
-		eventLogger,
+		WorldContext: wc,
+		State:        es.State,
+		eventLogger:  es,
 	}
 }
 
-func (sc *stateContext) BlockHeight() int64 {
-	return sc.blockHeight
-}
-
 func (sc *stateContext) Revision() int {
-	return sc.revision
+	return sc.WorldContext.Revision().Value()
 }
 
 // TermRevision returns revision stored in TermSnapshot
 func (sc *stateContext) TermRevision() int {
-	return sc.termRevision
+	if term := sc.getTermSnapshot(); term != nil {
+		return term.Revision()
+	}
+	return 0
 }
 
-func (sc *stateContext) IsIISS4Activated() bool {
-	return sc.termRevision >= icmodule.RevisionIISS4
+func (sc *stateContext) TermIISSVersion() int {
+	if term := sc.getTermSnapshot(); term != nil {
+		return term.GetIISSVersion()
+	}
+	return 0
 }
 
 func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.EnableStatus) error {
 	if sc.eventLogger != nil {
-		return sc.eventLogger.AddEventEnable(sc.blockHeight, owner, status)
+		return sc.eventLogger.AddEventEnable(sc.BlockHeight(), owner, status)
 	}
 	return nil
+}
+
+func (sc *stateContext) getTermSnapshot() *icstate.TermSnapshot {
+	if sc.term == nil {
+		sc.term = sc.State.GetTermSnapshot()
+	}
+	return sc.term
 }

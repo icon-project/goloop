@@ -26,6 +26,7 @@ type WorldContext interface {
 	GetScoreOwner(score module.Address) (module.Address, error)
 	SetScoreOwner(from module.Address, score module.Address, owner module.Address) error
 	GetBTPContext() state.BTPContext
+	GetActiveDSAMask() int64
 }
 
 type CallContext interface {
@@ -44,6 +45,8 @@ type StateContext interface {
 	BlockHeight() int64
 	Revision() int
 	TermRevision() int
-	IsIISS4Activated() bool
+	TermIISSVersion() int
+	GetActiveDSAMask() int64
+	GetBondRequirement() Rate
 	AddEventEnable(from module.Address, status EnableStatus) error
 }

@@ -206,7 +206,7 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 	cc icmodule.CallContext, voters *icstate.BlockVotersSnapshot, voted []bool) error {
 
 	var err error
-	sc := es.newStateContext(cc)
+	sc := NewStateContext(cc, es)
 
 	size := voters.Len()
 	for i := 0; i < size; i++ {
