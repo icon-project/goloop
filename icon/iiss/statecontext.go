@@ -34,8 +34,8 @@ type stateContext struct {
 func NewStateContext(wc icmodule.WorldContext, es *ExtensionStateImpl) icmodule.StateContext {
 	return &stateContext{
 		WorldContext: wc,
-		State: es.State,
-		eventLogger: es,
+		State:        es.State,
+		eventLogger:  es,
 	}
 }
 
@@ -52,7 +52,10 @@ func (sc *stateContext) TermRevision() int {
 }
 
 func (sc *stateContext) IsIISS4Activated() bool {
-	return sc.TermRevision() >= icmodule.RevisionIISS4
+	if term := sc.getTermSnapshot(); term != nil {
+		return term.GetIISSVersion() >= icstate.IISSVersion4
+	}
+	return false
 }
 
 func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.EnableStatus) error {
