@@ -39,14 +39,14 @@ type CosterLRU[K comparable, V Coster] struct {
 func MakeCosterLRU[K comparable, V Coster](cap int) CosterLRU[K, V] {
 	return CosterLRU[K, V]{
 		costCap: cap,
-		kv:      make(map[K]*list.Element, cap),
+		kv:      make(map[K]*list.Element),
 	}
 }
 
 func NewCosterLRU[K comparable, V Coster](cap int) *CosterLRU[K, V] {
 	return &CosterLRU[K, V]{
 		costCap: cap,
-		kv:      make(map[K]*list.Element, cap),
+		kv:      make(map[K]*list.Element),
 	}
 }
 

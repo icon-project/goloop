@@ -47,8 +47,6 @@ func NewFrame(p *callFrame, h ContractHandler, l *big.Int, ro bool, logger *trac
 		fid:        baseFID,
 		log:        logger,
 	}
-	frame.eventLogs.Init()
-	frame.btpMessages.Init()
 	return frame
 }
 

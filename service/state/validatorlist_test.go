@@ -8,6 +8,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -576,4 +577,35 @@ func TestValidatorSnapshotFromList(t *testing.T) {
 	vss4, err := ValidatorSnapshotFromList(dbase, vss3)
 	assert.NoError(t, err)
 	assert.Equal(t, vss3, vss4)
+}
+
+func TestValidatorSnapshotWithBuilder(t *testing.T) {
+	dbase1 := db.NewMapDB()
+	vs := newDummyValidatorsFrom(100, 20)
+	vss1, err := ValidatorSnapshotFromSlice(dbase1, vs)
+	assert.NoError(t, err)
+	assert.NoError(t, vss1.Flush())
+
+	dbase2 := db.NewMapDB()
+
+	_, err = ValidatorSnapshotFromHash(dbase2, vss1.Hash())
+	assert.Error(t, err)
+
+	cc := merkle.NewCopyContext(dbase1, dbase2)
+	_, err = NewValidatorSnapshotWithBuilder(cc.Builder(), vss1.Hash())
+	assert.NoError(t, err)
+
+	assert.NoError(t, cc.Run())
+
+	vss2, err := ValidatorSnapshotFromHash(dbase2, vss1.Hash())
+	assert.NoError(t, err)
+
+	assert.Equal(t, vss1.Len(), vss2.Len())
+	for i := 0  ; i < vss1.Len() ; i++ {
+		v1, ok := vss1.Get(i)
+		assert.True(t, ok)
+		v2, ok := vss1.Get(i)
+		assert.True(t, ok)
+		assert.EqualValues(t, v1.Bytes(), v2.Bytes())
+	}
 }
