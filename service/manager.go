@@ -727,6 +727,14 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (m *manager) GetRevision(result []byte) module.Revision {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return module.NoRevision
+	}
+	return m.plt.ToRevision(int(scoredb.NewVarDB(as, state.VarRevision).Int64()))
+}
+
 func (m *manager) BTPNetworkFromResult(result []byte, nid int64) (module.BTPNetwork, error) {
 	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
