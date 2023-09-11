@@ -52,6 +52,7 @@ func TestRate_MulBigInt(t *testing.T) {
 			rate := Rate(arg.r)
 			result := rate.MulBigInt(v)
 			assert.Zero(t, big.NewInt(arg.result).Cmp(result))
+			assert.Equal(t, arg.result, rate.MulInt64(arg.v))
 		})
 	}
 }

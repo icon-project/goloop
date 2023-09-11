@@ -1,6 +1,7 @@
 package iiss
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -179,5 +180,30 @@ func TestWorldContextImpl_SetScoreOwner_SanityCheck(t *testing.T) {
 	for i := range newOwners {
 		err = wc.SetScoreOwner(from, score, newOwners[i])
 		assert.Equal(t, errCodes[i], errors.CodeOf(err))
+	}
+}
+
+func TestWorldContextImpl_GetScoreOwner_SanityCheck(t *testing.T) {
+	wc := NewWorldContext(newWorldContext(), nil)
+	args := []struct {
+		score   module.Address
+		success bool
+	}{
+		{nil, false},
+		{common.MustNewAddressFromString("hx1"), false},
+		{common.MustNewAddressFromString("cx1"), false},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			owner, err := wc.GetScoreOwner(arg.score)
+			if arg.success {
+				assert.NoError(t, err)
+			} else {
+				assert.Nil(t, owner)
+				assert.Error(t, err)
+			}
+		})
 	}
 }
