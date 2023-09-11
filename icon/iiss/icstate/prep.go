@@ -75,6 +75,9 @@ func (p *PRep) HasPubKey(dsaMask int64) bool {
 }
 
 func (p *PRep) IsElectable(br icmodule.Rate, dsaMask int64) bool {
+	if !p.IsActive() {
+		return false
+	}
 	if p.GetPower(br).Sign() <= 0 {
 		return false
 	}

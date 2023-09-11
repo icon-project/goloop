@@ -90,6 +90,57 @@ func newDummyPRepSet(size int) PRepSet {
 	return NewPRepSet(preps)
 }
 
+func TestPRep_IsElectable(t *testing.T) {
+	br := icmodule.ToRate(5)
+	activeDSAMask := int64(3)
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight": int64(1000),
+		"revision": icmodule.RevisionIISS4,
+	})
+
+	args := []struct {
+		status      Status
+		bonded      *big.Int
+		dsaMask     int64
+		pt          icmodule.PenaltyType
+		isElectable bool
+	}{
+		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
+		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone,false},
+		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
+		{Active, big.NewInt(100), int64(0), icmodule.PenaltyNone, false},
+		{Active, big.NewInt(100), int64(1), icmodule.PenaltyNone, false},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyNone, true},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyAccumulatedValidationFailure, false},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyValidationFailure, false},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyDoubleVote, false},
+		{Unregistered, big.NewInt(100), int64(3), icmodule.PenaltyNone, false},
+		{Disqualified, big.NewInt(100), int64(3), icmodule.PenaltyNone, false},
+	}
+
+	for i, arg := range args {
+		prep := newDummyPRep(1)
+		if arg.status == Unregistered || arg.status == Disqualified {
+			_, err := prep.DisableAs(arg.status)
+			assert.NoError(t, err)
+		}
+		prep.SetBonded(arg.bonded)
+		prep.SetDSAMask(arg.dsaMask)
+		name := fmt.Sprintf("name-%02d", i)
+
+		if arg.pt != icmodule.PenaltyNone {
+			err := prep.NotifyEvent(sc, icmodule.PRepEventImposePenalty, arg.pt)
+			assert.NoError(t, err)
+		}
+		assert.Zero(t, arg.bonded.Cmp(prep.Bonded()))
+		assert.Equal(t, arg.dsaMask, prep.GetDSAMask())
+
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, arg.isElectable, prep.IsElectable(br, activeDSAMask))
+		})
+	}
+}
+
 /*
 func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	br := icmodule.ToRate(5)
@@ -304,9 +355,9 @@ func TestPRepSet_SortForQuery(t *testing.T) {
 		name := fmt.Sprintf("rev=%d", arg.rev)
 		activeDSAMask := arg.activeDSAMask
 		sc := newMockStateContext(map[string]interface{}{
-			"blockHeight": int64(1000),
-			"revision": arg.rev,
-			"activeDSAMask": activeDSAMask,
+			"blockHeight":     int64(1000),
+			"revision":        arg.rev,
+			"activeDSAMask":   activeDSAMask,
 			"bondRequirement": br,
 		})
 
