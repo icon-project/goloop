@@ -1929,3 +1929,14 @@ func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 
 	return ps.NotifyEvent(NewStateContext(cc, es), icmodule.PRepEventRequestUnjail)
 }
+
+func (es *ExtensionStateImpl) GetPRepStats(cc icmodule.CallContext) (map[string]interface{}, error) {
+	sc := NewStateContext(cc, es)
+	return es.State.GetPRepStatsInJSON(sc)
+}
+
+func (es *ExtensionStateImpl) GetPRepStatsOf(
+	cc icmodule.CallContext, address module.Address) (map[string]interface{}, error) {
+	sc := NewStateContext(cc, es)
+	return es.State.GetPRepStatsOfInJSON(sc, address)
+}

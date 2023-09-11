@@ -801,6 +801,14 @@ func (ps *PRepStatusState) DisableAs(status Status) (Grade, error) {
 	}
 }
 
+func (ps *PRepStatusState) ToJSON(sc icmodule.StateContext) map[string]interface{} {
+	jso := ps.prepStatusData.ToJSON(sc)
+	if sc.Revision() >= icmodule.RevisionUpdatePRepStats {
+		jso["owner"] = ps.owner
+	}
+	return jso
+}
+
 func newPRepStatusWithTag(_ icobject.Tag) *PRepStatusSnapshot {
 	return new(PRepStatusSnapshot)
 }
@@ -812,28 +820,4 @@ func NewPRepStatusWithSnapshot(owner module.Address, snapshot *PRepStatusSnapsho
 
 func NewPRepStatus(owner module.Address) *PRepStatusState {
 	return NewPRepStatusWithSnapshot(owner, emptyPRepStatusSnapshot)
-}
-
-type PRepStats struct {
-	owner module.Address
-	*PRepStatusState
-}
-
-func (p *PRepStats) Owner() module.Address {
-	return p.owner
-}
-
-func (p *PRepStats) ToJSON(rev int, blockHeight int64) map[string]interface{} {
-	jso := p.PRepStatusState.GetStatsInJSON(blockHeight)
-	if rev >= icmodule.RevisionUpdatePRepStats {
-		jso["owner"] = p.owner
-	}
-	return jso
-}
-
-func NewPRepStats(owner module.Address, ps *PRepStatusState) *PRepStats {
-	return &PRepStats{
-		owner:           owner,
-		PRepStatusState: ps,
-	}
 }
