@@ -305,7 +305,7 @@ func (cs *consensus) OnReceive(
 		return false, err
 	}
 	cs.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
-	if err = msg.Verify(); err != nil {
+	if err = msg.Verify(cs); err != nil {
 		cs.log.Warnf("consensus message verify failed: OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
@@ -1079,6 +1079,14 @@ func (cs *consensus) enterNewHeight() {
 	}
 }
 
+func (cs *consensus) nidForCSMessage() uint32 {
+	rev := cs.c.ServiceManager().GetRevision(cs.lastBlock.Result())
+	if rev.Has(module.UseNIDInConsensusMessage) {
+		return uint32(cs.c.NID())
+	}
+	return 0
+}
+
 func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) {
 	err := cs.doSendProposal(blockParts, polRound)
 	if err != nil {
@@ -1092,6 +1100,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 	msg.Round = cs.round
 	msg.BlockPartSetID = blockParts.ID()
 	msg.POLRound = polRound
+	msg.NID = cs.nidForCSMessage()
 	err := msg.Sign(cs.c.Wallet())
 	if err != nil {
 		return err
@@ -1211,6 +1220,18 @@ func (cs *consensus) ntsVoteBaseAndDecisionProofParts(
 	return ntsVoteBases, ntsdProofParts, nil
 }
 
+// psidAppData encode appData for PartSetID. Format:
+//  NID(32) NTSVoteCount(16)
+func psidAppData(nid uint32, ntsVoteCount uint16) uint64 {
+	return uint64(nid)<<16 | uint64(ntsVoteCount)
+}
+
+func destructPSIDAppData(appData uint64) (nid uint32, ntsVoteCount uint16) {
+	nid = uint32(appData >> 16)
+	ntsVoteCount = uint16(appData)
+	return nid, ntsVoteCount
+}
+
 func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	if cs.validators.IndexOf(cs.c.Wallet().Address()) < 0 {
 		return nil
@@ -1234,7 +1255,9 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 				return err
 			}
 		}
-		msg.SetRoundDecision(blockParts.block.ID(), blockParts.ID().WithAppData(uint16(len(ntsVoteBases))), ntsVoteBases)
+		appData := psidAppData(cs.nidForCSMessage(), uint16(len(ntsVoteBases)))
+		msg.SetRoundDecision(blockParts.block.ID(), blockParts.ID().
+			WithAppData(appData), ntsVoteBases)
 		msg.NTSDProofParts = ntsdProofParts
 	} else {
 		msg.SetRoundDecision(cs.nid, nil, nil)
@@ -1342,7 +1365,7 @@ func (cs *consensus) applyRoundWAL() error {
 		if err != nil {
 			return err
 		}
-		if err = msg.Verify(); err != nil {
+		if err = msg.Verify(cs); err != nil {
 			return err
 		}
 		switch m := msg.(type) {
@@ -1452,7 +1475,7 @@ func (cs *consensus) applyLockWAL() error {
 		if err != nil {
 			return err
 		}
-		if err = msg.Verify(); err != nil {
+		if err = msg.Verify(cs); err != nil {
 			return err
 		}
 		switch m := msg.(type) {
@@ -1559,7 +1582,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 		if err != nil {
 			return err
 		}
-		if err = msg.Verify(); err != nil {
+		if err = msg.Verify(cs); err != nil {
 			return err
 		}
 		switch m := msg.(type) {
@@ -2137,6 +2160,14 @@ func (cs *consensus) GetBlockProof(height int64, opt int32) ([]byte, error) {
 		return nil, err
 	}
 	return cvs.Bytes(), nil
+}
+
+func (cs *consensus) ValidNID(nid uint32) bool {
+	return nid == 0 || int(nid) == cs.c.NID()
+}
+
+func (cs *consensus) NID() int {
+	return cs.c.NID()
 }
 
 type WalMessageWriter struct {
