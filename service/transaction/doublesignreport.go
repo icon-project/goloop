@@ -82,9 +82,6 @@ func (d *doubleSignReportTxData) serialize(buf *bytes.Buffer) {
 
 type doubleSignReportTx struct {
 	wrapper[doubleSignReportTxData,*doubleSignReportTxData]
-	id    []byte
-	hash  []byte
-	bytes []byte
 }
 
 func (tx *doubleSignReportTx) Group() module.TransactionGroup {
