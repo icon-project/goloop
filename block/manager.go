@@ -32,12 +32,6 @@ const (
 	ConfigCacheCap     = 10
 )
 
-type transactionLocator struct {
-	BlockHeight      int64
-	TransactionGroup module.TransactionGroup
-	IndexInGroup     int
-}
-
 // can be disposed either automatically or by force.
 type bnode struct {
 	parent   *bnode
@@ -91,10 +85,15 @@ type Chain interface {
 	Genesis() []byte
 }
 
+type LocatorManager interface {
+	GetLocator(id []byte) (*module.TransactionLocator, error)
+}
+
 type chainContext struct {
 	syncer  syncer
 	chain   Chain
 	sm      ServiceManager
+	lm      LocatorManager
 	log     log.Logger
 	running bool
 	trtr    RefTracer
@@ -586,10 +585,15 @@ func NewManager(
 		handlers = []base.BlockHandler{NewBlockV2Handler(chain)}
 	}
 
+	lm, err := chain.GetLocatorManager()
+	if err != nil {
+		return nil, err
+	}
 	m := &manager{
 		chainContext: &chainContext{
 			chain:   chain,
 			sm:      chain.ServiceManager(),
+			lm:      lm,
 			log:     logger,
 			running: true,
 			srcUID:  module.GetSourceNetworkUID(chain),
@@ -685,6 +689,11 @@ func NewManager(
 		return nil, err
 	}
 	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, csi, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	// This ensures that locators are flushed to the database.
+	err = m.sm.Finalize(bn.preexe.mtransition(), module.FinalizeNormalTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,14 +1023,6 @@ func (m *manager) finalize(bn *bnode, updatePCM bool) error {
 		m.activeHandlers = m.handlers.upTo(nextVer)
 	}
 
-	if err = WriteTransactionLocators(
-		m.db(),
-		block.Height(),
-		block.PatchTransactions(),
-		block.NormalTransactions(),
-	); err != nil {
-		return err
-	}
 	chainProp, err := m.bucketFor(db.ChainProperty)
 	if err != nil {
 		return err
@@ -1052,47 +1053,6 @@ func (m *manager) finalize(bn *bnode, updatePCM bool) error {
 			continue
 		}
 		i++
-	}
-	return nil
-}
-
-func WriteTransactionLocators(
-	dbase db.Database,
-	height int64,
-	ptl module.TransactionList,
-	ntl module.TransactionList,
-) error {
-	bk, err := db.NewCodedBucket(dbase, db.TransactionLocatorByHash, nil)
-	if err != nil {
-		return err
-	}
-	for it := ptl.Iterator(); it.Has(); log.Must(it.Next()) {
-		tr, i, err := it.Get()
-		if err != nil {
-			return err
-		}
-		trLoc := transactionLocator{
-			BlockHeight:      height,
-			TransactionGroup: module.TransactionGroupPatch,
-			IndexInGroup:     i,
-		}
-		if err = bk.Set(db.Raw(tr.ID()), trLoc); err != nil {
-			return err
-		}
-	}
-	for it := ntl.Iterator(); it.Has(); log.Must(it.Next()) {
-		tr, i, err := it.Get()
-		if err != nil {
-			return err
-		}
-		trLoc := transactionLocator{
-			BlockHeight:      height,
-			TransactionGroup: module.TransactionGroupNormal,
-			IndexInGroup:     i,
-		}
-		if err = bk.Set(db.Raw(tr.ID()), trLoc); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -1219,17 +1179,14 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	}, nil
 }
 
-func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) {
-	tlb, err := m.bucketFor(db.TransactionLocatorByHash)
-	if err != nil {
-		return nil, err
+func (m *manager) getTransactionLocator(id []byte) (*module.TransactionLocator, error) {
+	if loc, err := m.chainContext.lm.GetLocator(id); err != nil {
+		return nil, errors.NotFoundError.Wrapf(err, "not found tx=%#x", id)
+	} else if loc == nil {
+		return nil, errors.NotFoundError.Errorf("not found tx=%#x", id)
+	} else {
+		return loc, nil
 	}
-	loc := new(transactionLocator)
-	err = tlb.Get(db.Raw(id), loc)
-	if err != nil {
-		return nil, errors.NotFoundError.Errorf("not found tx id=%x", id)
-	}
-	return loc, nil
 }
 
 func (m *manager) SendTransactionAndWait(result []byte, height int64, txi interface{}) ([]byte, <-chan interface{}, error) {
@@ -1272,14 +1229,11 @@ func (m *manager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
 }
 
 func (m *manager) waitTransactionResult(id []byte) (<-chan interface{}, error) {
-	tlb, err := m.bucketFor(db.TransactionLocatorByHash)
-	if err != nil {
-		return nil, err
-	}
-	loc := new(transactionLocator)
-	err = tlb.Get(db.Raw(id), loc)
+	loc, err := m.chainContext.lm.GetLocator(id)
 	if err != nil {
 		return nil, errors.NotFoundError.Wrap(err, "Not found")
+	} else if loc == nil {
+		return nil, errors.NotFoundError.New("Not found")
 	}
 	var rBlockHeight int64
 	if loc.TransactionGroup == module.TransactionGroupNormal {

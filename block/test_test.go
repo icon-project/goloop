@@ -15,6 +15,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/txlocator"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
@@ -32,6 +33,7 @@ type testChain struct {
 	vld      module.CommitVoteSetDecoder
 	sm       *testServiceManager
 	bm       module.BlockManager
+	lm       module.LocatorManager
 }
 
 func (c *testChain) DefaultWaitTimeout() time.Duration {
@@ -80,6 +82,18 @@ func (c *testChain) BlockManager() module.BlockManager {
 
 func (c *testChain) ServiceManager() module.ServiceManager {
 	return c.sm
+}
+
+func (c* testChain) GetLocatorManager() (module.LocatorManager, error) {
+	if c.lm == nil {
+		var err error
+		c.lm, err = txlocator.NewManager(c.database, c.Logger())
+		if err != nil {
+			return nil, err
+		}
+		c.lm.Start()
+	}
+	return c.lm, nil
 }
 
 func (c *testChain) Logger() log.Logger {
