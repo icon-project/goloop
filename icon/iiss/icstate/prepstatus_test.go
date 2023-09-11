@@ -841,11 +841,9 @@ func TestNewPRepStatus(t *testing.T) {
 	assert.True(t, ps.GetSnapshot().Equal(ps2.GetSnapshot()))
 }
 
-func TestPRepStats_ToJSON(t *testing.T) {
+func TestPRepStatusState_ToJSON(t *testing.T) {
 	ps := NewPRepStatus(newDummyAddress(1))
 	owner := newDummyAddress(1)
-
-	stats := NewPRepStats(owner, ps)
 
 	args := []struct {
 		rev int
@@ -857,8 +855,13 @@ func TestPRepStats_ToJSON(t *testing.T) {
 
 	for _, arg := range args {
 		name := fmt.Sprintf("rev-%02d", arg.rev)
+		sc := newMockStateContext(map[string]interface{}{
+			"blockHeight": int64(100),
+			"revision": arg.rev,
+		})
+
 		t.Run(name, func(t *testing.T) {
-			jso := stats.ToJSON(arg.rev, 100)
+			jso := ps.ToJSON(sc)
 			if arg.rev < icmodule.RevisionUpdatePRepStats {
 				_, ok := jso["owner"]
 				assert.False(t, ok)
