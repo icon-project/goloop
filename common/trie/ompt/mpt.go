@@ -47,9 +47,17 @@ type (
 	}
 )
 
-var bytesPool sync.Pool = sync.Pool{
+var nibblePtrPool sync.Pool = sync.Pool{
 	New: func() interface{} {
-		return make([]byte, hashSize*2)
+		return new([]byte)
+	},
+}
+
+var nibblesPool sync.Pool = sync.Pool{
+	New: func() interface{} {
+		ptr := nibblePtrPool.Get().(*[]byte)
+		*ptr = make([]byte, hashSize*2)
+		return ptr
 	},
 }
 
@@ -60,15 +68,20 @@ func allocNibbles(size int) []byte {
 	if size > hashSize {
 		return make([]byte, size*2)
 	}
-	bs := bytesPool.Get().([]byte)
-	return bs[0:size*2]
+	pbs := nibblesPool.Get().(*[]byte)
+	nibs := (*pbs)[0:size*2]
+	*pbs = nil
+	nibblePtrPool.Put(pbs)
+	return nibs
 }
 
 func freeNibbles(nibs []byte) {
 	if cap(nibs) != hashSize*2 {
 		return
 	}
-	bytesPool.Put(nibs)
+	pbs := nibblePtrPool.Get().(*[]byte)
+	*pbs = nibs
+	nibblesPool.Put(pbs)
 }
 
 func bytesToNibs(k []byte) []byte {
