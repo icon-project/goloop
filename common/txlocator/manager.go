@@ -73,6 +73,27 @@ func freeLocator(loc *locator) {
 	locatorPool.Put(loc)
 }
 
+type locatorFlushJob struct {
+	wg   sync.WaitGroup
+	list *txList
+	next *locatorFlushJob
+}
+
+func newLocatorFlushJob(l *txList) *locatorFlushJob {
+	job := &locatorFlushJob{ list: l }
+	job.wg.Add(1)
+	return job
+}
+
+func (j *locatorFlushJob) WaitForFetching() {
+	j.wg.Wait()
+}
+
+func (j *locatorFlushJob) Fetch() *txList {
+	j.wg.Done()
+	return j.list
+}
+
 type manager struct {
 	lock     sync.Mutex
 	lbk      db.Bucket
@@ -81,8 +102,11 @@ type manager struct {
 	locators map[string]*locator
 
 	// tx list to flush
-	ntxLists chan *txList
-	ntxWG    sync.WaitGroup
+	flushWG   sync.WaitGroup
+	flushHead   *locatorFlushJob
+	flushLastP  **locatorFlushJob
+	flushWorker int
+
 
 	// linked list of cached tx lists.
 	head     *txList
@@ -176,9 +200,6 @@ func (m *manager) NewTracker(group module.TransactionGroup, height int64, ts int
 }
 
 func (m *manager) commitTracker(t *tracker) error {
-	if t.Group() == module.TransactionGroupNormal {
-		m.ntxWG.Wait()
-	}
 	lock := common.LockForAutoCall(&m.lock)
 	defer lock.Unlock()
 
@@ -192,9 +213,10 @@ func (m *manager) commitTracker(t *tracker) error {
 		m.locators[k] = l
 	}
 	if t.list.group == module.TransactionGroupNormal {
-		m.ntxLists <- t.list
-		m.ntxWG.Add(1)
-		go m.handleTxLists()
+		job := m.pushFlushJobInLock(t.list)
+		lock.CallAfterUnlock(func() {
+			job.WaitForFetching()
+		})
 	} else {
 		if err := m.flushList(t.list) ; err != nil {
 			return err
@@ -252,28 +274,66 @@ func (m *manager) flushList(l *txList) error {
 	return nil
 }
 
-func (m *manager) handleTxLists() {
+func (m *manager) pushFlushJobInLock(l *txList) *locatorFlushJob {
+	m.flushWG.Add(1)
+
+	job := newLocatorFlushJob(l)
+	*m.flushLastP = job
+	m.flushLastP = &job.next
+
+	if m.flushWorker < 1 {
+		m.flushWorker += 1
+		go m.handleFlushJobs()
+	}
+	return job
+}
+
+func (m *manager) fetchFlushJob() *locatorFlushJob {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if m.flushHead == nil {
+		m.flushWorker -= 1
+		return nil
+	}
+	job := m.flushHead
+	m.flushHead = job.next
+	if m.flushHead == nil {
+		m.flushLastP = &m.flushHead
+	}
+	return job
+}
+
+func (m *manager) handleFlushJobs() {
 	for {
-		select {
-		case ntxList, ok := <- m.ntxLists:
-			if !ok {
-				return
-			}
-			if err := m.flushList(ntxList); err != nil {
-				func() {
-					m.lock.Lock()
-					defer m.lock.Unlock()
-					m.locators = nil
-				}()
-				m.log.Errorf("FAIL to flush locators err=%+v", err)
-				m.ntxWG.Done()
-				return
-			}
-			m.addListAndClearOld(ntxList)
-			m.ntxWG.Done()
-		default:
+		job := m.fetchFlushJob()
+		if job == nil {
 			return
 		}
+		l := job.Fetch()
+		if err := m.flushList(l); err != nil {
+			func() {
+				m.lock.Lock()
+				defer m.lock.Unlock()
+				m.locators = nil
+			}()
+			m.log.Errorf("FAIL to flush locators err=%+v", err)
+
+			m.flushWG.Done()
+
+			// cleanup pending jobs to wake up others
+			for {
+				job = m.fetchFlushJob()
+				if job == nil {
+					break
+				}
+				job.Fetch()
+				m.flushWG.Done()
+			}
+			return
+		}
+		m.addListAndClearOld(l)
+		m.flushWG.Done()
 	}
 }
 
@@ -287,7 +347,7 @@ func (m *manager) Term() {
 	if m.locators != nil {
 		m.locators = nil
 		locker.CallAfterUnlock(func() {
-			m.ntxWG.Wait()
+			m.flushWG.Wait()
 		})
 	}
 }
@@ -301,9 +361,9 @@ func NewManager(dbase db.Database, logger log.Logger) (module.LocatorManager, er
 		lbk:      lbk,
 		log:      logger,
 		locators: make(map[string]*locator),
-		ntxLists: make(chan *txList, 1),
 	}
 	mgr.lastP = &mgr.head
+	mgr.flushLastP = &mgr.flushHead
 	return mgr, nil
 }
 
