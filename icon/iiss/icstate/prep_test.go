@@ -90,12 +90,76 @@ func newDummyPRepSet(size int) PRepSet {
 	return NewPRepSet(preps)
 }
 
+func TestPRep_IRep(t *testing.T) {
+	prep := newDummyPRep(1)
+	assert.Zero(t, prep.IRep().Sign())
+}
+
+func TestPRep_NodeAddress(t *testing.T) {
+	owner := newDummyAddress(1)
+	prep := newDummyPRep(1)
+	assert.True(t, owner.Equal(prep.NodeAddress()))
+
+	newOwner := newDummyAddress(100)
+	assert.False(t, owner.Equal(newOwner))
+
+	prepInfo := &PRepInfo{
+		Node: newOwner,
+	}
+	prep.getPRepBaseState().UpdateInfo(prepInfo)
+	assert.True(t, newOwner.Equal(prep.NodeAddress()))
+}
+
+func TestPRep_ToJSON(t *testing.T) {
+	bh := int64(1000)
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight":   bh,
+		"revision":      icmodule.RevisionIISS4,
+		"activeDSAMask": int64(1),
+	})
+	br := sc.GetBondRequirement()
+
+	newOwner := newDummyAddress(100)
+	prep := newDummyPRep(1)
+	prepInfo := &PRepInfo{
+		Node: newOwner,
+	}
+	pb := prep.getPRepBaseState()
+	pb.UpdateInfo(prepInfo)
+	info := prep.Info()
+
+	jso := prep.ToJSON(sc)
+	assert.True(t, prep.Owner().Equal(jso["address"].(module.Address)))
+	assert.True(t, prep.NodeAddress().Equal(jso["nodeAddress"].(module.Address)))
+	assert.Equal(t, *info.City, jso["city"])
+	assert.Equal(t, *info.Country, jso["country"])
+	assert.Equal(t, *info.Details, jso["details"])
+	assert.Equal(t, *info.Email, jso["email"])
+	assert.Equal(t, *info.Name, jso["name"])
+	assert.Equal(t, *info.WebSite, jso["website"])
+	assert.Equal(t, prep.LastHeight(), jso["lastHeight"])
+	assert.Equal(t, int(prep.Grade()), jso["grade"])
+	assert.Equal(t, int(prep.Status()), jso["status"])
+	assert.Equal(t, prep.getPenaltyType(sc), jso["penalty"])
+	assert.Zero(t, prep.Bonded().Cmp(jso["bonded"].(*big.Int)))
+	assert.Zero(t, prep.Delegated().Cmp(jso["delegated"].(*big.Int)))
+	assert.Zero(t, prep.GetPower(br).Cmp(jso["power"].(*big.Int)))
+	assert.Equal(t, prep.GetVTotal(bh), jso["totalBlocks"])
+	assert.Equal(t, prep.GetVTotal(bh)-prep.GetVFail(bh), jso["validatedBlocks"])
+	assert.Equal(t, prep.HasPubKey(sc.GetActiveDSAMask()), jso["hasPublicKey"].(bool))
+	assert.Equal(t, prep.JailFlags(), jso["jailFlags"].(int))
+	assert.Equal(t, prep.UnjailRequestHeight(), jso["unjailRequestHeight"].(int64))
+	assert.Equal(t, prep.MinDoubleVoteHeight(), jso["minDoubleVoteHeight"].(int64))
+}
+
 func TestPRep_IsElectable(t *testing.T) {
 	br := icmodule.ToRate(5)
 	activeDSAMask := int64(3)
 	sc := newMockStateContext(map[string]interface{}{
-		"blockHeight": int64(1000),
-		"revision": icmodule.RevisionIISS4,
+		"blockHeight":     int64(1000),
+		"revision":        icmodule.RevisionIISS4,
+		"bondRequirement": br,
+		"activeDSAMask":   activeDSAMask,
 	})
 
 	args := []struct {
@@ -106,7 +170,7 @@ func TestPRep_IsElectable(t *testing.T) {
 		isElectable bool
 	}{
 		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
-		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone,false},
+		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
 		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
 		{Active, big.NewInt(100), int64(0), icmodule.PenaltyNone, false},
 		{Active, big.NewInt(100), int64(1), icmodule.PenaltyNone, false},
@@ -136,7 +200,116 @@ func TestPRep_IsElectable(t *testing.T) {
 		assert.Equal(t, arg.dsaMask, prep.GetDSAMask())
 
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, arg.isElectable, prep.IsElectable(br, activeDSAMask))
+			assert.Equal(t, arg.isElectable, prep.IsElectable(sc))
+		})
+	}
+}
+
+func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
+	const (
+		mainPReps      = 22
+		extraMainPReps = 3
+		subPReps       = 78
+		totalPReps     = 110
+		activeDSAMask  = int64(3)
+		limit          = 30
+	)
+	var err error
+
+	args := []struct {
+		rev int
+	}{
+		{icmodule.RevisionExtraMainPReps},
+		{icmodule.RevisionBTP2},
+		{icmodule.RevisionPreIISS4},
+		{icmodule.RevisionIISS4},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			sc := newMockStateContext(map[string]interface{}{
+				"blockHeight":     int64(1000),
+				"revision":        arg.rev,
+				"activeDSAMask":   activeDSAMask,
+				"bondRequirement": icmodule.ToRate(5),
+			})
+
+			// Initialize PRepSet
+			prepSet := newDummyPRepSet(totalPReps)
+			for i := 0; i < totalPReps; i++ {
+				prep := prepSet.GetByIndex(i)
+				dsaMask := rand.Int63n(activeDSAMask + 1)
+				prep.SetDSAMask(dsaMask)
+			}
+
+			prepSet.Sort(sc, mainPReps, subPReps, extraMainPReps)
+			err = prepSet.OnTermEnd(sc, mainPReps, subPReps, extraMainPReps, limit)
+			assert.NoError(t, err)
+
+			sc.IncreaseBlockHeightBy(50)
+			prep0 := prepSet.GetByIndex(0)
+			err = prep0.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			assert.NoError(t, err)
+
+			prepWithNoPower := prepSet.GetByIndex(1)
+			prepWithNoPower.SetBonded(icmodule.BigIntZero)
+			prepWithNoPower.SetDelegated(big.NewInt(1000))
+
+			sc.IncreaseBlockHeightBy(50)
+			prepSet.Sort(sc, mainPReps, subPReps, extraMainPReps)
+			err = prepSet.OnTermEnd(sc, mainPReps, subPReps, extraMainPReps, limit)
+
+			assert.NoError(t, err)
+			mainPRepSize := prepSet.GetPRepSize(GradeMain)
+			subPRepSize := prepSet.GetPRepSize(GradeSub)
+			candidateSize := prepSet.GetPRepSize(GradeCandidate)
+			electedPRepSize := prepSet.GetElectedPRepSize()
+			assert.True(t, mainPRepSize <= mainPReps+extraMainPReps)
+			assert.True(t, subPRepSize <= subPReps)
+			assert.Equal(t, totalPReps, mainPRepSize+subPRepSize+candidateSize)
+			assert.Equal(t, electedPRepSize, mainPRepSize+subPRepSize)
+
+			var prevPower *big.Int
+			for i := 0; i < totalPReps; i++ {
+				prep := prepSet.GetByIndex(i)
+				grade := prep.Grade()
+				power := prep.GetPower(sc.GetBondRequirement())
+
+				if i < electedPRepSize {
+					if i < mainPRepSize {
+						assert.Equal(t, GradeMain, grade)
+					} else if i < subPRepSize {
+						assert.Equal(t, GradeSub, grade)
+					}
+
+					assert.True(t, prep.IsElectable(sc))
+					if sc.Revision() >= icmodule.RevisionExtraMainPReps {
+						assert.True(t, power.Sign() > 0)
+						if i > 0 {
+							assert.True(t, power.Cmp(prevPower) <= 0)
+						}
+					}
+					if sc.Revision() >= icmodule.RevisionBTP2 {
+						assert.True(t, prep.HasPubKey(activeDSAMask))
+					}
+					prevPower = power
+				} else {
+					assert.Equal(t, GradeCandidate, grade)
+				}
+
+				if prep.Owner().Equal(prep0.Owner()) {
+					expGrade := GradeMain
+					rev := sc.Revision()
+					if rev >= icmodule.RevisionIISS4 {
+						expGrade = GradeCandidate
+					}
+					assert.Equal(t, expGrade, grade)
+					assert.Equal(t, expGrade == GradeMain, prep.IsElectable(sc))
+				} else if prep.Owner().Equal(prepWithNoPower.Owner()) {
+					assert.Equal(t, GradeCandidate, grade)
+				}
+			}
 		})
 	}
 }

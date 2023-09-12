@@ -863,10 +863,10 @@ func TestPRepStatusState_ToJSON(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			jso := ps.ToJSON(sc)
 			if arg.rev < icmodule.RevisionUpdatePRepStats {
-				_, ok := jso["owner"]
+				_, ok := jso["address"]
 				assert.False(t, ok)
 			} else {
-				assert.True(t, jso["owner"].(module.Address).Equal(owner))
+				assert.True(t, jso["address"].(module.Address).Equal(owner))
 			}
 		})
 	}
