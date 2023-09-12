@@ -810,7 +810,7 @@ func (ps *PRepStatusState) DisableAs(status Status) (Grade, error) {
 func (ps *PRepStatusState) ToJSON(sc icmodule.StateContext) map[string]interface{} {
 	jso := ps.prepStatusData.ToJSON(sc)
 	if sc.Revision() >= icmodule.RevisionUpdatePRepStats {
-		jso["owner"] = ps.owner
+		jso["address"] = ps.owner
 	}
 	return jso
 }
