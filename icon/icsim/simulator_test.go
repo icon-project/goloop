@@ -245,23 +245,19 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	sim := env.sim
 
 	// SetBond
-	bonder := common.AddressToPtr(env.bonders[0])
-	bonds := make([]*icstate.Bond, 10)
-	for i := 0; i < len(bonds); i++ {
-		p := env.preps[i]
+	txs := make([]Transaction, 0, len(env.bonders)*2)
+	for i, bonder := range env.bonders {
 		icx := 1
 		if i == 0 {
 			icx = 2
 		}
-		bonds[i] = icstate.NewBond(common.AddressToPtr(p), icutils.ToLoop(icx))
+		prep := common.AddressToPtr(env.preps[i])
+		txs = append(txs, sim.SetBonderList(prep, icstate.BonderList{common.AddressToPtr(bonder)}))
+		bonds := []*icstate.Bond{
+			icstate.NewBond(prep, icutils.ToLoop(icx)),
+		}
+		txs = append(txs, sim.SetBond(bonder, bonds))
 	}
-	txs := make([]Transaction, 0, len(bonds)+1)
-	bl := icstate.BonderList{bonder}
-	for _, bond := range bonds {
-		tx = sim.SetBonderList(bond.Address, bl)
-		txs = append(txs, tx)
-	}
-	txs = append(txs, sim.SetBond(bonder, bonds))
 
 	csi = newDefaultConsensusInfo(sim)
 	receipts, err = sim.GoByTransaction(csi, txs...)
@@ -311,6 +307,10 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	tx = sim.SetRevision(icmodule.RevisionICON2R1)
 	receipts, err = sim.GoByTransaction(csi, tx)
 	assert.True(t, checkReceipts(receipts))
+	assert.NoError(t, err)
+
+	// go to Term.revision == 14
+	err = sim.GoToTermEnd(nil)
 	assert.NoError(t, err)
 
 	prep := sim.GetPRep(env.preps[0])
