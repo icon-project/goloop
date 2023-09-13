@@ -80,10 +80,8 @@ func (p *PRep) IsElectable(sc icmodule.StateContext) bool {
 	}
 
 	rev := sc.Revision()
-	if rev >= icmodule.RevisionExtraMainPReps {
-		if p.GetPower(sc.GetBondRequirement()).Sign() <= 0 {
-			return false
-		}
+	if p.GetPower(sc.GetBondRequirement()).Sign() <= 0 {
+		return false
 	}
 	if rev >= icmodule.RevisionBTP2 {
 		if !p.HasPubKey(sc.GetActiveDSAMask()) {
@@ -163,46 +161,6 @@ func (p *prepSetImpl) OnTermEnd(
 	p.subPReps = subPReps
 	return nil
 }
-
-// OnTermEnd initializes all prep status including grade on term end
-//func (p *prepSetImpl) OnTermEnd(
-//	sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount, limit int) error {
-//	revision := sc.Revision()
-//	br := sc.GetBondRequirement()
-//	mainPReps := 0
-//	subPReps := 0
-//	electedPRepCount := mainPRepCount + subPRepCount
-//
-//	var newGrade Grade
-//	for i, prep := range p.preps {
-//		if !prep.IsElectable(sc) {
-//			newGrade = GradeCandidate
-//		} else if i < mainPRepCount {
-//			newGrade = GradeMain
-//			mainPReps++
-//		} else if i < mainPRepCount+extraMainPRepCount && prep.GetPower(br).Sign() > 0 {
-//			// Prevent a prep with 0 power from being an extra main prep
-//			newGrade = GradeMain
-//			mainPReps++
-//		} else if i < electedPRepCount {
-//			newGrade = GradeSub
-//			subPReps++
-//		} else {
-//			newGrade = GradeCandidate
-//		}
-//
-//		if err := prep.NotifyEvent(sc, icmodule.PRepEventTermEnd, newGrade, limit); err != nil {
-//			return err
-//		}
-//		if revision == icmodule.RevisionResetPenaltyMask {
-//			prep.ResetVPenaltyMask()
-//		}
-//	}
-//
-//	p.mainPReps = mainPReps
-//	p.subPReps = subPReps
-//	return nil
-//}
 
 func (p *prepSetImpl) GetPRepSize(grade Grade) int {
 	switch grade {
