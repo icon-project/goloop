@@ -732,6 +732,12 @@ func (ps *PRepStatusState) onValidatorOut(sc icmodule.StateContext) error {
 }
 
 func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
+	if pt != icmodule.PenaltyValidationFailure &&
+		pt != icmodule.PenaltyAccumulatedValidationFailure &&
+		pt != icmodule.PenaltyDoubleVote {
+		return nil
+	}
+
 	if pt == icmodule.PenaltyValidationFailure {
 		blockHeight := sc.BlockHeight()
 		if err := ps.syncBlockVoteStats(blockHeight); err != nil {
@@ -801,10 +807,10 @@ func (ps *PRepStatusState) DisableAs(status Status) (Grade, error) {
 	}
 }
 
-func (ps *PRepStatusState) ToJSON(sc icmodule.StateContext) map[string]interface{} {
-	jso := ps.prepStatusData.ToJSON(sc)
+func (ps *PRepStatusState) GetStatsInJSON(sc icmodule.StateContext) map[string]interface{} {
+	jso := ps.prepStatusData.GetStatsInJSON(sc.BlockHeight())
 	if sc.Revision() >= icmodule.RevisionUpdatePRepStats {
-		jso["owner"] = ps.owner
+		jso["address"] = ps.owner
 	}
 	return jso
 }

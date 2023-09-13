@@ -604,7 +604,7 @@ func (s *State) GetPRepStatsInJSON(sc icmodule.StateContext) (map[string]interfa
 	preps := make([]interface{}, size)
 	for i := 0; i < size; i++ {
 		ps := pss[i]
-		preps[i] = ps.ToJSON(sc)
+		preps[i] = ps.GetStatsInJSON(sc)
 	}
 
 	return map[string]interface{}{
@@ -626,7 +626,7 @@ func (s *State) GetPRepStatsOfInJSON(sc icmodule.StateContext, address module.Ad
 	return map[string]interface{}{
 		"blockHeight": sc.BlockHeight(),
 		"preps": []interface{}{
-			ps.ToJSON(sc),
+			ps.GetStatsInJSON(sc),
 		},
 	}, nil
 }

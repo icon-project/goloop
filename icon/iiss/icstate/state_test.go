@@ -47,6 +47,10 @@ func (m *mockStateContext) Revision() int {
 	return m.revision
 }
 
+func (m *mockStateContext) SetRevision(revision int) {
+	m.revision = revision
+}
+
 func (m *mockStateContext) TermRevision() int {
 	return m.termRevision
 }

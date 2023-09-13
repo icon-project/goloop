@@ -594,10 +594,12 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 	if err := es.AddEventEnable(blockHeight, address, icmodule.ESDisablePermanent); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
+	pt := icmodule.PenaltyPRepDisqualification
 	ps := es.State.GetPRepStatusByOwner(address, false)
 	// Record PenaltyImposed eventlog
-	recordPenaltyImposedEvent(cc, ps, icmodule.PenaltyPRepDisqualification)
-	return nil
+	recordPenaltyImposedEvent(cc, ps, pt)
+	rate, _ := es.State.GetSlashingRate(cc.Revision().Value(), pt)
+	return es.slash(cc, address, rate)
 }
 
 func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address module.Address) error {

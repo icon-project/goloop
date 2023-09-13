@@ -74,14 +74,26 @@ func (p *PRep) HasPubKey(dsaMask int64) bool {
 	return p.GetDSAMask()&dsaMask == dsaMask
 }
 
-func (p *PRep) IsElectable(br icmodule.Rate, dsaMask int64) bool {
-	if p.GetPower(br).Sign() <= 0 {
+func (p *PRep) IsElectable(sc icmodule.StateContext) bool {
+	if !p.IsActive() {
 		return false
 	}
-	if !p.HasPubKey(dsaMask) {
+
+	rev := sc.Revision()
+	if p.GetPower(sc.GetBondRequirement()).Sign() <= 0 {
 		return false
 	}
-	return p.IsJailInfoElectable()
+	if rev >= icmodule.RevisionBTP2 {
+		if !p.HasPubKey(sc.GetActiveDSAMask()) {
+			return false
+		}
+	}
+	if rev >= icmodule.RevisionIISS4 {
+		if !p.IsJailInfoElectable() {
+			return false
+		}
+	}
+	return true
 }
 
 func NewPRep(owner module.Address, state *State) *PRep {
@@ -116,32 +128,25 @@ type prepSetImpl struct {
 	preps          []*PRep
 }
 
-// OnTermEnd initializes all prep status including grade on term end
 func (p *prepSetImpl) OnTermEnd(
 	sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount, limit int) error {
 	revision := sc.Revision()
-	br := sc.GetBondRequirement()
-	activeDSAMask := sc.GetActiveDSAMask()
 	mainPReps := 0
 	subPReps := 0
 	electedPRepCount := mainPRepCount + subPRepCount
 
 	var newGrade Grade
 	for i, prep := range p.preps {
-		if revision >= icmodule.RevisionBTP2 && !prep.IsElectable(br, activeDSAMask) {
-			newGrade = GradeCandidate
-		} else if i < mainPRepCount {
-			newGrade = GradeMain
-			mainPReps++
-		} else if i < mainPRepCount+extraMainPRepCount && prep.GetPower(br).Sign() > 0 {
-			// Prevent a prep with 0 power from being an extra main prep
-			newGrade = GradeMain
-			mainPReps++
-		} else if i < electedPRepCount {
-			newGrade = GradeSub
-			subPReps++
-		} else {
-			newGrade = GradeCandidate
+		newGrade = GradeCandidate
+		if prep.IsElectable(sc) {
+			if i < mainPRepCount+extraMainPRepCount {
+				// Prevent a prep with 0 power from being an extra main prep
+				newGrade = GradeMain
+				mainPReps++
+			} else if i < electedPRepCount {
+				newGrade = GradeSub
+				subPReps++
+			}
 		}
 
 		if err := prep.NotifyEvent(sc, icmodule.PRepEventTermEnd, newGrade, limit); err != nil {
@@ -223,39 +228,26 @@ func (p *prepSetImpl) Sort(sc icmodule.StateContext, mainPRepCount, subPRepCount
 	br := sc.GetBondRequirement()
 	activeDSAMask := sc.GetActiveDSAMask()
 
-	if rev < icmodule.RevisionExtraMainPReps {
-		p.sort(br, activeDSAMask, nil)
-	} else if rev < icmodule.RevisionBTP2 {
-		p.sort(br, activeDSAMask, nil)
-		p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
-	} else {
-		p.sort(br, activeDSAMask, cmpByValidatorElectable)
-		var electable int
-		p.visitAll(func(idx int, prep *PRep) bool {
-			ok := prep.IsElectable(br, activeDSAMask)
-			if ok {
-				electable += 1
-			}
-			return ok
-		})
-		if electable > mainPRepCount {
-			if electable < mainPRepCount+subPRepCount {
-				subPRepCount = electable - mainPRepCount
-			}
-			p.sortForExtraMainPRep(mainPRepCount, subPRepCount, extraMainPRepCount, br)
-		}
+	var cmp func(p0, p1 *PRep, activeDSAMask int64) int
+	if rev >= icmodule.RevisionBTP2 {
+		cmp = cmpByValidatorElectable
+	}
+	p.sortByPower(br, activeDSAMask, cmp)
+
+	if rev >= icmodule.RevisionExtraMainPReps {
+		p.sortForExtraMainPRep(sc, mainPRepCount, subPRepCount, extraMainPRepCount)
 	}
 }
 
 func (p *prepSetImpl) SortForQuery(sc icmodule.StateContext) {
-	var cmp func(p0, p1 *PRep, dsaMask int64) int
+	var cmp func(p0, p1 *PRep, activeDSAMask int64) int
 	if sc.Revision() >= icmodule.RevisionBTP2 {
 		cmp = cmpByValidatorElectable
 	}
-	p.sort(sc.GetBondRequirement(), sc.GetActiveDSAMask(), cmp)
+	p.sortByPower(sc.GetBondRequirement(), sc.GetActiveDSAMask(), cmp)
 }
 
-func (p *prepSetImpl) sort(br icmodule.Rate, dsaMask int64, cmp func(i, j *PRep, dsaMask int64) int) {
+func (p *prepSetImpl) sortByPower(br icmodule.Rate, dsaMask int64, cmp func(i, j *PRep, dsaMask int64) int) {
 	sort.Slice(p.preps, func(i, j int) bool {
 		return lessByPower(p.preps[i], p.preps[j], br, dsaMask, cmp)
 	})
@@ -296,7 +288,7 @@ func lessByPower(p0, p1 *PRep, br icmodule.Rate, dsaMask int64,
 }
 
 func (p *prepSetImpl) sortForExtraMainPRep(
-	mainPRepCount, subPRepCount, extraMainPRepCount int, br icmodule.Rate) {
+	sc icmodule.StateContext, mainPRepCount, subPRepCount, extraMainPRepCount int) {
 	// All counts are configuration values; Default: 22, 78, 3
 	size := len(p.preps)
 	if size <= mainPRepCount || extraMainPRepCount == 0 {
@@ -304,16 +296,9 @@ func (p *prepSetImpl) sortForExtraMainPRep(
 		return
 	}
 
-	electedPRepCount := mainPRepCount + subPRepCount
-	if electedPRepCount > size {
-		electedPRepCount = size
-	}
-
-	// extraMainPRepCount MUST be larger than zero
-	subPRepCount = size - mainPRepCount
-	if subPRepCount < extraMainPRepCount {
-		extraMainPRepCount = subPRepCount
-	}
+	electedPRepCount := icutils.Min(size, mainPRepCount+subPRepCount)
+	// Assume that size > mainPRepCount
+	extraMainPRepCount = icutils.Min(extraMainPRepCount, electedPRepCount-mainPRepCount)
 
 	// Copy sub preps from preps to subPReps
 	subPReps := p.preps[mainPRepCount:electedPRepCount]
@@ -321,13 +306,17 @@ func (p *prepSetImpl) sortForExtraMainPRep(
 	copy(dupSubPReps, subPReps)
 
 	// sort subPReps by LRU logic
-	sortByLRU(subPReps, br)
+	// Priority: older unjailRequestBH, older lastBH, higher power
+	br := sc.GetBondRequirement()
+	sort.Slice(subPReps, func(i, j int) bool {
+		return lessByLRU(subPReps[i], subPReps[j], br)
+	})
 
 	// Add extra main preps to map
 	i := 0
 	extraMainPReps := make(map[string]bool)
 	for _, prep := range subPReps {
-		if prep.GetPower(br).Sign() > 0 {
+		if prep.IsElectable(sc) {
 			// Prevent the prep whose power is 0 from being an extra main prep
 			extraMainPReps[icutils.ToKey(prep.Owner())] = true
 			subPReps[i] = prep
@@ -347,20 +336,6 @@ func (p *prepSetImpl) sortForExtraMainPRep(
 			i++
 		}
 	}
-}
-
-func (p *prepSetImpl) visitAll(visit func(idx int, prep *PRep) bool) {
-	for i, prep := range p.preps {
-		if ok := visit(i, prep); !ok {
-			return
-		}
-	}
-}
-
-func sortByLRU(preps []*PRep, br icmodule.Rate) {
-	sort.Slice(preps, func(i, j int) bool {
-		return lessByLRU(preps[i], preps[j], br)
-	})
 }
 
 func lessByLRU(p0, p1 *PRep, br icmodule.Rate) bool {
