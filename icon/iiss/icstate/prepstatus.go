@@ -807,8 +807,8 @@ func (ps *PRepStatusState) DisableAs(status Status) (Grade, error) {
 	}
 }
 
-func (ps *PRepStatusState) ToJSON(sc icmodule.StateContext) map[string]interface{} {
-	jso := ps.prepStatusData.ToJSON(sc)
+func (ps *PRepStatusState) GetStatsInJSON(sc icmodule.StateContext) map[string]interface{} {
+	jso := ps.prepStatusData.GetStatsInJSON(sc.BlockHeight())
 	if sc.Revision() >= icmodule.RevisionUpdatePRepStats {
 		jso["address"] = ps.owner
 	}

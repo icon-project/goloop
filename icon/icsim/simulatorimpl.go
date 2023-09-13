@@ -554,7 +554,8 @@ func (sim *simulatorImpl) GetPRep(address module.Address) *icstate.PRep {
 func (sim *simulatorImpl) GetPRepStats(address module.Address) map[string]interface{} {
 	es := sim.getExtensionState(true)
 	ps := es.State.GetPRepStatusByOwner(address, false)
-	return ps.GetStatsInJSON(sim.BlockHeight())
+	sc := sim.GetStateContext()
+	return ps.GetStatsInJSON(sc)
 }
 
 func (sim *simulatorImpl) GetNetworkInfo() map[string]interface{} {
