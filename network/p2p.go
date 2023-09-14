@@ -1311,7 +1311,7 @@ func (p2p *PeerToPeer) discoverFriends() {
 
 	roots := p2p.findPeers(func(p *Peer) bool {
 		return p.ConnType() != p2pConnTypeFriend && p.HasRole(p2pRoleRoot)
-	}, joinPeerConnectionTypes...)
+	})
 	for _, p := range roots {
 		if p2p.tryTransitPeerConnection(p, p2pConnTypeFriend) {
 			p2p.logger.Debugln("discoverFriends", "try p2pConnTypeFriend", p.ID(), p.ConnType())
