@@ -9,6 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -16,6 +17,15 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
+
+func newDummyAddress(value int) module.Address {
+	bs := make([]byte, common.AddressBytes)
+	for i := 0; value != 0 && i < 8; i++ {
+		bs[common.AddressBytes-1-i] = byte(value & 0xFF)
+		value >>= 8
+	}
+	return common.MustNewAddress(bs)
+}
 
 func newDummyPRepInfo(i int) *icstate.PRepInfo {
 	city := fmt.Sprintf("Seoul%d", i)
@@ -45,34 +55,106 @@ func newDummyExtensionState(t *testing.T) *ExtensionStateImpl {
 	return es
 }
 
-type callContext struct {
+type Call struct {
+	method string
+	params []interface{}
+}
+
+type CallTracer struct {
+	callMap map[string][]*Call
+}
+
+func (ct *CallTracer) AddCall(method string, params ...interface{}) {
+	ci := &Call{method, params}
+	calls := ct.callMap[ci.method]
+	ct.callMap[ci.method] = append(calls, ci)
+}
+
+func (ct *CallTracer) GetCalls(method string) []*Call {
+	return ct.callMap[method]
+}
+
+func (ct *CallTracer) GetCall(method string, index int) *Call {
+	if calls, ok := ct.callMap[method]; ok {
+		return calls[index]
+	}
+	return nil
+}
+
+func (ct *CallTracer) Clear() {
+	ct.callMap = make(map[string][]*Call)
+}
+
+func NewCallTracer() *CallTracer {
+	return &CallTracer{
+		callMap: make(map[string][]*Call),
+	}
+}
+
+type mockCallContext struct {
+	*CallTracer
 	icmodule.CallContext
-	from module.Address
-	rev module.Revision
+	from        module.Address
+	rev         module.Revision
 	blockHeight int64
 }
 
-func (cc *callContext) From() module.Address {
+func (cc *mockCallContext) From() module.Address {
 	return cc.from
 }
 
-func (cc *callContext) Revision() module.Revision {
+func (cc *mockCallContext) Revision() module.Revision {
 	return cc.rev
 }
 
-func (cc *callContext) BlockHeight() int64 {
+func (cc *mockCallContext) BlockHeight() int64 {
 	return cc.blockHeight
 }
 
-func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
+func (cc *mockCallContext) OnEvent(addr module.Address, indexed, data [][]byte) {
 	// Nothing to do
 }
 
-func newDummyCallContext(from module.Address, rev module.Revision) icmodule.CallContext {
-	return &callContext{
-		from: from,
-		rev: rev,
+func (cc *mockCallContext) Withdraw(address module.Address, amount *big.Int, opType module.OpType) error {
+	cc.AddCall("Withdraw", address, amount, opType)
+	return nil
+}
+
+func (cc *mockCallContext) HandleBurn(address module.Address, amount *big.Int) error {
+	cc.AddCall("HandleBurn", address, amount)
+	return nil
+}
+
+func (cc *mockCallContext) Set(params map[string]interface{}) {
+	for key, value := range params {
+		switch key {
+		case "rev", "revision":
+			cc.rev = value.(module.Revision)
+		case "bh", "blockHeight", "height":
+			cc.blockHeight = value.(int64)
+		case "from", "owner", "sender":
+			cc.from = value.(module.Address)
+		default:
+			log.Panicf("UnexpectedName(%s)", key)
+		}
 	}
+}
+
+func (cc *mockCallContext) IncreaseBlockHeightBy(amount int64) int64 {
+	cc.blockHeight += amount
+	return cc.blockHeight
+}
+
+func (cc *mockCallContext) SetFrom(from module.Address) {
+	cc.from = from
+}
+
+func newMockCallContext(params map[string]interface{}) *mockCallContext {
+	cc := &mockCallContext{
+		CallTracer: NewCallTracer(),
+	}
+	cc.Set(params)
+	return cc
 }
 
 func TestExtension_calculateRRep(t *testing.T) {
@@ -260,7 +342,7 @@ func TestExtensionStateImpl_getOldCommissionRate(t *testing.T) {
 		case 4: // Front
 			err = es.Front.AddCommissionRate(owner, rate)
 			assert.NoError(t, err)
-			expOldRate = icmodule.Rate(i-1)
+			expOldRate = icmodule.Rate(i - 1)
 		}
 
 		rate, err = es.getOldCommissionRate(owner)
@@ -280,7 +362,10 @@ func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
 
 	var err error
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newDummyCallContext(owner, icmodule.ValueToRevision(icmodule.RevisionPreIISS4))
+	cc := newMockCallContext(map[string]interface{}{
+		"from": owner,
+		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+	})
 	es := newDummyExtensionState(t)
 
 	pi := newDummyPRepInfo(1)
@@ -314,7 +399,10 @@ func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
 func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 	var err error
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newDummyCallContext(owner, icmodule.ValueToRevision(icmodule.RevisionPreIISS4))
+	cc := newMockCallContext(map[string]interface{}{
+		"from": owner,
+		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+	})
 	es := newDummyExtensionState(t)
 
 	// Error: PRepBase Not Found
@@ -335,15 +423,15 @@ func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 	es.Back1 = es.Front
 	es.Front = icstage.NewState(es.database)
 
-	args := []struct{
-		rate icmodule.Rate
+	args := []struct {
+		rate    icmodule.Rate
 		success bool
 	}{
 		{icmodule.Rate(-1), false},
 		{icmodule.Rate(0), true},
 		{icmodule.Rate(1), true},
 		{icmodule.Rate(icmodule.DenomInRate), false},
-		{icmodule.Rate(icmodule.DenomInRate+1), false},
+		{icmodule.Rate(icmodule.DenomInRate + 1), false},
 	}
 
 	var cr *icstage.CommissionRate
@@ -381,4 +469,215 @@ func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 			assert.Equal(t, oldRateInFront, rateInFront)
 		}
 	}
+}
+
+func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
+	owner := common.MustNewAddressFromString("hx1234")
+	cc := newMockCallContext(map[string]interface{}{
+		"from": owner,
+		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+	})
+	es := newDummyExtensionState(t)
+
+	args := []struct {
+		rates   map[string]icmodule.Rate
+		success bool
+	}{
+		{
+			map[string]icmodule.Rate{
+				icmodule.PenaltyValidationFailure.String(): icmodule.ToRate(-5),
+			},
+			false,
+		},
+		{
+			map[string]icmodule.Rate{
+				icmodule.PenaltyValidationFailure.String(): icmodule.ToRate(1),
+			},
+			true,
+		},
+		{
+			map[string]icmodule.Rate{
+				icmodule.PenaltyValidationFailure.String():            icmodule.ToRate(0),
+				icmodule.PenaltyAccumulatedValidationFailure.String(): icmodule.ToRate(20),
+				icmodule.PenaltyPRepDisqualification.String():         icmodule.ToRate(100),
+				icmodule.PenaltyDoubleVote.String():                   icmodule.ToRate(10),
+				icmodule.PenaltyMissedNetworkProposalVote.String():    icmodule.ToRate(7),
+			},
+			true,
+		},
+		{
+			map[string]icmodule.Rate{
+				icmodule.PenaltyValidationFailure.String():            icmodule.ToRate(0),
+				icmodule.PenaltyAccumulatedValidationFailure.String(): icmodule.ToRate(20),
+				icmodule.PenaltyPRepDisqualification.String():         icmodule.ToRate(100),
+				icmodule.PenaltyDoubleVote.String():                   icmodule.ToRate(-10),
+				icmodule.PenaltyMissedNetworkProposalVote.String():    icmodule.ToRate(7),
+			},
+			false,
+		},
+	}
+
+	jso, err := es.GetSlashingRates(cc, nil)
+	assert.NoError(t, err)
+	for key, value := range jso {
+		assert.True(t, icmodule.ToPenaltyType(key) != icmodule.PenaltyNone)
+		assert.True(t, icmodule.Rate(value.(int64)).IsValid())
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		rates := arg.rates
+
+		t.Run(name, func(t *testing.T) {
+			oldRates, err := es.GetSlashingRates(cc, nil)
+			assert.NoError(t, err)
+
+			err = es.SetSlashingRates(cc, rates)
+
+			if !arg.success {
+				assert.Error(t, err)
+				jso, err = es.GetSlashingRates(cc, nil)
+				assert.Equal(t, oldRates, jso)
+				return
+			}
+
+			expRates := oldRates
+			assert.NoError(t, err)
+			for key, rate := range rates {
+				expRates[key] = rate.NumInt64()
+			}
+			jso, err = es.GetSlashingRates(cc, nil)
+			assert.NoError(t, err)
+			assert.True(t, checkSlashingRates(jso))
+			assert.Equal(t, expRates, jso)
+		})
+	}
+
+	penaltyTypes := []icmodule.PenaltyType{
+		icmodule.PenaltyDoubleVote,
+		icmodule.PenaltyAccumulatedValidationFailure,
+	}
+	jso, err = es.GetSlashingRates(cc, penaltyTypes)
+	assert.NoError(t, err)
+	assert.Equal(t, len(penaltyTypes), len(jso))
+	for _, pt := range penaltyTypes {
+		_, ok := jso[pt.String()]
+		assert.True(t, ok)
+	}
+
+	_, err = es.GetSlashingRates(cc, []icmodule.PenaltyType{icmodule.PenaltyNone})
+	assert.Error(t, err)
+}
+
+func checkSlashingRates(rates map[string]interface{}) bool {
+	for key, value := range rates {
+		if pt := icmodule.ToPenaltyType(key); pt == icmodule.PenaltyNone {
+			return false
+		}
+		rate := icmodule.Rate(value.(int64))
+		if !rate.IsValid() {
+			return false
+		}
+	}
+	return true
+}
+
+func TestExtensionStateImpl_RequestUnjail(t *testing.T) {
+	var err error
+	rev := icmodule.RevisionIISS4
+	owner := common.MustNewAddressFromString("hx1234")
+	cc := newMockCallContext(map[string]interface{}{
+		"from": owner,
+		"rev":  icmodule.ValueToRevision(rev),
+	})
+	es := newDummyExtensionState(t)
+
+	err = es.GenesisTerm(1000, rev)
+	assert.NoError(t, err)
+
+	pi := newDummyPRepInfo(1)
+	err = es.RegisterPRep(cc, pi)
+	assert.NoError(t, err)
+
+	// Case of trying to request unjail for a normal PRep
+	err = es.RequestUnjail(cc)
+	assert.Error(t, err)
+
+	// Non-existent PRep owner
+	cc.SetFrom(common.MustNewAddressFromString("hx777"))
+	err = es.RequestUnjail(cc)
+	assert.Error(t, err)
+}
+
+func TestExtensionStateImpl_GetPRepStats(t *testing.T) {
+	var err error
+	size := 2
+	rev := icmodule.RevisionIISS4
+	bh := int64(1000)
+	cc := newMockCallContext(map[string]interface{}{
+		"rev":         icmodule.ValueToRevision(rev),
+		"blockHeight": bh,
+	})
+	es := newDummyExtensionState(t)
+
+	err = es.GenesisTerm(1000, rev)
+	assert.NoError(t, err)
+
+	for i := 0; i < size; i++ {
+		cc.SetFrom(newDummyAddress(i + 1))
+		pi := newDummyPRepInfo(i + 1)
+		err = es.RegisterPRep(cc, pi)
+		assert.NoError(t, err)
+	}
+
+	// Test GetPRepStats()
+	cc.IncreaseBlockHeightBy(1)
+	cc.SetFrom(common.MustNewAddressFromString("hx1234"))
+
+	jso, err := es.GetPRepStats(cc)
+	assert.NoError(t, err)
+	assert.Equal(t, cc.BlockHeight(), jso["blockHeight"])
+
+	preps := jso["preps"].([]interface{})
+	assert.Equal(t, size, len(preps))
+
+	exp := map[string]interface{}{
+		"fail":         int64(0),
+		"failCont":     int64(0),
+		"grade":        int(icstate.GradeCandidate),
+		"lastHeight":   int64(0),
+		"penalties":    0,
+		"realFail":     int64(0),
+		"realFailCont": int64(0),
+		"realTotal":    int64(0),
+		"status":       int(icstate.Active),
+		"total":        int64(0),
+		"lastState":    int(icstate.None),
+	}
+
+	for i, prepInJSON := range preps {
+		exp["address"] = newDummyAddress(size - i).String()
+		jso = prepInJSON.(map[string]interface{})
+		jso["address"] = jso["address"].(module.Address).String()
+		assert.Equal(t, exp, jso)
+	}
+
+	// Test GetPRepStatsOf()
+	cc.IncreaseBlockHeightBy(1)
+	jso, err = es.GetPRepStatsOf(cc, common.MustNewAddressFromString("hx777"))
+	assert.Nil(t, jso)
+	assert.Error(t, err)
+
+	address := newDummyAddress(1)
+	jso, err = es.GetPRepStatsOf(cc, address)
+	assert.NoError(t, err)
+	assert.Equal(t, cc.BlockHeight(), jso["blockHeight"])
+
+	preps = jso["preps"].([]interface{})
+	assert.Equal(t, 1, len(preps))
+
+	exp["address"] = address.String()
+	prepInJSON := preps[0].(map[string]interface{})
+	prepInJSON["address"] = prepInJSON["address"].(module.Address).String()
+	assert.Equal(t, exp, prepInJSON)
 }
