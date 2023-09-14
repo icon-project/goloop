@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/btp"
 	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/common"
@@ -32,6 +31,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/txlocator"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/icdb"
 	"github.com/icon-project/goloop/icon/merkle"
@@ -958,7 +958,7 @@ func (b *Block) WriteTo(dbase db.Database) error {
 	if err != nil {
 		return err
 	}
-	if err = block.WriteTransactionLocators(
+	if err = txlocator.WriteTransactionLocators(
 		dbase,
 		b.Height(),
 		b.patchTransactions,
