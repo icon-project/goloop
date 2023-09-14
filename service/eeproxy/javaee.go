@@ -17,9 +17,12 @@ const (
 	JavaEE = "javaee"
 )
 
+const OperationTimeout = 3*time.Second
+
 type javaInstance struct {
 	uid    string
 	status InstanceStatus
+	timer  *time.Timer
 }
 
 type javaExecutionEngine struct {
@@ -71,6 +74,10 @@ func (e *javaExecutionEngine) start() error {
 }
 
 func (e *javaExecutionEngine) term(i *javaInstance) {
+	if i.timer != nil {
+		i.timer.Stop()
+		i.timer = nil
+	}
 	delete(e.instances, i.uid)
 }
 
@@ -91,6 +98,17 @@ func (e *javaExecutionEngine) Init(net, addr string) error {
 	return nil
 }
 
+func (e *javaExecutionEngine) OnRunTimeout(uid string) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if is, ok := e.instances[uid]; ok && is.status == instanceStarted {
+		is.timer = nil
+		e.logger.Warnf("TIMEOUT after javaee run(uid=%s)", uid)
+		_ = e.conn.Close()
+	}
+}
+
 func (e *javaExecutionEngine) runInstances() error {
 	e.logger.Debugf("runInstances e.target(%d), e.instances(%d)\n", e.target, len(e.instances))
 	for e.target > len(e.instances) {
@@ -100,7 +118,10 @@ func (e *javaExecutionEngine) runInstances() error {
 			log.Errorf("Fail to start execution engine err=%+v", err)
 			return err
 		}
-		e.instances[uid] = &javaInstance{uid, instanceStarted}
+		timer := time.AfterFunc(OperationTimeout, func() {
+			e.OnRunTimeout(uid)
+		})
+		e.instances[uid] = &javaInstance{uid, instanceStarted, timer}
 	}
 
 	return nil
@@ -127,11 +148,26 @@ func (e *javaExecutionEngine) OnAttach(uid string) bool {
 	defer e.lock.Unlock()
 
 	if is, ok := e.instances[uid]; ok {
+		if is.status == instanceStarted {
+			is.timer.Stop()
+			is.timer = nil
+		}
 		is.status = instanceOnline
 		return true
 	}
 	e.logger.Debugf("Invalid UID(%s)\n", uid)
 	return false
+}
+
+func (e *javaExecutionEngine) OnKillTimeout(uid string) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if is, ok := e.instances[uid]; ok {
+		is.timer = nil
+		e.logger.Warnf("TIMEOUT after javaee kill(uid=%s)", uid)
+		_ = e.conn.Close()
+	}
 }
 
 // restart EE
@@ -144,6 +180,9 @@ func (e *javaExecutionEngine) Kill(uid string) (bool, error) {
 		if err := e.managerProxy.Kill(is.uid); err != nil {
 			return true, err
 		}
+		is.timer = time.AfterFunc(OperationTimeout, func() {
+			e.OnKillTimeout(uid)
+		})
 		return true, nil
 	}
 	return false, nil

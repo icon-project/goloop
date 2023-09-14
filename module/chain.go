@@ -48,6 +48,7 @@ type Chain interface {
 	Consensus() Consensus
 	ServiceManager() ServiceManager
 	NetworkManager() NetworkManager
+	GetLocatorManager() (LocatorManager, error)
 	Regulator() Regulator
 
 	Init() error

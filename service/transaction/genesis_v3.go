@@ -39,7 +39,7 @@ type genesisV3JSON struct {
 	Accounts []accountInfo    `json:"accounts"`
 	Message  string           `json:"message"`
 	Chain    json.RawMessage  `json:"chain"`
-	NID      *common.HexInt64 `json:"nid"`
+	NID      *common.HexInt32 `json:"nid"`
 	raw      []byte
 	txHash   []byte
 }

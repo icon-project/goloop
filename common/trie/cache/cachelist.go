@@ -69,8 +69,10 @@ func (l *nodeCacheList) updateSorted(removed, added *nodeCacheItem) {
 			item := l.sorted[idx]
 			if item.count == 0 {
 				if l.idToItem[item.id] == item {
-					if item.cache != nil {
-						log.Warnf("RemoveCacheFor(%#x)", item.id)
+					if logCacheEvents {
+						if item.cache != nil {
+							log.Warnf("RemoveCacheFor(%#x)", item.id)
+						}
 					}
 					delete(l.idToItem, item.id)
 				}

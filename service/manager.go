@@ -56,6 +56,7 @@ type manager struct {
 	tsc       *TxTimestampChecker
 	syncer    *ssync.Manager
 	dsm       *dsrManager
+	lm        module.LocatorManager
 
 	log log.Logger
 
@@ -82,7 +83,12 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		droppedTxSlotSize = ConfigMaxDroppedTxSlotSize
 	}
 	tic := NewTxIDCache(ConfigDroppedTxSlotDuration, droppedTxSlotSize, logger)
-	tim, err := NewTXIDManager(chain.Database(), tsc, tic)
+	lm, err := chain.GetLocatorManager()
+	if err != nil {
+		logger.Warnf("FAIL to get LocatorManager : %v\n", err)
+		return nil, err
+	}
+	tim, err := NewTXIDManager(lm, tsc, tic)
 	if err != nil {
 		logger.Warnf("FAIL to create TXIDManager : %v\n", err)
 		return nil, err
@@ -111,6 +117,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		tsc: tsc,
 		tim: tim,
 		dsm: dsm,
+		lm:  lm,
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, tm)
@@ -134,6 +141,7 @@ func (m *manager) Term() {
 	m.cm = nil
 	m.eem = nil
 	m.db = nil
+	m.lm = nil
 }
 
 // ProposeTransition proposes a Transition following the parent Transition.

@@ -18,7 +18,7 @@ func (e *bytesEncoder) Reset() {
 }
 
 func (e *bytesEncoder) Bytes() []byte {
-	return []byte(e.buffer.String())
+	return e.buffer.Bytes()
 }
 
 type bytesDecoder struct {
@@ -33,7 +33,7 @@ func (d *bytesDecoder) Reset(bs []byte) {
 }
 
 func (d *bytesDecoder) Bytes() []byte {
-	return []byte(d.buffer.String())
+	return d.buffer.Bytes()
 }
 
 type bytesWrapper struct {

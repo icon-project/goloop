@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/txlocator"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 )
@@ -48,7 +49,7 @@ func (r *finalizeRequest) finalize(blk module.BlockData) error {
 	if err = blk.(base.BlockVersionSpec).FinalizeHeader(r.dbase); err != nil {
 		return err
 	}
-	if err = WriteTransactionLocators(r.dbase, blk.Height(), blk.PatchTransactions(), blk.NormalTransactions()); err != nil {
+	if err = txlocator.WriteTransactionLocators(r.dbase, blk.Height(), blk.PatchTransactions(), blk.NormalTransactions()); err != nil {
 		return err
 	}
 	return nil

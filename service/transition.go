@@ -13,6 +13,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/txlocator"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -105,7 +106,6 @@ func (tc *transitionContext) onWorldFinalize(wss state.WorldSnapshot) {
 		tsThreshold := scoredb.NewVarDB(as, state.VarTimestampThreshold).Int64()
 		if tsThreshold > 0 {
 			tc.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
-			tc.tim.OnThresholdChange()
 		}
 		tc.dsm.OnFinalizeState(ass)
 		tc.sass = ass
@@ -174,6 +174,8 @@ func patchTransition(t *transition, bi module.BlockInfo, patchTXs module.Transac
 		patchTransactions:  patchTXs,
 		normalTransactions: t.normalTransactions,
 		transitionContext:  t.transitionContext,
+		ntxIDs:				t.ntxIDs,
+		ntxCount:           t.ntxCount,
 		step:               stepInited,
 	}
 }
@@ -495,31 +497,44 @@ func (t *transition) completed() bool {
 	return t.step == stepComplete
 }
 
-func (t *transition) ensureRecordTXIDs(force bool) error {
+func (t *transition) ensureRecordTXIDs(wc state.WorldContext, force bool) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	return t.ensureRecordTXIDsInLock(force)
+	return t.ensureRecordTXIDsInLock(wc, force)
 }
 
-func (t *transition) ensureRecordTXIDsInLock(force bool) error {
+func (t *transition) ensureRecordTXIDsInLock(wc state.WorldContext, force bool) error {
 	if t.ntxIDs != nil && t.ptxIDs != nil {
 		return nil
 	}
-	if t.pbi != nil {
-		t.ptxIDs = t.parent.ptxIDs.NewLogger(t.pbi.Height(), t.pbi.Timestamp())
-	} else {
-		t.ptxIDs = t.parent.ptxIDs.NewLogger(0, 0)
+	if wc == nil {
+		if nwc, err := t.newWorldContext(false); err != nil {
+			return err
+		} else {
+			wc = nwc
+		}
 	}
-	t.ntxIDs = t.parent.ntxIDs.NewLogger(t.bi.Height(), t.bi.Timestamp())
-	if count, err := t.validateTXIDs(t.patchTransactions, t.ptxIDs, force); err != nil {
-		return err
-	} else {
-		t.ptxCount = count
+	if t.ptxIDs == nil {
+		pth := TransactionTimestampThreshold(wc, module.TransactionGroupPatch)
+		if t.pbi != nil {
+			t.ptxIDs = t.parent.ptxIDs.NewLogger(t.pbi.Height(), t.pbi.Timestamp(), pth)
+		} else {
+			t.ptxIDs = t.parent.ptxIDs.NewLogger(t.bi.Height(), t.bi.Timestamp(), pth)
+		}
+		if count, err := t.ptxIDs.Add(t.patchTransactions, force); err != nil {
+			return err
+		} else {
+			t.ptxCount = count
+		}
 	}
-	if count, err := t.validateTXIDs(t.normalTransactions, t.ntxIDs, force); err != nil {
-		return err
-	} else {
-		t.ntxCount = count
+	if t.ntxIDs == nil {
+		nth := TransactionTimestampThreshold(wc, module.TransactionGroupNormal)
+		t.ntxIDs = t.parent.ntxIDs.NewLogger(t.bi.Height(), t.bi.Timestamp(), nth)
+		if count, err := t.ntxIDs.Add(t.normalTransactions, force); err != nil {
+			return err
+		} else {
+			t.ntxCount = count
+		}
 	}
 	return nil
 }
@@ -527,7 +542,7 @@ func (t *transition) ensureRecordTXIDsInLock(force bool) error {
 func (t *transition) commitTXIDs(group module.TransactionGroup) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	if err := t.ensureRecordTXIDsInLock(true); err != nil {
+	if err := t.ensureRecordTXIDsInLock(nil, true); err != nil {
 		return err
 	}
 	switch group {
@@ -587,11 +602,16 @@ func (t *transition) commitDSRs() error {
 }
 
 func (t *transition) doForceSync() {
-	if err := t.ensureRecordTXIDs(true); err != nil {
+	wc, err := t.newWorldContext(false)
+	if err != nil {
 		t.reportValidation(err)
 		return
 	}
-	if err := t.ensureRecordDoubleSignReports(nil); err != nil {
+	if err := t.ensureRecordTXIDs(wc, true); err != nil {
+		t.reportValidation(err)
+		return
+	}
+	if err := t.ensureRecordDoubleSignReports(wc); err != nil {
 		t.reportValidation(err)
 		return
 	}
@@ -638,29 +658,15 @@ func (t *transition) doForceSync() {
 	t.reportExecution(nil)
 }
 
-func (t *transition) validateTXIDs(list module.TransactionList, logger TXIDLogger, force bool) (int, error) {
-	count := 0
-	for i := list.Iterator(); i.Has(); i.Next() {
-		tx, _, err := i.Get()
-		if err != nil {
-			return 0, err
-		}
-		if err := logger.Add(tx.ID(), force); err != nil {
-			return count, err
-		}
-		count += 1
-	}
-	return count, nil
-}
-
 func (t *transition) doExecute(alreadyValidated bool) {
 	if !alreadyValidated {
-		if err := t.ensureRecordTXIDs(false); err != nil {
+		wc, err := t.newWorldContext(false)
+		if err != nil {
 			t.reportValidation(err)
 			return
 		}
-		wc, err := t.newWorldContext(false)
-		if err != nil {
+
+		if err := t.ensureRecordTXIDs(wc, false); err != nil {
 			t.reportValidation(err)
 			return
 		}
@@ -694,13 +700,13 @@ func (t *transition) doExecute(alreadyValidated bool) {
 			return
 		}
 	} else {
-		if err := t.ensureRecordTXIDs(true); err != nil {
+		wc, err := t.newWorldContext(false)
+		if err != nil {
 			t.reportValidation(err)
 			return
 		}
 
-		wc, err := t.newWorldContext(false)
-		if err != nil {
+		if err := t.ensureRecordTXIDs(wc, true); err != nil {
 			t.reportValidation(err)
 			return
 		}
@@ -1024,11 +1030,15 @@ func NewInitTransition(
 	logger log.Logger, plt base.Platform,
 	tsc *TxTimestampChecker,
 ) (module.Transition, error) {
-	tim, err := NewTXIDManager(db, tsc, nil)
-	dsm := newDSRManager(logger)
+	lm, err := txlocator.NewManager(db, logger)
 	if err != nil {
 		return nil, err
 	}
+	tim, err := NewTXIDManager(lm, tsc, nil)
+	if err != nil {
+		return nil, err
+	}
+	dsm := newDSRManager(logger)
 	if tr, err := newInitTransition(db, result, vl, cm, em, chain, logger, plt, tsc, tim, dsm); err != nil {
 		return nil, err
 	} else {

@@ -264,10 +264,14 @@ public class StructDB {
     }
 
     public boolean isValidParamType(Type type) {
-        if (type.getSort() == Type.ARRAY) {
-            return isValidParamTypeElement(type.getElementType());
+        try {
+            if (type.getSort() == Type.ARRAY) {
+                return isValidParamTypeElement(type.getElementType());
+            }
+            return isValidParamTypeElement(type);
+        } catch (IllegalArgumentException e) {
+            return false;
         }
-        return isValidParamTypeElement(type);
     }
 
     public boolean isValidReturnTypeElement(Type type) {
@@ -276,10 +280,14 @@ public class StructDB {
     }
 
     public boolean isValidReturnType(Type type) {
-        if (type.getSort() == Type.ARRAY) {
-            return isValidReturnTypeElement(type.getElementType());
+        try {
+            if (type.getSort() == Type.ARRAY) {
+                return isValidReturnTypeElement(type.getElementType());
+            }
+            return isValidReturnTypeElement(type);
+        } catch (IllegalArgumentException e) {
+            return false;
         }
-        return isValidReturnTypeElement(type);
     }
 
     public Method.TypeDetail getDetailFromParameterType(Type t) {
