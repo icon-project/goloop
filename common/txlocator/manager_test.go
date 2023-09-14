@@ -19,6 +19,7 @@ package txlocator
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -158,6 +159,10 @@ func TestTracker_Basic(t *testing.T) {
 	has, err = tr1.Has(tid0, 2000)
 	assert.NoError(t, err)
 	assert.True(t, has)
+
+	assert.EqualValues(t, ts, tr1.Timestamp())
+	assert.EqualValues(t, th, tr1.Threshold())
+	assert.EqualValues(t, module.TransactionGroupNormal, tr1.Group())
 
 	loc, err := mgr.GetLocator(tid0)
 	assert.NoError(t, err)
@@ -355,4 +360,93 @@ func TestTracker_Add(t *testing.T) {
 	// addition to committed
 	_, err = ntr1.Add(txs3, false)
 	assert.Error(t, err)
+}
+
+func TestManager_Has(t *testing.T) {
+	dbase := db.NewMapDB()
+	layer := db.NewLayerDB(dbase)
+	logger := log.GlobalLogger()
+	mgr, err := NewManager(layer, logger)
+	assert.NoError(t, err)
+	mgr.Start()
+	defer mgr.Term()
+
+	var stored []*testDummyTx
+	var ts = int64(829394)
+	var height = int64(8384)
+
+	tr := mgr.NewTracker(module.TransactionGroupNormal, 0, 0, 0)
+	txi := 0
+
+	for i := 0 ; i<1200 ; i++ {
+		th := int64(rand.Intn(241)+60)
+		txn := 2
+
+		// validating new block
+		ntr := tr.New(height, ts, th)
+		txs := newTestTXList(module.TransactionGroupNormal, txi, txn, ts-th, th*2-1)
+		_, err = ntr.Add(txs, false)
+		assert.NoError(t, err)
+
+		// commit the block
+		stored = append(stored, txs.txs...)
+		tr = ntr
+		height += 1
+		ts += 2
+		txi += txn
+		assert.NoError(t, tr.Commit())
+
+		// check old txs exists
+		for idx, tx := range stored {
+			has, err := mgr.Has(module.TransactionGroupNormal, tx.ID(), tx.Timestamp())
+			assert.NoError(t, err)
+			assert.Truef(t, has, "LocatorManager.Has(idx=%d,id=%#x,ts=%d) returns FALSE",
+				idx, tx.ID(), tx.Timestamp())
+		}
+	}
+
+	// confirm that the old TX has flushed to the database.
+	// - clear database
+	// - confirm that it doesn't have the old tx
+	// - confirm that it still has the recent tx
+	assert.NoError(t, layer.Flush(false))
+	has, err := mgr.Has(module.TransactionGroupNormal, stored[0].ID(), stored[0].Timestamp())
+	assert.NoError(t, err)
+	assert.False(t, has)
+	has, err = mgr.Has(module.TransactionGroupNormal, stored[txi-1].ID(), stored[txi-1].Timestamp())
+	assert.NoError(t, err)
+	assert.True(t, has)
+}
+
+func TestWriteTransactionLocators(t *testing.T) {
+	dbase := db.NewMapDB()
+	layer := db.NewLayerDB(dbase)
+	logger := log.GlobalLogger()
+	mgr, err := NewManager(layer, logger)
+	assert.NoError(t, err)
+	mgr.Start()
+	defer mgr.Term()
+
+	const Height = 10234
+
+	txs1 := newTestTXList(module.TransactionGroupPatch, 10, 10, 2000, 10)
+	txs2 := newTestTXList(module.TransactionGroupNormal, 20, 10, 2000, 10)
+
+	assert.NoError(t, WriteTransactionLocators(dbase, Height, txs1, txs2))
+
+	for idx, tx := range txs1.txs {
+		loc, err := mgr.GetLocator(tx.ID())
+		assert.NoError(t, err)
+		assert.EqualValues(t, Height, loc.BlockHeight)
+		assert.EqualValues(t, tx.Group(), loc.TransactionGroup)
+		assert.EqualValues(t, idx, loc.IndexInGroup)
+	}
+
+	for idx, tx := range txs2.txs {
+		loc, err := mgr.GetLocator(tx.ID())
+		assert.NoError(t, err)
+		assert.EqualValues(t, Height, loc.BlockHeight)
+		assert.EqualValues(t, tx.Group(), loc.TransactionGroup)
+		assert.EqualValues(t, idx, loc.IndexInGroup)
+	}
 }
