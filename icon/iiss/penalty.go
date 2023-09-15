@@ -46,7 +46,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 
 	// Impose ValidationFailurePenalty
 	sc := NewStateContext(cc, es)
-	if err = es.State.ImposePenalty(sc, penaltyTypes[0], owner, ps); err != nil {
+	if err = es.State.ImposePenalty(sc, penaltyTypes[0], ps); err != nil {
 		return err
 	}
 
@@ -56,14 +56,12 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 		penaltyTypes = append(penaltyTypes, icmodule.PenaltyAccumulatedValidationFailure)
 
 		// Impose AccumulatedValidationFailurePenalty
-		if err = es.State.ImposePenalty(sc, penaltyTypes[1], owner, ps); err != nil {
+		if err = es.State.ImposePenalty(sc, penaltyTypes[1], ps); err != nil {
 			return err
 		}
 	}
 
-	term := es.State.GetTermSnapshot()
-	isIISS4Activated := term.GetIISSVersion() >= icstate.IISSVersion4
-
+	isIISS4Activated := sc.TermIISSVersion() >= icstate.IISSVersion4
 	for _, penaltyType := range penaltyTypes {
 		if penaltyType == icmodule.PenaltyValidationFailure || isIISS4Activated {
 			// Record PenaltyImposed eventlog

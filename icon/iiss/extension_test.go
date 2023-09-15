@@ -103,16 +103,28 @@ func (cc *mockCallContext) From() module.Address {
 	return cc.from
 }
 
+func (cc *mockCallContext) SetFrom(from module.Address) {
+	cc.from = from
+}
+
 func (cc *mockCallContext) Revision() module.Revision {
 	return cc.rev
+}
+
+func (cc *mockCallContext) SetRevision(rev module.Revision) {
+	cc.rev = rev
 }
 
 func (cc *mockCallContext) BlockHeight() int64 {
 	return cc.blockHeight
 }
 
+func (cc *mockCallContext) SetBlockHeight(blockHeight int64) {
+	cc.blockHeight = blockHeight
+}
+
 func (cc *mockCallContext) OnEvent(addr module.Address, indexed, data [][]byte) {
-	// Nothing to do
+	cc.AddCall("OnEvent", addr, indexed, data)
 }
 
 func (cc *mockCallContext) Withdraw(address module.Address, amount *big.Int, opType module.OpType) error {
@@ -143,10 +155,6 @@ func (cc *mockCallContext) Set(params map[string]interface{}) {
 func (cc *mockCallContext) IncreaseBlockHeightBy(amount int64) int64 {
 	cc.blockHeight += amount
 	return cc.blockHeight
-}
-
-func (cc *mockCallContext) SetFrom(from module.Address) {
-	cc.from = from
 }
 
 func newMockCallContext(params map[string]interface{}) *mockCallContext {

@@ -697,7 +697,7 @@ func TestState_ImposePenalty(t *testing.T) {
 				"termRevision": arg.in.termRev,
 			})
 			ps := state.GetPRepStatusByOwner(owner, false)
-			err = state.ImposePenalty(sc, pt, owner, ps)
+			err = state.ImposePenalty(sc, pt, ps)
 			assert.NoError(t, err)
 			assert.NoError(t, state.Flush())
 			state.ClearCache()

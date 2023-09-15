@@ -443,17 +443,18 @@ func (s *State) GetPRepStatuses() ([]*PRepStatusState, error) {
 
 // ImposePenalty changes grade and set LastState to icstate.None
 func (s *State) ImposePenalty(
-	sc icmodule.StateContext, pt icmodule.PenaltyType, owner module.Address, ps *PRepStatusState) error {
+	sc icmodule.StateContext, pt icmodule.PenaltyType, ps *PRepStatusState) error {
 	var err error
+	owner := ps.Owner()
 	blockHeight := sc.BlockHeight()
 
 	// Update status of the penalized main prep
-	s.logger.Debugf("OnPenaltyImposed() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
+	s.logger.Debugf("ImposePenalty() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
 
 	// Update the state of PRepStatus
 	oldGrade := ps.Grade()
 	err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, pt)
-	s.logger.Debugf("OnPenaltyImposed() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
+	s.logger.Debugf("ImposePenalty() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
 	if err != nil {
 		return err
 	}
