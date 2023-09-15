@@ -1287,3 +1287,62 @@ func TestConsensus_InvalidProposal(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(blk.ID(), cBlk.ID())
 }
+
+func TestConsensus_BPMBuffer(t *testing.T) {
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	blk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	pmBytes, bpmBytes, bps := f.Nodes[1].ProposalBytesFor(blk, 0)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBytes, peer)
+	_, _ = cs.OnReceive(consensus.ProtoProposal, pmBytes, peer)
+
+	// non-nil precommit
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+	for cs.GetStatus().Height < 2 {
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+func TestConsensus_BPMBuffer2(t *testing.T) {
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	blk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	_, bpmBytes, bps := f.Nodes[1].ProposalBytesFor(blk, 0)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBytes, peer)
+
+	// non-nil precommit
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+	for cs.GetStatus().Height < 2 {
+		time.Sleep(200 * time.Millisecond)
+	}
+}

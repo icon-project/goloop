@@ -341,6 +341,13 @@ func TestWorldStateImpl_GetSnapshot(t *testing.T) {
 	assert.NoError(err)
 	wss = ws.GetSnapshot()
 	assert.Equal(wss1, wss)
+
+	// no changes of AccountState after ClearCache()
+	ws.ClearCache()
+	_, err = as2.SetValue([]byte("TestKey"), []byte("TestValue"))
+
+	wss = ws.GetSnapshot()
+	assert.Equal(wss1, wss)
 }
 
 func BenchmarkWorldStateImpl_GetSnapshotN(b *testing.B) {

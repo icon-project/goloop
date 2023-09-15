@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -13,7 +14,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-type ValidatorSnapshot module.ValidatorList
+type ValidatorSnapshot interface {
+	module.ValidatorList
+	Flush() error
+}
 
 type ValidatorState interface {
 	IndexOf(module.Address) int
@@ -452,6 +456,24 @@ func ValidatorSnapshotFromSlice(database db.Database, vl []module.Validator) (Va
 	return vss, nil
 }
 
+func ValidatorSnapshotFromList(database db.Database, vl module.ValidatorList) (ValidatorSnapshot, error) {
+	if vl == nil {
+		return nil, nil
+	}
+	if vss, ok := vl.(*validatorSnapshot) ; ok {
+		return vss, nil
+	}
+	vs := make([]module.Validator, vl.Len())
+	for i := 0 ; i<len(vs) ; i++ {
+		if v, ok := vl.Get(i) ; ok {
+			vs[i] = v
+		} else {
+			return nil, errors.IllegalArgumentError.Errorf("NoValidator(at=%d,len=%d)", i, len(vs))
+		}
+	}
+	return ValidatorSnapshotFromSlice(database, vs)
+}
+
 func ValidatorStateFromSnapshot(vss ValidatorSnapshot) ValidatorState {
 	snapshot, ok := vss.(*validatorSnapshot)
 	if !ok {
@@ -462,4 +484,91 @@ func ValidatorStateFromSnapshot(vss ValidatorSnapshot) ValidatorState {
 		snapshot:      snapshot,
 	}
 	return vs
+}
+
+type validators struct {
+	list  []*validator
+	hash  []byte
+	bytes []byte
+}
+
+func (vs *validators) Hash() []byte {
+	if vs.hash == nil && len(vs.list) > 0 {
+		vs.hash = crypto.SHA3Sum256(vs.Bytes())
+	}
+	return vs.hash
+}
+
+func (vs *validators) Bytes() []byte {
+	if vs.bytes == nil && len(vs.list) > 0 {
+		vs.bytes = codec.BC.MustMarshalToBytes(vs.list)
+	}
+	return vs.bytes
+}
+
+func (vs *validators) IndexOf(address module.Address) int {
+	for idx, v := range vs.list {
+		if common.AddressEqual(v.Address(), address) {
+			return idx
+		}
+	}
+	return -1
+}
+
+func (vs *validators) Get(i int) (module.Validator, bool) {
+	if i<0 || i>=len(vs.list) {
+		return nil, false
+	}
+	return vs.list[i], true
+}
+
+func (vs *validators) Len() int {
+	return len(vs.list)
+}
+
+func NewValidatorListFromBytes(bs []byte) (module.ValidatorList, error) {
+	var vs []*validator
+	if len(bs) > 0 {
+		remain, err := codec.BC.UnmarshalFromBytes(bs, &vs)
+		if err != nil {
+			return nil, err
+		}
+		if len(remain) > 0 {
+			return nil, errors.IllegalArgumentError.New("ThereAreRemainders")
+		}
+	}
+	if len(vs) == 0 {
+		return &validators{ }, nil
+	} else {
+		return &validators {
+			list: vs,
+			bytes: bs,
+		}, nil
+	}
+}
+
+func ToValidatorList(list module.ValidatorList) (module.ValidatorList, error) {
+	if list == nil {
+		return nil, nil
+	}
+	if vs, ok := list.(*validators); ok {
+		return vs, nil
+	}
+	size := list.Len()
+	if size == 0 {
+		return &validators{ }, nil
+	}
+	vs := make([]*validator, size)
+	for i := 0 ; i<size ; i++ {
+		v, ok := list.Get(i)
+		if !ok {
+			return nil, errors.IllegalArgumentError.New("FailToGetValidator")
+		}
+		if vv, err := validatorFromValidator(v); err != nil {
+			return nil, errors.IllegalArgumentError.Wrap(err, "FailToConvertValidator")
+		} else {
+			vs[i] = vv
+		}
+	}
+	return &validators{ list: vs, }, nil
 }

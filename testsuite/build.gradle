@@ -69,7 +69,7 @@ class ChainTest extends Test {
             commands.add("--log_level=" + logLevel)
         }
 
-        Runtime.getRuntime().exec("rm -rf " + chainDir)
+        ["rm", "-rf", chainDir].execute(null, getWorkingDir()).waitFor()
 
         ProcessBuilder pb = new ProcessBuilder(commands)
 
@@ -78,9 +78,9 @@ class ChainTest extends Test {
         env.put("PYTHONPATH", "../pyee")
 
         // set working directory
-        pb.directory(new File("."))
+        pb.directory(getWorkingDir())
 
-        File log_file = new File(logFile)
+        File log_file = new File(getWorkingDir(), logFile)
         pb.redirectError(log_file)
         pb.redirectOutput(log_file)
 
@@ -108,8 +108,17 @@ class ChainTest extends Test {
         commands.add("--name")
         commands.add("gochain-" + dockerEnv)
         commands.add("goloop/gochain")
-        process = commands.execute()
-        process.waitFor(1, TimeUnit.SECONDS)
+        process = commands.execute(null, getWorkingDir())
+        if (process.waitFor() == 0) {
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                void run() {
+                    stopDocker()
+                }
+            }))
+        } else {
+            process = null
+            throw new IllegalStateException("FAIL to start container gochain-${dockerEnv}")
+        }
     }
 
     @TaskAction
@@ -148,7 +157,7 @@ class ChainTest extends Test {
 
     private String getServerPort() {
         def stdout = new ByteArrayOutputStream()
-        def proc = ['sh', '-c', "grep localhost ${envFile} | cut -d \':\' -f 3"].execute()
+        def proc = ['sh', '-c', "grep localhost ${envFile} | cut -d \':\' -f 3"].execute(null, getWorkingDir())
         proc.waitForProcessOutput(stdout, System.err)
         def serverPort = stdout.toString().trim()
         logging.println("ServerPort: ${serverPort}")
@@ -167,8 +176,8 @@ class ChainTest extends Test {
     synchronized void stopDocker() {
         if (process != null && process.exitValue() == 0) {
             logging.println("STOPPING docker container")
-            ["docker", "stop", "gochain-${dockerEnv}"].execute().waitFor()
-            ["docker", "rm", "gochain-${dockerEnv}"].execute().waitFor()
+            ["docker", "stop", "gochain-${dockerEnv}"].execute(null, getWorkingDir()).waitFor()
+            ["docker", "rm", "gochain-${dockerEnv}"].execute(null, getWorkingDir()).waitFor()
             process = null
         }
     }

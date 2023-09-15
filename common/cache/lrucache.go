@@ -84,6 +84,5 @@ func NewLRUCache(size int, create Create) *LRUCache {
 		items:  make(map[string]*list.Element),
 		create: create,
 	}
-	c.lru.Init()
 	return c
 }
