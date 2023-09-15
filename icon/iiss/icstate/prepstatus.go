@@ -728,7 +728,7 @@ func (p *PRepStats) Owner() module.Address {
 func (p *PRepStats) ToJSON(rev int, blockHeight int64) map[string]interface{} {
 	jso := p.PRepStatusState.GetStatsInJSON(blockHeight)
 	if rev >= icmodule.RevisionUpdatePRepStats {
-		jso["owner"] = p.owner
+		jso["address"] = p.owner
 	}
 	return jso
 }
