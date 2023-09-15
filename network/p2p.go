@@ -407,10 +407,14 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		}
 
 		if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
-			if isOneHop || p2p.packetPool.Put(pkt) {
+			if isOneHop {
 				cbFunc(pkt, p)
 			} else {
-				p2p.logger.Traceln("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.ID())
+				if !p2p.packetPool.PutWith(pkt, func(packet *Packet) {
+					cbFunc(packet, p)
+				}) {
+					p2p.logger.Traceln("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.ID())
+				}
 			}
 		} else {
 			//cannot be reached
