@@ -444,6 +444,9 @@ func (t *tracker) Add(list module.TransactionList, force bool) (int, error) {
 }
 
 func (t *tracker) New(height int64, ts int64, th int64) module.LocatorTracker {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
 	if t.locators == nil && t.parent == nil {
 		return t.manager.NewTracker(t.list.group, height, ts, th)
 	}
