@@ -46,7 +46,7 @@ const (
 	DefaultRttLogTimeout        = 1 * time.Second
 	DefaultRttLogThreshold      = 1 * time.Second
 	DefaultFailureNodeMin       = 2
-	DefaultSelectiveFloodingAdd = 1
+	DefaultSelectiveFloodingAdd = 2
 	DefaultSimplePeerIDSize     = 4
 	DefaultDuplicatedPeerTime   = 1 * time.Second
 	DefaultMaxRetryClose        = 10
