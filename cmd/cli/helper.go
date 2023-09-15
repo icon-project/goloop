@@ -632,6 +632,7 @@ func StartMemoryProfile(filename string) error {
 				cnt := atomic.AddInt32(&memProfileCnt, 1)
 				fileName := fmt.Sprintf("%s.%03d", filename, cnt)
 				if f, err := os.Create(fileName); err == nil {
+					runtime.GC()
 					pprof.WriteHeapProfile(f)
 					f.Close()
 				}
