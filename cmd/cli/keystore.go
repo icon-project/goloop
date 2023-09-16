@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -37,7 +38,7 @@ func newKeystoreGenCmd(c string) *cobra.Command {
 
 func newVerifyCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: c,
+		Use:   c,
 		Short: "Verify keystore with the password",
 	}
 	flags := cmd.PersistentFlags()
@@ -140,6 +141,11 @@ func publickeyFromKeyStore(c string) *cobra.Command {
 				}
 			} else {
 				pb = []byte(*pass)
+			}
+
+			// Check if the file starts with the UTF-8 BOM and strip it if present
+			if bytes.HasPrefix(kb, []byte("\xef\xbb\xbf")) {
+				kb = bytes.TrimPrefix(kb, []byte("\xef\xbb\xbf"))
 			}
 
 			w, err := wallet.NewFromKeyStore(kb, pb)
