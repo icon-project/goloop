@@ -247,11 +247,12 @@ type btpTest struct {
 	*test.Fixture
 }
 
-func newBTPTest(t *testing.T) *btpTest {
+func newBTPTest(t *testing.T, opt ...test.FixtureOption) *btpTest {
 	const dsa = "ecdsa/secp256k1"
 	const uid = "eth"
 	assert := assert.New(t)
-	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	opt = append(opt, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	f := test.NewFixture(t, opt...)
 
 	tx := test.NewTx().Call("setRevision", map[string]string{
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
@@ -436,7 +437,7 @@ func TestConsensus_BTPBlockBasic(t_ *testing.T) {
 
 func TestConsensus_ChangeBTPKey(t_ *testing.T) {
 	const dsa = "ecdsa/secp256k1"
-	tst := newBTPTest(t_)
+	tst := newBTPTest(t_, test.SetTimeoutPropose(4*time.Second))
 	defer tst.Close()
 	f := tst.Fixture
 	assert := tst.Assertions
