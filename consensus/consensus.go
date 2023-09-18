@@ -72,21 +72,22 @@ func (hrs hrs) String() string {
 type consensus struct {
 	hrs
 
-	c           base.Chain
-	log         log.Logger
-	ph          module.ProtocolHandler
-	mutex       common.Mutex
-	syncer      Syncer
-	walDir      string
-	wm          WALManager
-	roundWAL    *WalMessageWriter
-	lockWAL     *WalMessageWriter
-	commitWAL   *WalMessageWriter
-	timestamper module.Timestamper
-	nid         []byte
-	bpp         fastsync.BlockProofProvider
-	srcUID      []byte
-	bpmCache    bpmCache
+	c              base.Chain
+	log            log.Logger
+	ph             module.ProtocolHandler
+	mutex          common.Mutex
+	syncer         Syncer
+	walDir         string
+	wm             WALManager
+	roundWAL       *WalMessageWriter
+	lockWAL        *WalMessageWriter
+	commitWAL      *WalMessageWriter
+	timestamper    module.Timestamper
+	nid            []byte
+	bpp            fastsync.BlockProofProvider
+	srcUID         []byte
+	bpmCache       bpmCache
+	timeoutPropose time.Duration
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -130,7 +131,7 @@ func NewConsensus(
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
 ) module.Consensus {
-	cs := New(c, walDir, nil, timestamper, bpp, nil)
+	cs := New(c, walDir, nil, timestamper, bpp, nil, 0)
 	cs.log.Debugf("NewConsensus\n")
 	return cs
 }
@@ -142,22 +143,27 @@ func New(
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
 	lastVoteData *LastVoteData,
+	tmoPropose time.Duration,
 ) *consensus {
 	if wm == nil {
 		wm = defaultWALManager
 	}
+	if tmoPropose <= 0 {
+		tmoPropose = timeoutPropose
+	}
 	cs := &consensus{
-		c:            c,
-		walDir:       walDir,
-		wm:           wm,
-		commitCache:  newCommitCache(configCommitCacheCap),
-		metric:       metric.NewConsensusMetric(c.MetricContext()),
-		timestamper:  timestamper,
-		nid:          codec.MustMarshalToBytes(c.NID()),
-		bpp:          bpp,
-		srcUID:       module.GetSourceNetworkUID(c),
-		bpmCache:     makeBPMCache(configBPMCacheSize),
-		lastVoteData: lastVoteData,
+		c:              c,
+		walDir:         walDir,
+		wm:             wm,
+		commitCache:    newCommitCache(configCommitCacheCap),
+		metric:         metric.NewConsensusMetric(c.MetricContext()),
+		timestamper:    timestamper,
+		nid:            codec.MustMarshalToBytes(c.NID()),
+		bpp:            bpp,
+		srcUID:         module.GetSourceNetworkUID(c),
+		bpmCache:       makeBPMCache(configBPMCacheSize),
+		lastVoteData:   lastVoteData,
+		timeoutPropose: tmoPropose,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS",
@@ -543,7 +549,7 @@ func (cs *consensus) enterPropose() {
 	cs.c.Regulator().OnPropose(now)
 
 	hrs := cs.hrs
-	cs.timer = time.AfterFunc(timeoutPropose, func() {
+	cs.timer = time.AfterFunc(cs.timeoutPropose, func() {
 		cs.mutex.Lock()
 		defer cs.mutex.Unlock()
 

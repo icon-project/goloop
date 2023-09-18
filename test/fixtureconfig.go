@@ -18,6 +18,7 @@ package test
 
 import (
 	"path"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -30,8 +31,8 @@ import (
 )
 
 type FixtureConfig struct {
-	T          T
-	MerkleRoot []byte
+	T                 T
+	MerkleRoot        []byte
 	MerkleLeaves      int64
 	MerkleLastVotes   []byte
 	Prefix            string
@@ -41,6 +42,7 @@ type FixtureConfig struct {
 	NewSM             func(ctx *NodeContext) module.ServiceManager
 	NewBM             func(ctx *NodeContext) module.BlockManager
 	NewCS             func(ctx *NodeContext) module.Consensus
+	TimeoutPropose    time.Duration
 	AddValidatorNodes int
 	Genesis           string
 	GenesisStorage    module.GenesisStorage
@@ -73,7 +75,7 @@ func NewFixtureConfig(t T, o ...FixtureOption) *FixtureConfig {
 			wm := ctx.Config.WAL()
 			wal := path.Join(ctx.Base, "wal")
 			cs := consensus.New(
-				ctx.C, wal, wm, nil, nil, nil,
+				ctx.C, wal, wm, nil, nil, nil, ctx.Config.TimeoutPropose,
 			)
 			assert.NotNil(ctx.Config.T, cs)
 			return cs
@@ -127,6 +129,9 @@ func (cf *FixtureConfig) Override(cf2 *FixtureConfig) *FixtureConfig {
 	}
 	if cf2.NewCS != nil {
 		res.NewCS = cf2.NewCS
+	}
+	if cf2.TimeoutPropose != 0 {
+		res.TimeoutPropose = cf2.TimeoutPropose
 	}
 	if cf2.AddValidatorNodes != 0 {
 		res.AddValidatorNodes = cf2.AddValidatorNodes
