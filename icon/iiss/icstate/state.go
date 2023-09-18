@@ -680,7 +680,9 @@ func (s *State) CheckValidationPenalty(ps *PRepStatusState, blockHeight int64) b
 }
 
 func checkValidationPenalty(ps *PRepStatusState, blockHeight, condition int64) bool {
-	return !ps.IsAlreadyPenalized() && ps.GetVFailCont(blockHeight) >= condition
+	return condition > 0 &&
+		!ps.IsAlreadyPenalized() &&
+		ps.GetVFailCont(blockHeight) >= condition
 }
 
 func (s *State) CheckConsistentValidationPenalty(revision int, ps *PRepStatusState) bool {
@@ -692,7 +694,7 @@ func (s *State) CheckConsistentValidationPenalty(revision int, ps *PRepStatusSta
 }
 
 func checkConsistentValidationPenalty(ps *PRepStatusState, condition int) bool {
-	return ps.GetVPenaltyCount() >= condition
+	return condition > 0 && ps.GetVPenaltyCount() >= condition
 }
 
 func (s *State) GetUnstakeLockPeriod(revision int, totalSupply *big.Int) int64 {
