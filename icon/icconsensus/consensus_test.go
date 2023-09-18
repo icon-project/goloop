@@ -54,6 +54,7 @@ func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 	f := test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
 		ictest.UseMerkle(header, nil),
+		test.SetTimeoutPropose(4*time.Second),
 	)
 	defer f.Close()
 
@@ -73,7 +74,7 @@ func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 }
 
 func TestConsensus_UpgradeWithAccumulator(t *testing.T) {
-	gen := test.NewNode(t, ictest.UseBMForBlockV1, test.SetTimeoutPropose(4*time.Second))
+	gen := test.NewNode(t, ictest.UseBMForBlockV1)
 	defer gen.Close()
 
 	nilVotes := (*blockv0.BlockVoteList)(nil)
@@ -105,6 +106,7 @@ func TestConsensus_UpgradeWithAccumulator(t *testing.T) {
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
 		ictest.UseMerkle(header, lastVotes.Bytes()),
 		test.AddDefaultNode(false),
+		test.SetTimeoutPropose(4*time.Second),
 	)
 	defer f.Close()
 
