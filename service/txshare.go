@@ -421,6 +421,5 @@ func NewTransactionShare(tm *TransactionManager) *TransactionShare {
 		handlerTimer: time.NewTimer(handleTxRequestIntervalBase),
 		requestTimer: time.NewTimer(handleTxRequestIntervalBase),
 	}
-	ts.requests.Init()
 	return ts
 }

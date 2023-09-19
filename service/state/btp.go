@@ -463,7 +463,7 @@ func (bs *BTPStateImpl) OpenNetwork(
 		}
 		dsaIdx := bc.GetDSAIndex(mod.DSA())
 		if dsaIdx == -1 {
-			err = scoreresult.InvalidParameterError.Errorf("All validators must have public key for %s", mod.DSA())
+			err = scoreresult.InvalidParameterError.Errorf("No one has a public key for %s", mod.DSA())
 			return
 		}
 		dsaMask := bc.GetActiveDSAMask()

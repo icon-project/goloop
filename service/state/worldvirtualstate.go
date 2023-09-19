@@ -40,12 +40,38 @@ type lockedAccountState struct {
 	depend *worldVirtualState
 }
 
+type worldVirtualContext struct {
+	real              WorldState
+	lastAccountLocker map[string]*worldVirtualState
+	lastWorldLocker   *worldVirtualState
+	roAccounts        map[string]AccountState
+}
+
+func (wvc *worldVirtualContext) getLocker(id string, parent *worldVirtualState) *worldVirtualState {
+	if id == WorldIDStr {
+		return parent
+	}
+	if locker, ok := wvc.lastAccountLocker[id]; ok {
+		return locker
+	}
+	return wvc.lastWorldLocker
+}
+
+func (wvc *worldVirtualContext) setLocker(id string, wvs *worldVirtualState) {
+	if id == WorldIDStr {
+		wvs.lastAccountLocker = make(map[string]*worldVirtualState)
+		wvs.lastWorldLocker = wvs
+	} else {
+		wvs.lastAccountLocker[id] = wvs
+	}
+}
+
 type worldVirtualState struct {
 	mutex  sync.Mutex
 	waiter *sync.Cond
 
+	*worldVirtualContext
 	parent    *worldVirtualState
-	real      WorldState
 	base      WorldSnapshot
 	committed WorldSnapshot
 
@@ -257,41 +283,6 @@ func (wvs *worldVirtualState) Reset(snapshot WorldSnapshot) error {
 	return nil
 }
 
-func (wvs *worldVirtualState) checkDepend(id string) (*worldVirtualState, bool) {
-	wvs.mutex.Lock()
-	defer wvs.mutex.Unlock()
-
-	// it's already success to make result
-	// nobody need to wait to be finished
-	if wvs.committed != nil {
-		return nil, true
-	}
-	if as, ok := wvs.accountStates[id]; ok {
-		if as.lock == AccountWriteLock {
-			return wvs, true
-		}
-		return as.depend, true
-	}
-	switch wvs.worldLock {
-	case AccountWriteLock:
-		return wvs, true
-	case AccountReadLock:
-		if wvs.base != nil {
-			return nil, true
-		}
-	}
-	return nil, false
-}
-
-func (wvs *worldVirtualState) getDepend(id string) *worldVirtualState {
-	for ws := wvs; ws != nil; ws = ws.parent {
-		if dep, found := ws.checkDepend(id); found {
-			return dep
-		}
-	}
-	return nil
-}
-
 func (wvs *worldVirtualState) waitCommit() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
@@ -337,7 +328,7 @@ func (wvs *worldVirtualState) realizeBaseInLock() {
 		return
 	}
 	wvs.parent.Realize()
-	wvs.base = wvs.committed
+	wvs.base = wvs.parent.committed
 }
 
 func (wvs *worldVirtualState) getRealizedBase() WorldSnapshot {
@@ -350,7 +341,7 @@ func (wvs *worldVirtualState) getRealizedBase() WorldSnapshot {
 
 func (wvs *worldVirtualState) GetFuture(reqs []LockRequest) WorldVirtualState {
 	nwvs := new(worldVirtualState)
-	nwvs.real = wvs.real
+	nwvs.worldVirtualContext = wvs.worldVirtualContext
 	nwvs.waiter = sync.NewCond(&nwvs.mutex)
 	nwvs.base = wvs.committed
 	nwvs.parent = wvs
@@ -359,34 +350,42 @@ func (wvs *worldVirtualState) GetFuture(reqs []LockRequest) WorldVirtualState {
 	return nwvs
 }
 
+func (wvs *worldVirtualState) getROAccountState(id []byte) AccountState {
+	if wvs.roAccounts==nil {
+		wvs.roAccounts = make(map[string]AccountState)
+	} else {
+		if as, ok := wvs.roAccounts[string(id)]; ok {
+			return as
+		}
+	}
+	as := newAccountROState(wvs.Database(), wvs.real.GetAccountSnapshot(id))
+	wvs.roAccounts[string(id)] = as
+	return as
+}
+
 func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 	for _, req := range reqs {
-		if req.ID != "" {
-			continue
-		}
 		if req.Lock != AccountReadLock && req.Lock != AccountWriteLock {
-			log.Panicf("World invalid lock request req=%d", req.Lock)
+			log.Panicf("Account(%x) invalid lock request req=%d", req.ID, req.Lock)
 			continue
 		}
-
-		if req.Lock != wvs.worldLock && wvs.worldLock != AccountWriteLock {
+		if req.ID != WorldIDStr {
+			continue
+		}
+		if req.Lock > wvs.worldLock {
 			wvs.worldLock = req.Lock
 		}
 	}
 
 	// If there is world write lock request, no individual lock is required.
 	if wvs.worldLock == AccountWriteLock {
+		wvs.setLocker(WorldIDStr, wvs)
 		return
 	}
 
 	wvs.accountStates = make(map[string]*lockedAccountState, len(reqs))
 	for _, req := range reqs {
-		if req.ID == "" {
-			continue
-		}
-		if req.Lock != AccountReadLock && req.Lock != AccountWriteLock {
-			log.Panicf("Account(%x) invalid lock request req=%d",
-				req.ID, req.Lock)
+		if req.ID == WorldIDStr {
 			continue
 		}
 
@@ -397,7 +396,7 @@ func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 		}
 
 		if las, ok := wvs.accountStates[req.ID]; ok {
-			if las.lock != req.Lock && req.Lock == AccountWriteLock {
+			if las.lock < req.Lock  {
 				las.lock = req.Lock
 			}
 		} else {
@@ -407,7 +406,7 @@ func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 
 	for id, las := range wvs.accountStates {
 		if wvs.parent != nil {
-			las.depend = wvs.parent.getDepend(id)
+			las.depend = wvs.getLocker(id, wvs.parent)
 		} else {
 			las.depend = nil
 		}
@@ -416,9 +415,11 @@ func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 			if las.lock == AccountWriteLock {
 				las.state = wvs.real.GetAccountState(idBytes)
 			} else {
-				las.state = newAccountROState(wvs.Database(),
-					wvs.real.GetAccountSnapshot(idBytes))
+				las.state = wvs.getROAccountState(idBytes)
 			}
+		}
+		if las.lock == AccountWriteLock {
+			wvs.setLocker(id, wvs)
 		}
 	}
 }
@@ -497,7 +498,10 @@ func (wvs *worldVirtualState) Ensure() {
 
 func NewWorldVirtualState(ws WorldState, reqs []LockRequest) WorldVirtualState {
 	nwvs := new(worldVirtualState)
-	nwvs.real = ws
+	nwvs.worldVirtualContext = &worldVirtualContext {
+		real:              ws,
+		lastAccountLocker: make(map[string]*worldVirtualState),
+	}
 	nwvs.base = ws.GetSnapshot()
 	if len(reqs) == 0 {
 		nwvs.committed = nwvs.base

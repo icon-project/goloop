@@ -480,16 +480,22 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	configFlags.String("value", "", "use if value starts with '-'.\n"+
 		"(if the third arg is used, this flag will be ignored)")
 
-	rootCmd.Use = "chain TASK CID PARAM"
-	rootCmd.Args = ArgsWithDefaultErrorFunc(cobra.ExactArgs(3))
+	rootCmd.Use = "chain TASK CID [PARAM]"
+	rootCmd.Args = ArgsWithDefaultErrorFunc(cobra.RangeArgs(2, 3))
 	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		reqUrl := node.UrlChain + "/" + args[1] + "/" + args[0]
-		bs, err := ReadParam(args[2])
-		if err != nil {
-			return err
+		var param json.RawMessage
+		if len(args) == 3 {
+			if bs, err := ReadParam(args[2]); err != nil {
+				return err
+			} else {
+				param = bs
+			}
+		} else {
+			param = []byte("{}")
 		}
 		var v string
-		_, err = adminClient.PostWithJson(reqUrl, json.RawMessage(bs), &v)
+		_, err := adminClient.PostWithJson(reqUrl, param, &v)
 		if err != nil {
 			return err
 		}

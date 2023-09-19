@@ -114,6 +114,7 @@ var (
 	ErrNilValue      = errors.New("NilValueError")
 	ErrInvalidFormat = errors.New("InvalidFormatError")
 	ErrIllegalType   = errors.New("IllegalTypeError")
+	ErrPanicInCustom = errors.New("PanicInCustomError")
 )
 
 type encoderImpl struct {
@@ -168,52 +169,35 @@ func (e *encoderImpl) encodeMap() (*encoderImpl, error) {
 	return e.child, nil
 }
 
-var bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
-
-var writeSelferType = reflect.TypeOf((*WriteSelfer)(nil)).Elem()
-var encodeSelferType = reflect.TypeOf((*EncodeSelfer)(nil)).Elem()
-var binaryMarshaler = reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem()
-var codecMarshaler = reflect.TypeOf((*Marshaler)(nil)).Elem()
-
 func (e *encoderImpl) tryCustom(v reflect.Value) (bool, error) {
-	if v.Type().Implements(writeSelferType) {
-		if i, ok := v.Interface().(WriteSelfer); ok {
-			return true, i.RLPWriteSelf(e.real)
-		}
-	}
-	if v.Type().Implements(encodeSelferType) {
-		if i, ok := v.Interface().(EncodeSelfer); ok {
-			if err := i.RLPEncodeSelf(e); err == nil {
+	if v.CanInterface() {
+		switch value := v.Interface().(type) {
+		case EncodeSelfer:
+			if err := value.RLPEncodeSelf(e); err == nil {
 				return true, e.flush()
 			} else {
 				return true, err
 			}
-		}
-	}
-	if v.Type().Implements(binaryMarshaler) {
-		if i, ok := v.Interface().(encoding.BinaryMarshaler); ok {
-			b, err := i.MarshalBinary()
+		case WriteSelfer:
+			return true, value.RLPWriteSelf(e.real)
+		case encoding.BinaryMarshaler:
+			b, err := value.MarshalBinary()
 			if err != nil {
 				return true, err
 			}
 			return true, e.real.WriteBytes(b)
-		}
-	}
-	if v.Type().Implements(codecMarshaler) {
-		if i, ok := v.Interface().(Marshaler); ok {
-			b, err := i.MarshalRLP()
+		case Marshaler:
+			b, err := value.MarshalRLP()
 			if err != nil {
 				return true, err
 			}
 			return true, e.real.WriteRaw(b)
-		}
-	}
-	if v.Type().ConvertibleTo(bigIntPtrType) {
-		bi := v.Interface().(*big.Int)
-		if bi != nil {
-			return true, e.Encode(intconv.BigIntToBytes(bi))
-		} else {
-			return true, e.Encode(nil)
+		case *big.Int:
+			if value != nil {
+				return true, e.Encode(intconv.BigIntToBytes(value))
+			} else {
+				return true, e.Encode(nil)
+			}
 		}
 	}
 	return false, nil
@@ -515,48 +499,45 @@ func (d *decoderImpl) SetMaxBytes(sz int) bool {
 	return false
 }
 
-var readSelferType = reflect.TypeOf((*ReadSelfer)(nil)).Elem()
-var rlpDecodeSelferType = reflect.TypeOf((*DecodeSelfer)(nil)).Elem()
-var binaryUnmarshaler = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
-var codecUnmarshaler = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
-
-func (d *decoderImpl) tryCustom(v reflect.Value) (bool, error) {
-	if v.Type().Implements(readSelferType) {
-		return true, v.Interface().(ReadSelfer).RLPReadSelf(d.real)
-	}
-	if v.Type().Implements(rlpDecodeSelferType) {
-		if err := v.Interface().(DecodeSelfer).RLPDecodeSelf(d); err == nil {
-			return true, d.flush()
-		} else {
-			return true, err
+func (d *decoderImpl) tryCustom(v reflect.Value) (consume bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			consume = true
+			err = cerrors.Wrapf(ErrPanicInCustom, "panic in custom decoder: %v", r)
 		}
-	}
-	if v.Type().Implements(binaryUnmarshaler) {
-		u := v.Interface().(encoding.BinaryUnmarshaler)
-		b, err := d.real.ReadBytes()
-		if err != nil {
-			return true, err
-		}
-		return true, u.UnmarshalBinary(b)
-	}
-	if v.Type().Implements(codecUnmarshaler) {
-		u := v.Interface().(Unmarshaler)
-		b, err := d.real.ReadRaw()
-		if err != nil {
-			return true, err
-		}
-		return true, u.UnmarshalRLP(b)
-	}
-	if v.Type().ConvertibleTo(bigIntPtrType) {
-		bi := v.Interface().(*big.Int)
-		b, err := d.real.ReadBytes()
-		if err != nil {
-			return true, err
-		}
-		if v := intconv.BigIntSetBytes(bi, b); v != nil {
-			return true, nil
-		} else {
-			return true, ErrInvalidFormat
+	}()
+	if v.CanInterface() {
+		switch value := v.Interface().(type) {
+		case DecodeSelfer:
+			if err := value.RLPDecodeSelf(d); err == nil {
+				return true, d.flush()
+			} else {
+				return true, err
+			}
+		case ReadSelfer:
+			return true, value.RLPReadSelf(d.real)
+		case encoding.BinaryUnmarshaler:
+			b, err := d.real.ReadBytes()
+			if err != nil {
+				return true, err
+			}
+			return true, value.UnmarshalBinary(b)
+		case Unmarshaler:
+			b, err := d.real.ReadRaw()
+			if err != nil {
+				return true, err
+			}
+			return true, value.UnmarshalRLP(b)
+		case *big.Int:
+			b, err := d.real.ReadBytes()
+			if err != nil {
+				return true, err
+			}
+			if v := intconv.BigIntSetBytes(value, b); v != nil {
+				return true, nil
+			} else {
+				return true, ErrInvalidFormat
+			}
 		}
 	}
 	return false, nil

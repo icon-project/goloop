@@ -166,11 +166,6 @@ func (m *TransactionManager) WaitResult(id []byte) (<-chan interface{}, error) {
 		m.addWaiterInLock(id, rc)
 		return rc, nil
 	}
-	if has, err := m.tim.HasRecent(id); err != nil {
-		return nil, err
-	} else if has {
-		return nil, ErrCommittedTransaction
-	}
 	if has, err := m.tim.HasLocator(id); err != nil {
 		return nil, err
 	} else if has {

@@ -18,6 +18,7 @@ package block_test
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,4 +44,27 @@ func TestBlockDataFactory_Basics(t *testing.T) {
 	bd, err := bdf.NewBlockDataFromReader(buf)
 	assert.NoError(err)
 	assert.EqualValues(blk.ID(), bd.ID())
+}
+
+func FuzzBlockDataFactory_NewBlockDataFromReader(f *testing.F) {
+	nd := test.NewNode(f)
+	defer nd.Close()
+	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
+
+	bdf, err := block.NewBlockDataFactory(nd.Chain, nil)
+	assert.NoError(f, err)
+	testcases := [][]byte{
+		[]byte("\xf5\x02000000\x80\x8000000000000000000000000000000000000000000000\xde\xc0\xc00000000000000000000000000000"),
+		[]byte("\xd0\x02000000\x80\x800000000\xe9\xc0\xc0000000000000000000000000000000000000000"),
+	}
+	for _, tc := range testcases {
+		f.Add(tc)
+	}
+	f.Fuzz(func(t *testing.T, bs []byte) {
+		bd, err := bdf.NewBlockDataFromReader(bytes.NewReader(bs))
+		if err != nil {
+			return
+		}
+		bd.Marshal(io.Discard)
+	})
 }

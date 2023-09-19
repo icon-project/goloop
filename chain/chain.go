@@ -17,6 +17,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/cache"
+	"github.com/icon-project/goloop/common/txlocator"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -74,6 +75,11 @@ type chainTask interface {
 	Wait() error
 }
 
+type simpleTask interface {
+	chainTask
+	Run() error
+}
+
 type singleChain struct {
 	wallet module.Wallet
 
@@ -87,6 +93,7 @@ type singleChain struct {
 	srv      *server.Manager
 	nt       module.NetworkTransport
 	nm       module.NetworkManager
+	lm       module.LocatorManager
 	plt      base.Platform
 
 	cid int
@@ -169,6 +176,18 @@ func (c *singleChain) Consensus() module.Consensus {
 
 func (c *singleChain) NetworkManager() module.NetworkManager {
 	return c.nm
+}
+
+func (c *singleChain) GetLocatorManager() (module.LocatorManager, error) {
+	if c.lm == nil {
+		var err error
+		c.lm, err = txlocator.NewManager(c.database, c.logger)
+		if err != nil {
+			return nil, err
+		}
+		c.lm.Start()
+	}
+	return c.lm, nil
 }
 
 func (c *singleChain) Regulator() module.Regulator {
@@ -495,6 +514,10 @@ func (c *singleChain) releaseManagers() {
 		c.sm.Term()
 		c.sm = nil
 	}
+	if c.lm != nil {
+		c.lm.Term()
+		c.lm = nil
+	}
 	if c.nm != nil {
 		c.nm.Term()
 		c.nm = nil
@@ -502,6 +525,9 @@ func (c *singleChain) releaseManagers() {
 }
 
 func (c *singleChain) _runTask(task chainTask, wait bool) error {
+	if st, ok := task.(simpleTask) ; ok {
+		return st.Run()
+	}
 	if err := c._setStartingTask(task); err != nil {
 		return err
 	}

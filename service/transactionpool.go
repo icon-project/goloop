@@ -158,7 +158,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			}
 			continue
 		}
-		if has, err := tp.tim.HasRecent(tx.ID()); err != nil {
+		if has, err := tp.tim.HasRecent(tx.Group(), tx.ID(), tx.Timestamp()); err != nil {
 			continue
 		} else if has {
 			e.err = errors.InvalidStateError.New("AlreadyProcessed")
@@ -359,7 +359,7 @@ func (tp *TransactionPool) FilterTransactions(bloom *TxBloom, max int) []module.
 		tx := e.Value()
 		id := tx.ID()
 		if !bloom.Contains(id) {
-			if has, err := tp.tim.HasRecent(id); err == nil && has {
+			if has, err := tp.tim.HasRecent(tx.Group(), id, tx.Timestamp()); err == nil && has {
 				e.err = errors.InvalidStateError.New("Already processed")
 				invalids = append(invalids, e)
 				continue

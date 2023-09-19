@@ -56,26 +56,31 @@ func (n *extension) RLPListSize() int {
 }
 
 func (n *extension) RLPListEncode(e RLPEncoder) error {
-	e.RLPEncode(encodeKeys(0x00, n.keys))
+	if err := e.RLPEncode(encodeKeys(0x00, n.keys)); err != nil {
+		return err
+	}
 	e.RLPWrite(n.next.getLink(false))
 	return nil
 }
 
 func (n *extension) freeze() {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 	if n.state != stateDirty {
 		return
 	}
 	if n.next != nil {
 		n.next.freeze()
 	}
-	n.state = stateFrozen
+	lock.Migrate()
+	if n.state == stateDirty {
+		n.state = stateFrozen
+	}
 }
 
 func (n *extension) flush(m *mpt, nibs []byte) error {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 	if n.state == stateFlushed {
 		return nil
 	}
@@ -85,11 +90,14 @@ func (n *extension) flush(m *mpt, nibs []byte) error {
 	if err := n.nodeBase.flushBaseInLock(m, nil); err != nil {
 		return err
 	}
+	lock.Migrate()
+	n.state = stateFlushed
 	return nil
 }
 
-func (n *extension) getChanged(keys []byte, next node) *extension {
+func (n *extension) getChanged(lock *AutoRWUnlock, keys []byte, next node) *extension {
 	if n.state == stateDirty {
+		lock.Migrate()
 		n.keys = keys
 		n.next = next
 		return n
@@ -98,11 +106,11 @@ func (n *extension) getChanged(keys []byte, next node) *extension {
 }
 
 func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
+	lock := n.rlock()
+	defer lock.Unlock()
+
 	keys := nibs[depth:]
 	cnt, _ := compareKeys(keys, n.keys)
-
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
 
 	switch {
 	case cnt == 0:
@@ -116,7 +124,7 @@ func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bo
 			nb.children[n.keys[0]] = n.next
 		} else {
 			idx := n.keys[0]
-			nb.children[idx] = n.getChanged(n.keys[1:], n.next)
+			nb.children[idx] = n.getChanged(&lock, n.keys[1:], n.next)
 		}
 		return nb, true, nil, nil
 	case cnt < len(n.keys):
@@ -132,13 +140,14 @@ func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bo
 		} else {
 			br.children[keys[cnt]] = &leaf{keys: clone(keys[cnt+1:]), value: o}
 		}
-		return n.getChanged(n.keys[:cnt], br), true, nil, nil
+		return n.getChanged(&lock, n.keys[:cnt], br), true, nil, nil
 	default:
 		next, dirty, old, err := n.next.set(m, nibs, depth+cnt, o)
 		if dirty {
-			return n.getChanged(n.keys, next), true, old, err
+			return n.getChanged(&lock, n.keys, next), true, old, err
 		} else {
 			if n.next != next {
+				lock.Migrate()
 				n.next = next
 			}
 		}
@@ -147,20 +156,20 @@ func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bo
 }
 
 func (n *extension) getKeyPrepended(k []byte) *extension {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	nk := make([]byte, len(k)+len(n.keys))
 	copy(nk, k)
 	copy(nk[len(k):], n.keys)
-	return n.getChanged(nk, n.next)
+	return n.getChanged(&lock, nk, n.next)
 }
 
 func (n *extension) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
 
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	cnt, _ := compareKeys(keys, n.keys)
 	if cnt < len(n.keys) {
@@ -177,9 +186,10 @@ func (n *extension) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Obj
 		case *leaf:
 			return nn.getKeyPrepended(n.keys), true, old, err
 		}
-		return n.getChanged(n.keys, next), true, old, err
+		return n.getChanged(&lock, n.keys, next), true, old, err
 	} else {
 		if n.next != next {
+			lock.Migrate()
 			n.next = next
 		}
 	}
@@ -188,14 +198,17 @@ func (n *extension) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Obj
 
 func (n *extension) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
 	keys := nibs[depth:]
+	lock := n.rlock()
+	defer lock.Unlock()
 	cnt, _ := compareKeys(keys, n.keys)
 	if cnt < len(n.keys) {
 		return n, nil, nil
 	}
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
-	next, obj, err := n.next.get(m, nibs, depth+cnt)
-	n.next = next
+	nv, obj, err := n.next.get(m, nibs, depth+cnt)
+	if nv != n.next {
+		lock.Migrate()
+		n.next = nv
+	}
 	return n, obj, err
 }
 
@@ -204,14 +217,15 @@ func (n *extension) realize(m *mpt) (node, error) {
 }
 
 func (n *extension) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	next, err := v(k+string(n.keys), n.next)
 	if err != nil {
 		return "", nil, err
 	}
 	if next != n.next {
+		lock.Migrate()
 		n.next = next
 	}
 	return "", nil, nil
@@ -274,10 +288,11 @@ func (n *extension) resolve(m *mpt, bd merkle.Builder) error {
 }
 
 func (n *extension) compact() node {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock :=n.rlock()
+	defer lock.Unlock()
 
 	if n.state < stateFlushed {
+		lock.Migrate()
 		n.next = n.next.compact()
 		return n
 	}

@@ -128,6 +128,8 @@ func TestConsensus_ClientBasics(t *testing.T) {
 	var rsm consensus.RoundStateMessage
 	rsm.Height = 10
 	rsm.Sync = true
+	rsm.PrevotesMask = consensus.NewBitArray(0)
+	rsm.PrecommitsMask = consensus.NewBitArray(0)
 	csh.Unicast(consensus.ProtoRoundState, &rsm, nil)
 
 	var brm fastsync.BlockRequest
@@ -245,11 +247,12 @@ type btpTest struct {
 	*test.Fixture
 }
 
-func newBTPTest(t *testing.T) *btpTest {
+func newBTPTest(t *testing.T, opt ...test.FixtureOption) *btpTest {
 	const dsa = "ecdsa/secp256k1"
 	const uid = "eth"
 	assert := assert.New(t)
-	f := test.NewFixture(t, test.AddDefaultNode(false), test.AddValidatorNodes(4))
+	opt = append(opt, test.AddDefaultNode(false), test.AddValidatorNodes(4), test.SetTimeoutPropose(4*time.Second))
+	f := test.NewFixture(t, opt...)
 
 	tx := test.NewTx().Call("setRevision", map[string]string{
 		"code": fmt.Sprintf("0x%x", basic.MaxRevision),
@@ -1284,4 +1287,63 @@ func TestConsensus_InvalidProposal(t *testing.T) {
 	cBlk, err := bm.GetLastBlock()
 	assert.NoError(err)
 	assert.Equal(blk.ID(), cBlk.ID())
+}
+
+func TestConsensus_BPMBuffer(t *testing.T) {
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	blk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	pmBytes, bpmBytes, bps := f.Nodes[1].ProposalBytesFor(blk, 0)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBytes, peer)
+	_, _ = cs.OnReceive(consensus.ProtoProposal, pmBytes, peer)
+
+	// non-nil precommit
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+	for cs.GetStatus().Height < 2 {
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+func TestConsensus_BPMBuffer2(t *testing.T) {
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+	)
+	defer f.Close()
+
+	blk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	_, bpmBytes, bps := f.Nodes[1].ProposalBytesFor(blk, 0)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBytes, peer)
+
+	// non-nil precommit
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	pc3 := f.Nodes[3].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc3), peer)
+	for cs.GetStatus().Height < 2 {
+		time.Sleep(200 * time.Millisecond)
+	}
 }

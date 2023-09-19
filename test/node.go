@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -36,7 +35,7 @@ import (
 )
 
 type Node struct {
-	*testing.T
+	T
 	Chain     *Chain
 	Base      string
 	em        eeproxy.Manager
@@ -58,7 +57,12 @@ type NodeContext struct {
 	EM       eeproxy.Manager
 }
 
-func NewNode(t *testing.T, o ...FixtureOption) *Node {
+type T interface {
+	Errorf(format string, args ...interface{})
+	Logf(format string, args ...any)
+}
+
+func NewNode(t T, o ...FixtureOption) *Node {
 	cf := NewFixtureConfig(t, o...)
 	base, err := os.MkdirTemp("", cf.Prefix)
 	assert.NoError(t, err)

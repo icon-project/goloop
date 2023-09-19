@@ -31,6 +31,7 @@ import (
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -456,8 +457,10 @@ func (t *transition) finalizeResult() (ret error) {
 	if err := t.worldSnapshot.(trie.Snapshot).Flush(); err != nil {
 		return err
 	}
-	if err := t.nextValidators.Flush(); err != nil {
-		return err
+	if vss, ok := t.nextValidators.(state.ValidatorSnapshot); ok {
+		if err := vss.Flush(); err != nil {
+			return err
+		}
 	}
 	if err := t.receipts.Flush(); err != nil {
 		return err

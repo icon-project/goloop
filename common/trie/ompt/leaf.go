@@ -53,17 +53,21 @@ func (n *leaf) dump() {
 }
 
 func (n *leaf) freeze() {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 	if n.state != stateDirty {
 		return
 	}
-	n.state = stateFrozen
+	lock.Migrate()
+	if n.state == stateDirty {
+		n.state = stateFrozen
+	}
 }
 
 func (n *leaf) flush(m *mpt, nibs []byte) error {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
+
 	if n.state == stateFlushed {
 		return nil
 	}
@@ -76,6 +80,8 @@ func (n *leaf) flush(m *mpt, nibs []byte) error {
 	if err := n.nodeBase.flushBaseInLock(m, nil); err != nil {
 		return err
 	}
+	lock.Migrate()
+	n.state = stateFlushed
 	return nil
 }
 
@@ -84,13 +90,18 @@ func (n *leaf) RLPListSize() int {
 }
 
 func (n *leaf) RLPListEncode(e RLPEncoder) error {
-	e.RLPEncode(encodeKeys(0x20, n.keys))
-	e.RLPEncode(n.value.Bytes())
+	if err := e.RLPEncode(encodeKeys(0x20, n.keys)); err != nil {
+		return err
+	}
+	if err := e.RLPEncode(n.value.Bytes()); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (n *leaf) getChanged(keys []byte, o trie.Object) *leaf {
+func (n *leaf) getChanged(lock *AutoRWUnlock, keys []byte, o trie.Object) *leaf {
 	if n.state == stateDirty {
+		lock.Migrate()
 		n.keys = keys
 		n.value = o
 		return n
@@ -102,8 +113,8 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, t
 	keys := nibs[depth:]
 	cnt, match := compareKeys(keys, n.keys)
 
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	switch {
 	case cnt == 0 && !match:
@@ -120,7 +131,7 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, t
 			br.value = n.value
 		} else {
 			idx := n.keys[0]
-			br.children[idx] = n.getChanged(n.keys[1:], n.value)
+			br.children[idx] = n.getChanged(&lock, n.keys[1:], n.value)
 		}
 		return br, true, nil, nil
 	case cnt < len(n.keys):
@@ -132,7 +143,7 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, t
 			br.children[keys[cnt]] = &leaf{keys: clone(keys[cnt+1:]), value: o}
 		}
 		idx := n.keys[cnt]
-		br.children[idx] = n.getChanged(n.keys[cnt+1:], n.value)
+		br.children[idx] = n.getChanged(&lock, n.keys[cnt+1:], n.value)
 		return ext, true, nil, nil
 	case cnt < len(keys):
 		br := &branch{}
@@ -145,18 +156,18 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, t
 		if n.value.Equal(o) {
 			return n, false, old, nil
 		}
-		return n.getChanged(n.keys, o), true, old, nil
+		return n.getChanged(&lock, n.keys, o), true, old, nil
 	}
 }
 
 func (n *leaf) getKeyPrepended(k []byte) *leaf {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	nk := make([]byte, len(k)+len(n.keys))
 	copy(nk, k)
 	copy(nk[len(k):], n.keys)
-	return n.getChanged(nk, n.value)
+	return n.getChanged(&lock, nk, n.value)
 }
 
 func (n *leaf) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error) {
@@ -168,14 +179,16 @@ func (n *leaf) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, 
 }
 
 func (n *leaf) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
+	lock := n.rlock()
+	defer lock.Unlock()
+
 	_, match := compareKeys(nibs[depth:], n.keys)
 	if !match {
 		return n, nil, nil
 	}
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
 	nv, changed, err := m.getObject(n.value)
 	if changed {
+		lock.Migrate()
 		n.value = nv
 	}
 	return n, nv, err
@@ -186,11 +199,12 @@ func (n *leaf) realize(m *mpt) (node, error) {
 }
 
 func (n *leaf) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	value, changed, err := m.getObject(n.value)
 	if changed {
+		lock.Migrate()
 		n.value = value
 	}
 	if err != nil {
@@ -200,8 +214,8 @@ func (n *leaf) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object,
 }
 
 func (n *leaf) getProof(m *mpt, keys []byte, items [][]byte) (node, [][]byte, error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if n.state < stateHashed {
 		return n, nil, fmt.Errorf("IllegaState %s", n.toString())
@@ -216,8 +230,8 @@ func (n *leaf) getProof(m *mpt, keys []byte, items [][]byte) (node, [][]byte, er
 }
 
 func (n *leaf) prove(m *mpt, keys []byte, proof [][]byte) (node, trie.Object, error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if n.hashValue != nil {
 		if len(proof) != 1 || !bytes.Equal(proof[0], n.serialized) {
@@ -232,6 +246,7 @@ func (n *leaf) prove(m *mpt, keys []byte, proof [][]byte) (node, trie.Object, er
 			return n, nil, err
 		}
 		if changed {
+			lock.Migrate()
 			n.value = value
 		}
 		return n, n.value, nil
@@ -258,8 +273,8 @@ func (n *leaf) resolve(m *mpt, bd merkle.Builder) error {
 }
 
 func (n *leaf) compact() node {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	lock := n.rlock()
+	defer lock.Unlock()
 
 	if n.state < stateFlushed {
 		n.value.ClearCache()

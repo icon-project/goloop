@@ -2,13 +2,16 @@ package ompt
 
 import (
 	"fmt"
+	"math/rand"
 	"runtime"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/trie/cache"
 )
 
@@ -76,4 +79,149 @@ func benchmarkTrend(depth, fdepth int, b *testing.B) {
 			begin = end
 		}
 	}
+}
+
+func BenchmarkMPTTraverseDuringFlush(b *testing.B) {
+	const COUNT = 100000
+	b.StopTimer()
+	dbase, err := db.Open(b.TempDir(), "rocksdb", b.Name())
+	if err != nil {
+		b.Errorf("fail to open db err=%+v", err)
+		b.FailNow()
+	}
+
+	makeKeyValue := func(i int) (k, v []byte) {
+		k, _ = rlpEncode(intconv.Int64ToBytes(int64(i)));
+		hash := sha3.Sum256(k)
+		v = make([]byte, hashSize)
+		copy(v, hash[:])
+		return
+	}
+
+	state := NewMPTForBytes(dbase, nil)
+	keys := make([][]byte, COUNT)
+	values := make([][]byte, COUNT)
+	for i:= 0 ; i<COUNT ; i++ {
+		k, v := makeKeyValue(i)
+		_, err := state.Set(k, v)
+		assert.NoError(b, err)
+		keys[i] = k;
+		values[i] = v;
+	}
+	ss := state.GetSnapshot()
+
+
+	ch := make(chan error, 1)
+	go func() {
+		ch <- ss.Flush()
+	}()
+
+	b.StartTimer()
+
+	for r := 0 ; r < b.N ; r++ {
+		idx := 0
+		for itr := ss.Iterator() ; itr.Has() ; itr.Next() {
+			value, key, err := itr.Get()
+			assert.NoError(b, err)
+			assert.Equal(b, keys[idx], key)
+			assert.Equal(b, values[idx], value)
+			idx += 1
+		}
+	}
+
+	b.StopTimer()
+
+	assert.NoError(b, <-ch)
+
+
+	ss = NewMPTForBytes(dbase, ss.Hash())
+	for idx:= 0 ; idx<COUNT ; idx++ {
+		value, err := ss.Get(keys[idx])
+		assert.NoError(b, err)
+		assert.Equal(b, values[idx], value)
+	}
+}
+
+func BenchmarkMPTConcurrentReadDuringFlush(b *testing.B) {
+	const COUNT = 100000
+	b.StopTimer()
+	dbase, err := db.Open(b.TempDir(), "rocksdb", b.Name())
+	if err != nil {
+		b.Errorf("fail to open db err=%+v", err)
+		b.FailNow()
+	}
+
+	state := NewMPTForBytes(dbase, nil)
+	keys := make([][]byte, COUNT)
+	values := make([][]byte, COUNT)
+	for i:= 0 ; i<COUNT ; i++ {
+		k, v := makeKeyValue(i)
+		_, err := state.Set(k, v)
+		assert.NoError(b, err)
+		keys[i] = k;
+		values[i] = v;
+	}
+	ss := state.GetSnapshot()
+
+	b.StartTimer()
+
+	ch := make(chan error, 1)
+	go func() {
+		ch <- ss.Flush()
+	}()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			idx := rand.Intn(COUNT)
+			value, err := ss.Get(keys[idx])
+			assert.NoError(b, err)
+			assert.Equal(b, values[idx], value)
+		}
+	})
+
+	b.StopTimer()
+
+	assert.NoError(b, <-ch)
+
+	ss = NewMPTForBytes(dbase, ss.Hash())
+	for idx:= 0 ; idx<COUNT ; idx++ {
+		value, err := ss.Get(keys[idx])
+		assert.NoError(b, err)
+		assert.Equal(b, values[idx], value)
+	}
+}
+
+func BenchmarkMPTConcurrentRead(b *testing.B) {
+	const COUNT = 100000
+	b.StopTimer()
+	dbase, err := db.Open(b.TempDir(), "rocksdb", b.Name())
+	if err != nil {
+		b.Errorf("fail to open db err=%+v", err)
+		b.FailNow()
+	}
+	state := NewMPTForBytes(dbase, nil)
+	keys := make([][]byte, COUNT)
+	values := make([][]byte, COUNT)
+	for i:= 0 ; i<COUNT ; i++ {
+		k, v := makeKeyValue(i)
+		_, err := state.Set(k, v)
+		assert.NoError(b, err)
+		keys[i] = k;
+		values[i] = v;
+	}
+	ss := state.GetSnapshot()
+
+	err = ss.Flush()
+	assert.NoError(b, err)
+	ss.ClearCache()
+
+	b.StartTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			idx := rand.Intn(COUNT)
+			value, err := ss.Get(keys[idx])
+			assert.NoError(b, err)
+			assert.Equal(b, values[idx], value)
+		}
+	})
 }

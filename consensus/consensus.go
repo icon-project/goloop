@@ -56,6 +56,7 @@ const (
 	configCommitWALID                 = "commit"
 	configCommitWALDataSize           = 1024 * 500
 	configRoundTimeoutThresholdFactor = 2
+	configBPMCacheSize                = 1 << 20 // 1MB
 )
 
 type hrs struct {
@@ -71,20 +72,22 @@ func (hrs hrs) String() string {
 type consensus struct {
 	hrs
 
-	c           base.Chain
-	log         log.Logger
-	ph          module.ProtocolHandler
-	mutex       common.Mutex
-	syncer      Syncer
-	walDir      string
-	wm          WALManager
-	roundWAL    *WalMessageWriter
-	lockWAL     *WalMessageWriter
-	commitWAL   *WalMessageWriter
-	timestamper module.Timestamper
-	nid         []byte
-	bpp         fastsync.BlockProofProvider
-	srcUID      []byte
+	c              base.Chain
+	log            log.Logger
+	ph             module.ProtocolHandler
+	mutex          common.Mutex
+	syncer         Syncer
+	walDir         string
+	wm             WALManager
+	roundWAL       *WalMessageWriter
+	lockWAL        *WalMessageWriter
+	commitWAL      *WalMessageWriter
+	timestamper    module.Timestamper
+	nid            []byte
+	bpp            fastsync.BlockProofProvider
+	srcUID         []byte
+	bpmCache       bpmCache
+	timeoutPropose time.Duration
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -128,7 +131,7 @@ func NewConsensus(
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
 ) module.Consensus {
-	cs := New(c, walDir, nil, timestamper, bpp, nil)
+	cs := New(c, walDir, nil, timestamper, bpp, nil, 0)
 	cs.log.Debugf("NewConsensus\n")
 	return cs
 }
@@ -140,21 +143,27 @@ func New(
 	timestamper module.Timestamper,
 	bpp fastsync.BlockProofProvider,
 	lastVoteData *LastVoteData,
+	tmoPropose time.Duration,
 ) *consensus {
 	if wm == nil {
 		wm = defaultWALManager
 	}
+	if tmoPropose <= 0 {
+		tmoPropose = timeoutPropose
+	}
 	cs := &consensus{
-		c:            c,
-		walDir:       walDir,
-		wm:           wm,
-		commitCache:  newCommitCache(configCommitCacheCap),
-		metric:       metric.NewConsensusMetric(c.MetricContext()),
-		timestamper:  timestamper,
-		nid:          codec.MustMarshalToBytes(c.NID()),
-		bpp:          bpp,
-		srcUID:       module.GetSourceNetworkUID(c),
-		lastVoteData: lastVoteData,
+		c:              c,
+		walDir:         walDir,
+		wm:             wm,
+		commitCache:    newCommitCache(configCommitCacheCap),
+		metric:         metric.NewConsensusMetric(c.MetricContext()),
+		timestamper:    timestamper,
+		nid:            codec.MustMarshalToBytes(c.NID()),
+		bpp:            bpp,
+		srcUID:         module.GetSourceNetworkUID(c),
+		bpmCache:       makeBPMCache(configBPMCacheSize),
+		lastVoteData:   lastVoteData,
+		timeoutPropose: tmoPropose,
 	}
 	cs.log = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS",
@@ -344,13 +353,26 @@ func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) 
 	cs.proposalPOLRound = msg.proposal.POLRound
 	cs.currentBlockParts.SetByPartSetID(msg.proposal.BlockPartSetID)
 
+	for i := uint16(0); i < msg.proposal.BlockPartSetID.Count; i++ {
+		bpm := cs.bpmCache.Get(msg.proposal.BlockPartSetID.Hash, i)
+		if bpm != nil {
+			_, _ = cs.currentBlockParts.AddPartFromBytes(bpm.BlockPart, cs.c.BlockManager())
+		}
+	}
+
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
+	} else if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
+		cs.commitAndEnterNewHeight()
 	}
 	return nil
 }
 
 func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool) (int, error) {
+	const cacheLimit = 3
+	if cs.height <= msg.Height && msg.Height < cs.height+cacheLimit {
+		_ = cs.bpmCache.Put(msg)
+	}
 	if msg.Height != cs.height {
 		return -1, nil
 	}
@@ -358,19 +380,9 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool
 		return -1, nil
 	}
 
-	bp, err := NewPart(msg.BlockPart)
-	if err != nil {
+	bp, err := cs.currentBlockParts.AddPartFromBytes(msg.BlockPart, cs.c.BlockManager())
+	if bp == nil {
 		return -1, err
-	}
-	if cs.currentBlockParts.GetPart(bp.Index()) != nil {
-		return -1, nil
-	}
-	added, err := cs.currentBlockParts.AddPart(bp, cs.c.BlockManager())
-	if !added && err != nil {
-		return -1, err
-	}
-	if added && err != nil {
-		cs.log.Warnf("fail to create block. %+v", err)
 	}
 
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
@@ -537,7 +549,7 @@ func (cs *consensus) enterPropose() {
 	cs.c.Regulator().OnPropose(now)
 
 	hrs := cs.hrs
-	cs.timer = time.AfterFunc(timeoutPropose, func() {
+	cs.timer = time.AfterFunc(cs.timeoutPropose, func() {
 		cs.mutex.Lock()
 		defer cs.mutex.Unlock()
 
@@ -902,6 +914,15 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 	cs.currentBlockParts.SetByPartSetID(partSetID)
 
 	cs.notifySyncer()
+
+	if !cs.currentBlockParts.IsComplete() {
+		for i := uint16(0); i < partSetID.Count; i++ {
+			bpm := cs.bpmCache.Get(partSetID.Hash, i)
+			if bpm != nil {
+				_, _ = cs.currentBlockParts.AddPartFromBytes(bpm.BlockPart, cs.c.BlockManager())
+			}
+		}
+	}
 
 	if cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()
@@ -1910,7 +1931,7 @@ func (cs *consensus) GetPrecommits(r int32) *VoteList {
 	return cs.hvs.votesFor(r, VoteTypePrecommit).voteList()
 }
 
-func (cs *consensus) GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *VoteList {
+func (cs *consensus) GetVotes(r int32, prevotesMask *BitArray, precommitsMask *BitArray) *VoteList {
 	return cs.hvs.getVoteListForMask(r, prevotesMask, precommitsMask)
 }
 

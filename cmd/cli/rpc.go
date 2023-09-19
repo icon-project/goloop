@@ -332,7 +332,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 	callFlags.Int("height", -1, "BlockHeight")
 	callFlags.String("method", "",
 		"Name of the function to invoke in SCORE, if '--raw' used, will overwrite")
-	callFlags.StringToString("params", nil,
+	callFlags.String("params", "",
 		"raw json string or '@<json file>' or '-' for stdin for parameter JSON. it overrides raw one ")
 	callFlags.StringToString("param", nil,
 		"key=value, Function parameters, if '--raw' used, will overwrite")

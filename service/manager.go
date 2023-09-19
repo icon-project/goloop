@@ -55,6 +55,8 @@ type manager struct {
 	trc       *transitionResultCache
 	tsc       *TxTimestampChecker
 	syncer    *ssync.Manager
+	dsm       *dsrManager
+	lm        module.LocatorManager
 
 	log log.Logger
 
@@ -81,11 +83,17 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		droppedTxSlotSize = ConfigMaxDroppedTxSlotSize
 	}
 	tic := NewTxIDCache(ConfigDroppedTxSlotDuration, droppedTxSlotSize, logger)
-	tim, err := NewTXIDManager(chain.Database(), tsc, tic)
+	lm, err := chain.GetLocatorManager()
+	if err != nil {
+		logger.Warnf("FAIL to get LocatorManager : %v\n", err)
+		return nil, err
+	}
+	tim, err := NewTXIDManager(lm, tsc, tic)
 	if err != nil {
 		logger.Warnf("FAIL to create TXIDManager : %v\n", err)
 		return nil, err
 	}
+	dsm := newDSRManager(logger)
 	pTxPool := NewTransactionPool(module.TransactionGroupPatch, chain.PatchTxPoolSize(), tim, pMetric, logger)
 	nTxPool := NewTransactionPool(module.TransactionGroupNormal, chain.NormalTxPoolSize(), tim, nMetric, logger)
 	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, tim, logger)
@@ -108,6 +116,8 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		log: logger,
 		tsc: tsc,
 		tim: tim,
+		dsm: dsm,
+		lm:  lm,
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, tm)
@@ -131,6 +141,7 @@ func (m *manager) Term() {
 	m.cm = nil
 	m.eem = nil
 	m.db = nil
+	m.lm = nil
 }
 
 // ProposeTransition proposes a Transition following the parent Transition.
@@ -150,11 +161,24 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	if err != nil {
 		return nil, err
 	}
+	dsrTxs, err := m.dsm.Candidate(pt.dsrTracker, wc)
+	if err != nil {
+		return nil, err
+	}
 	maxTxCount := m.chain.Regulator().MaxTxCount()
 	txSizeInBlock := m.chain.MaxBlockTxBytes()
 	normalTxs, _ := m.tm.Candidate(module.TransactionGroupNormal, wc, txSizeInBlock, maxTxCount)
-	if baseTx != nil {
-		normalTxs = append([]module.Transaction{baseTx}, normalTxs...)
+
+	if baseTx != nil || len(dsrTxs) > 0 {
+		count := len(normalTxs)+len(dsrTxs)+1
+		txs := make([]module.Transaction,0,count)
+		if baseTx != nil {
+			txs = append(txs, baseTx)
+		}
+		if len(dsrTxs) > 0 {
+			txs = append(txs, dsrTxs...)
+		}
+		normalTxs = append(txs, normalTxs...)
 	}
 
 	// create transition instance and return it
@@ -174,7 +198,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc, m.tim)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.plt, m.tsc, m.tim, m.dsm)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -893,4 +917,19 @@ func (m *manager) GetStepPrice(result []byte) (*big.Int, error) {
 	} else {
 		return new(big.Int), nil
 	}
+}
+
+func (m *manager) SendDoubleSignReport(result []byte, vh []byte, data []module.DoubleSignData)  error {
+	wss, err := m.trc.GetWorldSnapshot(result, vh)
+	if err != nil {
+		return err
+	}
+	if len(data) < 1 || data[0] == nil {
+		return errors.IllegalArgumentError.New("InvalidDSData")
+	}
+	ctx, err := state.NewDoubleSignContext(wss, data[0].Type())
+	if err != nil {
+		return err
+	}
+	return m.dsm.Add(data, ctx)
 }

@@ -18,28 +18,25 @@ type Logger struct {
 }
 
 func (l *Logger) TraceMode() module.TraceMode {
-	if l.cb != nil {
-		return l.traceMode
-	}
-	return module.TraceModeNone
-}
-
-func (l *Logger) onLog(lv module.TraceLevel, msg string) {
-	if l.TraceMode() == module.TraceModeInvoke {
-		l.cb.OnLog(lv, msg)
-	}
+	return l.traceMode
 }
 
 func (l *Logger) TLog(lv module.TraceLevel, a ...interface{}) {
-	l.onLog(lv, l.prefix+fmt.Sprint(a...))
+	if l.traceMode == module.TraceModeInvoke {
+		l.cb.OnLog(lv, l.prefix+fmt.Sprint(a...))
+	}
 }
 
 func (l *Logger) TLogln(lv module.TraceLevel, a ...interface{}) {
-	l.onLog(lv, l.prefix+fmt.Sprint(a...))
+	if l.traceMode == module.TraceModeInvoke {
+		l.cb.OnLog(lv, l.prefix+fmt.Sprint(a...))
+	}
 }
 
 func (l *Logger) TLogf(lv module.TraceLevel, f string, a ...interface{}) {
-	l.onLog(lv, l.prefix+fmt.Sprintf(f, a...))
+	if l.traceMode == module.TraceModeInvoke {
+		l.cb.OnLog(lv, l.prefix+fmt.Sprintf(f, a...))
+	}
 }
 
 func (l *Logger) TDebug(a ...interface{}) {
@@ -238,6 +235,8 @@ func NewLogger(l log.Logger, ti *module.TraceInfo) *Logger {
 		tlog.traceMode = ti.TraceMode
 		tlog.traceBlock = ti.TraceBlock
 		tlog.cb = ti.Callback
+	} else {
+		tlog.traceMode = module.TraceModeNone
 	}
 	return tlog
 }

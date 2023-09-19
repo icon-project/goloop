@@ -5,13 +5,14 @@ import (
 	"io"
 	"io/ioutil"
 	"reflect"
+	"sync"
 
 	cerrors "github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 )
 
 var rlpCodecObject rlpCodec
-var RLP = bytesWrapper{&rlpCodecObject}
+var RLP = bytesWrapperFrom(&rlpCodecObject)
 
 // MaxSizeForBytes is size limit for bytes buffer.
 // msgpack decoder already has limit to 1 MB
@@ -380,6 +381,28 @@ type rlpParent struct {
 	cnt    int
 }
 
+var rlpParentPool = sync.Pool {
+	New: func() interface{} {
+		return &rlpParent {
+			buffer: bytes.NewBuffer(nil),
+		}
+	},
+}
+
+func allocRLPParent(writer *rlpWriter, isMap bool) *rlpParent {
+	p := rlpParentPool.Get().(*rlpParent)
+	p.writer = writer
+	p.isMap = isMap
+	return p
+}
+
+func freeRLPParent(p *rlpParent) {
+	p.cnt = 0
+	p.writer = nil
+	p.buffer.Reset()
+	rlpParentPool.Put(p)
+}
+
 type rlpWriter struct {
 	parent *rlpParent
 	writer io.Writer
@@ -393,10 +416,7 @@ func (w *rlpWriter) countN(cnt int) {
 
 func (w *rlpWriter) WriteList() (Writer, error) {
 	w.countN(1)
-	p := &rlpParent{
-		buffer: bytes.NewBuffer(nil),
-		writer: w,
-	}
+	p := allocRLPParent(w, false)
 	return &rlpWriter{
 		parent: p,
 		writer: p.buffer,
@@ -405,11 +425,7 @@ func (w *rlpWriter) WriteList() (Writer, error) {
 
 func (w *rlpWriter) WriteMap() (Writer, error) {
 	w.countN(1)
-	p := &rlpParent{
-		buffer: bytes.NewBuffer(nil),
-		isMap:  true,
-		writer: w,
-	}
+	p := allocRLPParent(w, true)
 	return &rlpWriter{
 		parent: p,
 		writer: p.buffer,
@@ -543,6 +559,7 @@ func (w *rlpWriter) Close() error {
 			return err
 		}
 		w.parent = nil
+		freeRLPParent(p)
 	}
 	return nil
 }

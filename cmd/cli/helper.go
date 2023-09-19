@@ -14,6 +14,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"runtime"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -601,7 +602,7 @@ func StartCPUProfile(filename string) error {
 			return err
 		}
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGUSR2)
+		signal.Notify(c, syscall.SIGUSR1)
 		go func(c chan os.Signal) {
 			for {
 				<-c
@@ -631,6 +632,7 @@ func StartMemoryProfile(filename string) error {
 				cnt := atomic.AddInt32(&memProfileCnt, 1)
 				fileName := fmt.Sprintf("%s.%03d", filename, cnt)
 				if f, err := os.Create(fileName); err == nil {
+					runtime.GC()
 					pprof.WriteHeapProfile(f)
 					f.Close()
 				}
@@ -639,6 +641,32 @@ func StartMemoryProfile(filename string) error {
 	} else {
 		return errors.Errorf("filename cannot be empty string")
 	}
+	return nil
+}
+
+func StartBlockProfile(filename string, rate int) error {
+	if filename == "" {
+		return errors.Errorf("filename cannot be empty string")
+	}
+	runtime.SetBlockProfileRate(rate)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGUSR1)
+	go func(c chan os.Signal) {
+		var profileCnt int32 = 0
+		for {
+			<-c
+			cnt := atomic.AddInt32(&profileCnt, 1)
+			fileName := fmt.Sprintf("%s.%03d", filename, cnt)
+			if f, err := os.Create(fileName); err == nil {
+				if err := pprof.Lookup("block").WriteTo(f, 0); err != nil {
+					_ = f.Close()
+					_ = os.Remove(fileName)
+				} else {
+					_ = f.Close()
+				}
+			}
+		}
+	}(c)
 	return nil
 }
 

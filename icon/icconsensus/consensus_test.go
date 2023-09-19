@@ -18,6 +18,7 @@ package icconsensus_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -53,6 +54,7 @@ func TestConsensus_BasicsWithAccumulator(t *testing.T) {
 	f := test.NewNode(
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
 		ictest.UseMerkle(header, nil),
+		test.SetTimeoutPropose(4*time.Second),
 	)
 	defer f.Close()
 
@@ -104,6 +106,7 @@ func TestConsensus_UpgradeWithAccumulator(t *testing.T) {
 		t, ictest.UseBMForBlockV1, ictest.UseCSForBlockV1,
 		ictest.UseMerkle(header, lastVotes.Bytes()),
 		test.AddDefaultNode(false),
+		test.SetTimeoutPropose(4*time.Second),
 	)
 	defer f.Close()
 

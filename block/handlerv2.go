@@ -189,6 +189,9 @@ func (b *blockV2Handler) NewBlockDataFromReader(r io.Reader) (base.BlockData, er
 	// nextValidators may be nil
 	nextValidators := sm.ValidatorListFromHash(headerFormat.NextValidatorsHash)
 	votes := b.chain.CommitVoteSetDecoder()(bodyFormat.Votes)
+	if votes == nil {
+		return nil, errors.Errorf("invalid votes. bytes=%x", bodyFormat.Votes)
+	}
 	if !bytes.Equal(votes.Hash(), headerFormat.VotesHash) {
 		return nil, errors.New("bad vote list hash")
 	}

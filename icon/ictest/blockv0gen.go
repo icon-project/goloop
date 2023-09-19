@@ -103,8 +103,9 @@ func NewBlockV0Generator(t *testing.T, genesis string) *BlockV0Generator {
 	itr, err := g.node.SM.CreateInitialTransition(nil, nil)
 	assert.NoError(t, err)
 	g.lastTr = itr
+	// pass validated=true for already committed transition
 	g.executeAndAddReceipts(
-		g.last.NormalTransactions(), g.last.Height(), g.last.Timestamp(),
+		g.last.NormalTransactions(), g.last.Height(), g.last.Timestamp(), true,
 	)
 	return g
 }
@@ -118,17 +119,18 @@ func (g *BlockV0Generator) executeAndAddReceiptsV0TXs(
 	for i := range txs {
 		txs_[i] = txs[i].Transaction
 	}
-	return g.executeAndAddReceipts(txs_, height, ts)
+	return g.executeAndAddReceipts(txs_, height, ts, false)
 }
 
 func (g *BlockV0Generator) executeAndAddReceipts(
 	txs []module.Transaction,
 	height int64,
 	ts int64,
+	validated bool,
 ) []byte {
 	txl := transaction.NewTransactionListFromSlice(g.node.Chain.Database(), txs)
 	tr, err := g.node.SM.CreateTransition(
-		g.lastTr, txl, common.NewBlockInfo(height, ts), nil, false,
+		g.lastTr, txl, common.NewBlockInfo(height, ts), nil, validated,
 	)
 	assert.NoError(g.t, err)
 	transitionExecute(g.t, tr)

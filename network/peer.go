@@ -726,7 +726,6 @@ var (
 		"Other",
 	}
 	joinPeerConnectionTypes = []PeerConnectionType{
-		p2pConnTypeNone,
 		p2pConnTypeParent, p2pConnTypeUncle,
 		p2pConnTypeChildren, p2pConnTypeNephew,
 		p2pConnTypeOther, p2pConnTypeFriend,

@@ -82,7 +82,7 @@ func (c *wrapper) Start() error {
 		c.Consensus = newFastSyncer(h+1, c.merkleHeader.Leaves-1, c.c, c, bpp)
 	} else {
 		c.Consensus = consensus.New(
-			c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData,
+			c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData, 0,
 		)
 	}
 	return c.Consensus.Start()
@@ -122,7 +122,7 @@ func (c *wrapper) Upgrade(bpp *bpp) {
 	defer c.mu.Unlock()
 
 	c.Consensus.Term()
-	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData)
+	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData, 0)
 	err := c.Consensus.Start()
 	if err != nil {
 		c.c.Logger().Panicf("fail to start consensus %+v", err)

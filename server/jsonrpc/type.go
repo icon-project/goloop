@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -44,6 +45,14 @@ func (i HexInt) BigInt() (*big.Int, error) {
 	} else {
 		return bi, nil
 	}
+}
+
+func HexIntFromInt64(v int64) HexInt {
+	return HexInt(fmt.Sprintf("%#x", v))
+}
+
+func HexIntFromBigInt(v *big.Int) HexInt {
+	return HexInt(fmt.Sprintf("%#x", v))
 }
 
 type HexBool string

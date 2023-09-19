@@ -187,13 +187,13 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
-	ids := string(id)
-	if a, ok := ws.mutableAccounts[ids]; ok {
+	if a, ok := ws.mutableAccounts[string(id)]; ok {
 		return a
 	}
 	key := addressIDToKey(id)
 	as := ws.getAccountSnapshotWithKey(key)
 	ac := newAccountState(ws.database, as, key, ws.nodeCacheEnabled)
+	ids := string(id)
 	ws.mutableAccounts[ids] = ac
 	ws.lastAccounts[ids] = as
 	return ac

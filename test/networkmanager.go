@@ -18,7 +18,6 @@ package test
 
 import (
 	"sync"
-	"testing"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -30,8 +29,8 @@ var nmMu sync.Mutex
 
 type NetworkManager struct {
 	module.NetworkManager
-	t      *testing.T
-	id     module.PeerID
+	t  T
+	id module.PeerID
 	rCh    chan packetEntry
 	stopCh chan struct{}
 
@@ -50,7 +49,7 @@ func indexOf(pl []Peer, id module.PeerID) int {
 	return -1
 }
 
-func NewNetworkManager(t *testing.T, a module.Address) *NetworkManager {
+func NewNetworkManager(t T, a module.Address) *NetworkManager {
 	const chLen = 1024
 	n := &NetworkManager{
 		t:      t,

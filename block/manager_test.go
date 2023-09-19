@@ -217,7 +217,7 @@ func TestBlockManager_BTPDigest(t_ *testing.T) {
 	t.ProposeFinalizeBlock(v)
 }
 
-func getReaderForBlock(t *testing.T, blk module.Block) io.Reader {
+func getReaderForBlock(t test.T, blk module.Block) io.Reader {
 	var buf bytes.Buffer
 	err := blk.Marshal(&buf)
 	assert.NoError(t, err)

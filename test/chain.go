@@ -21,13 +21,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/icon-project/goloop/btp/ntm"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/txlocator"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
@@ -42,6 +42,7 @@ type Chain struct {
 	nm        *NetworkManager
 	bm        module.BlockManager
 	sm        module.ServiceManager
+	lm        module.LocatorManager
 	cs        module.Consensus
 	gs        module.GenesisStorage
 	cvd       module.CommitVoteSetDecoder
@@ -148,6 +149,17 @@ func (c *Chain) ServiceManager() module.ServiceManager {
 
 func (c *Chain) NetworkManager() module.NetworkManager {
 	return c.nm
+}
+
+func (c *Chain) GetLocatorManager() (module.LocatorManager, error) {
+	if c.lm == nil {
+		var err error
+		c.lm, err = txlocator.NewManager(c.database, c.log)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c.lm, nil
 }
 
 func (c *Chain) Regulator() module.Regulator {
@@ -273,7 +285,7 @@ func (c *Chain) Close() {
 }
 
 func NewChain(
-	t *testing.T,
+	t T,
 	w module.Wallet,
 	database db.Database,
 	logger log.Logger,

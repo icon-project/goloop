@@ -40,17 +40,52 @@ type (
 	}
 	mpt struct {
 		mptBase
-		nibs  []byte
 		cache *cache.NodeCache
 		root  node
-		mutex sync.Mutex
+		mutex sync.RWMutex
 		s     *mptStatics
 	}
 )
 
+var nibblePtrPool sync.Pool = sync.Pool{
+	New: func() interface{} {
+		return new([]byte)
+	},
+}
+
+var nibblesPool sync.Pool = sync.Pool{
+	New: func() interface{} {
+		ptr := nibblePtrPool.Get().(*[]byte)
+		*ptr = make([]byte, hashSize*2)
+		return ptr
+	},
+}
+
+func allocNibbles(size int) []byte {
+	if size < 0 {
+		return nil
+	}
+	if size > hashSize {
+		return make([]byte, size*2)
+	}
+	pbs := nibblesPool.Get().(*[]byte)
+	nibs := (*pbs)[0:size*2]
+	*pbs = nil
+	nibblePtrPool.Put(pbs)
+	return nibs
+}
+
+func freeNibbles(nibs []byte) {
+	if cap(nibs) != hashSize*2 {
+		return
+	}
+	pbs := nibblePtrPool.Get().(*[]byte)
+	*pbs = nibs
+	nibblesPool.Put(pbs)
+}
+
 func bytesToNibs(k []byte) []byte {
-	ks := len(k)
-	nibs := make([]byte, ks*2)
+	nibs := allocNibbles(len(k))
 
 	for i, v := range k {
 		nibs[i*2] = (v >> 4) & 0x0F
@@ -64,19 +99,6 @@ func (mb *mptBase) Equal(mb2 *mptBase) bool {
 		mb.objectType == mb2.objectType
 }
 
-func (m *mpt) bytesToNibs(k []byte) []byte {
-	ks := len(k)
-	if cap(m.nibs) < ks*2 {
-		m.nibs = make([]byte, ks*2)
-	}
-	nibs := m.nibs[0 : ks*2]
-
-	for i, v := range k {
-		nibs[i*2] = (v >> 4) & 0x0F
-		nibs[i*2+1] = v & 0x0F
-	}
-	return nibs
-}
 
 func (m *mpt) get(n node, nibs []byte, depth int) (node, trie.Object, error) {
 	if n == nil {
@@ -148,19 +170,24 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 }
 
 func (m *mpt) Get(k []byte) (trie.Object, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	lock := RLock(&m.mutex)
+	defer lock.Unlock()
 	if logStatics {
 		atomic.AddInt32(&m.s.get, 1)
 	}
-	root, obj, err := m.get(m.root, m.bytesToNibs(k), 0)
-	m.root = root
+	nibs := bytesToNibs(k)
+	defer freeNibbles(nibs)
+	root, obj, err := m.get(m.root, nibs, 0)
+	if m.root != root {
+		lock.Migrate()
+		m.root = root
+	}
 	return obj, err
 }
 
 func (m *mpt) Hash() []byte {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	if m.root != nil {
 		return m.root.getLink(true)
 	} else {
@@ -169,8 +196,8 @@ func (m *mpt) Hash() []byte {
 }
 
 func (m *mpt) Flush() error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	if m.root != nil {
 		// Before flush node data to Database, We need to make sure that it
 		// builds required  data for dumping data.
@@ -235,7 +262,9 @@ func (m *mpt) Set(k []byte, o trie.Object) (trie.Object, error) {
 	if logStatics {
 		atomic.AddInt32(&m.s.set, 1)
 	}
-	root, _, old, err := m.set(m.root, m.bytesToNibs(k), 0, o)
+	nibs := bytesToNibs(k)
+	defer freeNibbles(nibs)
+	root, _, old, err := m.set(m.root, nibs, 0, o)
 	m.root = root
 	if debugDump && root != nil {
 		root.dump()
@@ -252,7 +281,9 @@ func (m *mpt) Delete(k []byte) (trie.Object, error) {
 	if logStatics {
 		atomic.AddInt32(&m.s.set, 1)
 	}
-	root, dirty, old, err := m.delete(m.root, m.bytesToNibs(k), 0)
+	nibs := bytesToNibs(k)
+	defer freeNibbles(nibs)
+	root, dirty, old, err := m.delete(m.root, nibs, 0)
 	if dirty {
 		m.root = root
 		if debugDump && root != nil {
@@ -397,12 +428,13 @@ func (m *mpt) Iterator() trie.IteratorForObject {
 }
 
 func (m *mpt) Filter(prefix []byte) trie.IteratorForObject {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	lock := RLock(&m.mutex)
+	defer lock.Unlock()
 
 	root := m.root
 	if root != nil {
-		if n, err := root.realize(m); err == nil {
+		if n, err := root.realize(m); err == nil && n != root {
+			lock.Migrate()
 			root = n
 			m.root = n
 		}
@@ -435,7 +467,9 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 
 	proofs := [][]byte(nil)
 
-	root, proofs, err := m.root.getProof(m, m.bytesToNibs(k), proofs)
+	nibs := bytesToNibs(k)
+	defer freeNibbles(nibs)
+	root, proofs, err := m.root.getProof(m, nibs, proofs)
 	if root != m.root {
 		m.root = root
 	}
@@ -455,7 +489,9 @@ func (m *mpt) Prove(k []byte, proofs [][]byte) (trie.Object, error) {
 	if m.root == nil {
 		return nil, common.ErrIllegalArgument
 	}
-	root, obj, err := m.root.prove(m, m.bytesToNibs(k), proofs)
+	nibs := bytesToNibs(k)
+	defer freeNibbles(nibs)
+	root, obj, err := m.root.prove(m, nibs, proofs)
 	if root != m.root {
 		m.root = root
 	}
@@ -467,10 +503,10 @@ func (m *mpt) Equal(object trie.ImmutableForObject, exact bool) bool {
 		if m == m2 {
 			return true
 		}
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-		m2.mutex.Lock()
-		defer m2.mutex.Unlock()
+		m.mutex.RLock()
+		defer m.mutex.RUnlock()
+		m2.mutex.RLock()
+		defer m2.mutex.RUnlock()
 
 		if m2.root == m.root {
 			return true

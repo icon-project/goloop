@@ -48,9 +48,9 @@ public class Validator {
     }
 
     /**
-     * Returns false if code is invalid.
+     * Validate the given classes bytecodes and return their external APIs
      *
-     * @return false if code is invalid
+     * @return the external APIs
      * @throws ZipException        for zip file error
      * @throws ValidationException for validation error
      */
@@ -69,12 +69,15 @@ public class Validator {
             throw fail(e, "Cannot get APIS");
         }
         var classMap = jar.classBytesByQualifiedNames;
-        var structDB = new StructDB(classMap);
+        StructDB structDB;
         Method[] eeMethods;
         try {
+            structDB = new StructDB(classMap);
             eeMethods = MethodUnpacker.readFrom(apisBytes);
         } catch (IOException e) {
             throw fail ("bad APIS format");
+        } catch (RuntimeException e) {
+            throw fail(e, "malformed class file");
         }
         String cur = jar.mainClassName;
         Map<Member, MemberDecl> mmap = new HashMap<>();
