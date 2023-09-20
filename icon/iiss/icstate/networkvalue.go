@@ -488,12 +488,21 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 		jso["minimumBond"] = s.GetMinimumBond()
 	}
 
-	preps := s.GetPRepSet()
-	if preps != nil {
-		jso["totalBonded"] = preps.TotalBonded()
-		jso["totalDelegated"] = preps.TotalDelegated()
-		jso["totalPower"] = preps.GetTotalPower(br)
-		jso["preps"] = preps.Size()
+	if preps := s.GetPReps(true); preps != nil {
+		totalBonded := new(big.Int)
+		totalDelegated := new(big.Int)
+		totalPower := new(big.Int)
+
+		for _, prep := range preps {
+			totalBonded.Add(totalBonded, prep.Bonded())
+			totalDelegated.Add(totalDelegated, prep.Delegated())
+			totalPower.Add(totalPower, prep.GetPower(br))
+		}
+
+		jso["totalBonded"] = totalBonded
+		jso["totalDelegated"] = totalDelegated
+		jso["totalPower"] = totalPower
+		jso["preps"] = len(preps)
 	}
 	return jso, nil
 }
