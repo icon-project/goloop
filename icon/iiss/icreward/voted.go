@@ -138,11 +138,22 @@ func (v *Voted) RLPEncodeFields(encoder codec.Encoder) error {
 
 func (v *Voted) Equal(o icobject.Impl) bool {
 	if v2, ok := o.(*Voted); ok {
-		return v.version == v2.version &&
+		cmp := v.version == v2.version &&
 			v.status == v2.status &&
 			v.delegated.Cmp(v2.delegated) == 0 &&
-			v.bonded.Cmp(v2.bonded) == 0 &&
-			v.commissionRate == v2.commissionRate
+			v.bonded.Cmp(v2.bonded) == 0
+		if cmp == false {
+			return false
+		}
+		switch v.version {
+		case VotedVersion1:
+			return v.bondedDelegation.Cmp(v2.bondedDelegation) == 0
+		case VotedVersion2:
+			return v.commissionRate == v2.commissionRate
+		default:
+			return false
+		}
+
 	} else {
 		return false
 	}

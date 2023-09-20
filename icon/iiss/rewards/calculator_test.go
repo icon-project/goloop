@@ -197,13 +197,13 @@ func TestCalculator_processCommissionRate(t *testing.T) {
 
 	// initialize data
 	c := MakeCalculator(database, nil)
-	voted := icreward.NewVoted()
+	voted := icreward.NewVotedV2()
 	err := c.temp.SetVoted(addr1, voted)
 	assert.NoError(t, err)
 
 	for _, tt := range tests {
 		args := tt.args
-		err := front.AddCommissionRate(args.addr, args.value)
+		err = front.AddCommissionRate(args.addr, args.value)
 		assert.NoError(t, err)
 	}
 	c.back = front.GetSnapshot()

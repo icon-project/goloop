@@ -144,3 +144,37 @@ func TestVoted_UpdateBondedDelegation(t *testing.T) {
 		})
 	}
 }
+
+func TestVoted_Equal(t *testing.T) {
+	// VotedVersion1
+	voted11 := NewVoted()
+	voted12 := NewVoted()
+	// does not compare commissionRate at VotedVersion1
+	voted11.SetCommissionRate(11)
+	voted12.SetCommissionRate(12)
+	assert.True(t, voted11.Equal(voted12))
+	// compare bondedDelegation at VotedVersion1
+	voted11.SetBondedDelegation(big.NewInt(11))
+	voted12.SetBondedDelegation(big.NewInt(12))
+	assert.False(t, voted11.Equal(voted12))
+
+	// VotedVersion2
+	voted21 := NewVotedV2()
+	voted22 := NewVotedV2()
+	// does not compare bondedDelegation
+	voted21.SetBondedDelegation(big.NewInt(21))
+	voted22.SetBondedDelegation(big.NewInt(22))
+	assert.True(t, voted21.Equal(voted22))
+	// compare commissionRate at VotedVersion1
+	voted21.SetCommissionRate(21)
+	voted22.SetCommissionRate(22)
+	assert.False(t, voted21.Equal(voted22))
+
+	// invalid version
+	voted1 := NewVoted()
+	voted2 := NewVoted()
+	assert.True(t, voted1.Equal(voted2))
+	voted1.SetVersion(1000)
+	voted2.SetVersion(1000)
+	assert.False(t, voted1.Equal(voted2))
+}
