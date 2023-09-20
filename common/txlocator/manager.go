@@ -94,6 +94,17 @@ func (j *locatorFlushJob) Fetch() *txList {
 	return j.list
 }
 
+type txListCache struct {
+	// linked list of cached tx lists.
+	head   *txList
+	lastP  **txList
+
+	// maximum timestamp value of transactions in database
+	// 0 means that it doesn't know the maximum.
+	// In that case, it should look up database always
+	maxTSInDB int64
+}
+
 type manager struct {
 	lock     sync.Mutex
 	lbk      db.Bucket
@@ -109,13 +120,7 @@ type manager struct {
 
 
 	// linked list of cached tx lists.
-	head     *txList
-	lastP    **txList
-
-	// maximum timestamp value of transactions in database
-	// 0 means that it doesn't know the maximum.
-	// In that case, it should look up database always
-	tsInDB   [2]int64
+	cache [2]txListCache
 }
 
 func (m *manager) Has(group module.TransactionGroup, id []byte, ts int64) (bool, error) {
@@ -142,7 +147,7 @@ func (m *manager) hasLocatorInCache(group module.TransactionGroup, id []byte, ts
 	if _, ok := m.locators[string(id)]; ok {
 		return ok, true
 	}
-	if l := m.tsInDB[group] ; l != 0 && l <= ts {
+	if l := m.cache[group].maxTSInDB; l != 0 && l <= ts {
 		return false, true
 	}
 	return false, false
@@ -236,10 +241,11 @@ func (m *manager) addListAndClearOldInLock(list *txList) {
 	if m.locators == nil {
 		return
 	}
+	c := &m.cache[list.group]
 	listMin := list.ts-list.th
-	for ptr := m.head; ptr != nil; ptr = ptr.next {
+	for ptr := c.head; ptr != nil; ptr = ptr.next {
 		ptrMax := ptr.ts+ptr.th
-		if listMin < ptrMax && ptr.head != nil {
+		if ptrMax > listMin {
 			break
 		}
 		var next *locator
@@ -248,16 +254,16 @@ func (m *manager) addListAndClearOldInLock(list *txList) {
 			delete(m.locators, itr.id)
 			freeLocator(itr)
 		}
-		if dbMax := m.tsInDB[ptr.group] ; dbMax < ptrMax {
-			m.tsInDB[ptr.group] = ptrMax
+		if c.maxTSInDB < ptrMax {
+			c.maxTSInDB = ptrMax
 		}
-		m.head = ptr.next
+		c.head = ptr.next
 	}
-	if m.head == nil {
-		m.lastP = &m.head
+	if c.head == nil {
+		c.lastP = &c.head
 	}
-	*m.lastP = list
-	m.lastP = &list.next
+	*c.lastP = list
+	c.lastP = &list.next
 }
 
 func (m *manager) flushList(l *txList) error {
@@ -362,7 +368,6 @@ func NewManager(dbase db.Database, logger log.Logger) (module.LocatorManager, er
 		log:      logger,
 		locators: make(map[string]*locator),
 	}
-	mgr.lastP = &mgr.head
 	mgr.flushLastP = &mgr.flushHead
 	return mgr, nil
 }
