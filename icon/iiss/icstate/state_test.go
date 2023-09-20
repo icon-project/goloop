@@ -78,21 +78,21 @@ func (m *mockStateContext) IncreaseBlockHeightBy(amount int64) int64 {
 
 func newMockStateContext(params map[string]interface{}) *mockStateContext {
 	sc := &mockStateContext{
-		termIISSVersion: IISSVersion3,
-		br:              icmodule.ToRate(5),
+		revision: IISSVersion3,
+		br:       icmodule.ToRate(5),
 	}
 
 	for k, v := range params {
 		switch k {
-		case "blockHeight":
+		case "bh", "blockHeight", "height":
 			sc.blockHeight = v.(int64)
-		case "revision":
+		case "rev", "revision":
 			sc.revision = v.(int)
-		case "termRevision":
+		case "termRevision", "termRev":
 			sc.termRevision = v.(int)
-		case "activeDSAMask":
+		case "activeDSAMask", "dsaMask":
 			sc.activeDSAMask = v.(int64)
-		case "bondRequirement":
+		case "bondRequirement", "br":
 			sc.br = v.(icmodule.Rate)
 		case "eventLogger":
 			sc.eventLogger = v.(icmodule.EnableEventLogger)

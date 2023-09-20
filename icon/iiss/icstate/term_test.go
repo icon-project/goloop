@@ -127,10 +127,16 @@ func TestPRepSnapshot_Bytes(t *testing.T) {
 
 func TestPRepSnapshots_Equal(t *testing.T) {
 	size := 150
-	electedPRepCount := 100
 	br := icmodule.ToRate(5)
-	preps := newDummyPRepSet(size)
-	snapshots := preps.ToPRepSnapshots(electedPRepCount, br)
+	cfg := NewPRepCountConfig(22, 78, 3)
+	sc := newMockStateContext(map[string]interface{}{
+		"bh": int64(1000),
+		"rev": icmodule.RevisionBTP2-1,
+	})
+
+	preps := newDummyPReps(size)
+	prepSet := NewPRepSet(sc, preps, cfg)
+	snapshots := prepSet.ToPRepSnapshots(br)
 
 	cases := []struct {
 		p0, p1 PRepSnapshots
@@ -150,6 +156,7 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 
 func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
 	br := icmodule.ToRate(5)
+	sc := newMockStateContext(nil)
 
 	type args struct {
 		size             int
@@ -177,23 +184,27 @@ func TestPRepSnapshots_NewPRepSnapshots(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
+			cfg := NewPRepCountConfig(4, in.electedPRepCount-4, 3)
 
-			preps := newDummyPRepSet(in.size)
-			snapshots := preps.ToPRepSnapshots(in.electedPRepCount, br)
+			preps := newDummyPReps(in.size)
+			prepSet := NewPRepSet(sc, preps, cfg)
+			snapshots := prepSet.ToPRepSnapshots(br)
 			count := icutils.Min(in.size, in.electedPRepCount)
 			assert.Equal(t, count, len(snapshots))
 		})
 	}
 }
 
-func TestPRepSnapshot_RLP(t *testing.T) {
+func TestPRepSnapshots_RLP(t *testing.T) {
 	br := icmodule.ToRate(5)
 	size := 10
-	electedPRepCount := size
 	var pss0, pss1 PRepSnapshots
 
-	preps := newDummyPRepSet(size)
-	pss0 = preps.ToPRepSnapshots(electedPRepCount, br)
+	preps := newDummyPReps(size)
+	pss0 = make(PRepSnapshots, size)
+	for i, prep := range preps {
+		pss0[i] = NewPRepSnapshot(prep.Owner(), prep.GetPower(br))
+	}
 
 	bs, err := codec.BC.MarshalToBytes(pss0)
 	assert.NoError(t, err)

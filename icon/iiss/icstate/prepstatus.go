@@ -631,13 +631,6 @@ func (ps *PRepStatusState) shiftVPenaltyMask(limit int) {
 	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & buildPenaltyMask(limit)
 }
 
-func (ps *PRepStatusState) ResetVPenaltyMask() {
-	if ps.vPenaltyMask != 0 {
-		ps.vPenaltyMask = 0
-		ps.setDirty()
-	}
-}
-
 func (ps *PRepStatusState) NotifyEvent(
 	sc icmodule.StateContext, event icmodule.PRepEvent, data ...interface{}) error {
 	switch event {
@@ -762,6 +755,9 @@ func (ps *PRepStatusState) onTermEnd(sc icmodule.StateContext, newGrade Grade, l
 		}
 	} else {
 		ps.grade = newGrade
+	}
+	if sc.Revision() == icmodule.RevisionResetPenaltyMask {
+		ps.vPenaltyMask = 0
 	}
 	ps.setDirty()
 	return nil

@@ -28,6 +28,7 @@ type stateContext struct {
 	eventLogger icmodule.EnableEventLogger
 
 	// Cache
+	br   icmodule.Rate
 	term *icstate.TermSnapshot
 }
 
@@ -35,6 +36,7 @@ func NewStateContext(wc icmodule.WorldContext, es *ExtensionStateImpl) icmodule.
 	return &stateContext{
 		WorldContext: wc,
 		State:        es.State,
+		br:           icmodule.Rate(-1),
 		eventLogger:  es,
 	}
 }
@@ -56,6 +58,13 @@ func (sc *stateContext) TermIISSVersion() int {
 		return term.GetIISSVersion()
 	}
 	return 0
+}
+
+func (sc *stateContext) GetBondRequirement() icmodule.Rate {
+	if !sc.br.IsValid() {
+		sc.br = sc.State.GetBondRequirement()
+	}
+	return sc.br
 }
 
 func (sc *stateContext) AddEventEnable(owner module.Address, status icmodule.EnableStatus) error {

@@ -556,11 +556,6 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	return false
 }
 
-func (s *State) GetPRepSet() PRepSet {
-	preps := s.GetPReps(true)
-	return NewPRepSet(preps)
-}
-
 func (s *State) GetPReps(activeOnly bool) []*PRep {
 	size := s.allPRepCache.Size()
 	preps := make([]*PRep, 0)
@@ -633,8 +628,8 @@ func (s *State) GetPRepStatsOfInJSON(sc icmodule.StateContext, address module.Ad
 }
 
 func (s *State) GetPRepsInJSON(sc icmodule.StateContext, start, end int) (map[string]interface{}, error) {
-	prepSet := s.GetPRepSet()
-	prepSet.SortForQuery(sc)
+	activePReps := s.GetPReps(true)
+	SortByPower(sc, activePReps)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
@@ -643,7 +638,7 @@ func (s *State) GetPRepsInJSON(sc icmodule.StateContext, start, end int) (map[st
 		return nil, errors.IllegalArgumentError.Errorf("end(%d) < 0", end)
 	}
 
-	size := prepSet.Size()
+	size := len(activePReps)
 	if start > end {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) > end(%d)", start, end)
 	}
@@ -661,15 +656,20 @@ func (s *State) GetPRepsInJSON(sc icmodule.StateContext, start, end int) (map[st
 	prepList := make([]interface{}, 0, end)
 
 	for i := start - 1; i < end; i++ {
-		prep := prepSet.GetByIndex(i)
+		prep := activePReps[i]
 		prepJSO := prep.ToJSON(sc)
 		prepList = append(prepList, prepJSO)
+	}
+
+	totalDelegated := new(big.Int)
+	for _, prep := range activePReps {
+		totalDelegated.Add(totalDelegated, prep.Delegated())
 	}
 
 	jso["startRanking"] = start
 	jso["blockHeight"] = sc.BlockHeight()
 	jso["totalStake"] = s.GetTotalStake()
-	jso["totalDelegated"] = prepSet.TotalDelegated()
+	jso["totalDelegated"] = totalDelegated
 	jso["preps"] = prepList
 	return jso, nil
 }
