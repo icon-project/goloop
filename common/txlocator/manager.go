@@ -18,6 +18,7 @@
 package txlocator
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
@@ -36,6 +37,11 @@ type txList struct {
 	th     int64
 	head   *locator
 	next   *txList
+}
+
+func (l *txList) String() string {
+	return fmt.Sprintf("txList{group=%d,height=%d,ts=%d,th=%d}",
+		l.group, l.height, l.ts, l.th)
 }
 
 type locator struct {
@@ -241,6 +247,7 @@ func (m *manager) addListAndClearOldInLock(list *txList) {
 	if m.locators == nil {
 		return
 	}
+	m.log.Tracef("LM: cache.addListAndClearOldInLock add %s", list)
 	c := &m.cache[list.group]
 	listMin := list.ts-list.th
 	for ptr := c.head; ptr != nil; ptr = ptr.next {
@@ -248,13 +255,16 @@ func (m *manager) addListAndClearOldInLock(list *txList) {
 		if ptrMax > listMin {
 			break
 		}
+		m.log.Tracef("LM: cache.addListAndClearOldInLock remove %s", ptr)
 		var next *locator
 		for itr := ptr.head ; itr != nil ; itr = next {
 			next = itr.next
 			delete(m.locators, itr.id)
 			freeLocator(itr)
 		}
-		if c.maxTSInDB < ptrMax {
+		if ptr.ts != 0 && c.maxTSInDB < ptrMax {
+			m.log.Tracef("LM: cache[%d].maxTSInDB %d -> %d",
+				list.group, c.maxTSInDB, ptrMax)
 			c.maxTSInDB = ptrMax
 		}
 		c.head = ptr.next
