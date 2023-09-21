@@ -174,7 +174,12 @@ func (v *Voted) Clone() *Voted {
 }
 
 func (v *Voted) IsEmpty() bool {
-	return v.status.IsEnabled() == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0
+	if v.version == VotedVersion1 {
+		return v.status.IsEnabled() == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0 && v.bondedDelegation.Sign() == 0
+	} else if v.version == VotedVersion2 {
+		return v.status.IsEnabled() == false && v.delegated.Sign() == 0 && v.bonded.Sign() == 0 && v.commissionRate == 0
+	}
+	return false
 }
 
 func (v *Voted) Format(f fmt.State, c rune) {
