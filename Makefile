@@ -205,6 +205,9 @@ test :
 test% : $(BIN_DIR)/gochain
 	@ cd testsuite ; ./gradlew $@
 
+test-race :
+	$(GOBUILD_ENVS) $(GOTEST) $(GOBUILD_FLAGS) ./... $(GOTEST_FLAGS) -race
+
 .DEFAULT_GOAL := all
 all : $(BUILD_TARGETS)
 
