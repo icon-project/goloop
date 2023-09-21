@@ -434,11 +434,6 @@ func (t *tracker) Add(list module.TransactionList, force bool) (int, error) {
 			if _, ok := locators[string(id)]; ok {
 				return cnt, errors.IllegalArgumentError.Errorf("DuplicateTx(id=%#x)", id)
 			}
-			ts := txi.Timestamp()
-			if ts < t.list.ts-t.list.th || ts >= t.list.ts+t.list.th {
-				return cnt, errors.IllegalArgumentError.Errorf("InvalidTimestamp(ts=%d,bts=%d,bth=%d)",
-					ts, t.list.ts, t.list.th)
-			}
 			if !force {
 				if has, err := t.parentHasInLock(id, txi.Timestamp()) ; err != nil {
 					return cnt, err
