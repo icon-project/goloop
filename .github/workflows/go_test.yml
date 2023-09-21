@@ -24,3 +24,6 @@ jobs:
 
       - name: Test
         run: GOBUILD_TAGS= make test
+
+      - name: Test Race
+        run: GOBUILD_TAGS= make test-race
