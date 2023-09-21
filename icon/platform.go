@@ -227,7 +227,7 @@ func (p *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, 
 	if err != nil {
 		return nil, err
 	}
-	cs, err := icconsensus.New(c, walDir, nil, nil, header, lastVotes)
+	cs, err := icconsensus.New(c, walDir, nil, nil, header, lastVotes, 0)
 	if err != nil {
 		return nil, err
 	}

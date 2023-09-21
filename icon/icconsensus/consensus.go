@@ -18,6 +18,7 @@ package icconsensus
 
 import (
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/chain/base"
@@ -32,12 +33,13 @@ import (
 type wrapper struct {
 	mu sync.Mutex
 	module.Consensus
-	c            base.Chain
-	walDir       string
-	wm           consensus.WALManager
-	timestamper  module.Timestamper
-	merkleHeader *hexary.MerkleHeader
-	lastVoteData *consensus.LastVoteData
+	c              base.Chain
+	walDir         string
+	wm             consensus.WALManager
+	timestamper    module.Timestamper
+	merkleHeader   *hexary.MerkleHeader
+	lastVoteData   *consensus.LastVoteData
+	timeoutPropose time.Duration
 }
 
 func New(
@@ -47,6 +49,7 @@ func New(
 	timestamper module.Timestamper,
 	merkleHeader *hexary.MerkleHeader,
 	lastVotes *blockv0.BlockVoteList,
+	timeoutPropose time.Duration,
 ) (module.Consensus, error) {
 	return &wrapper{
 		c:            c,
@@ -55,9 +58,10 @@ func New(
 		timestamper:  timestamper,
 		merkleHeader: merkleHeader,
 		lastVoteData: &consensus.LastVoteData{
-			Height: merkleHeader.Leaves-1,
+			Height: merkleHeader.Leaves - 1,
 			VotesBytes: lastVotes.Bytes(),
 		},
+		timeoutPropose: timeoutPropose,
 	}, nil
 }
 
@@ -82,7 +86,7 @@ func (c *wrapper) Start() error {
 		c.Consensus = newFastSyncer(h+1, c.merkleHeader.Leaves-1, c.c, c, bpp)
 	} else {
 		c.Consensus = consensus.New(
-			c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData, 0,
+			c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData, c.timeoutPropose,
 		)
 	}
 	return c.Consensus.Start()
@@ -122,7 +126,7 @@ func (c *wrapper) Upgrade(bpp *bpp) {
 	defer c.mu.Unlock()
 
 	c.Consensus.Term()
-	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData, 0)
+	c.Consensus = consensus.New(c.c, c.walDir, c.wm, c.timestamper, bpp, c.lastVoteData, c.timeoutPropose)
 	err := c.Consensus.Start()
 	if err != nil {
 		c.c.Logger().Panicf("fail to start consensus %+v", err)

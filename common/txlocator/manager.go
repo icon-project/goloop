@@ -18,6 +18,7 @@
 package txlocator
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
@@ -36,6 +37,11 @@ type txList struct {
 	th     int64
 	head   *locator
 	next   *txList
+}
+
+func (l *txList) String() string {
+	return fmt.Sprintf("txList{group=%d,height=%d,ts=%d,th=%d}",
+		l.group, l.height, l.ts, l.th)
 }
 
 type locator struct {
@@ -94,6 +100,17 @@ func (j *locatorFlushJob) Fetch() *txList {
 	return j.list
 }
 
+type txListCache struct {
+	// linked list of cached tx lists.
+	head   *txList
+	lastP  **txList
+
+	// maximum timestamp value of transactions in database
+	// 0 means that it doesn't know the maximum.
+	// In that case, it should look up database always
+	maxTSInDB int64
+}
+
 type manager struct {
 	lock     sync.Mutex
 	lbk      db.Bucket
@@ -109,13 +126,7 @@ type manager struct {
 
 
 	// linked list of cached tx lists.
-	head     *txList
-	lastP    **txList
-
-	// maximum timestamp value of transactions in database
-	// 0 means that it doesn't know the maximum.
-	// In that case, it should look up database always
-	tsInDB   [2]int64
+	cache [2]txListCache
 }
 
 func (m *manager) Has(group module.TransactionGroup, id []byte, ts int64) (bool, error) {
@@ -142,7 +153,7 @@ func (m *manager) hasLocatorInCache(group module.TransactionGroup, id []byte, ts
 	if _, ok := m.locators[string(id)]; ok {
 		return ok, true
 	}
-	if l := m.tsInDB[group] ; l != 0 && l <= ts {
+	if l := m.cache[group].maxTSInDB; l != 0 && l <= ts {
 		return false, true
 	}
 	return false, false
@@ -236,28 +247,33 @@ func (m *manager) addListAndClearOldInLock(list *txList) {
 	if m.locators == nil {
 		return
 	}
+	m.log.Tracef("LM: cache.addListAndClearOldInLock add %s", list)
+	c := &m.cache[list.group]
 	listMin := list.ts-list.th
-	for ptr := m.head; ptr != nil; ptr = ptr.next {
+	for ptr := c.head; ptr != nil; ptr = ptr.next {
 		ptrMax := ptr.ts+ptr.th
-		if listMin < ptrMax && ptr.head != nil {
+		if ptrMax > listMin {
 			break
 		}
+		m.log.Tracef("LM: cache.addListAndClearOldInLock remove %s", ptr)
 		var next *locator
 		for itr := ptr.head ; itr != nil ; itr = next {
 			next = itr.next
 			delete(m.locators, itr.id)
 			freeLocator(itr)
 		}
-		if dbMax := m.tsInDB[ptr.group] ; dbMax < ptrMax {
-			m.tsInDB[ptr.group] = ptrMax
+		if ptr.ts != 0 && c.maxTSInDB < ptrMax {
+			m.log.Tracef("LM: cache[%d].maxTSInDB %d -> %d",
+				list.group, c.maxTSInDB, ptrMax)
+			c.maxTSInDB = ptrMax
 		}
-		m.head = ptr.next
+		c.head = ptr.next
 	}
-	if m.head == nil {
-		m.lastP = &m.head
+	if c.head == nil {
+		c.lastP = &c.head
 	}
-	*m.lastP = list
-	m.lastP = &list.next
+	*c.lastP = list
+	c.lastP = &list.next
 }
 
 func (m *manager) flushList(l *txList) error {
@@ -362,7 +378,6 @@ func NewManager(dbase db.Database, logger log.Logger) (module.LocatorManager, er
 		log:      logger,
 		locators: make(map[string]*locator),
 	}
-	mgr.lastP = &mgr.head
 	mgr.flushLastP = &mgr.flushHead
 	return mgr, nil
 }
@@ -418,11 +433,6 @@ func (t *tracker) Add(list module.TransactionList, force bool) (int, error) {
 			id := txi.ID()
 			if _, ok := locators[string(id)]; ok {
 				return cnt, errors.IllegalArgumentError.Errorf("DuplicateTx(id=%#x)", id)
-			}
-			ts := txi.Timestamp()
-			if ts < t.list.ts-t.list.th || ts >= t.list.ts+t.list.th {
-				return cnt, errors.IllegalArgumentError.Errorf("InvalidTimestamp(ts=%d,bts=%d,bth=%d)",
-					ts, t.list.ts, t.list.th)
 			}
 			if !force {
 				if has, err := t.parentHasInLock(id, txi.Timestamp()) ; err != nil {

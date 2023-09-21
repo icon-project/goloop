@@ -1271,13 +1271,13 @@ func (cs *consensus) applyRoundWAL() error {
 		if err != nil {
 			return err
 		}
-		if err = msg.Verify(); err != nil {
-			return err
-		}
 		switch m := msg.(type) {
 		case *ProposalMessage:
 			if m.height() != cs.height {
 				continue
+			}
+			if err = msg.Verify(); err != nil {
+				return err
 			}
 			if !m.address().Equal(cs.c.Wallet().Address()) {
 				continue
@@ -1290,6 +1290,9 @@ func (cs *consensus) applyRoundWAL() error {
 		case *VoteMessage:
 			if m.height() != cs.height {
 				continue
+			}
+			if err = msg.Verify(); err != nil {
+				return err
 			}
 			if !m.address().Equal(cs.c.Wallet().Address()) {
 				continue
@@ -1315,6 +1318,9 @@ func (cs *consensus) applyRoundWAL() error {
 				vmsg := m.VoteList.Get(i)
 				if vmsg.height() != cs.height {
 					continue
+				}
+				if err = msg.Verify(); err != nil {
+					return err
 				}
 				cs.log.Tracef("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
@@ -1381,9 +1387,6 @@ func (cs *consensus) applyLockWAL() error {
 		if err != nil {
 			return err
 		}
-		if err = msg.Verify(); err != nil {
-			return err
-		}
 		switch m := msg.(type) {
 		case *VoteListMessage:
 			if m.VoteList.Len() == 0 {
@@ -1393,6 +1396,9 @@ func (cs *consensus) applyLockWAL() error {
 				vmsg := m.VoteList.Get(i)
 				if vmsg.height() != cs.height {
 					continue
+				}
+				if err = msg.Verify(); err != nil {
+					return err
 				}
 				cs.log.Tracef("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
@@ -1432,6 +1438,9 @@ func (cs *consensus) applyLockWAL() error {
 			}
 			if bpset == nil {
 				continue
+			}
+			if err = msg.Verify(); err != nil {
+				return err
 			}
 			bp, err := NewPart(m.BlockPart)
 			if err != nil {
@@ -1488,9 +1497,6 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 		if err != nil {
 			return err
 		}
-		if err = msg.Verify(); err != nil {
-			return err
-		}
 		switch m := msg.(type) {
 		case *VoteListMessage:
 			if m.VoteList.Len() == 0 {
@@ -1500,6 +1506,9 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 				vs := newVoteSet(prevValidators.Len())
 				for i := 0; i < m.VoteList.Len(); i++ {
 					msg := m.VoteList.Get(i)
+					if err = msg.Verify(); err != nil {
+						return err
+					}
 					cs.log.Tracef("WAL: round vote %v\n", msg)
 					index := prevValidators.IndexOf(msg.address())
 					if index < 0 {
@@ -1514,6 +1523,9 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 			} else if m.VoteList.Get(0).height() == cs.height {
 				for i := 0; i < m.VoteList.Len(); i++ {
 					vmsg := m.VoteList.Get(i)
+					if err = msg.Verify(); err != nil {
+						return err
+					}
 					cs.log.Tracef("WAL: round vote %v\n", vmsg)
 					index := cs.validators.IndexOf(vmsg.address())
 					if index < 0 {
