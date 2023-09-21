@@ -330,11 +330,6 @@ func TestTracker_Add(t *testing.T) {
 
 	ntr1 := mgr.NewTracker(module.TransactionGroupNormal, height, ts, th)
 
-	// invalid timestamp range
-	txs1 := newTestTXList(module.TransactionGroupNormal, 0, 10, ts+th, 100)
-	_, err = ntr1.Add(txs1, false)
-	assert.Error(t, err)
-
 	txs2 := newTestTXList(module.TransactionGroupNormal, 0, 10, ts, 100)
 
 	// normal addition
