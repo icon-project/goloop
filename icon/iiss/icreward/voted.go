@@ -201,6 +201,7 @@ func newVoted(tag icobject.Tag) *Voted {
 
 func NewVoted() *Voted {
 	return &Voted{
+		status:           icmodule.ESDisablePermanent,
 		delegated:        new(big.Int),
 		bonded:           new(big.Int),
 		bondedDelegation: new(big.Int),
