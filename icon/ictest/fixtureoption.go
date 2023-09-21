@@ -151,6 +151,7 @@ func UseCSForBlockV1(cf *test.FixtureConfig) *test.FixtureConfig {
 				nil,
 				header,
 				lastVotes,
+				ctx.Config.TimeoutPropose,
 			)
 			assert.NoError(t, err)
 			return cs
