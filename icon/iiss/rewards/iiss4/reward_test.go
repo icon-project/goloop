@@ -288,10 +288,14 @@ func TestReward(t *testing.T) {
 			p := rr.pi.GetPRep(key)
 
 			v := voteds[key]
-			assert.True(t, v.Equal(p.ToVoted()))
+			if v.IsEmpty() {
+				assert.Nil(t, p)
+			} else {
+				assert.True(t, v.Equal(p.ToVoted()))
 
-			pubkey := pubkeys[key]
-			assert.Equal(t, pubkey == dsaIndex, p.Pubkey(), p)
+				pubkey := pubkeys[key]
+				assert.Equal(t, pubkey == dsaIndex, p.Pubkey(), p)
+			}
 		})
 	}
 

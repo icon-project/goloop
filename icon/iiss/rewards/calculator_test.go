@@ -198,6 +198,7 @@ func TestCalculator_processCommissionRate(t *testing.T) {
 	// initialize data
 	c := MakeCalculator(database, nil)
 	voted := icreward.NewVotedV2()
+	voted.SetStatus(icmodule.ESEnable)
 	err := c.temp.SetVoted(addr1, voted)
 	assert.NoError(t, err)
 

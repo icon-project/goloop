@@ -338,6 +338,7 @@ func TestExtensionStateImpl_getOldCommissionRate(t *testing.T) {
 		case 0: // None
 		case 1: // Reward
 			voted := icreward.NewVotedV2()
+			voted.SetStatus(icmodule.ESEnable)
 			voted.SetCommissionRate(rate)
 			err = es.Reward.SetVoted(owner, voted)
 			assert.NoError(t, err)
