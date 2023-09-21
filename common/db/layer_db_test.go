@@ -73,29 +73,7 @@ func (t *testDatabase) Close() error {
 	return nil
 }
 
-func TestLayerDB_FlushInOrder(t *testing.T) {
-	scenario := []testOperation{
-		{ BytesByHash, []byte("key1"), []byte("value1") },
-		{ BytesByHash, []byte("key1"), nil },
-		{ BytesByHash, []byte("key2"), []byte("value2") },
-		{ BytesByHash, []byte("key3"), []byte("value3") },
-		{ BytesByHash, []byte("key2"), []byte("value4") },
-		{ ChainProperty, []byte("key4"), []byte("value4") },
-		{ BytesByHash, []byte("key5"), []byte("value5") },
-		{ ChainProperty, []byte("key4"), []byte("valueX") },
-	}
-
-	exp := []testOperation{
-		{ BytesByHash, []byte("key1"), nil },
-		{ BytesByHash, []byte("key3"), []byte("value3") },
-		{ BytesByHash, []byte("key2"), []byte("value4") },
-		{ BytesByHash, []byte("key5"), []byte("value5") },
-		{ ChainProperty, []byte("key4"), []byte("valueX") },
-	}
-
-	dbase := newTestDatabase()
-	ldb := NewLayerDB(dbase)
-
+func runTestScenario(t *testing.T, ldb Database, scenario []testOperation) {
 	for _, c := range scenario {
 		bk, err := ldb.GetBucket(c.bk)
 		assert.NoError(t, err)
@@ -109,13 +87,63 @@ func TestLayerDB_FlushInOrder(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+}
+
+func TestLayerDB_FlushInOrder(t *testing.T) {
+	scenario0a := []testOperation{
+		{ BytesByHash, []byte("key0a"), []byte("value0a") },
+	}
+
+	scenario0b := []testOperation{
+		{ BytesByHash, []byte("key0b"), []byte("value0b") },
+	}
+
+	scenario1 := []testOperation{
+		{ BytesByHash, []byte("key1"), []byte("value1") },
+		{ BytesByHash, []byte("key1"), nil },
+		{ BytesByHash, []byte("key2"), []byte("value2") },
+		{ BytesByHash, []byte("key3"), []byte("value3") },
+		{ BytesByHash, []byte("key2"), []byte("value4") },
+		{ ChainProperty, []byte("key4"), []byte("value4") },
+		{ BytesByHash, []byte("key5"), []byte("value5") },
+		{ ChainProperty, []byte("key4"), []byte("valueX") },
+	}
+
+	scenario2 := []testOperation {
+		{ BytesByHash, []byte("key6"), []byte("value6") },
+	}
+
+	exp := []testOperation{
+		{ BytesByHash, []byte("key1"), nil },
+		{ BytesByHash, []byte("key3"), []byte("value3") },
+		{ BytesByHash, []byte("key2"), []byte("value4") },
+		{ BytesByHash, []byte("key5"), []byte("value5") },
+		{ ChainProperty, []byte("key4"), []byte("valueX") },
+		{ BytesByHash, []byte("key6"), []byte("value6") },
+	}
+
+	dbase := newTestDatabase()
+	ldb := NewLayerDB(dbase)
+
+	runTestScenario(t, ldb, scenario0a)
+	assert.NoError(t, ldb.Flush(false))
+
+	runTestScenario(t, ldb, scenario0b)
+	assert.NoError(t, ldb.Flush(false))
+
+	runTestScenario(t, ldb, scenario1)
 
 	err := ldb.Flush(true)
 	assert.NoError(t, err)
 
+	runTestScenario(t, ldb, scenario2)
+
 	// check records
 	assert.NoError(t, err)
 	assert.Equal(t, exp, dbase.record)
+
+	// check error Flush(false) after Flush(true)
+	assert.Error(t, ldb.Flush(false))
 
 	assert.Equal(t, Unwrap(ldb), dbase)
 }

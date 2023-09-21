@@ -3,6 +3,8 @@ package db
 import (
 	"container/list"
 	"sync"
+
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type layerBucketItem struct {
@@ -139,6 +141,9 @@ func (ldb *layerDB) Flush(write bool) error {
 	defer ldb.lock.Unlock()
 
 	if ldb.flushed {
+		if !write {
+			return errors.InvalidStateError.New("DirectFlushMode")
+		}
 		return nil
 	}
 
@@ -167,14 +172,16 @@ func (ldb *layerDB) Flush(write bool) error {
 				}
 			}
 		}
-	}
-
-	for _, bk := range ldb.buckets {
-		bk.data = nil
-		bk.list = nil
+		for _, bk := range ldb.buckets {
+			bk.data = nil
+		}
+	} else {
+		for _, bk := range ldb.buckets {
+			bk.data = make(map[string]*list.Element)
+		}
 	}
 	ldb.list.Init()
-	ldb.flushed = true
+	ldb.flushed = write
 	return nil
 }
 
