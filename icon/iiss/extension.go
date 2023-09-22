@@ -956,20 +956,13 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var err error
 
 	revision := wc.Revision().Value()
-	mainPRepCount := int(es.State.GetMainPRepCount())
-	subPRepCount := int(es.State.GetSubPRepCount())
-	extraMainPRepCount := 0
-	if revision >= icmodule.RevisionExtraMainPReps {
-		extraMainPRepCount = int(es.State.GetExtraMainPRepCount())
-	}
-	electedPRepCount := mainPRepCount + subPRepCount
+	pcCfg := es.State.GetPRepCountConfig(revision)
 
 	totalSupply := wc.GetTotalSupply()
 	isDecentralized := es.IsDecentralized()
 	sc := NewStateContext(wc, es)
 
-	prepSet := es.State.GetPRepSet()
-	prepSet.Sort(sc, mainPRepCount, subPRepCount, extraMainPRepCount)
+	prepSet := icstate.NewPRepSet(sc, es.State.GetPReps(true), pcCfg)
 	if !isDecentralized {
 		// After decentralization is finished, this code will not be reached
 		isDecentralized = es.State.IsDecentralizationConditionMet(revision, totalSupply, prepSet)
@@ -978,32 +971,28 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	if isDecentralized {
 		// Reset the status of all active preps ordered by power
 		limit := es.State.GetConsistentValidationPenaltyMask()
-		if err = prepSet.OnTermEnd(sc, mainPRepCount, subPRepCount, extraMainPRepCount, limit); err != nil {
+		if err = prepSet.OnTermEnd(sc, limit); err != nil {
 			return err
 		}
 	} else {
 		prepSet = nil
 	}
 
-	return es.moveOnToNextTerm(prepSet, totalSupply, revision, electedPRepCount)
+	return es.moveOnToNextTerm(sc, prepSet, totalSupply)
 }
 
 func (es *ExtensionStateImpl) moveOnToNextTerm(
-	preps icstate.PRepSet, totalSupply *big.Int, revision int, electedPRepCount int) error {
+	sc icmodule.StateContext, preps icstate.PRepSet, totalSupply *big.Int) error {
 
 	// Create a new term
+	revision := sc.Revision()
 	nextTerm := icstate.NewNextTerm(es.State, totalSupply, revision)
 
 	// Valid preps means that decentralization is activated
 	if preps != nil {
-		br := es.State.GetBondRequirement()
+		br := sc.GetBondRequirement()
 		mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
-		var pss icstate.PRepSnapshots
-		if revision < icmodule.RevisionBTP2 {
-			pss = preps.ToPRepSnapshots(electedPRepCount, br)
-		} else {
-			pss = preps.ToPRepSnapshots(preps.GetElectedPRepSize(), br)
-		}
+		pss := preps.ToPRepSnapshots(br)
 
 		nextTerm.SetMainPRepCount(mainPRepCount)
 		nextTerm.SetPRepSnapshots(pss)

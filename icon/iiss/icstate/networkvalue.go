@@ -208,6 +208,20 @@ func (s *State) SetSubPRepCount(value int64) error {
 	return setValue(s.store, VarSubPRepCount, value)
 }
 
+func (s *State) GetPRepCountConfig(revision int) PRepCountConfig {
+	mainPReps := s.GetMainPRepCount()
+	subPReps := s.GetSubPRepCount()
+	extraMainPReps := int64(0)
+	if revision >= icmodule.RevisionExtraMainPReps {
+		extraMainPReps = s.GetExtraMainPRepCount()
+	}
+	return prepCountConfig{
+		mainPReps:      int(mainPReps),
+		subPReps:       int(subPReps),
+		extraMainPReps: int(extraMainPReps),
+	}
+}
+
 func (s *State) GetTotalStake() *big.Int {
 	value := getValue(s.store, VarTotalStake).BigInt()
 	if value == nil {
@@ -362,7 +376,7 @@ func (s *State) getConsistentValidationPenaltySlashRate() icmodule.Rate {
 
 func (s *State) setConsistentValidationPenaltySlashRate(value icmodule.Rate) error {
 	if !value.IsValid() {
-		 return errors.IllegalArgumentError.New("Invalid range")
+		return errors.IllegalArgumentError.New("Invalid range")
 	}
 	return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
 }
@@ -383,7 +397,7 @@ func (s *State) getNonVotePenaltySlashRate() icmodule.Rate {
 
 func (s *State) setNonVotePenaltySlashRate(value icmodule.Rate) error {
 	if !value.IsValid() {
-		 return errors.IllegalArgumentError.New("Invalid range")
+		return errors.IllegalArgumentError.New("Invalid range")
 	}
 	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
 }
@@ -488,12 +502,21 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 		jso["minimumBond"] = s.GetMinimumBond()
 	}
 
-	preps := s.GetPRepSet()
-	if preps != nil {
-		jso["totalBonded"] = preps.TotalBonded()
-		jso["totalDelegated"] = preps.TotalDelegated()
-		jso["totalPower"] = preps.GetTotalPower(br)
-		jso["preps"] = preps.Size()
+	if preps := s.GetPReps(true); preps != nil {
+		totalBonded := new(big.Int)
+		totalDelegated := new(big.Int)
+		totalPower := new(big.Int)
+
+		for _, prep := range preps {
+			totalBonded.Add(totalBonded, prep.Bonded())
+			totalDelegated.Add(totalDelegated, prep.Delegated())
+			totalPower.Add(totalPower, prep.GetPower(br))
+		}
+
+		jso["totalBonded"] = totalBonded
+		jso["totalDelegated"] = totalDelegated
+		jso["totalPower"] = totalPower
+		jso["preps"] = len(preps)
 	}
 	return jso, nil
 }
