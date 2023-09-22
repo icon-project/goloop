@@ -739,12 +739,28 @@ func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodul
 		ps.vFailCont = 0
 		ps.vPenaltyMask |= 1
 	}
+
 	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
 		return err
 	}
 	ps.grade = GradeCandidate
 	ps.setDirty()
 	return nil
+}
+
+func (ps *PRepStatusState) IsDoubleSignReportApplicable(sc icmodule.StateContext, dsBlockHeight int64) bool {
+	if !ps.IsActive() {
+		return false
+	}
+	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleVote|JFlagInJail) {
+		// Already in Jail due to DoubleSignReport
+		return false
+	}
+	if dsBlockHeight <= ps.ji.MinDoubleVoteHeight() {
+		// DoubleSignReport is too old to accept
+		return false
+	}
+	return true
 }
 
 func (ps *PRepStatusState) onTermEnd(sc icmodule.StateContext, newGrade Grade, limit int) error {

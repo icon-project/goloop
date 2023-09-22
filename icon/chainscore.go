@@ -815,6 +815,16 @@ var chainMethods = []*chainMethod{
 		nil,
 		nil,
 	}, icmodule.RevisionIISS4, 0},
+	{scoreapi.Method{
+		scoreapi.Function, contract.HandleDoubleSignReport,
+		scoreapi.FlagExternal, 3,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+			{"blockHeight", scoreapi.Integer, nil, nil},
+			{"signer", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionIISS4, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
@@ -1334,6 +1344,18 @@ func (s *chainScore) checkGovernance(charge bool) error {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	return nil
+}
+
+func (s *chainScore) checkSystem(charge bool) error {
+	if s.from != nil && s.from.Equal(state.SystemAddress) {
+		return nil
+	}
+	if charge {
+		if err := s.cc.ApplyCallSteps(); err != nil {
+			return err
+		}
+	}
+	return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 }
 
 const (

@@ -165,7 +165,7 @@ var revisionFlags = []module.Revision{
 	// Revision23
 	0,
 	// Revision24
-	0,
+	module.ReportDoubleSign,
 }
 
 func init() {

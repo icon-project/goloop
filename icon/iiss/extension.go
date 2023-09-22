@@ -1931,3 +1931,33 @@ func (es *ExtensionStateImpl) GetPRepStatsOf(
 	sc := NewStateContext(cc, es)
 	return es.State.GetPRepStatsOfInJSON(sc, address)
 }
+
+func (es *ExtensionStateImpl) HandleDoubleSignReport(
+	cc icmodule.CallContext, dsType string, dsBlockHeight int64, signer module.Address) error {
+	sc := NewStateContext(cc, es)
+	if dsType != module.DSTProposal && dsType != module.DSTVote {
+		return icmodule.IllegalArgumentError.Errorf("UnknownType(%s)", dsType)
+	}
+	if sc.TermIISSVersion() < icstate.IISSVersion4 {
+		return icmodule.NotReadyError.New("IISS4NotReady")
+	}
+
+	owner := es.State.GetOwnerByNode(signer)
+	ps := es.State.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
+	}
+	if !ps.IsDoubleSignReportApplicable(sc, dsBlockHeight) {
+		return nil
+	}
+
+	const pt = icmodule.PenaltyDoubleVote
+	if err := ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, pt); err != nil {
+		return err
+	}
+	rate, err := es.State.GetSlashingRate(sc.Revision(), pt)
+	if err != nil {
+		 return err
+	}
+	return es.slash(cc, owner, rate)
+}
