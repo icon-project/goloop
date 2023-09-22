@@ -337,8 +337,6 @@ func generateNetwork(name string, n int, t *testing.T, roles ...module.Role) []*
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, ProtoTestNetwork, t)
 		r.nt = nt
 		r.c = c
-		failIfError(t, r.nt.Listen(), "fail to listen", r.name)
-		failIfError(t, nm.Start(), "fail to start", r.name)
 		arr[i] = r
 	}
 	return arr
@@ -560,6 +558,12 @@ func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Con
 			if r.p2p.NetAddress() != na {
 				r.nm.SetTrustSeeds(string(na))
 			}
+		}
+	}
+	for _, v := range m {
+		for _, r := range v {
+			failIfError(t, r.nt.Listen(), "fail to listen", r.name)
+			failIfError(t, r.nm.Start(), "fail to start", r.name)
 		}
 	}
 
