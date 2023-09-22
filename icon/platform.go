@@ -41,6 +41,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/icon/merkle/hexary"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/platform/basic"
 	"github.com/icon-project/goloop/service/state"
@@ -307,4 +308,14 @@ func (p *platform) getExtensionState(wc state.WorldContext, logger log.Logger) *
 		esi.SetLogger(icutils.NewIconLogger(logger))
 	}
 	return esi
+}
+
+
+func (p *platform) ShowDiff(ctx service.DiffContext, name string, e, r []byte) error {
+	switch name {
+	case service.DNExtension:
+		return ShowExtensionDiff(ctx, e, r)
+	default:
+		return errors.IllegalArgumentError.Errorf("UnknownObject(name=%s)", name)
+	}
 }
