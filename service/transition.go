@@ -902,23 +902,29 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 
 func (t *transition) finalizeNormalTransaction() error {
 	startTS := time.Now();
+	defer func() {
+		t.txFlushDuration = time.Since(startTS)
+	}()
+	if err := t.normalTransactions.Flush(); err != nil {
+		return err
+	}
 	if err := t.commitTXIDs(module.TransactionGroupNormal); err != nil {
 		return err
 	}
 	if err := t.commitDSRs(); err != nil {
 		return err
 	}
-	defer func() {
-		t.txFlushDuration = time.Since(startTS)
-	}()
-	return t.normalTransactions.Flush()
+	return nil
 }
 
 func (t *transition) finalizePatchTransaction() error {
+	if err := t.patchTransactions.Flush(); err != nil {
+		return err
+	}
 	if err := t.commitTXIDs(module.TransactionGroupPatch); err != nil {
 		return err
 	}
-	return t.patchTransactions.Flush()
+	return nil
 }
 
 func (t *transition) finalizeResult(noFlush bool, keepParent bool) error {
