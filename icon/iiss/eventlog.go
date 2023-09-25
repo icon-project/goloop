@@ -86,6 +86,9 @@ func recordPenaltyImposedEvent(cc icmodule.CallContext, ps *icstate.PRepStatusSt
 }
 
 func recordSlashedEvent(cc icmodule.CallContext, owner, bonder module.Address, amount *big.Int) {
+	if amount.Sign() <= 0 && cc.Revision().Value() >= icmodule.RevisionPreIISS4 {
+		return
+	}
 	cc.OnEvent(
 		state.SystemAddress,
 		[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
