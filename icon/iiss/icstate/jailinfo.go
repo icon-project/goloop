@@ -13,14 +13,14 @@ const (
 	JFlagInJail = 1 << iota
 	JFlagUnjailing
 	JFlagAccumulatedValidationFailure
-	JFlagDoubleVote
+	JFlagDoubleSign
 	JFlagMax
 )
 
 type JailInfo struct {
 	flags               int
 	unjailRequestHeight int64
-	minDoubleVoteHeight int64
+	minDoubleSignHeight int64
 }
 
 func (ji *JailInfo) Flags() int {
@@ -47,12 +47,12 @@ func (ji *JailInfo) UnjailRequestHeight() int64 {
 	return ji.unjailRequestHeight
 }
 
-func (ji *JailInfo) MinDoubleVoteHeight() int64 {
-	return ji.minDoubleVoteHeight
+func (ji *JailInfo) MinDoubleSignHeight() int64 {
+	return ji.minDoubleSignHeight
 }
 
 func (ji *JailInfo) IsEmpty() bool {
-	return ji.flags == 0 && ji.unjailRequestHeight == 0 && ji.minDoubleVoteHeight == 0
+	return ji.flags == 0 && ji.unjailRequestHeight == 0 && ji.minDoubleSignHeight == 0
 }
 
 func (ji *JailInfo) ToJSON(sc icmodule.StateContext, jso map[string]interface{}) map[string]interface{} {
@@ -62,18 +62,18 @@ func (ji *JailInfo) ToJSON(sc icmodule.StateContext, jso map[string]interface{})
 		}
 		jso["jailFlags"] = ji.flags
 		jso["unjailRequestHeight"] = ji.unjailRequestHeight
-		jso["minDoubleVoteHeight"] = ji.minDoubleVoteHeight
+		jso["minDoubleSignHeight"] = ji.minDoubleSignHeight
 	}
 	return jso
 }
 
 func (ji *JailInfo) RLPDecodeSelf(d codec.Decoder) error {
-	err := d.DecodeListOf(&ji.flags, &ji.unjailRequestHeight, &ji.minDoubleVoteHeight)
+	err := d.DecodeListOf(&ji.flags, &ji.unjailRequestHeight, &ji.minDoubleSignHeight)
 	return err
 }
 
 func (ji *JailInfo) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeListOf(ji.flags, ji.unjailRequestHeight, ji.minDoubleVoteHeight)
+	return e.EncodeListOf(ji.flags, ji.unjailRequestHeight, ji.minDoubleSignHeight)
 }
 
 func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
@@ -85,8 +85,8 @@ func (ji *JailInfo) OnPenaltyImposed(sc icmodule.StateContext, pt icmodule.Penal
 		ji.turnFlag(JFlagInJail, true)
 	case icmodule.PenaltyAccumulatedValidationFailure:
 		ji.turnFlag(JFlagInJail|JFlagAccumulatedValidationFailure, true)
-	case icmodule.PenaltyDoubleVote:
-		ji.turnFlag(JFlagInJail|JFlagDoubleVote, true)
+	case icmodule.PenaltyDoubleSign:
+		ji.turnFlag(JFlagInJail|JFlagDoubleSign, true)
 	default:
 		return scoreresult.InvalidParameterError.Errorf("UnexpectedPenaltyType(%d)", pt)
 	}
@@ -117,8 +117,8 @@ func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext) error {
 		if !icutils.MatchAll(ji.flags, JFlagUnjailing) {
 			return icmodule.InvalidStateError.Errorf("InvalidJailFlags(%d)", ji.flags)
 		}
-		if icutils.MatchAll(ji.flags, JFlagDoubleVote) {
-			ji.minDoubleVoteHeight = sc.BlockHeight()
+		if icutils.MatchAll(ji.flags, JFlagDoubleSign) {
+			ji.minDoubleSignHeight = sc.BlockHeight()
 		}
 		ji.flags = 0
 		ji.unjailRequestHeight = 0
@@ -145,7 +145,7 @@ func (ji *JailInfo) setUnjailing(sc icmodule.StateContext, on bool) {
 }
 
 func (ji JailInfo) String() string {
-	return fmt.Sprintf("JailInfo{%d %d %d}", ji.flags, ji.unjailRequestHeight, ji.minDoubleVoteHeight)
+	return fmt.Sprintf("JailInfo{%d %d %d}", ji.flags, ji.unjailRequestHeight, ji.minDoubleSignHeight)
 }
 
 func (ji *JailInfo) Format(f fmt.State, c rune) {
@@ -153,11 +153,11 @@ func (ji *JailInfo) Format(f fmt.State, c rune) {
 	case 'v':
 		var format string
 		if f.Flag('+') {
-			format = "JailInfo{flags:%d urbh:%d mdvbh:%d}"
+			format = "JailInfo{flags:%d urbh:%d mdsbh:%d}"
 		} else {
 			format = "JailInfo{%d %d %d}"
 		}
-		_, _ = fmt.Fprintf(f, format, ji.flags, ji.unjailRequestHeight, ji.minDoubleVoteHeight)
+		_, _ = fmt.Fprintf(f, format, ji.flags, ji.unjailRequestHeight, ji.minDoubleSignHeight)
 	case 's':
 		_, _ = fmt.Fprint(f, ji.String())
 	}

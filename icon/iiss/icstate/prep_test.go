@@ -142,7 +142,7 @@ func TestPRep_ToJSON(t *testing.T) {
 	assert.Equal(t, prep.HasPubKey(sc.GetActiveDSAMask()), jso["hasPublicKey"].(bool))
 	assert.Equal(t, prep.JailFlags(), jso["jailFlags"].(int))
 	assert.Equal(t, prep.UnjailRequestHeight(), jso["unjailRequestHeight"].(int64))
-	assert.Equal(t, prep.MinDoubleVoteHeight(), jso["minDoubleVoteHeight"].(int64))
+	assert.Equal(t, prep.MinDoubleSignHeight(), jso["minDoubleSignHeight"].(int64))
 }
 
 func TestPRep_IsElectable(t *testing.T) {
@@ -170,7 +170,7 @@ func TestPRep_IsElectable(t *testing.T) {
 		{Active, big.NewInt(100), int64(3), icmodule.PenaltyNone, true},
 		{Active, big.NewInt(100), int64(3), icmodule.PenaltyAccumulatedValidationFailure, false},
 		{Active, big.NewInt(100), int64(3), icmodule.PenaltyValidationFailure, false},
-		{Active, big.NewInt(100), int64(3), icmodule.PenaltyDoubleVote, false},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyDoubleSign, false},
 		{Unregistered, big.NewInt(100), int64(3), icmodule.PenaltyNone, false},
 		{Disqualified, big.NewInt(100), int64(3), icmodule.PenaltyNone, false},
 	}

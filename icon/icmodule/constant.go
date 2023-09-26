@@ -82,7 +82,7 @@ const (
 	DefaultContinuousBlockValidationSlashingRate  = Rate(1)           // 0.01%
 	DefaultBlockValidationSlashingRate            = Rate(0)           // 0%
 	DefaultMissingNetworkProposalVoteSlashingRate = Rate(1)           // 0.01%
-	DefaultDoubleVoteSlashingRate                 = Rate(1000)        // 10%
+	DefaultDoubleSignSlashingRate                 = Rate(1000)        // 10%
 )
 
 // The following variables are read-only

@@ -1951,7 +1951,7 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 		return nil
 	}
 
-	const pt = icmodule.PenaltyDoubleVote
+	const pt = icmodule.PenaltyDoubleSign
 	if err := ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, pt); err != nil {
 		return err
 	}

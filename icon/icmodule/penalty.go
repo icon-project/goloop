@@ -24,7 +24,7 @@ const (
 	PenaltyAccumulatedValidationFailure
 	PenaltyValidationFailure
 	PenaltyMissedNetworkProposalVote
-	PenaltyDoubleVote
+	PenaltyDoubleSign
 	PenaltyReserved
 )
 
@@ -34,7 +34,7 @@ var penaltyNames = []string{
 	"accumulatedValidationFailure",
 	"validationFailure",
 	"missedNetworkProposalVote",
-	"doubleVote",
+	"doubleSign",
 }
 
 var penaltyTypes = []PenaltyType {
@@ -42,7 +42,7 @@ var penaltyTypes = []PenaltyType {
 	PenaltyAccumulatedValidationFailure,
 	PenaltyValidationFailure,
 	PenaltyMissedNetworkProposalVote,
-	PenaltyDoubleVote,
+	PenaltyDoubleSign,
 }
 
 func (p PenaltyType) String() string {
