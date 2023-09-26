@@ -133,7 +133,7 @@ func (t *taskReplay) doReplay() error {
 		}
 		ptxs := nblk.PatchTransactions()
 		if len(ptxs.Hash()) > 0 {
-			tr = sm.PatchTransition(tr, ptxs, nblk)
+			tr = service.PatchTransition(tr, ptxs, nblk, true)
 		}
 		cb := make(chan error, 2)
 		cancel, err := tr.Execute(transitionCallback(cb))

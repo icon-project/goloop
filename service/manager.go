@@ -288,7 +288,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	// If there is no way to validate patches, then set 'alreadyValidated' to
 	// true. It'll skip unnecessary validation for already validated normal
 	// transactions.
-	return patchTransition(pt, bi, patchTxList)
+	return patchTransition(pt, patchTxList, bi, false)
 }
 
 func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHash []byte, noBuffer bool) module.Transition {
