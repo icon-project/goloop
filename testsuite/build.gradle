@@ -95,6 +95,7 @@ class ChainTest extends Test {
     }
 
     void startDocker(String serverPort) {
+        def glTag = System.getProperty("GL_TAG", "latest")
         List<String> commands = new LinkedList<String>()
         commands.add("docker")
         commands.add("run")
@@ -107,7 +108,7 @@ class ChainTest extends Test {
         commands.add("data/dockerenv/" + dockerEnv)
         commands.add("--name")
         commands.add("gochain-" + dockerEnv)
-        commands.add("goloop/gochain")
+        commands.add("goloop/gochain:${glTag}")
         process = commands.execute(null, getWorkingDir())
         if (process.waitFor() == 0) {
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {

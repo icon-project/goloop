@@ -157,12 +157,18 @@ type transition struct {
 	dsrTracker DSRTracker
 }
 
-func patchTransition(t *transition, bi module.BlockInfo, patchTXs module.TransactionList) *transition {
+func patchTransition(t *transition, patchTXs module.TransactionList, bi module.BlockInfo, validated bool) *transition {
 	if patchTXs == nil {
 		patchTXs = transaction.NewTransactionListFromSlice(t.db, nil)
 	}
 	if len(patchTXs.Hash()) == 0 {
 		bi = nil
+	}
+	var step transitionStep
+	if validated {
+		step = stepValidated
+	} else {
+		step = stepInited
 	}
 	return &transition{
 		parent:             t.parent,
@@ -176,7 +182,7 @@ func patchTransition(t *transition, bi module.BlockInfo, patchTXs module.Transac
 		transitionContext:  t.transitionContext,
 		ntxIDs:				t.ntxIDs,
 		ntxCount:           t.ntxCount,
-		step:               stepInited,
+		step:               step,
 	}
 }
 
@@ -902,23 +908,29 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 
 func (t *transition) finalizeNormalTransaction() error {
 	startTS := time.Now();
+	defer func() {
+		t.txFlushDuration = time.Since(startTS)
+	}()
+	if err := t.normalTransactions.Flush(); err != nil {
+		return err
+	}
 	if err := t.commitTXIDs(module.TransactionGroupNormal); err != nil {
 		return err
 	}
 	if err := t.commitDSRs(); err != nil {
 		return err
 	}
-	defer func() {
-		t.txFlushDuration = time.Since(startTS)
-	}()
-	return t.normalTransactions.Flush()
+	return nil
 }
 
 func (t *transition) finalizePatchTransaction() error {
+	if err := t.patchTransactions.Flush(); err != nil {
+		return err
+	}
 	if err := t.commitTXIDs(module.TransactionGroupPatch); err != nil {
 		return err
 	}
-	return t.patchTransactions.Flush()
+	return nil
 }
 
 func (t *transition) finalizeResult(noFlush bool, keepParent bool) error {
@@ -1108,8 +1120,9 @@ func NewSyncTransition(
 
 func PatchTransition(
 	tr module.Transition,
-	bi module.BlockInfo,
 	ptxs module.TransactionList,
+	bi module.BlockInfo,
+	validated bool,
 ) module.Transition {
-	return patchTransition(tr.(*transition), bi, ptxs)
+	return patchTransition(tr.(*transition), ptxs, bi, validated)
 }
