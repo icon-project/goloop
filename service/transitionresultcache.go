@@ -44,16 +44,15 @@ type transitionResultCache struct {
 }
 
 func (c *transitionResultCache) GetValidatorSnapshot(vh []byte) (state.ValidatorSnapshot, error) {
-	vhs := string(vh)
-	if vs, err := c.vssCache.Get(vhs); err != nil {
+	if vs, err := c.vssCache.Get(vh); err != nil {
 		return nil, err
 	} else {
 		return vs.(state.ValidatorSnapshot), nil
 	}
 }
 
-func (c *transitionResultCache) createValidatorSnapshot(vhs string) (interface{}, error) {
-	vs, err := state.ValidatorSnapshotFromHash(c.database, []byte(vhs))
+func (c *transitionResultCache) createValidatorSnapshot(vh []byte) (interface{}, error) {
+	vs, err := state.ValidatorSnapshotFromHash(c.database, vh)
 	return vs, err
 }
 
