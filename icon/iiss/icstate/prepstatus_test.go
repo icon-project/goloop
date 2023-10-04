@@ -1021,3 +1021,17 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
 	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
 }
+
+// Assume that IsDoubleSignReportable() is called after RevisionIISS4
+func TestPRepStatus_IsDoubleSignReportable(t *testing.T) {
+	owner := newDummyAddress(1)
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4})
+
+	ps := NewPRepStatus(owner)
+	assert.NoError(t, ps.Activate())
+	assert.Equal(t, GradeCandidate, ps.Grade())
+	assert.Equal(t, None, ps.LastState())
+	assert.True(t, ps.IsActive())
+
+	assert.True(t, ps.IsDoubleSignReportable(sc, int64(1000)))
+}

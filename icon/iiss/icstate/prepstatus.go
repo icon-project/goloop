@@ -454,6 +454,21 @@ func (ps *prepStatusData) MinDoubleSignHeight() int64 {
 	return ps.ji.MinDoubleSignHeight()
 }
 
+func (ps *prepStatusData) IsDoubleSignReportable(sc icmodule.StateContext, dsBlockHeight int64) bool {
+	if !ps.IsActive() {
+		return false
+	}
+	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleSign) {
+		// Already in Jail due to DoubleSignReport
+		return false
+	}
+	if dsBlockHeight <= ps.ji.MinDoubleSignHeight() {
+		// DoubleSignReport is too old to accept
+		return false
+	}
+	return true
+}
+
 type PRepStatusSnapshot struct {
 	icobject.NoDatabase
 	prepStatusData
@@ -746,21 +761,6 @@ func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodul
 	ps.grade = GradeCandidate
 	ps.setDirty()
 	return nil
-}
-
-func (ps *PRepStatusState) IsDoubleSignReportApplicable(sc icmodule.StateContext, dsBlockHeight int64) bool {
-	if !ps.IsActive() {
-		return false
-	}
-	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleSign|JFlagInJail) {
-		// Already in Jail due to DoubleSignReport
-		return false
-	}
-	if dsBlockHeight <= ps.ji.MinDoubleSignHeight() {
-		// DoubleSignReport is too old to accept
-		return false
-	}
-	return true
 }
 
 func (ps *PRepStatusState) onTermEnd(sc icmodule.StateContext, newGrade Grade, limit int) error {

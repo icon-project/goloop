@@ -1011,7 +1011,7 @@ func (s *chainScore) Ex_handleDoubleSignReport(
 		return err
 	}
 	if dsType != module.DSTProposal && dsType != module.DSTVote {
-		return scoreresult.InvalidParameterError.Errorf("UnknownType(%s)", dsType)
+		return scoreresult.InvalidParameterError.Errorf("UnknownDoubleSignType(%s)", dsType)
 	}
 	return es.HandleDoubleSignReport(
 		s.newCallContext(s.cc),

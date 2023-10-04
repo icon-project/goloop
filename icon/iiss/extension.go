@@ -1932,12 +1932,11 @@ func (es *ExtensionStateImpl) GetPRepStatsOf(
 	return es.State.GetPRepStatsOfInJSON(sc, address)
 }
 
+// HandleDoubleSignReport()
+// signer: Node address of a validator that commited double signing
 func (es *ExtensionStateImpl) HandleDoubleSignReport(
 	cc icmodule.CallContext, dsType string, dsBlockHeight int64, signer module.Address) error {
 	sc := NewStateContext(cc, es)
-	if dsType != module.DSTProposal && dsType != module.DSTVote {
-		return icmodule.IllegalArgumentError.Errorf("UnknownType(%s)", dsType)
-	}
 	if sc.TermIISSVersion() < icstate.IISSVersion4 {
 		return icmodule.NotReadyError.New("IISS4NotReady")
 	}
@@ -1947,14 +1946,18 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 	if ps == nil {
 		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
 	}
-	if !ps.IsDoubleSignReportApplicable(sc, dsBlockHeight) {
+	if !ps.IsDoubleSignReportable(sc, dsBlockHeight) {
+		// Ignore DoubleSignReports silently
 		return nil
 	}
+	recordDoubleSignReportedEvent(cc, owner, dsBlockHeight, dsType)
 
 	const pt = icmodule.PenaltyDoubleSign
-	if err := ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, pt); err != nil {
+	if err := es.State.ImposePenalty(sc, pt, ps); err != nil {
 		return err
 	}
+	recordPenaltyImposedEvent(cc, ps, pt)
+
 	rate, err := es.State.GetSlashingRate(sc.Revision(), pt)
 	if err != nil {
 		 return err
