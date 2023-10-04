@@ -287,10 +287,9 @@ func (p *prepSetImpl) sortAfterRevBTP2(sc icmodule.StateContext, cfg PRepCountCo
 
 	// Count the number of electable PReps
 	electablePReps := 0
-	for i, prep := range p.preps {
-		if !prep.IsElectable(sc) {
-			electablePReps = i
-			break
+	for _, prep := range p.preps {
+		if prep.IsElectable(sc) {
+			electablePReps++
 		}
 	}
 
@@ -329,7 +328,7 @@ func (p *prepSetImpl) sortAfterRevBTP2(sc icmodule.StateContext, cfg PRepCountCo
 	p.classifyPReps(mainPRepCount+extraMainPRepCount, electablePReps)
 }
 
-// classifyPReps classify p.preps by grade
+// classifyPReps classifies p.preps by grade
 // mainPReps: # of real mainPReps including extraMainPReps, not config value
 // electedPReps: # of real electedPReps, not config value
 func (p *prepSetImpl) classifyPReps(mainPReps, electedPReps int) {
