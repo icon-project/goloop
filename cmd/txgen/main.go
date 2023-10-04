@@ -75,7 +75,7 @@ func main() {
 		}
 
 		var maker TransactionMaker
-		if len(scorePath) > 0 && len(methodName) > 0 {
+		if len(scorePath) > 0 && len(params) > 0 {
 			maker = &CallMaker{
 				NID:           nid,
 				SourcePath:    scorePath,
