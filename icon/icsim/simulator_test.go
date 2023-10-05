@@ -59,7 +59,7 @@ func initEnv(t *testing.T, c *config, revision module.Revision) *Env {
 	// Decentralization is activated
 	env, err = NewEnv(c, revision)
 	assert.NoError(t, err)
-	sim := env.sim
+	sim := env.Simulator()
 
 	// Check if decentralization is done
 	vl := sim.ValidatorList()
@@ -140,7 +140,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 
 	// Decentralization is activated
 	env := initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	sim := env.Simulator()
 
 	// Term
 
@@ -242,7 +242,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	// Decentralization is activated
 	env = initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	sim := env.Simulator()
 
 	// SetBond
 	txs := make([]Transaction, 0, len(env.bonders)*2)
@@ -456,7 +456,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 
 	// Decentralization is activated
 	env = initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	sim := env.Simulator()
 
 	vl0 := make([]module.Validator, mainPRepCount)
 	vl1 := make([]module.Validator, mainPRepCount)
@@ -588,7 +588,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 
 	// Decentralization is activated
 	env = initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	sim := env.Simulator()
 
 	vl0 := make([]module.Validator, mainPRepCount)
 	vl1 := make([]module.Validator, mainPRepCount)
@@ -703,7 +703,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 
 	// Decentralization is activated
 	env := initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	sim := env.Simulator()
 
 	address := env.preps[0]
 

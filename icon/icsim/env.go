@@ -204,6 +204,10 @@ func (env *Env) SetBonds() ([]Receipt, error) {
 	return sim.GoByBlock(nil, block)
 }
 
+func (env *Env) Simulator() Simulator {
+	return env.sim
+}
+
 func NewEnv(c *config, revision module.Revision) (*Env, error) {
 	userLen := 100
 	prepLen := int(c.MainPRepCount + c.SubPRepCount)
