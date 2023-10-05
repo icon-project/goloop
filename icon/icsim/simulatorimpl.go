@@ -99,6 +99,8 @@ func getExtensionState(ws state.WorldState) *iiss.ExtensionStateImpl {
 	return ws.GetExtensionState().(*iiss.ExtensionStateImpl)
 }
 
+type RevHandler func(ws state.WorldState) error
+
 type simulatorImpl struct {
 	config *config
 	plt    platform
@@ -108,7 +110,7 @@ type simulatorImpl struct {
 	revision    module.Revision
 	stepPrice   *big.Int
 	wss         state.WorldSnapshot
-	revHandlers map[int]func(wc state.WorldState) error
+	revHandlers map[int]RevHandler
 }
 
 func (sim *simulatorImpl) init(validators []module.Validator, balances map[string]*big.Int) error {
@@ -151,7 +153,7 @@ func (sim *simulatorImpl) init(validators []module.Validator, balances map[strin
 }
 
 func (sim *simulatorImpl) initRevHandler() {
-	sim.revHandlers = map[int]func(wc state.WorldState) error{
+	sim.revHandlers = map[int]RevHandler{
 		icmodule.Revision5:  sim.handleRev5,
 		icmodule.Revision6:  sim.handleRev6,
 		icmodule.Revision9:  sim.handleRev9,
