@@ -22,6 +22,8 @@ func (sim *simulatorImpl) initRevHandler() {
 		icmodule.Revision14: sim.handleRev14,
 		icmodule.Revision15: sim.handleRev15,
 		icmodule.Revision17: sim.handleRev17, // Enable ExtraMainPReps
+		icmodule.Revision23: sim.handleRev23, // PrevIISS4
+		icmodule.Revision24: sim.handleRev24, // IISS4
 	}
 }
 
@@ -234,4 +236,21 @@ func (sim *simulatorImpl) handleRev17(ws state.WorldState) error {
 		return err
 	}
 	return nil
+}
+
+func (sim *simulatorImpl) handleRev23(ws state.WorldState) error {
+	es := getExtensionState(ws)
+
+	// RewardFundAllocation2
+	r := es.State.GetRewardFundV1()
+	if err := es.State.SetRewardFund(r.ToRewardFundV2()); err != nil {
+		return err
+	}
+	// minBond for minimum wage
+	return es.State.SetMinimumBond(icmodule.DefaultMinBond)
+}
+
+func (sim *simulatorImpl) handleRev24(ws state.WorldState) error {
+	es := getExtensionState(ws)
+	return es.State.SetIISSVersion(icstate.IISSVersion4)
 }
