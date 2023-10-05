@@ -95,6 +95,10 @@ func NewTransaction(txType TxType, args []interface{}) Transaction {
 	return &transactionImpl{txType, args}
 }
 
+func getExtensionState(ws state.WorldState) *iiss.ExtensionStateImpl {
+	return ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+}
+
 type simulatorImpl struct {
 	config *config
 	plt    platform
@@ -159,8 +163,7 @@ func (sim *simulatorImpl) initRevHandler() {
 }
 
 func (sim *simulatorImpl) getExtensionState(readonly bool) *iiss.ExtensionStateImpl {
-	ws := newWorldState(sim.wss, readonly)
-	return ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return getExtensionState(newWorldState(sim.wss, readonly))
 }
 
 func (sim *simulatorImpl) Database() db.Database {

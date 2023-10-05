@@ -46,7 +46,7 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 
 	cfg := sim.config
 	ws.GetExtensionState().Reset(iiss.NewExtensionSnapshot(ws.Database(), nil))
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion2); err != nil {
 		return err
@@ -127,7 +127,7 @@ func applyRewardFund(config *config, s *icstate.State) error {
 
 // handleRev6: icmodule.RevisionDecentralize
 func (sim *simulatorImpl) handleRev6(ws state.WorldState) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
 			return err
@@ -137,7 +137,7 @@ func (sim *simulatorImpl) handleRev6(ws state.WorldState) error {
 }
 
 func (sim *simulatorImpl) handleRev9(ws state.WorldState) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 	if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
 		if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
 			return err
@@ -163,7 +163,7 @@ func (sim *simulatorImpl) handleRev10(ws state.WorldState) error {
 }
 
 func (sim *simulatorImpl) handleRev14(ws state.WorldState) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 	as := ws.GetAccountState(state.SystemID)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion3); err != nil {
