@@ -14,6 +14,7 @@ type config struct {
 	TermPeriod                           int64
 	MainPRepCount                        int64
 	SubPRepCount                         int64
+	ExtraMainPRepCount                   int64
 	Irep                                 int64
 	Rrep                                 int64
 	BondRequirement                      int64
@@ -25,7 +26,8 @@ type config struct {
 	ValidationPenaltyCondition           int
 	ConsistentValidationPenaltyCondition int64
 	ConsistentValidationPenaltyMask      int64
-	ConsistentValidationPenaltySlashRate int
+	ConsistentValidationPenaltySlashRate icmodule.Rate
+	NonVotePenaltySlashRate              icmodule.Rate
 	DelegationSlotMax                    int64
 	RewardFund
 	BondedPRepCount int
@@ -36,6 +38,7 @@ func NewConfig() *config {
 		TermPeriod:                           icmodule.DecentralizedTermPeriod,
 		MainPRepCount:                        icmodule.DefaultMainPRepCount,
 		SubPRepCount:                         icmodule.DefaultSubPRepCount,
+		ExtraMainPRepCount:                   icmodule.DefaultExtraMainPRepCount,
 		Irep:                                 icmodule.InitialIRep,
 		Rrep:                                 0,
 		BondRequirement:                      0,
@@ -47,7 +50,8 @@ func NewConfig() *config {
 		ValidationPenaltyCondition:           icmodule.DefaultValidationPenaltyCondition,
 		ConsistentValidationPenaltyCondition: icmodule.DefaultConsistentValidationPenaltyCondition,
 		ConsistentValidationPenaltyMask:      icmodule.DefaultConsistentValidationPenaltyMask,
-		ConsistentValidationPenaltySlashRate: icmodule.DefaultConsistentValidationPenaltySlashRate,
+		ConsistentValidationPenaltySlashRate: icmodule.ToRate(icmodule.DefaultConsistentValidationPenaltySlashRate),
+		NonVotePenaltySlashRate:              icmodule.ToRate(icmodule.DefaultNonVotePenaltySlashRate),
 		DelegationSlotMax:                    icmodule.DefaultDelegationSlotMax,
 		RewardFund: RewardFund{
 			Iglobal: icmodule.DefaultIglobal,

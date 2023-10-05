@@ -31,6 +31,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 
 	c := NewConfig()
 	c.MainPRepCount = mainPRepCount
+	c.ExtraMainPRepCount = extraMainPRepCount
 	c.BondedPRepCount = bondedPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
@@ -105,6 +106,7 @@ func Test_PreventZeroPowerExtraMainPReps(t *testing.T) {
 
 	c := NewConfig()
 	c.MainPRepCount = mainPRepCount
+	c.ExtraMainPRepCount = extraMainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
 	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition

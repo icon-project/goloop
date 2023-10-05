@@ -233,7 +233,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
 	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
-	c.ConsistentValidationPenaltySlashRate = int(slashRate.Percent())
+	c.ConsistentValidationPenaltySlashRate = slashRate
 
 	voted = make([]bool, mainPRepCount)
 	for i := 0; i < len(voted); i++ {

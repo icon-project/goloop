@@ -101,7 +101,7 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	if err := es.State.SetSlashingRate(
 		revision,
 		icmodule.PenaltyAccumulatedValidationFailure,
-		icmodule.ToRate(int64(cfg.ConsistentValidationPenaltySlashRate))); err != nil {
+		cfg.ConsistentValidationPenaltySlashRate); err != nil {
 		return err
 	}
 
@@ -198,5 +198,27 @@ func (sim *simulatorImpl) handleRev15(ws state.WorldState) error {
 }
 
 func (sim *simulatorImpl) handleRev17(ws state.WorldState) error {
+	revision := icmodule.Revision17
+	cfg := sim.config
+	es := getExtensionState(ws)
+
+	// Set slashingRate for PenaltyAccumulatedValidationFailure
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		cfg.ConsistentValidationPenaltySlashRate); err != nil {
+		return err
+	}
+	// Set slashingRate for PenaltyMissedNetworkProposalVote
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyMissedNetworkProposalVote,
+		cfg.NonVotePenaltySlashRate); err != nil {
+		return err
+	}
+	// Enable ExtraMainPReps
+	if err := es.State.SetExtraMainPRepCount(cfg.ExtraMainPRepCount); err != nil {
+		return err
+	}
 	return nil
 }
