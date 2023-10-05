@@ -10,14 +10,14 @@ type RewardFund struct {
 	Ivoter  int64
 }
 
-type config struct {
+type SimConfig struct {
 	TermPeriod                           int64
 	MainPRepCount                        int64
 	SubPRepCount                         int64
 	ExtraMainPRepCount                   int64
 	Irep                                 int64
 	Rrep                                 int64
-	BondRequirement                      int64
+	BondRequirement                      icmodule.Rate
 	UnbondingPeriodMultiplier            int64
 	UnstakeSlotMax                       int64
 	LockMinMultiplier                    int64
@@ -33,15 +33,15 @@ type config struct {
 	BondedPRepCount int
 }
 
-func NewConfig() *config {
-	return &config{
+func NewSimConfig() *SimConfig {
+	return &SimConfig{
 		TermPeriod:                           icmodule.DecentralizedTermPeriod,
 		MainPRepCount:                        icmodule.DefaultMainPRepCount,
 		SubPRepCount:                         icmodule.DefaultSubPRepCount,
 		ExtraMainPRepCount:                   icmodule.DefaultExtraMainPRepCount,
 		Irep:                                 icmodule.InitialIRep,
 		Rrep:                                 0,
-		BondRequirement:                      0,
+		BondRequirement:                      icmodule.Rate(0),
 		UnbondingPeriodMultiplier:            icmodule.DefaultUnbondingPeriodMultiplier,
 		UnstakeSlotMax:                       icmodule.InitialUnstakeSlotMax,
 		LockMinMultiplier:                    icmodule.DefaultLockMinMultiplier,

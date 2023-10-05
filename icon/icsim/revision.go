@@ -12,6 +12,19 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+type RevHandler func(ws state.WorldState) error
+
+func (sim *simulatorImpl) initRevHandler() {
+	sim.revHandlers = map[int]RevHandler{
+		icmodule.Revision5:  sim.handleRev5,
+		icmodule.Revision6:  sim.handleRev6,
+		icmodule.Revision9:  sim.handleRev9,
+		icmodule.Revision14: sim.handleRev14,
+		icmodule.Revision15: sim.handleRev15,
+		icmodule.Revision17: sim.handleRev17, // Enable ExtraMainPReps
+	}
+}
+
 func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, oldRev, newRev int) error {
 	if oldRev >= newRev {
 		return nil
@@ -66,7 +79,7 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	if err := es.State.SetSubPRepCount(cfg.SubPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(icmodule.ToRate(cfg.BondRequirement)); err != nil {
+	if err := es.State.SetBondRequirement(cfg.BondRequirement); err != nil {
 		return err
 	}
 	if err := es.State.SetLockVariables(big.NewInt(cfg.LockMinMultiplier), big.NewInt(cfg.LockMaxMultiplier)); err != nil {
@@ -108,17 +121,21 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	return es.GenesisTerm(sim.blockHeight, revision)
 }
 
-func applyRewardFund(config *config, s *icstate.State) error {
+func applyRewardFund(config *SimConfig, s *icstate.State) error {
 	rf := icstate.NewRewardFund(icstate.RFVersion1)
-	rf.SetIGlobal(big.NewInt(config.RewardFund.Iglobal))
-	rf.SetAllocation(
+	if err := rf.SetIGlobal(big.NewInt(config.RewardFund.Iglobal)); err != nil {
+		return err
+	}
+	if err := rf.SetAllocation(
 		map[icstate.RFundKey]icmodule.Rate{
 			icstate.KeyIprep:  icmodule.ToRate(config.RewardFund.Iprep),
 			icstate.KeyIcps:   icmodule.ToRate(config.RewardFund.Icps),
 			icstate.KeyIrelay: icmodule.ToRate(config.RewardFund.Irelay),
 			icstate.KeyIvoter: icmodule.ToRate(config.RewardFund.Ivoter),
 		},
-	)
+	); err != nil {
+		return err
+	}
 	if err := s.SetRewardFund(rf); err != nil {
 		return err
 	}
@@ -155,10 +172,6 @@ func (sim *simulatorImpl) handleRev9(ws state.WorldState) error {
 			}
 		}
 	}
-	return nil
-}
-
-func (sim *simulatorImpl) handleRev10(ws state.WorldState) error {
 	return nil
 }
 

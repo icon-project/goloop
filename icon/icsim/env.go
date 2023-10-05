@@ -49,7 +49,7 @@ func newDummyAddresses(start, size int) []module.Address {
 }
 
 type Env struct {
-	config  *config
+	config  *SimConfig
 	bonders []module.Address
 	preps   []module.Address
 	users   []module.Address
@@ -96,13 +96,13 @@ func (env *Env) init() error {
 func (env *Env) RegisterPReps() ([]Receipt, error) {
 	sim := env.sim
 	preps := env.preps
-	block := NewBlock()
+	blk := NewBlock()
 	for i, from := range preps {
 		info := newDummyPRepInfo(i)
 		tx := sim.RegisterPRep(from, info)
-		block.AddTransaction(tx)
+		blk.AddTransaction(tx)
 	}
-	return env.sim.GoByBlock(nil, block)
+	return env.sim.GoByBlock(nil, blk)
 }
 
 func (env *Env) SetStakesAll() ([]Receipt, error) {
@@ -208,7 +208,7 @@ func (env *Env) Simulator() Simulator {
 	return env.sim
 }
 
-func NewEnv(c *config, revision module.Revision) (*Env, error) {
+func NewEnv(c *SimConfig, revision module.Revision) (*Env, error) {
 	userLen := 100
 	prepLen := int(c.MainPRepCount + c.SubPRepCount)
 	bonderLen := prepLen
@@ -244,14 +244,17 @@ func NewEnv(c *config, revision module.Revision) (*Env, error) {
 		balances[icutils.ToKey(bonder)] = balance
 	}
 
-	sim := NewSimulator(revision, validators, balances, c)
-	env := &Env{
-		config:  c,
-		bonders: bonders,
-		preps:   preps,
-		users:   users,
-		sim:     sim,
+	var env *Env
+	sim, err := NewSimulator(revision, validators, balances, c)
+	if err == nil {
+		env = &Env{
+			config:  c,
+			bonders: bonders,
+			preps:   preps,
+			users:   users,
+			sim:     sim,
+		}
+		err = env.init()
 	}
-	err := env.init()
 	return env, err
 }

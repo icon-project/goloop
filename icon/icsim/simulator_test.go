@@ -51,7 +51,7 @@ func newDefaultConsensusInfo(sim Simulator) module.ConsensusInfo {
 	return newConsensusInfo(sim.Database(), vl, voted)
 }
 
-func initEnv(t *testing.T, c *config, revision module.Revision) *Env {
+func initEnv(t *testing.T, c *SimConfig, revision module.Revision) *Env {
 	var env *Env
 	var err error
 	mainPRepCount := int(c.MainPRepCount)
@@ -60,6 +60,7 @@ func initEnv(t *testing.T, c *config, revision module.Revision) *Env {
 	env, err = NewEnv(c, revision)
 	assert.NoError(t, err)
 	sim := env.Simulator()
+	assert.NotNil(t, sim)
 
 	// Check if decentralization is done
 	vl := sim.ValidatorList()
@@ -127,7 +128,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	var vl []module.Validator
 	//var prep *icstate.PRep
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
@@ -228,7 +229,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	var slashRate = icmodule.ToRate(5) // 5%
 	var tx Transaction
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
@@ -443,7 +444,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	//var receipts []Receipt
 	//var oldBonded, bonded, slashed *big.Int
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
@@ -575,7 +576,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	var prep *icstate.PRep
 	var blockHeight int64
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
@@ -695,7 +696,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	var jso map[string]interface{}
 	var ok bool
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition

@@ -99,10 +99,8 @@ func getExtensionState(ws state.WorldState) *iiss.ExtensionStateImpl {
 	return ws.GetExtensionState().(*iiss.ExtensionStateImpl)
 }
 
-type RevHandler func(ws state.WorldState) error
-
 type simulatorImpl struct {
-	config *config
+	config *SimConfig
 	plt    platform
 	logger log.Logger
 
@@ -150,18 +148,6 @@ func (sim *simulatorImpl) init(validators []module.Validator, balances map[strin
 	sim.onFinalize(wss)
 	sim.wss = wss
 	return nil
-}
-
-func (sim *simulatorImpl) initRevHandler() {
-	sim.revHandlers = map[int]RevHandler{
-		icmodule.Revision5:  sim.handleRev5,
-		icmodule.Revision6:  sim.handleRev6,
-		icmodule.Revision9:  sim.handleRev9,
-		icmodule.Revision10: sim.handleRev10,
-		icmodule.Revision14: sim.handleRev14,
-		icmodule.Revision15: sim.handleRev15,
-		icmodule.Revision17: sim.handleRev17,
-	}
 }
 
 func (sim *simulatorImpl) getExtensionState(readonly bool) *iiss.ExtensionStateImpl {
@@ -600,8 +586,8 @@ func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 }
 
 func NewSimulator(
-	revision module.Revision, initValidators []module.Validator, initBalances map[string]*big.Int, config *config,
-) Simulator {
+	revision module.Revision, initValidators []module.Validator, initBalances map[string]*big.Int, config *SimConfig,
+) (Simulator, error) {
 	sim := &simulatorImpl{
 		logger:      log.GlobalLogger(),
 		blockHeight: 0,
@@ -610,7 +596,7 @@ func NewSimulator(
 		config:      config,
 	}
 	if err := sim.init(initValidators, initBalances); err != nil {
-		return nil
+		return nil, err
 	}
-	return sim
+	return sim, nil
 }

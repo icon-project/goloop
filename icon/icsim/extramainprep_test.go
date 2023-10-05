@@ -29,7 +29,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 	br := icmodule.ToRate(5) // 5%
 	//var prep *icstate.PRepSet
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.ExtraMainPRepCount = extraMainPRepCount
 	c.BondedPRepCount = bondedPRepCount
@@ -104,7 +104,7 @@ func Test_PreventZeroPowerExtraMainPReps(t *testing.T) {
 	var vl []module.Validator
 	//var prep *icstate.PRepSet
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.ExtraMainPRepCount = extraMainPRepCount
 	c.TermPeriod = termPeriod
