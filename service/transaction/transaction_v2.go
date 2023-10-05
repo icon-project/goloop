@@ -222,18 +222,22 @@ func checkV2(jso map[string]interface{}) bool {
 	return true
 }
 
-func parseV2(js []byte, raw bool) (Transaction, error) {
+func parseV2(js []byte, jsm map[string]any, raw bool) (Transaction, error) {
 	jso, err := parseTransactionJSON(js)
 	if err != nil {
 		return nil, err
 	}
-	return &transactionV2{transactionJSON: jso}, nil
+	id, err := calcHashOfTransactionJSMap(jsm, Version2)
+	if err != nil {
+		return nil, err
+	}
+	return &transactionV2{transactionJSON: jso, txHash: id}, nil
 }
 
 func init() {
 	RegisterFactory(&Factory{
-		Priority:  30,
-		CheckJSON: checkV2,
-		ParseJSON: parseV2,
+		Priority:    30,
+		CheckJSON:   checkV2,
+		ParseJSON:   parseV2,
 	})
 }
