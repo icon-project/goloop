@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
@@ -91,7 +92,7 @@ func (t *transactionImpl) Args() []interface{} {
 	return t.args
 }
 
-func NewTransaction(txType TxType, args []interface{}) Transaction {
+func NewTransaction(txType TxType, args ...interface{}) Transaction {
 	return &transactionImpl{txType, args}
 }
 
@@ -111,10 +112,12 @@ type simulatorImpl struct {
 	revHandlers map[int]RevHandler
 }
 
-func (sim *simulatorImpl) init(validators []module.Validator, balances map[string]*big.Int) error {
+func (sim *simulatorImpl) init(
+	revision module.Revision, validators []module.Validator, balances map[string]*big.Int) error {
 	dbase := db.NewMapDB()
 	sim.initRevHandler()
 
+	// Initialize WorldState with ValidatorList
 	vss, err := state.ValidatorSnapshotFromSlice(dbase, validators)
 	if err != nil {
 		return err
@@ -135,7 +138,10 @@ func (sim *simulatorImpl) init(validators []module.Validator, balances map[strin
 	if err = tsVarDB.Set(totalSupply); err != nil {
 		return err
 	}
-	if err = sim.handleRevisionChange(ws, 0, sim.revision.Value()); err != nil {
+
+	// Initialize revision
+	rev := icutils.Min(revision.Value(), icmodule.Revision13)
+	if err = sim.handleRevisionChange(ws, 0, rev); err != nil {
 		return err
 	}
 
@@ -192,13 +198,36 @@ func (sim *simulatorImpl) GetBalance(address module.Address) *big.Int {
 	return as.GetBalance()
 }
 
-func (sim *simulatorImpl) SetRevision(revision module.Revision) Transaction {
-	return NewTransaction(TypeSetRevision, []interface{}{revision})
+func (sim *simulatorImpl) Transfer(from, to module.Address, amount *big.Int) Transaction {
+	return NewTransaction(TypeTransfer, from, to, amount)
 }
 
-func (sim *simulatorImpl) setRevision(wc icmodule.WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) GoByTransfer(
+	csi module.ConsensusInfo, from, to module.Address, amount *big.Int) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeTransfer, from, to, amount)
+}
+
+func (sim *simulatorImpl) transfer(_ *iiss.ExtensionStateImpl, wc icmodule.WorldContext, tx Transaction) error {
 	args := tx.Args()
-	revision := args[0].(module.Revision)
+	from := args[0].(module.Address)
+	to := args[1].(module.Address)
+	amount := args[2].(*big.Int)
+	return wc.Transfer(from, to, amount, module.Transfer)
+}
+
+func (sim *simulatorImpl) SetRevision(from module.Address, revision module.Revision) Transaction {
+	return NewTransaction(TypeSetRevision, from, revision)
+}
+
+func (sim *simulatorImpl) GoBySetRevision(
+	csi module.ConsensusInfo, from module.Address, revision module.Revision) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetRevision, from, revision)
+}
+
+func (sim *simulatorImpl) setRevision(_ *iiss.ExtensionStateImpl, wc icmodule.WorldContext, tx Transaction) error {
+	args := tx.Args()
+	//from := args[0].(module.Address)
+	revision := args[1].(module.Revision)
 	curRev := sim.revision.Value()
 	newRev := revision.Value()
 
@@ -214,11 +243,10 @@ func (sim *simulatorImpl) setRevision(wc icmodule.WorldContext, tx Transaction) 
 
 	ws := wc.(state.WorldState)
 	err := sim.handleRevisionChange(ws, curRev, newRev)
-	sim.revision = revision
 	return err
 }
 
-func (sim *simulatorImpl) GetStake(from module.Address) map[string]interface{} {
+func (sim *simulatorImpl) GetStakeInJSON(from module.Address) map[string]interface{} {
 	es := sim.getExtensionState(true)
 	ia := es.State.GetAccountSnapshot(from)
 	if ia == nil {
@@ -228,14 +256,20 @@ func (sim *simulatorImpl) GetStake(from module.Address) map[string]interface{} {
 }
 
 func (sim *simulatorImpl) SetStake(from module.Address, amount *big.Int) Transaction {
-	return NewTransaction(TypeSetStake, []interface{}{from, amount})
+	return NewTransaction(TypeSetStake, from, amount)
 }
 
-func (sim *simulatorImpl) setStake(es *iiss.ExtensionStateImpl, tx Transaction) error {
+func (sim *simulatorImpl) GoBySetStake(
+	csi module.ConsensusInfo, from module.Address, amount *big.Int) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetStake, from, amount)
+}
+
+func (sim *simulatorImpl) setStake(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
 	args := tx.Args()
 	from := args[0].(module.Address)
 	amount := args[1].(*big.Int)
-	return es.State.GetAccountState(from).SetStake(amount)
+	cc := NewCallContext(wc, from)
+	return es.SetStake(cc, amount)
 }
 
 // Go generates as many blocks as the number passed as a parameter "blocks"
@@ -247,36 +281,12 @@ func (sim *simulatorImpl) Go(csi module.ConsensusInfo, blocks int64) error {
 		return errors.Errorf("Invalid blocks: %d", blocks)
 	}
 
-	var err error
-	wss := sim.wss
-	blockHeight := sim.blockHeight
-
 	for i := int64(0); i < blocks; i++ {
-		blockHeight++
-
-		ws := newWorldState(wss, false)
-		wc := NewWorldContext(ws, blockHeight, sim.Revision(), csi, sim.stepPrice)
-
-		if err = sim.onExecutionBegin(wc); err != nil {
+		if _, err := sim.GoByBlock(csi, nil); err != nil {
 			return err
 		}
-		if err = sim.onBaseTx(wc); err != nil {
-			return err
-		}
-		if err = sim.onExecutionEnd(wc); err != nil {
-			return err
-		}
-
-		wss = ws.GetSnapshot()
-		if err = wss.Flush(); err != nil {
-			return err
-		}
-
-		sim.onFinalize(wss)
 	}
 
-	sim.wss = wss
-	sim.blockHeight = blockHeight
 	return nil
 }
 
@@ -314,31 +324,50 @@ func (sim *simulatorImpl) GoToTermEnd(csi module.ConsensusInfo) error {
 	return sim.Go(csi, blocks)
 }
 
-func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, block Block) ([]Receipt, error) {
+func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, blk Block) ([]Receipt, error) {
 	var err error
+	var receipts []Receipt
+
 	wss := sim.wss
-	ws := newWorldState(wss, false)
-	ws.ClearCache()
-
 	blockHeight := sim.blockHeight + 1
-	receipts := make([]Receipt, len(block.Txs()))
+	ws := newWorldState(wss, false)
+	wc := NewWorldContext(ws, blockHeight, sim.Revision(), csi, sim.stepPrice)
 
-	for i, tx := range block.Txs() {
-		wss = ws.GetSnapshot()
-		err = sim.executeTx(csi, ws, tx)
-		receipts[i] = NewReceipt(blockHeight, err)
+	if err = sim.onExecutionBegin(wc); err != nil {
+		return nil, err
+	}
+	if err = sim.onBaseTx(wc); err != nil {
+		return nil, err
+	}
 
-		if err != nil {
-			if err = ws.Reset(wss); err != nil {
-				return nil, err
+	// Execute transactions in a given block
+	if blk != nil {
+		receipts = make([]Receipt, len(blk.Txs()))
+
+		for i, tx := range blk.Txs() {
+			wss = ws.GetSnapshot()
+
+			err = sim.executeTx(wc, tx)
+			receipts[i] = NewReceipt(blockHeight, err)
+
+			if err != nil {
+				if err = ws.Reset(wss); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
 
+	if err = sim.onExecutionEnd(wc); err != nil {
+		return receipts, err
+	}
+
 	wss = ws.GetSnapshot()
 	if err = wss.Flush(); err != nil {
-		return nil, err
+		return receipts, err
 	}
+
+	sim.onFinalize(wss)
 
 	sim.wss = wss
 	sim.blockHeight = blockHeight
@@ -354,21 +383,31 @@ func (sim *simulatorImpl) GoByTransaction(csi module.ConsensusInfo, txs ...Trans
 	return sim.GoByBlock(csi, blk)
 }
 
-func (sim *simulatorImpl) executeTx(csi module.ConsensusInfo, ws state.WorldState, tx Transaction) error {
+func (sim *simulatorImpl) goByOneTransaction(
+	csi module.ConsensusInfo, txType TxType, args ...interface{}) (Receipt, error) {
+	tx := NewTransaction(txType, args...)
+	if receipts, err := sim.GoByTransaction(csi, tx); err == nil {
+		return receipts[0], err
+	} else {
+		return nil, err
+	}
+}
+
+func (sim *simulatorImpl) executeTx(wc WorldContext, tx Transaction) error {
 	var err error
-	revision := sim.revision
-	wc := NewWorldContext(ws, sim.blockHeight+1, revision, csi, sim.stepPrice)
 	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	switch tx.Type() {
+	case TypeTransfer:
+		err = sim.transfer(es, wc, tx)
 	case TypeSetStake:
-		err = sim.setStake(es, tx)
+		err = sim.setStake(es, wc, tx)
 	case TypeSetDelegation:
 		err = sim.setDelegation(es, wc, tx)
 	case TypeSetBond:
 		err = sim.setBond(es, wc, tx)
 	case TypeSetBonderList:
-		err = sim.setBonderList(es, tx)
+		err = sim.setBonderList(es, wc, tx)
 	case TypeRegisterPRep:
 		err = sim.registerPRep(es, wc, tx)
 	case TypeUnregisterPRep:
@@ -378,9 +417,19 @@ func (sim *simulatorImpl) executeTx(csi module.ConsensusInfo, ws state.WorldStat
 	case TypeSetPRep:
 		err = sim.setPRep(es, wc, tx)
 	case TypeSetRevision:
-		err = sim.setRevision(wc, tx)
+		err = sim.setRevision(es, wc, tx)
 	case TypeClaimIScore:
 		err = sim.claimIScore(es, wc, tx)
+	case TypeSetSlashingRates:
+		err = sim.setSlashingRates(es, wc, tx)
+	case TypeSetMinimumBond:
+		err = sim.setMinimumBond(es, wc, tx)
+	case TypeInitCommissionRate:
+		err = sim.initCommissionRate(es, wc, tx)
+	case TypeSetCommissionRate:
+		err = sim.setCommissionRate(es, wc, tx)
+	case TypeRequestUnjail:
+		err = sim.requestUnjail(es, wc, tx)
 	default:
 		return errors.Errorf("Unexpected transaction: %v", tx.Type())
 	}
@@ -388,7 +437,12 @@ func (sim *simulatorImpl) executeTx(csi module.ConsensusInfo, ws state.WorldStat
 }
 
 func (sim *simulatorImpl) RegisterPRep(from module.Address, info *icstate.PRepInfo) Transaction {
-	return NewTransaction(TypeRegisterPRep, []interface{}{from, info})
+	return NewTransaction(TypeRegisterPRep, from, info)
+}
+
+func (sim *simulatorImpl) GoByRegisterPRep(
+	csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeRegisterPRep, from, info)
 }
 
 func (sim *simulatorImpl) registerPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
@@ -403,7 +457,12 @@ func (sim *simulatorImpl) registerPRep(es *iiss.ExtensionStateImpl, wc WorldCont
 }
 
 func (sim *simulatorImpl) UnregisterPRep(from module.Address) Transaction {
-	return NewTransaction(TypeUnregisterPRep, []interface{}{from})
+	return NewTransaction(TypeUnregisterPRep, from)
+}
+
+func (sim *simulatorImpl) GoByUnregisterPRep(
+	csi module.ConsensusInfo, from module.Address) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeUnregisterPRep, from)
 }
 
 func (sim *simulatorImpl) unregisterPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
@@ -414,7 +473,11 @@ func (sim *simulatorImpl) unregisterPRep(es *iiss.ExtensionStateImpl, wc WorldCo
 }
 
 func (sim *simulatorImpl) DisqualifyPRep(from module.Address, address module.Address) Transaction {
-	return NewTransaction(TypeDisqualifyPRep, []interface{}{from, address})
+	return NewTransaction(TypeDisqualifyPRep, from, address)
+}
+
+func (sim *simulatorImpl) GoByDisqualifyPRep(csi module.ConsensusInfo, from, address module.Address) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeDisqualifyPRep, from, address)
 }
 
 func (sim *simulatorImpl) disqualifyPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
@@ -426,7 +489,12 @@ func (sim *simulatorImpl) disqualifyPRep(es *iiss.ExtensionStateImpl, wc WorldCo
 }
 
 func (sim *simulatorImpl) SetPRep(from module.Address, info *icstate.PRepInfo) Transaction {
-	return NewTransaction(TypeSetPRep, []interface{}{from, info})
+	return NewTransaction(TypeSetPRep, from, info)
+}
+
+func (sim *simulatorImpl) GoBySetPRep(
+	csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetPRep, from, info)
 }
 
 func (sim *simulatorImpl) setPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
@@ -437,14 +505,19 @@ func (sim *simulatorImpl) setPRep(es *iiss.ExtensionStateImpl, wc WorldContext, 
 	return es.SetPRep(cc, info, false)
 }
 
-func (sim *simulatorImpl) GetDelegation(from module.Address) map[string]interface{} {
+func (sim *simulatorImpl) GetDelegationInJSON(from module.Address) map[string]interface{} {
 	es := sim.getExtensionState(true)
 	ia := es.State.GetAccountSnapshot(from)
 	return ia.GetDelegationInJSON()
 }
 
 func (sim *simulatorImpl) SetDelegation(from module.Address, ds icstate.Delegations) Transaction {
-	return NewTransaction(TypeSetDelegation, []interface{}{from, ds})
+	return NewTransaction(TypeSetDelegation, from, ds)
+}
+
+func (sim *simulatorImpl) GoBySetDelegation(
+	csi module.ConsensusInfo, from module.Address, ds *icstate.Delegations) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetDelegation, from, ds)
 }
 
 func (sim *simulatorImpl) setDelegation(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
@@ -455,14 +528,19 @@ func (sim *simulatorImpl) setDelegation(es *iiss.ExtensionStateImpl, wc WorldCon
 	return es.SetDelegation(cc, ds)
 }
 
-func (sim *simulatorImpl) GetBond(address module.Address) map[string]interface{} {
+func (sim *simulatorImpl) GetBondInJSON(address module.Address) map[string]interface{} {
 	es := sim.getExtensionState(true)
 	jso, _ := es.GetBond(address)
 	return jso
 }
 
 func (sim *simulatorImpl) SetBond(from module.Address, bonds icstate.Bonds) Transaction {
-	return NewTransaction(TypeSetBond, []interface{}{from, bonds})
+	return NewTransaction(TypeSetBond, from, bonds)
+}
+
+func (sim *simulatorImpl) GoBySetBond(
+	csi module.ConsensusInfo, from module.Address, bonds icstate.Bonds) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetBond, from, bonds)
 }
 
 func (sim *simulatorImpl) setBond(es *iiss.ExtensionStateImpl, wc icmodule.WorldContext, tx Transaction) error {
@@ -472,17 +550,28 @@ func (sim *simulatorImpl) setBond(es *iiss.ExtensionStateImpl, wc icmodule.World
 	return es.SetBond(wc.BlockHeight(), from, bonds)
 }
 
-func (sim *simulatorImpl) GetBonderList(address module.Address) map[string]interface{} {
+func (sim *simulatorImpl) GetBonderListInJSON(address module.Address) map[string]interface{} {
 	es := sim.getExtensionState(true)
 	jso, _ := es.GetBonderList(address)
 	return jso
 }
 
-func (sim *simulatorImpl) SetBonderList(from module.Address, bl icstate.BonderList) Transaction {
-	return NewTransaction(TypeSetBonderList, []interface{}{from, bl})
+func (sim *simulatorImpl) GetBonderList(address module.Address) icstate.BonderList {
+	es := sim.getExtensionState(true)
+	pb := es.State.GetPRepBaseByOwner(address, false)
+	return pb.BonderList()
 }
 
-func (sim *simulatorImpl) setBonderList(es *iiss.ExtensionStateImpl, tx Transaction) error {
+func (sim *simulatorImpl) SetBonderList(from module.Address, bl icstate.BonderList) Transaction {
+	return NewTransaction(TypeSetBonderList, from, bl)
+}
+
+func (sim *simulatorImpl) GoBySetBonderList(
+	csi module.ConsensusInfo, from module.Address, bl icstate.BonderList) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetBonderList, from, bl)
+}
+
+func (sim *simulatorImpl) setBonderList(es *iiss.ExtensionStateImpl, _ WorldContext, tx Transaction) error {
 	args := tx.Args()
 	from := args[0].(module.Address)
 	bl := args[1].(icstate.BonderList)
@@ -490,7 +579,12 @@ func (sim *simulatorImpl) setBonderList(es *iiss.ExtensionStateImpl, tx Transact
 }
 
 func (sim *simulatorImpl) ClaimIScore(from module.Address) Transaction {
-	return NewTransaction(TypeClaimIScore, []interface{}{from})
+	return NewTransaction(TypeClaimIScore, from)
+}
+
+func (sim *simulatorImpl) GoByClaimIScore(
+	csi module.ConsensusInfo, from module.Address) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeClaimIScore, from)
 }
 
 func (sim *simulatorImpl) claimIScore(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
@@ -506,7 +600,7 @@ func (sim *simulatorImpl) QueryIScore(address module.Address) *big.Int {
 	return iscore
 }
 
-func (sim *simulatorImpl) GetPRepTerm() map[string]interface{} {
+func (sim *simulatorImpl) GetPRepTermInJSON() map[string]interface{} {
 	es := sim.getExtensionState(true)
 	jso, _ := es.GetPRepTermInJSON(sim.newCallContext())
 	return jso
@@ -519,19 +613,36 @@ func (sim *simulatorImpl) newCallContext() icmodule.CallContext {
 	return NewCallContext(wc, state.SystemAddress)
 }
 
-func (sim *simulatorImpl) GetPReps() map[string]interface{} {
+func (sim *simulatorImpl) GetPRepsInJSON() map[string]interface{} {
 	es := sim.getExtensionState(true)
 	jso, _ := es.GetPRepsInJSON(sim.newCallContext(), 0, 0)
 	return jso
 }
 
-func (sim *simulatorImpl) GetMainPReps() map[string]interface{} {
+func (sim *simulatorImpl) NewDefaultConsensusInfo() module.ConsensusInfo {
+	vl := sim.ValidatorList()
+	voted := make([]bool, len(vl))
+	for i := 0; i < len(voted); i++ {
+		voted[i] = true
+	}
+	return NewConsensusInfo(sim.Database(), vl, voted)
+}
+
+func (sim *simulatorImpl) NewConsensusInfo(voted []bool) (module.ConsensusInfo, error) {
+	vl := sim.ValidatorList()
+	if len(vl) != len(voted) {
+		return nil, errors.Errorf("len(vl) != len(voted): len(vl)=%d len(voted)=%d", len(vl), len(voted))
+	}
+	return NewConsensusInfo(sim.Database(), vl, voted), nil
+}
+
+func (sim *simulatorImpl) GetMainPRepsInJSON() map[string]interface{} {
 	es := sim.getExtensionState(true)
 	jso, _ := es.GetMainPRepsInJSON(sim.BlockHeight())
 	return jso
 }
 
-func (sim *simulatorImpl) GetSubPReps() map[string]interface{} {
+func (sim *simulatorImpl) GetSubPRepsInJSON() map[string]interface{} {
 	es := sim.getExtensionState(true)
 	jso, _ := es.GetSubPRepsInJSON(sim.BlockHeight())
 	return jso
@@ -542,14 +653,14 @@ func (sim *simulatorImpl) GetPRep(address module.Address) *icstate.PRep {
 	return es.State.GetPRepByOwner(address)
 }
 
-func (sim *simulatorImpl) GetPRepStats(address module.Address) map[string]interface{} {
+func (sim *simulatorImpl) GetPRepStatsInJSON(address module.Address) map[string]interface{} {
 	es := sim.getExtensionState(true)
 	ps := es.State.GetPRepStatusByOwner(address, false)
 	sc := sim.GetStateContext()
 	return ps.GetStatsInJSON(sc)
 }
 
-func (sim *simulatorImpl) GetNetworkInfo() map[string]interface{} {
+func (sim *simulatorImpl) GetNetworkInfoInJSON() map[string]interface{} {
 	es := sim.getExtensionState(true)
 	jso, err := es.State.GetNetworkInfoInJSON(sim.Revision().Value())
 	if err != nil {
@@ -561,6 +672,20 @@ func (sim *simulatorImpl) GetNetworkInfo() map[string]interface{} {
 func (sim *simulatorImpl) TermSnapshot() *icstate.TermSnapshot {
 	es := sim.getExtensionState(true)
 	return es.State.GetTermSnapshot()
+}
+
+func (sim *simulatorImpl) GetPReps(grade icstate.Grade) []*icstate.PRep {
+	cfg := sim.config
+	es := sim.getExtensionState(true)
+	activePReps := es.State.GetPReps(true)
+
+	preps := make([]*icstate.PRep, 0, cfg.SubPRepCount)
+	for _, prep := range activePReps {
+		if prep.Grade() == grade {
+			preps = append(preps, prep)
+		}
+	}
+	return preps
 }
 
 func (sim *simulatorImpl) ValidatorList() []module.Validator {
@@ -585,18 +710,123 @@ func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 	}
 }
 
+func (sim *simulatorImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
+	es := sim.getExtensionState(true)
+	cc := sim.newCallContext()
+	return es.GetSlashingRates(cc, penaltyTypes)
+}
+
+func (sim *simulatorImpl) SetSlashingRates(from module.Address, rates map[string]icmodule.Rate) Transaction {
+	return NewTransaction(TypeSetSlashingRates, from, rates)
+}
+
+func (sim *simulatorImpl) GoBySetSlashingRates(
+	csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetSlashingRates, from, rates)
+}
+
+func (sim *simulatorImpl) setSlashingRates(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+	args := tx.Args()
+	from := args[0].(module.Address)
+	rates := args[1].(map[string]icmodule.Rate)
+	cc := NewCallContext(wc, from)
+	return es.SetSlashingRates(cc, rates)
+}
+
+func (sim *simulatorImpl) GetMinimumBond() *big.Int {
+	es := sim.getExtensionState(true)
+	return es.State.GetMinimumBond()
+}
+
+func (sim *simulatorImpl) SetMinimumBond(from module.Address, bond *big.Int) Transaction {
+	return NewTransaction(TypeSetMinimumBond, from, bond)
+}
+
+func (sim *simulatorImpl) GoBySetMinimumBond(
+	csi module.ConsensusInfo, from module.Address, bond *big.Int) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetMinimumBond, from, bond)
+}
+
+func (sim *simulatorImpl) setMinimumBond(es *iiss.ExtensionStateImpl, _ WorldContext, tx Transaction) error {
+	args := tx.Args()
+	//from := args[0].(module.Address)
+	bond := args[1].(*big.Int)
+	return es.State.SetMinimumBond(bond)
+}
+
+func (sim *simulatorImpl) InitCommissionRate(
+	from module.Address, rate, maxRate, maxChangeRate icmodule.Rate) Transaction {
+	return NewTransaction(TypeInitCommissionRate, from, rate, maxRate, maxChangeRate)
+}
+
+func (sim *simulatorImpl) GoByInitCommissionRate(
+	csi module.ConsensusInfo, from module.Address, rate, maxRate, maxChangeRate icmodule.Rate) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeInitCommissionRate, from, rate, maxRate, maxChangeRate)
+}
+
+func (sim *simulatorImpl) initCommissionRate(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+	args := tx.Args()
+	from := args[0].(module.Address)
+	rate := args[1].(icmodule.Rate)
+	maxRate := args[2].(icmodule.Rate)
+	maxChangeRate := args[3].(icmodule.Rate)
+	cc := NewCallContext(wc, from)
+	return es.InitCommissionInfo(cc, rate, maxRate, maxChangeRate)
+}
+
+func (sim *simulatorImpl) SetCommissionRate(from module.Address, rate icmodule.Rate) Transaction {
+	return NewTransaction(TypeSetCommissionRate, from, rate)
+}
+
+func (sim *simulatorImpl) GoBySetCommissionRate(
+	csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetCommissionRate, from, rate)
+}
+
+func (sim *simulatorImpl) setCommissionRate(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+	args := tx.Args()
+	from := args[0].(module.Address)
+	rate := args[1].(icmodule.Rate)
+	cc := NewCallContext(wc, from)
+	return es.SetCommissionRate(cc, rate)
+}
+
+func (sim *simulatorImpl) RequestUnjail(from module.Address) Transaction {
+	return NewTransaction(TypeSetCommissionRate, from)
+}
+
+func (sim *simulatorImpl) GoByRequestUnjail(
+	csi module.ConsensusInfo, from module.Address) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeRequestUnjail, from)
+}
+
+func (sim *simulatorImpl) requestUnjail(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+	args := tx.Args()
+	from := args[0].(module.Address)
+	cc := NewCallContext(wc, from)
+	return es.RequestUnjail(cc)
+}
+
 func NewSimulator(
 	revision module.Revision, initValidators []module.Validator, initBalances map[string]*big.Int, config *SimConfig,
 ) (Simulator, error) {
 	sim := &simulatorImpl{
 		logger:      log.GlobalLogger(),
 		blockHeight: 0,
-		revision:    revision,
 		stepPrice:   icmodule.BigIntZero,
 		config:      config,
 	}
-	if err := sim.init(initValidators, initBalances); err != nil {
+	if err := sim.init(revision, initValidators, initBalances); err != nil {
 		return nil, err
 	}
 	return sim, nil
+}
+
+func CheckReceiptSuccess(receipts ...Receipt) bool {
+	for _, rcpt := range receipts {
+		if rcpt.Status() != 1 {
+			return false
+		}
+	}
+	return true
 }

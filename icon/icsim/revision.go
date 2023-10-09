@@ -38,6 +38,7 @@ func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, oldRev, newR
 			}
 		}
 	}
+	sim.revision = icmodule.ValueToRevision(newRev)
 	return nil
 }
 
@@ -102,7 +103,7 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	if err := es.State.SetUnbondingMax(cfg.UnbondingMax); err != nil {
 		return err
 	}
-	if err := es.State.SetValidationPenaltyCondition(cfg.ValidationPenaltyCondition); err != nil {
+	if err := es.State.SetValidationPenaltyCondition(int(cfg.ValidationPenaltyCondition)); err != nil {
 		return err
 	}
 	if err := es.State.SetConsistentValidationPenaltyCondition(

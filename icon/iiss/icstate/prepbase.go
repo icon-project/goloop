@@ -605,7 +605,7 @@ func (bl BonderList) Clone() BonderList {
 
 func (bl BonderList) ToJSON() []interface{} {
 	size := len(bl)
-	jso := make([]interface{}, size, size)
+	jso := make([]interface{}, size)
 	for i, b := range bl {
 		jso[i] = b
 	}

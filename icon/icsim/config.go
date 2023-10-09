@@ -1,6 +1,10 @@
 package icsim
 
-import "github.com/icon-project/goloop/icon/icmodule"
+import (
+	"strings"
+
+	"github.com/icon-project/goloop/icon/icmodule"
+)
 
 type RewardFund struct {
 	Iglobal int64
@@ -23,14 +27,13 @@ type SimConfig struct {
 	LockMinMultiplier                    int64
 	LockMaxMultiplier                    int64
 	UnbondingMax                         int64
-	ValidationPenaltyCondition           int
+	ValidationPenaltyCondition           int64
 	ConsistentValidationPenaltyCondition int64
 	ConsistentValidationPenaltyMask      int64
 	ConsistentValidationPenaltySlashRate icmodule.Rate
 	NonVotePenaltySlashRate              icmodule.Rate
 	DelegationSlotMax                    int64
 	RewardFund
-	BondedPRepCount int
 }
 
 func NewSimConfig() *SimConfig {
@@ -41,7 +44,7 @@ func NewSimConfig() *SimConfig {
 		ExtraMainPRepCount:                   icmodule.DefaultExtraMainPRepCount,
 		Irep:                                 icmodule.InitialIRep,
 		Rrep:                                 0,
-		BondRequirement:                      icmodule.Rate(0),
+		BondRequirement:                      icmodule.ToRate(icmodule.DefaultBondRequirement),
 		UnbondingPeriodMultiplier:            icmodule.DefaultUnbondingPeriodMultiplier,
 		UnstakeSlotMax:                       icmodule.InitialUnstakeSlotMax,
 		LockMinMultiplier:                    icmodule.DefaultLockMinMultiplier,
@@ -61,4 +64,33 @@ func NewSimConfig() *SimConfig {
 			Irelay:  icmodule.DefaultIrelay,
 		},
 	}
+}
+
+func NewSimConfigWithParams(params map[string]interface{}) *SimConfig {
+	cfg := NewSimConfig()
+	for k, v := range params {
+		k = strings.ToLower(k)
+		switch k {
+		case "br", strings.ToLower("BondRequirement"):
+			cfg.BondRequirement = v.(icmodule.Rate)
+		case "tp", "tperiod", strings.ToLower("TermPeriod"):
+			cfg.TermPeriod = v.(int64)
+		case "vpc", strings.ToLower("ValidationPenaltyCondition"):
+			cfg.ValidationPenaltyCondition = v.(int64)
+		case "cvpc", strings.ToLower("ConsistentValidationPenaltyCondition"):
+			cfg.ConsistentValidationPenaltyCondition = v.(int64)
+		case strings.ToLower("ConsistentValidationPenaltySlashRate"):
+			cfg.ConsistentValidationPenaltySlashRate = v.(icmodule.Rate)
+		case strings.ToLower("NonVotePenaltySlashRate"):
+			cfg.NonVotePenaltySlashRate = v.(icmodule.Rate)
+		case strings.ToLower("MainPReps"), strings.ToLower("MainPRepCount"):
+			cfg.MainPRepCount = v.(int64)
+		case strings.ToLower("SubPReps"), strings.ToLower("SubPRepCount"):
+			cfg.SubPRepCount = v.(int64)
+		case strings.ToLower("ExtraMainPReps"), strings.ToLower("ExtraMainPRepCount"):
+			cfg.ExtraMainPRepCount = v.(int64)
+		}
+	}
+
+	return cfg
 }
