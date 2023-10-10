@@ -7,6 +7,7 @@ import (
 
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -18,54 +19,73 @@ func Test_ExtraMainPReps(t *testing.T) {
 		consistentValidationPenaltyCondition = 3
 		extraMainPRepCount                   = 3
 		newMainPRepCount                     = mainPRepCount + extraMainPRepCount
-		bondedPRepCount                      = newMainPRepCount
 	)
 
 	var err error
-	var voted []bool
-	//var blockHeight int64
 	var csi module.ConsensusInfo
 	var vl []module.Validator
 	br := icmodule.ToRate(5) // 5%
-	//var prep *icstate.PRepSet
 
-	c := NewConfig()
-	c.MainPRepCount = mainPRepCount
-	c.BondedPRepCount = bondedPRepCount
-	c.TermPeriod = termPeriod
-	c.ValidationPenaltyCondition = validationPenaltyCondition
-	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
-
-	// size: 22, cap: 25
-	voted = make([]bool, mainPRepCount, newMainPRepCount)
-	for i := 0; i < mainPRepCount; i++ {
-		voted[i] = true
-	}
+	c := NewSimConfigWithParams(map[string]interface{}{
+		"MainPReps":                            int64(mainPRepCount),
+		"ExtraMainPReps":                       int64(extraMainPRepCount),
+		"TermPeriod":                           int64(termPeriod),
+		"ValidationPenaltyCondition":           int64(validationPenaltyCondition),
+		"ConsistentValidationPenaltyCondition": int64(consistentValidationPenaltyCondition),
+		"br":                                   icmodule.ToRate(5),
+	})
 
 	// Decentralization is activated
-	env := initEnv(t, c, icmodule.Revision13)
+	env, err := NewEnv(c, icmodule.Revision13)
+	assert.NoError(t, err)
 	sim := env.sim
+	csi = sim.NewDefaultConsensusInfo()
 
 	// Set revision to 17 to activate extra main preps
-	tx := sim.SetRevision(icmodule.RevisionExtraMainPReps)
-	_, err = sim.GoByTransaction(csi, tx)
+	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.RevisionExtraMainPReps)
 	assert.NoError(t, err)
+	assert.True(t, CheckReceiptSuccess(rcpt))
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
 
 	vl = sim.ValidatorList()
 	assert.Len(t, vl, newMainPRepCount)
+	csi = sim.NewDefaultConsensusInfo()
 
-	emptyBonds := make([]*icstate.Bond, 0, 0)
+	bonders := make(map[string]bool)
+
+	// Make 75 out of 100 PReps have no bond
+	emptyBonds := make([]*icstate.Bond, 0)
+	size := len(env.bonders) - newMainPRepCount
+	if size < 0 {
+		size = 0
+	}
+	for i := 0; i < size; i++ {
+		bonder := env.bonders[i]
+		rcpt, err = sim.GoBySetBond(csi, bonder, emptyBonds)
+		assert.NoError(t, err)
+		assert.True(t, CheckReceiptSuccess(rcpt))
+
+		assert.False(t, bonders[icutils.ToKey(bonder)])
+		bonders[icutils.ToKey(bonder)] = true
+	}
+	assert.NoError(t, sim.GoToTermEnd(csi))
+
 	for i := 0; i < 3; i++ {
-		tx = sim.SetBond(env.bonders[i], emptyBonds)
-		_, err = sim.GoByTransaction(csi, tx)
-		assert.NoError(t, err)
+		mainPReps := sim.GetPReps(icstate.GradeMain)
+		assert.Equal(t, newMainPRepCount-i, len(mainPReps))
+		owner := mainPReps[0].Owner()
+		bonderList := sim.GetBonderList(owner)
 
-		err = sim.GoToTermEnd(csi)
+		assert.False(t, bonders[icutils.ToKey(bonderList[0])])
+		rcpt, err = sim.GoBySetBond(csi, bonderList[0], emptyBonds)
 		assert.NoError(t, err)
+		assert.True(t, CheckReceiptSuccess(rcpt))
 
-		// All validators (= main preps) should have 1 or more bonded
+		// Move to the next term
+		assert.NoError(t, sim.GoToTermEnd(csi))
+
+		// The bonds of all validators (= main preps) should be larger than 0
 		vl = sim.ValidatorList()
 		assert.Len(t, vl, newMainPRepCount-i-1)
 		for _, v := range vl {
@@ -81,52 +101,6 @@ func Test_ExtraMainPReps(t *testing.T) {
 				bondedPReps++
 			}
 		}
-		assert.Equal(t, bondedPReps, newMainPRepCount-i-1)
+		assert.Equal(t, newMainPRepCount-i-1, bondedPReps)
 	}
-}
-
-func Test_PreventZeroPowerExtraMainPReps(t *testing.T) {
-	const (
-		termPeriod                           = 100
-		mainPRepCount                        = 22
-		validationPenaltyCondition           = 5
-		consistentValidationPenaltyCondition = 3
-		extraMainPRepCount                   = 3
-		newMainPRepCount                     = mainPRepCount + extraMainPRepCount
-		bondedPRepCount                      = mainPRepCount + 2
-	)
-
-	var err error
-	var voted []bool
-	//var blockHeight int64
-	var csi module.ConsensusInfo
-	var vl []module.Validator
-	//var prep *icstate.PRepSet
-
-	c := NewConfig()
-	c.MainPRepCount = mainPRepCount
-	c.TermPeriod = termPeriod
-	c.ValidationPenaltyCondition = validationPenaltyCondition
-	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
-	c.BondedPRepCount = bondedPRepCount
-
-	// size: 22, cap: 25
-	voted = make([]bool, mainPRepCount, newMainPRepCount)
-	for i := 0; i < mainPRepCount; i++ {
-		voted[i] = true
-	}
-
-	// Decentralization is activated
-	env := initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
-
-	// Set revision to 17 to activate extra main preps
-	tx := sim.SetRevision(icmodule.RevisionExtraMainPReps)
-	_, err = sim.GoByTransaction(csi, tx)
-	assert.NoError(t, err)
-	err = sim.GoToTermEnd(csi)
-	assert.NoError(t, err)
-
-	vl = sim.ValidatorList()
-	assert.Len(t, vl, bondedPRepCount)
 }

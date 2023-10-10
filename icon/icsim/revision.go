@@ -12,6 +12,21 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+type RevHandler func(ws state.WorldState) error
+
+func (sim *simulatorImpl) initRevHandler() {
+	sim.revHandlers = map[int]RevHandler{
+		icmodule.Revision5:  sim.handleRev5,
+		icmodule.Revision6:  sim.handleRev6,
+		icmodule.Revision9:  sim.handleRev9,
+		icmodule.Revision14: sim.handleRev14,
+		icmodule.Revision15: sim.handleRev15,
+		icmodule.Revision17: sim.handleRev17, // Enable ExtraMainPReps
+		icmodule.Revision23: sim.handleRev23, // PrevIISS4
+		icmodule.Revision24: sim.handleRev24, // IISS4
+	}
+}
+
 func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, oldRev, newRev int) error {
 	if oldRev >= newRev {
 		return nil
@@ -23,6 +38,7 @@ func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, oldRev, newR
 			}
 		}
 	}
+	sim.revision = icmodule.ValueToRevision(newRev)
 	return nil
 }
 
@@ -46,7 +62,7 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 
 	cfg := sim.config
 	ws.GetExtensionState().Reset(iiss.NewExtensionSnapshot(ws.Database(), nil))
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion2); err != nil {
 		return err
@@ -66,7 +82,7 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	if err := es.State.SetSubPRepCount(cfg.SubPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(icmodule.ToRate(cfg.BondRequirement)); err != nil {
+	if err := es.State.SetBondRequirement(cfg.BondRequirement); err != nil {
 		return err
 	}
 	if err := es.State.SetLockVariables(big.NewInt(cfg.LockMinMultiplier), big.NewInt(cfg.LockMaxMultiplier)); err != nil {
@@ -87,7 +103,7 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	if err := es.State.SetUnbondingMax(cfg.UnbondingMax); err != nil {
 		return err
 	}
-	if err := es.State.SetValidationPenaltyCondition(cfg.ValidationPenaltyCondition); err != nil {
+	if err := es.State.SetValidationPenaltyCondition(int(cfg.ValidationPenaltyCondition)); err != nil {
 		return err
 	}
 	if err := es.State.SetConsistentValidationPenaltyCondition(
@@ -101,24 +117,28 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	if err := es.State.SetSlashingRate(
 		revision,
 		icmodule.PenaltyAccumulatedValidationFailure,
-		icmodule.ToRate(int64(cfg.ConsistentValidationPenaltySlashRate))); err != nil {
+		cfg.ConsistentValidationPenaltySlashRate); err != nil {
 		return err
 	}
 
 	return es.GenesisTerm(sim.blockHeight, revision)
 }
 
-func applyRewardFund(config *config, s *icstate.State) error {
+func applyRewardFund(config *SimConfig, s *icstate.State) error {
 	rf := icstate.NewRewardFund(icstate.RFVersion1)
-	rf.SetIGlobal(big.NewInt(config.RewardFund.Iglobal))
-	rf.SetAllocation(
+	if err := rf.SetIGlobal(big.NewInt(config.RewardFund.Iglobal)); err != nil {
+		return err
+	}
+	if err := rf.SetAllocation(
 		map[icstate.RFundKey]icmodule.Rate{
 			icstate.KeyIprep:  icmodule.ToRate(config.RewardFund.Iprep),
 			icstate.KeyIcps:   icmodule.ToRate(config.RewardFund.Icps),
 			icstate.KeyIrelay: icmodule.ToRate(config.RewardFund.Irelay),
 			icstate.KeyIvoter: icmodule.ToRate(config.RewardFund.Ivoter),
 		},
-	)
+	); err != nil {
+		return err
+	}
 	if err := s.SetRewardFund(rf); err != nil {
 		return err
 	}
@@ -127,7 +147,7 @@ func applyRewardFund(config *config, s *icstate.State) error {
 
 // handleRev6: icmodule.RevisionDecentralize
 func (sim *simulatorImpl) handleRev6(ws state.WorldState) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
 			return err
@@ -137,7 +157,7 @@ func (sim *simulatorImpl) handleRev6(ws state.WorldState) error {
 }
 
 func (sim *simulatorImpl) handleRev9(ws state.WorldState) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 	if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
 		if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
 			return err
@@ -158,12 +178,8 @@ func (sim *simulatorImpl) handleRev9(ws state.WorldState) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev10(ws state.WorldState) error {
-	return nil
-}
-
 func (sim *simulatorImpl) handleRev14(ws state.WorldState) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := getExtensionState(ws)
 	as := ws.GetAccountState(state.SystemID)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion3); err != nil {
@@ -198,5 +214,44 @@ func (sim *simulatorImpl) handleRev15(ws state.WorldState) error {
 }
 
 func (sim *simulatorImpl) handleRev17(ws state.WorldState) error {
+	revision := icmodule.Revision17
+	cfg := sim.config
+	es := getExtensionState(ws)
+
+	// Set slashingRate for PenaltyAccumulatedValidationFailure
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		cfg.ConsistentValidationPenaltySlashRate); err != nil {
+		return err
+	}
+	// Set slashingRate for PenaltyMissedNetworkProposalVote
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyMissedNetworkProposalVote,
+		cfg.NonVotePenaltySlashRate); err != nil {
+		return err
+	}
+	// Enable ExtraMainPReps
+	if err := es.State.SetExtraMainPRepCount(cfg.ExtraMainPRepCount); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (sim *simulatorImpl) handleRev23(ws state.WorldState) error {
+	es := getExtensionState(ws)
+
+	// RewardFundAllocation2
+	r := es.State.GetRewardFundV1()
+	if err := es.State.SetRewardFund(r.ToRewardFundV2()); err != nil {
+		return err
+	}
+	// minBond for minimum wage
+	return es.State.SetMinimumBond(icmodule.DefaultMinBond)
+}
+
+func (sim *simulatorImpl) handleRev24(ws state.WorldState) error {
+	es := getExtensionState(ws)
+	return es.State.SetIISSVersion(icstate.IISSVersion4)
 }
