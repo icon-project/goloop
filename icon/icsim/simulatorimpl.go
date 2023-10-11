@@ -140,7 +140,7 @@ func (sim *simulatorImpl) init(
 	}
 
 	// Initialize revision
-	rev := icutils.Min(revision.Value(), icmodule.Revision13)
+	rev := icutils.Min(revision.Value(), icmodule.Revision12)
 	if err = sim.handleRevisionChange(ws, 0, rev); err != nil {
 		return err
 	}
@@ -699,6 +699,11 @@ func (sim *simulatorImpl) ValidatorList() []module.Validator {
 		vl[i] = v
 	}
 	return vl
+}
+
+func (sim *simulatorImpl) GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot {
+	es := sim.getExtensionState(true)
+	return es.State.GetAccountSnapshot(address)
 }
 
 func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {

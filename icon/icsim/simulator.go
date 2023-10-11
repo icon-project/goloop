@@ -88,6 +88,7 @@ type Simulator interface {
 	GetStateContext() icmodule.StateContext
 	TermSnapshot() *icstate.TermSnapshot
 	GetPReps(grade icstate.Grade) []*icstate.PRep
+	GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot
 
 	NewDefaultConsensusInfo() module.ConsensusInfo
 	NewConsensusInfo(voted []bool) (module.ConsensusInfo, error)

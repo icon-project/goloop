@@ -182,6 +182,11 @@ func (env *Env) Simulator() Simulator {
 	return env.sim
 }
 
+// NewEnv initializes environment for extension simulation test
+// Default configuration:
+// 100 preps with 2000 ICX
+// 100 bonders with 10000 ICX
+// 100 users with 10000 ICX
 func NewEnv(c *SimConfig, revision module.Revision) (*Env, error) {
 	userLen := 100
 	prepLen := int(c.MainPRepCount + c.SubPRepCount)
@@ -237,75 +242,55 @@ func NewEnv(c *SimConfig, revision module.Revision) (*Env, error) {
 	return env, err
 }
 
-/*
-// init makes the initial environment for penalty and slashing test
 func (env *Env) init(revision module.Revision) error {
-	var receipts []Receipt
-	var err error
-	sim := env.sim
-
-	receipts, err = env.RegisterPReps()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.RegisterPReps()")
-	}
-
-	receipts, err = env.SetStakesAll()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetStakesAll()")
-	}
-
-	receipts, err = env.SetDelegations(env.users, icutils.ToLoop(10000))
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetDelegations()")
-	}
-
-	receipts, err = env.SetBonderLists()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetBonderLists()")
-	}
-
-	receipts, err = env.SetBonds()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetBonds()")
-	}
-
-	// Activate decentralization
-	_ = sim.GoToTermEnd(nil)
-	return sim.GoToTermEnd(nil)
-}
-*/
-
-func (env *Env) init(revision module.Revision) error {
-	initHandlers := map[int]func() error{
+	initHandlers := map[int]func(int) error{
 		icmodule.Revision13: env.initOnRev13,
-		icmodule.Revision23: env.initOnRev23,
 	}
 
 	targetRev := revision.Value()
-	for rev := 0; rev <= targetRev; rev++ {
-		if handler, ok := initHandlers[rev]; ok {
-			if err := handler(); err != nil {
-				return err
-			}
+	for rev := icmodule.Revision13; rev <= targetRev; rev++ {
+		handler, ok := initHandlers[rev]
+		if !ok {
+			handler = env.defaultInitOnRev
+		}
+		if err := handler(rev); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
+// Update revision and finish this term
+func (env *Env) defaultInitOnRev(revision int) error {
+	var csi module.ConsensusInfo
+
+	sim := env.sim
+	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
+	if err != nil {
+		return err
+	}
+	if !CheckReceiptSuccess(rcpt) {
+		return errors.Errorf("SetRevisionFailure(%d)", revision)
+	}
+
+	return sim.GoToTermEnd(csi)
+}
+
 // initOnRev13
 // Revision has been already updated in NewSimulator() so revision update is not needed
-func (env *Env) initOnRev13() error {
+func (env *Env) initOnRev13(revision int) error {
 	var err error
+	var csi module.ConsensusInfo
 	var receipts []Receipt
 	sim := env.Simulator()
 
-	//receipts, err = env.SetRevision(icmodule.ValueToRevision(icmodule.Revision13))
-	//if err != nil {
-	//	return err
-	//}
-	//if !CheckReceiptSuccess(receipts) {
-	//	return errors.New("Receipts Failure")
-	//}
+	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
+	if err != nil {
+		return err
+	}
+	if !CheckReceiptSuccess(rcpt) {
+		return errors.Errorf("SetRevisionFailure(%d)", revision)
+	}
 
 	receipts, err = env.RegisterPReps()
 	if !(checkReceipts(receipts) && err == nil) {
@@ -341,23 +326,6 @@ func (env *Env) initOnRev13() error {
 
 	if err = sim.GoToTermEnd(nil); err != nil {
 		return err
-	}
-
-	// Skip 2 blocks after decentralization
-	//return sim.Go(nil, 2)
-	return nil
-}
-
-// initOnRev23 enables RevisionPreIISS4
-func (env *Env) initOnRev23() error {
-	var err error
-	var receipts []Receipt
-	receipts, err = env.SetRevision(icmodule.ValueToRevision(icmodule.Revision23))
-	if err != nil {
-		return err
-	}
-	if !CheckReceiptSuccess(receipts...) {
-		return errors.New("Receipts Failure")
 	}
 	return nil
 }

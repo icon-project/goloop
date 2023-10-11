@@ -1932,10 +1932,22 @@ func (es *ExtensionStateImpl) GetPRepStatsOf(
 	return es.State.GetPRepStatsOfInJSON(sc, address)
 }
 
-// HandleDoubleSignReport()
-// signer: Node address of a validator that commited double signing
+// HandleDoubleSignReport handles DoubleSignReport from system
+// signer: Node address of a validator that committed double signing
 func (es *ExtensionStateImpl) HandleDoubleSignReport(
 	cc icmodule.CallContext, dsType string, dsBlockHeight int64, signer module.Address) error {
+	es.Logger().Tracef("HandleDoubleSignReport(dsType=%s,dsBlockHeight=%d,signer=%s) start",
+		dsType, dsBlockHeight, signer)
+	defer es.Logger().Tracef("HandleDoubleSignReport(dsType=%s,dsBlockHeight=%d,signer=%s) end",
+		dsType, dsBlockHeight, signer)
+
+	if dsType != module.DSTProposal && dsType != module.DSTVote {
+		return scoreresult.InvalidParameterError.Errorf("UnknownDoubleSignType(%s)", dsType)
+	}
+	if dsBlockHeight < int64(1) || dsBlockHeight >= cc.BlockHeight() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidDoubleSignBlockHeight(%d)", dsBlockHeight)
+	}
+
 	sc := NewStateContext(cc, es)
 	if sc.TermIISSVersion() < icstate.IISSVersion4 {
 		return icmodule.NotReadyError.New("IISS4NotReady")
@@ -1960,7 +1972,7 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 
 	rate, err := es.State.GetSlashingRate(sc.Revision(), pt)
 	if err != nil {
-		 return err
+		return err
 	}
 	return es.slash(cc, owner, rate)
 }
