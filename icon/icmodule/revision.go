@@ -42,7 +42,6 @@ const (
 	Revision21
 	Revision22
 	Revision23
-	Revision24
 	RevisionReserved
 )
 
@@ -110,9 +109,9 @@ const (
 	RevisionBTP2 = Revision21
 
 	RevisionUpdatePRepStats = Revision22
+	RevisionPreIISS4 = Revision22
 
-	RevisionPreIISS4 = Revision23
-	RevisionIISS4    = Revision24
+	RevisionIISS4    = Revision23
 )
 
 var revisionFlags = []module.Revision{
@@ -163,8 +162,6 @@ var revisionFlags = []module.Revision{
 	// Revision22
 	0,
 	// Revision23
-	0,
-	// Revision24
 	module.ReportDoubleSign,
 }
 

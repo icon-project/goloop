@@ -36,8 +36,8 @@ var handleRevFuncs = map[int]handleRevFunc{
 	icmodule.Revision15: onRevision15,
 	icmodule.Revision17: onRevision17,
 	icmodule.Revision21: onRevision21,
+	icmodule.Revision22: onRevision22,
 	icmodule.Revision23: onRevision23,
-	icmodule.Revision24: onRevision24,
 }
 
 func onRevision5(s *chainScore, targetRev int) error {
@@ -282,7 +282,7 @@ func onRevision21(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision23(s *chainScore, _ int) error {
+func onRevision22(s *chainScore, _ int) error {
 	revision := icmodule.RevisionPreIISS4
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
@@ -318,7 +318,7 @@ func onRevision23(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision24(s *chainScore, _ int) error {
+func onRevision23(s *chainScore, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// IISS 4.0
