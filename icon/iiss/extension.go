@@ -1950,7 +1950,9 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 
 	sc := NewStateContext(cc, es)
 	if sc.TermIISSVersion() < icstate.IISSVersion4 {
-		return icmodule.NotReadyError.New("IISS4NotReady")
+		// Ignore DoubleSignReports silently
+		//return icmodule.NotReadyError.New("IISS4NotReady")
+		return nil
 	}
 
 	owner := es.State.GetOwnerByNode(signer)
