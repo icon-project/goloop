@@ -59,7 +59,6 @@ func TestVoted(t *testing.T) {
 
 	// v1 -> v2
 	commissionRate := icmodule.Rate(1000)
-	t2.SetVersion(VotedVersion2)
 	t2.SetCommissionRate(commissionRate)
 
 	o2 = icobject.New(type_, t2)
@@ -147,11 +146,23 @@ func TestVoted_UpdateBondedDelegation(t *testing.T) {
 
 func TestVoted_Equal(t *testing.T) {
 	// VotedVersion1
-	voted11 := NewVoted()
-	voted12 := NewVoted()
+	voted11 := &Voted{
+		version:          VotedVersion1,
+		status:           icmodule.ESDisablePermanent,
+		delegated:        new(big.Int),
+		bonded:           new(big.Int),
+		bondedDelegation: new(big.Int),
+		commissionRate:   11,
+	}
+	voted12 := &Voted{
+		version:          VotedVersion1,
+		status:           icmodule.ESDisablePermanent,
+		delegated:        new(big.Int),
+		bonded:           new(big.Int),
+		bondedDelegation: new(big.Int),
+		commissionRate:   12,
+	}
 	// does not compare commissionRate at VotedVersion1
-	voted11.SetCommissionRate(11)
-	voted12.SetCommissionRate(12)
 	assert.True(t, voted11.Equal(voted12))
 	// compare bondedDelegation at VotedVersion1
 	voted11.SetBondedDelegation(big.NewInt(11))
@@ -177,4 +188,14 @@ func TestVoted_Equal(t *testing.T) {
 	voted1.SetVersion(1000)
 	voted2.SetVersion(1000)
 	assert.False(t, voted1.Equal(voted2))
+}
+
+func TestVoted_SetCommissionRate(t *testing.T) {
+	voted := NewVoted()
+	assert.Equal(t, VotedVersion1, voted.Version())
+
+	rate := icmodule.Rate(100)
+	voted.SetCommissionRate(rate)
+	assert.Equal(t, VotedVersion2, voted.Version())
+	assert.Equal(t, rate, voted.CommissionRate())
 }

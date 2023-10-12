@@ -941,11 +941,6 @@ func (vd *votedData) SetStatus(status icmodule.EnableStatus) {
 	vd.voted.SetStatus(status)
 }
 
-func (vd *votedData) SetCommissionRate(value icmodule.Rate) {
-	vd.voted.SetCommissionRate(value)
-	vd.voted.SetVersion(icreward.VotedVersion2)
-}
-
 func (vd *votedData) GetDelegated() *big.Int {
 	return vd.voted.Delegated()
 }
@@ -1067,12 +1062,6 @@ func (vi *votedInfo) SetEnable(addr module.Address, status icmodule.EnableStatus
 		vData = newVotedData(voted)
 		vData.SetStatus(status)
 		vi.AddVotedData(addr, vData)
-	}
-}
-
-func (vi *votedInfo) SetCommissionRate(addr module.Address, value icmodule.Rate) {
-	if vData, ok := vi.preps[icutils.ToKey(addr)]; ok {
-		vData.SetCommissionRate(value)
 	}
 }
 

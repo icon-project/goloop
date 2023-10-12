@@ -102,6 +102,9 @@ func (v *Voted) CommissionRate() icmodule.Rate {
 
 func (v *Voted) SetCommissionRate(value icmodule.Rate) {
 	v.commissionRate = value
+	if v.version == VotedVersion1 {
+		v.version = VotedVersion2
+	}
 }
 
 func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
