@@ -319,3 +319,7 @@ func (p *platform) ShowDiff(ctx service.DiffContext, name string, e, r []byte) e
 		return errors.IllegalArgumentError.Errorf("UnknownObject(name=%s)", name)
 	}
 }
+
+func (p *platform) DoubleSignDecoder() module.DoubleSignDataDecoder {
+	return consensus.DecodeDoubleSignData
+}
