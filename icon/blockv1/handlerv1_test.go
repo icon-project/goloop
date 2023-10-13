@@ -19,12 +19,15 @@ package blockv1_test
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/consensus"
+	"github.com/icon-project/goloop/icon"
 	"github.com/icon-project/goloop/icon/blockv0"
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/icon/ictest"
@@ -56,7 +59,7 @@ func TestHandler_BlockV13(t_ *testing.T) {
 
 	var b blockv1.Format
 	b.Version = module.BlockVersion1
-	b.Height = t.LastBlock.Height()+1
+	b.Height = t.LastBlock.Height() + 1
 	b.PrevHash = t.LastBlock.Hash()
 	b.PrevID = t.LastBlock.ID()
 	b.Result = bc.Result()
@@ -168,4 +171,38 @@ func TestNewBlockManager_DefaultIsV1AndPrevBlockOfLastBlockIsNonGenesisV2(t *tes
 	blk2, err := nd2.BM.GetLastBlock()
 	assert.NoError(err)
 	assert.Equal(blk.ID(), blk2.ID())
+}
+
+func FuzzHandler_NewBlockDataFromReader(fz *testing.F) {
+	nd := test.NewNode(fz, ictest.UseBMForBlockV1)
+	defer nd.Close()
+
+	nilVotes := (*blockv0.BlockVoteList)(nil)
+	nd.ProposeFinalizeBlockWithTX(
+		nilVotes,
+		`{
+			"type": "test",
+			"timestamp": "0x0",
+			"nextBlockVersion": "0x2"
+		}`,
+	)
+
+	plf, err := icon.NewPlatform("", nd.Chain.CID())
+	assert.NoError(fz, err)
+	bh := plf.NewBlockHandlers(nd.Chain)
+	bdf, err := block.NewBlockDataFactory(nd.Chain, bh)
+	assert.NoError(fz, err)
+	testcases := [][]byte{
+		[]byte("\xcb\x02000000\x80\x8000\xc8\xc0\xc0\x85\xc4\xc0\xc1\xc000"),
+	}
+	for _, tc := range testcases {
+		fz.Add(tc)
+	}
+	fz.Fuzz(func(t *testing.T, bs []byte) {
+		bd, err := bdf.NewBlockDataFromReader(bytes.NewReader(bs))
+		if err != nil {
+			return
+		}
+		bd.Marshal(io.Discard)
+	})
 }
