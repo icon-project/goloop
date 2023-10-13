@@ -857,7 +857,7 @@ func TestPRepStatusState_GetStatsInJSON(t *testing.T) {
 		name := fmt.Sprintf("rev-%02d", arg.rev)
 		sc := newMockStateContext(map[string]interface{}{
 			"blockHeight": int64(100),
-			"revision": arg.rev,
+			"revision":    arg.rev,
 		})
 
 		t.Run(name, func(t *testing.T) {
@@ -1025,7 +1025,8 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 // Assume that IsDoubleSignReportable() is called after RevisionIISS4
 func TestPRepStatus_IsDoubleSignReportable(t *testing.T) {
 	owner := newDummyAddress(1)
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4})
+	height := int64(1000)
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": height, "revision": icmodule.RevisionIISS4})
 
 	ps := NewPRepStatus(owner)
 	assert.NoError(t, ps.Activate())
@@ -1033,5 +1034,21 @@ func TestPRepStatus_IsDoubleSignReportable(t *testing.T) {
 	assert.Equal(t, None, ps.LastState())
 	assert.True(t, ps.IsActive())
 
-	assert.True(t, ps.IsDoubleSignReportable(sc, int64(1000)))
+	assert.True(t, ps.IsDoubleSignReportable(sc, height))
+
+	// Not active P-Rep
+	ps.SetStatus(NotReady)
+	assert.False(t, ps.IsDoubleSignReportable(sc, height))
+	assert.NoError(t, ps.Activate())
+
+	// Already in Jail due to DoubleSignReport
+	assert.NoError(t, ps.ji.OnPenaltyImposed(sc, icmodule.PenaltyDoubleSign))
+	assert.False(t, ps.IsDoubleSignReportable(sc, height))
+
+	// DoubleSignReport is too old to accept
+	assert.NoError(t, ps.ji.OnUnjailRequested(sc))
+	assert.NoError(t, ps.ji.OnMainPRepIn(sc))
+	assert.False(t, ps.IsDoubleSignReportable(sc, height))
+	// not old
+	assert.True(t, ps.IsDoubleSignReportable(sc, height+1))
 }
