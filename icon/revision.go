@@ -307,7 +307,7 @@ func onRevision23(s *chainScore, _ int) error {
 			{icmodule.PenaltyAccumulatedValidationFailure, icmodule.DefaultContinuousBlockValidationSlashingRate},
 			{icmodule.PenaltyValidationFailure, icmodule.DefaultBlockValidationSlashingRate},
 			{icmodule.PenaltyMissedNetworkProposalVote, icmodule.DefaultMissingNetworkProposalVoteSlashingRate},
-			{icmodule.PenaltyDoubleVote, icmodule.DefaultDoubleVoteSlashingRate},
+			{icmodule.PenaltyDoubleSign, icmodule.DefaultDoubleSignSlashingRate},
 		}
 		for _, item := range items {
 			if err := es.State.SetSlashingRate(revision, item.pt, item.rate); err != nil {

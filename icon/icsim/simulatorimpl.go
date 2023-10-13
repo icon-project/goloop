@@ -140,7 +140,7 @@ func (sim *simulatorImpl) init(
 	}
 
 	// Initialize revision
-	rev := icutils.Min(revision.Value(), icmodule.Revision13)
+	rev := icutils.Min(revision.Value(), icmodule.Revision12)
 	if err = sim.handleRevisionChange(ws, 0, rev); err != nil {
 		return err
 	}
@@ -430,6 +430,8 @@ func (sim *simulatorImpl) executeTx(wc WorldContext, tx Transaction) error {
 		err = sim.setCommissionRate(es, wc, tx)
 	case TypeRequestUnjail:
 		err = sim.requestUnjail(es, wc, tx)
+	case TypeHandleDoubleSignReport:
+		err = sim.handleDoubleSignReport(es, wc, tx)
 	default:
 		return errors.Errorf("Unexpected transaction: %v", tx.Type())
 	}
@@ -699,6 +701,11 @@ func (sim *simulatorImpl) ValidatorList() []module.Validator {
 	return vl
 }
 
+func (sim *simulatorImpl) GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot {
+	es := sim.getExtensionState(true)
+	return es.State.GetAccountSnapshot(address)
+}
+
 func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 	return &mockStateContext{
 		sim.BlockHeight(),
@@ -805,6 +812,26 @@ func (sim *simulatorImpl) requestUnjail(es *iiss.ExtensionStateImpl, wc WorldCon
 	from := args[0].(module.Address)
 	cc := NewCallContext(wc, from)
 	return es.RequestUnjail(cc)
+}
+
+func (sim *simulatorImpl) HandleDoubleSignReport(
+	from module.Address, dsType string, dsBlockHeight int64, signer module.Address) Transaction {
+	return NewTransaction(TypeHandleDoubleSignReport, from, dsType, dsBlockHeight, signer)
+}
+
+func (sim *simulatorImpl) GoByHandleDoubleSignReport(csi module.ConsensusInfo,
+	from module.Address, dsType string, dsBlockHeight int64, signer module.Address) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeHandleDoubleSignReport, from, dsType, dsBlockHeight, signer)
+}
+
+func (sim *simulatorImpl) handleDoubleSignReport(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+	args := tx.Args()
+	from := args[0].(module.Address)
+	dsType := args[1].(string)
+	dsBlockHeight := args[2].(int64)
+	signer := args[3].(module.Address)
+	cc := NewCallContext(wc, from)
+	return es.HandleDoubleSignReport(cc, dsType, dsBlockHeight, signer)
 }
 
 func NewSimulator(

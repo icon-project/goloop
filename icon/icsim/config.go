@@ -21,19 +21,23 @@ type SimConfig struct {
 	ExtraMainPRepCount                   int64
 	Irep                                 int64
 	Rrep                                 int64
-	BondRequirement                      icmodule.Rate
 	UnbondingPeriodMultiplier            int64
 	UnstakeSlotMax                       int64
 	LockMinMultiplier                    int64
 	LockMaxMultiplier                    int64
 	UnbondingMax                         int64
 	ValidationPenaltyCondition           int64
+	DelegationSlotMax                    int64
 	ConsistentValidationPenaltyCondition int64
 	ConsistentValidationPenaltyMask      int64
 	ConsistentValidationPenaltySlashRate icmodule.Rate
 	NonVotePenaltySlashRate              icmodule.Rate
-	DelegationSlotMax                    int64
+	BondRequirement                      icmodule.Rate
 	RewardFund
+}
+
+func (cfg *SimConfig) TotalMainPRepCount() int64 {
+	return cfg.MainPRepCount + cfg.ExtraMainPRepCount
 }
 
 func NewSimConfig() *SimConfig {

@@ -281,3 +281,10 @@ func recordICXBurnedEvent(cc icmodule.CallContext, from module.Address, amount, 
 		)
 	}
 }
+
+func recordDoubleSignReportedEvent(cc icmodule.CallContext, signer module.Address, dsBlockHeight int64, dsType string) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("DoubleSignReported(Address,int,str)"), signer.Bytes()},
+		[][]byte{intconv.Int64ToBytes(dsBlockHeight), []byte(dsType)},
+	)
+}

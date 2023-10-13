@@ -39,7 +39,7 @@ func TestToPenaltyType(t *testing.T) {
 		{"accumulatedValidationFailure", PenaltyAccumulatedValidationFailure},
 		{"validationFailure", PenaltyValidationFailure},
 		{"missedNetworkProposalVote", PenaltyMissedNetworkProposalVote},
-		{"doubleVote", PenaltyDoubleVote},
+		{"doubleSign", PenaltyDoubleSign},
 		{"", PenaltyNone},
 		{"invalid_name", PenaltyNone},
 	}
@@ -61,7 +61,7 @@ func TestPenaltyType_String(t *testing.T) {
 		{PenaltyAccumulatedValidationFailure, "accumulatedValidationFailure"},
 		{PenaltyValidationFailure, "validationFailure"},
 		{PenaltyMissedNetworkProposalVote, "missedNetworkProposalVote"},
-		{PenaltyDoubleVote, "doubleVote"},
+		{PenaltyDoubleSign, "doubleSign"},
 		{PenaltyNone, ""},
 	}
 	for i, arg := range args {

@@ -45,6 +45,7 @@ const (
 	TypeInitCommissionRate
 	TypeSetCommissionRate
 	TypeRequestUnjail
+	TypeHandleDoubleSignReport
 )
 
 type Transaction interface {
@@ -87,6 +88,7 @@ type Simulator interface {
 	GetStateContext() icmodule.StateContext
 	TermSnapshot() *icstate.TermSnapshot
 	GetPReps(grade icstate.Grade) []*icstate.PRep
+	GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot
 
 	NewDefaultConsensusInfo() module.ConsensusInfo
 	NewConsensusInfo(voted []bool) (module.ConsensusInfo, error)
@@ -164,6 +166,9 @@ type Simulator interface {
 	SetCommissionRate(from module.Address, rate icmodule.Rate) Transaction
 	GoBySetCommissionRate(csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) (Receipt, error)
 
+	HandleDoubleSignReport(from module.Address, dsType string, dsBlockHeight int64, signer module.Address) Transaction
+	GoByHandleDoubleSignReport(csi module.ConsensusInfo,
+		from module.Address, dsType string, dsBlockHeight int64, signer module.Address) (Receipt, error)
 	RequestUnjail(from module.Address) Transaction
 	GoByRequestUnjail(csi module.ConsensusInfo, from module.Address) (Receipt, error)
 }

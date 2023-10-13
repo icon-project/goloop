@@ -1000,3 +1000,20 @@ func (s *chainScore) Ex_requestUnjail() error {
 	}
 	return es.RequestUnjail(s.newCallContext(s.cc))
 }
+
+func (s *chainScore) Ex_handleDoubleSignReport(
+	dsType string, blockHeight *common.HexInt, signer module.Address) error {
+	if err := s.checkSystem(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.HandleDoubleSignReport(
+		s.newCallContext(s.cc),
+		dsType,
+		blockHeight.Int64(),
+		signer,
+	)
+}

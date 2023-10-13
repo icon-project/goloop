@@ -336,8 +336,8 @@ func (ps *prepStatusData) getPenaltyTypeV1() int {
 	if icutils.MatchAll(ps.ji.Flags(), JFlagAccumulatedValidationFailure) {
 		ptBits |= 1 << icmodule.PenaltyAccumulatedValidationFailure
 	}
-	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleVote) {
-		ptBits |= 1 << icmodule.PenaltyDoubleVote
+	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleSign) {
+		ptBits |= 1 << icmodule.PenaltyDoubleSign
 	}
 	return ptBits
 }
@@ -450,8 +450,23 @@ func (ps *prepStatusData) UnjailRequestHeight() int64 {
 	return ps.ji.UnjailRequestHeight()
 }
 
-func (ps *prepStatusData) MinDoubleVoteHeight() int64 {
-	return ps.ji.MinDoubleVoteHeight()
+func (ps *prepStatusData) MinDoubleSignHeight() int64 {
+	return ps.ji.MinDoubleSignHeight()
+}
+
+func (ps *prepStatusData) IsDoubleSignReportable(sc icmodule.StateContext, dsBlockHeight int64) bool {
+	if !ps.IsActive() {
+		return false
+	}
+	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleSign) {
+		// Already in Jail due to DoubleSignReport
+		return false
+	}
+	if dsBlockHeight <= ps.ji.MinDoubleSignHeight() {
+		// DoubleSignReport is too old to accept
+		return false
+	}
+	return true
 }
 
 type PRepStatusSnapshot struct {
@@ -727,7 +742,7 @@ func (ps *PRepStatusState) onValidatorOut(sc icmodule.StateContext) error {
 func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodule.PenaltyType) error {
 	if pt != icmodule.PenaltyValidationFailure &&
 		pt != icmodule.PenaltyAccumulatedValidationFailure &&
-		pt != icmodule.PenaltyDoubleVote {
+		pt != icmodule.PenaltyDoubleSign {
 		return nil
 	}
 
@@ -739,6 +754,7 @@ func (ps *PRepStatusState) onPenaltyImposed(sc icmodule.StateContext, pt icmodul
 		ps.vFailCont = 0
 		ps.vPenaltyMask |= 1
 	}
+
 	if err := ps.ji.OnPenaltyImposed(sc, pt); err != nil {
 		return err
 	}

@@ -509,7 +509,7 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 				icmodule.PenaltyValidationFailure.String():            icmodule.ToRate(0),
 				icmodule.PenaltyAccumulatedValidationFailure.String(): icmodule.ToRate(20),
 				icmodule.PenaltyPRepDisqualification.String():         icmodule.ToRate(100),
-				icmodule.PenaltyDoubleVote.String():                   icmodule.ToRate(10),
+				icmodule.PenaltyDoubleSign.String():                   icmodule.ToRate(10),
 				icmodule.PenaltyMissedNetworkProposalVote.String():    icmodule.ToRate(7),
 			},
 			true,
@@ -519,7 +519,7 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 				icmodule.PenaltyValidationFailure.String():            icmodule.ToRate(0),
 				icmodule.PenaltyAccumulatedValidationFailure.String(): icmodule.ToRate(20),
 				icmodule.PenaltyPRepDisqualification.String():         icmodule.ToRate(100),
-				icmodule.PenaltyDoubleVote.String():                   icmodule.ToRate(-10),
+				icmodule.PenaltyDoubleSign.String():                   icmodule.ToRate(-10),
 				icmodule.PenaltyMissedNetworkProposalVote.String():    icmodule.ToRate(7),
 			},
 			false,
@@ -563,7 +563,7 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 	}
 
 	penaltyTypes := []icmodule.PenaltyType{
-		icmodule.PenaltyDoubleVote,
+		icmodule.PenaltyDoubleSign,
 		icmodule.PenaltyAccumulatedValidationFailure,
 	}
 	jso, err = es.GetSlashingRates(cc, penaltyTypes)

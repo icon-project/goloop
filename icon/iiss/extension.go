@@ -1931,3 +1931,50 @@ func (es *ExtensionStateImpl) GetPRepStatsOf(
 	sc := NewStateContext(cc, es)
 	return es.State.GetPRepStatsOfInJSON(sc, address)
 }
+
+// HandleDoubleSignReport handles DoubleSignReport from system
+// signer: Node address of a validator that committed double signing
+func (es *ExtensionStateImpl) HandleDoubleSignReport(
+	cc icmodule.CallContext, dsType string, dsBlockHeight int64, signer module.Address) error {
+	es.Logger().Tracef("HandleDoubleSignReport(dsType=%s,dsBlockHeight=%d,signer=%s) start",
+		dsType, dsBlockHeight, signer)
+	defer es.Logger().Tracef("HandleDoubleSignReport(dsType=%s,dsBlockHeight=%d,signer=%s) end",
+		dsType, dsBlockHeight, signer)
+
+	if dsType != module.DSTProposal && dsType != module.DSTVote {
+		return scoreresult.InvalidParameterError.Errorf("UnknownDoubleSignType(%s)", dsType)
+	}
+	if dsBlockHeight < int64(1) || dsBlockHeight >= cc.BlockHeight() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidDoubleSignBlockHeight(%d)", dsBlockHeight)
+	}
+
+	sc := NewStateContext(cc, es)
+	if sc.TermIISSVersion() < icstate.IISSVersion4 {
+		// Ignore DoubleSignReports silently
+		//return icmodule.NotReadyError.New("IISS4NotReady")
+		return nil
+	}
+
+	owner := es.State.GetOwnerByNode(signer)
+	ps := es.State.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
+	}
+	if !ps.IsDoubleSignReportable(sc, dsBlockHeight) {
+		// Ignore DoubleSignReports silently
+		return nil
+	}
+	recordDoubleSignReportedEvent(cc, owner, dsBlockHeight, dsType)
+
+	const pt = icmodule.PenaltyDoubleSign
+	if err := es.State.ImposePenalty(sc, pt, ps); err != nil {
+		return err
+	}
+	recordPenaltyImposedEvent(cc, ps, pt)
+
+	rate, err := es.State.GetSlashingRate(sc.Revision(), pt)
+	if err != nil {
+		return err
+	}
+	return es.slash(cc, owner, rate)
+}

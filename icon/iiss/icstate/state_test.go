@@ -642,7 +642,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4 - 1,
 				icmodule.RevisionIISS4 - 1,
-				icmodule.PenaltyDoubleVote,
+				icmodule.PenaltyDoubleSign,
 			},
 			output{0},
 		},
@@ -650,7 +650,7 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4,
 				icmodule.RevisionIISS4 - 1,
-				icmodule.PenaltyDoubleVote,
+				icmodule.PenaltyDoubleSign,
 			},
 			output{0},
 		},
@@ -658,25 +658,25 @@ func TestState_ImposePenalty(t *testing.T) {
 			input{
 				icmodule.RevisionIISS4,
 				icmodule.RevisionIISS4,
-				icmodule.PenaltyDoubleVote,
+				icmodule.PenaltyDoubleSign,
 			},
-			output{JFlagInJail | JFlagDoubleVote},
+			output{JFlagInJail | JFlagDoubleSign},
 		},
 		{
 			input{
 				icmodule.RevisionIISS4 + 1,
 				icmodule.RevisionIISS4,
-				icmodule.PenaltyDoubleVote,
+				icmodule.PenaltyDoubleSign,
 			},
-			output{JFlagInJail | JFlagDoubleVote},
+			output{JFlagInJail | JFlagDoubleSign},
 		},
 		{
 			input{
 				icmodule.RevisionIISS4 + 1,
 				icmodule.RevisionIISS4 + 1,
-				icmodule.PenaltyDoubleVote,
+				icmodule.PenaltyDoubleSign,
 			},
-			output{JFlagInJail | JFlagDoubleVote},
+			output{JFlagInJail | JFlagDoubleSign},
 		},
 	}
 
@@ -710,7 +710,7 @@ func TestState_ImposePenalty(t *testing.T) {
 
 			assert.Equal(t, arg.out.jailFlags, ps.JailFlags())
 			assert.Zero(t, ps.UnjailRequestHeight())
-			assert.Zero(t, ps.MinDoubleVoteHeight())
+			assert.Zero(t, ps.MinDoubleSignHeight())
 		})
 	}
 }

@@ -699,16 +699,16 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 		dsaMask             int64
 		jailFlags           int
 		unjailRequestHeight int64
-		minDoubleVoteHeight int64
+		minDoubleSignHeight int64
 	}{
 		{0, 0, 0, 0},
 		{1, 0, 0, 0},
 		{0, JFlagInJail, 0, 0},
 		{0, JFlagInJail | JFlagUnjailing, 100, 0},
-		{0, JFlagInJail | JFlagDoubleVote, 0, 0},
+		{0, JFlagInJail | JFlagDoubleSign, 0, 0},
 		{0, 0, 0, 0},
 		{0, 0, 0, 200},
-		{1, JFlagInJail | JFlagUnjailing | JFlagDoubleVote, 100, 200},
+		{1, JFlagInJail | JFlagUnjailing | JFlagDoubleSign, 100, 200},
 	}
 
 	for i, arg := range args {
@@ -716,12 +716,12 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			state := NewPRepStatus(newDummyAddress(i + 1))
 			state.dsaMask = arg.dsaMask
-			state.ji = *newJailInfo(arg.jailFlags, arg.unjailRequestHeight, arg.minDoubleVoteHeight)
+			state.ji = *newJailInfo(arg.jailFlags, arg.unjailRequestHeight, arg.minDoubleSignHeight)
 			state.setDirty()
 
 			snapshot0 := state.GetSnapshot()
 			assert.Equal(t, arg.unjailRequestHeight, snapshot0.UnjailRequestHeight())
-			assert.Equal(t, arg.minDoubleVoteHeight, snapshot0.MinDoubleVoteHeight())
+			assert.Equal(t, arg.minDoubleSignHeight, snapshot0.MinDoubleSignHeight())
 
 			buf := bytes.NewBuffer(nil)
 			e := codec.BC.NewEncoder(buf)
@@ -857,7 +857,7 @@ func TestPRepStatusState_GetStatsInJSON(t *testing.T) {
 		name := fmt.Sprintf("rev-%02d", arg.rev)
 		sc := newMockStateContext(map[string]interface{}{
 			"blockHeight": int64(100),
-			"revision": arg.rev,
+			"revision":    arg.rev,
 		})
 
 		t.Run(name, func(t *testing.T) {
@@ -940,7 +940,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.True(t, ps.IsUnjailable())
 	assert.False(t, ps.IsJailInfoElectable())
 	assert.Zero(t, ps.UnjailRequestHeight())
-	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Zero(t, ps.MinDoubleSignHeight())
 	assert.Equal(t, JFlagInJail, ps.JailFlags())
 
 	// 2 more false blockVotes (2 blocks)
@@ -975,7 +975,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.True(t, ps.IsUnjailable())
 	assert.False(t, ps.IsJailInfoElectable())
 	assert.Zero(t, ps.UnjailRequestHeight())
-	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Zero(t, ps.MinDoubleSignHeight())
 	assert.Equal(t, JFlagInJail, ps.JailFlags())
 	assert.Equal(t, oTotal, ps.GetVTotal(sc.BlockHeight()))
 	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
@@ -994,7 +994,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.False(t, ps.IsUnjailable())
 	assert.True(t, ps.IsJailInfoElectable())
 	assert.Equal(t, sc.BlockHeight(), ps.UnjailRequestHeight())
-	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Zero(t, ps.MinDoubleSignHeight())
 	assert.Equal(t, oTotal, ps.GetVTotal(sc.BlockHeight()))
 	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
 	assert.Equal(t, oFailCont, ps.GetVFailCont(sc.BlockHeight()))
@@ -1016,8 +1016,39 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.False(t, ps.IsUnjailable())
 	assert.True(t, ps.IsJailInfoElectable())
 	assert.Zero(t, ps.UnjailRequestHeight())
-	assert.Zero(t, ps.MinDoubleVoteHeight())
+	assert.Zero(t, ps.MinDoubleSignHeight())
 	assert.Equal(t, oTotal, ps.GetVTotal(sc.BlockHeight()))
 	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
 	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
+}
+
+// Assume that IsDoubleSignReportable() is called after RevisionIISS4
+func TestPRepStatus_IsDoubleSignReportable(t *testing.T) {
+	owner := newDummyAddress(1)
+	height := int64(1000)
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": height, "revision": icmodule.RevisionIISS4})
+
+	ps := NewPRepStatus(owner)
+	assert.NoError(t, ps.Activate())
+	assert.Equal(t, GradeCandidate, ps.Grade())
+	assert.Equal(t, None, ps.LastState())
+	assert.True(t, ps.IsActive())
+
+	assert.True(t, ps.IsDoubleSignReportable(sc, height))
+
+	// Not active P-Rep
+	ps.SetStatus(NotReady)
+	assert.False(t, ps.IsDoubleSignReportable(sc, height))
+	assert.NoError(t, ps.Activate())
+
+	// Already in Jail due to DoubleSignReport
+	assert.NoError(t, ps.ji.OnPenaltyImposed(sc, icmodule.PenaltyDoubleSign))
+	assert.False(t, ps.IsDoubleSignReportable(sc, height))
+
+	// DoubleSignReport is too old to accept
+	assert.NoError(t, ps.ji.OnUnjailRequested(sc))
+	assert.NoError(t, ps.ji.OnMainPRepIn(sc))
+	assert.False(t, ps.IsDoubleSignReportable(sc, height))
+	// not old
+	assert.True(t, ps.IsDoubleSignReportable(sc, height+1))
 }
