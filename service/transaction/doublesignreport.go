@@ -274,7 +274,10 @@ func init() {
 }
 
 func TryGetDoubleSignReportInfo(wc state.WorldContext, tx module.Transaction) (int64, module.Address, bool) {
-	dsr := Unwrap(tx).(*doubleSignReportTx)
+	dsr, ok := Unwrap(tx).(*doubleSignReportTx)
+	if !ok {
+		return 0, nil, false
+	}
 	data, context, err := dsr.decodeDoubleSignReport(wc)
 	if err != nil {
 		return 0, nil, false
