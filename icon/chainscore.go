@@ -825,6 +825,29 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionIISS4R1, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setPRepCountConfig",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"counts", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepCountConfig",
+		scoreapi.FlagReadOnly, 0,
+		[]scoreapi.Parameter{
+			{"counts", scoreapi.ListTypeOf(1, scoreapi.String), nil, nil},
+		},
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionIISS4R0, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

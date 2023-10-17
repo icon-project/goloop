@@ -1984,3 +1984,95 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 	}
 	return es.slash(cc, owner, rate)
 }
+
+func (es *ExtensionStateImpl) SetPRepCountConfig(cc icmodule.CallContext, counts map[string]int64) error {
+	var main, sub, extra int64
+	oldCfg := es.State.GetPRepCountConfig(cc.Revision().Value())
+	updated := 0
+
+	for k, v := range counts {
+		if v < int64(0) || v > int64(1000) {
+			return scoreresult.InvalidParameterError.Errorf("CountOutOfRange(%s=%d)", k, v)
+		}
+		switch k {
+		case "main":
+			main = v
+			updated |= 1
+		case "sub":
+			sub = v
+			updated |= 2
+		case "extra":
+			extra = v
+			updated |= 4
+		default:
+			return scoreresult.InvalidParameterError.Errorf("InvalidName(%s)", k)
+		}
+	}
+
+	if updated > 0 {
+		if updated&1 == 0 {
+			main = int64(oldCfg.MainPReps(icstate.MainPRepNormal))
+		}
+		if updated&2 == 0 {
+			sub = int64(oldCfg.SubPReps())
+		}
+		if updated&4 == 0 {
+			extra = int64(oldCfg.MainPReps(icstate.MainPRepExtra))
+		}
+
+		newCfg := icstate.NewPRepCountConfig(int(main), int(sub), int(extra))
+		if !icstate.IsPRepCountConfigValid(newCfg) {
+			return scoreresult.InvalidParameterError.Errorf(
+				"InvalidPRepCount(main=%d,sub=%d,extra=%d)", main, sub, extra)
+		}
+
+		if oldCfg != newCfg {
+			args := []struct {
+				fn    func(value int64) error
+				value int64
+			}{
+				{es.State.SetMainPRepCount, main},
+				{es.State.SetSubPRepCount, sub},
+				{es.State.SetExtraMainPRepCount, extra},
+			}
+			for i, arg := range args {
+				if updated&(1<<i) > 0 {
+					if err := arg.fn(arg.value); err != nil {
+						return err
+					}
+				}
+			}
+			EmitPRepCountConfigSetEvent(cc, newCfg)
+		}
+	}
+	return nil
+}
+
+func (es *ExtensionStateImpl) GetPRepCountConfig(names []string) (map[string]interface{}, error) {
+	jso := make(map[string]interface{})
+
+	if len(names) == 0 {
+		jso["main"] = es.State.GetMainPRepCount()
+		jso["sub"] = es.State.GetSubPRepCount()
+		jso["extra"] = es.State.GetExtraMainPRepCount()
+	} else {
+		for _, name := range names {
+			if _, ok := jso[name]; ok {
+				return nil, icmodule.DuplicateError.Errorf("DuplicateName(%s)", name)
+			}
+
+			switch name {
+			case "main":
+				jso[name] = es.State.GetMainPRepCount()
+			case "sub":
+				jso[name] = es.State.GetSubPRepCount()
+			case "extra":
+				jso[name] = es.State.GetExtraMainPRepCount()
+			default:
+				return nil, scoreresult.InvalidParameterError.Errorf("UnknownName(%s)", name)
+			}
+		}
+	}
+
+	return jso, nil
+}

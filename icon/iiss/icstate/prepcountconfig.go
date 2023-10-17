@@ -68,3 +68,13 @@ func NewPRepCountConfig(mainPReps, subPReps, extraMainPReps int) PRepCountConfig
 		extraMainPReps: extraMainPReps,
 	}
 }
+
+func IsPRepCountConfigValid(cfg PRepCountConfig) bool {
+	main := cfg.MainPReps(MainPRepNormal)
+	sub := cfg.SubPReps()
+	extra := cfg.MainPReps(MainPRepExtra)
+
+	return (main > 0 && main <= 1000) &&
+		(sub >= 0 && sub <= 1000) &&
+		(extra >= 0 && extra <= sub)
+}

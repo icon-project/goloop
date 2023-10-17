@@ -309,3 +309,14 @@ func EmitDelegationSetEvent(cc icmodule.CallContext, delegations icstate.Delegat
 		[][]byte{codec.BC.MustMarshalToBytes(delegations)},
 	)
 }
+
+func EmitPRepCountConfigSetEvent(cc icmodule.CallContext, cfg icstate.PRepCountConfig) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("PRepCountConfigSet(int,int,int)")},
+		[][]byte{
+			intconv.Int64ToBytes(int64(cfg.MainPReps(icstate.MainPRepNormal))),
+			intconv.Int64ToBytes(int64(cfg.SubPReps())),
+			intconv.Int64ToBytes(int64(cfg.MainPReps(icstate.MainPRepExtra))),
+		},
+	)
+}

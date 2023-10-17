@@ -478,3 +478,17 @@ func TestEmitDelegationSetEvent(t *testing.T) {
 	scoreAddress, indexed, data := getParams(cc)
 	checkEventLogSignature(t, scoreAddress, indexed, data)
 }
+
+func TestEmitPRepCountConfigSetEvent(t *testing.T) {
+	from := newDummyAddress(1)
+	cc := newMockCallContext(map[string]interface{}{
+		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		"bh":  int64(1000),
+		"from": from,
+	})
+
+	cfg := icstate.NewPRepCountConfig(22, 78, 3)
+	EmitPRepCountConfigSetEvent(cc, cfg)
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}

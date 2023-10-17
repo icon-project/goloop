@@ -1019,3 +1019,66 @@ func (s *chainScore) Ex_handleDoubleSignReport(
 		signer,
 	)
 }
+
+func (s *chainScore) Ex_setPRepCountConfig(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if len(values) == 0 {
+		return scoreresult.InvalidParameterError.Errorf("NoArgument")
+	}
+
+	counts := make(map[string]int64)
+	for _, v := range values {
+		pair, ok := v.(map[string]interface{})
+		name, ok := pair["name"].(string)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidNameType")
+		}
+		value, ok := pair["value"].(*common.HexInt)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidValueType")
+		}
+		if !value.IsInt64() {
+			return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", value)
+		}
+		if _, ok = counts[name]; ok {
+			return icmodule.DuplicateError.Errorf("DuplicateName(%s)", name)
+		}
+		counts[name] = value.Int64()
+	}
+
+	return es.SetPRepCountConfig(s.newCallContext(s.cc), counts)
+}
+
+func (s *chainScore) Ex_getPRepCountConfig(values []interface{}) (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	if len(values) > 3 {
+		return nil, scoreresult.InvalidParameterError.Errorf("TooManyCountNames")
+	}
+
+	size := len(values)
+	if size == 0 {
+		size = 3
+	}
+
+	names := make([]string, 0, size)
+	for _, v := range values {
+		name, ok := v.(string)
+		if !ok {
+			return nil, scoreresult.InvalidParameterError.New("InvalidNameType")
+		}
+		names = append(names, name)
+	}
+	return es.GetPRepCountConfig(names)
+}
