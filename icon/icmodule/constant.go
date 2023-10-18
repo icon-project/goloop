@@ -76,13 +76,6 @@ const (
 	DefaultDelegationSlotMax                    = 100
 	DefaultExtraMainPRepCount                   = 3
 	DefaultNonVotePenaltySlashRate              = 0 // 0%
-
-	// IISS-4.0
-	DefaultPRepDisqualificationSlashingRate       = Rate(DenomInRate) // 100%
-	DefaultContinuousBlockValidationSlashingRate  = Rate(1)           // 0.01%
-	DefaultBlockValidationSlashingRate            = Rate(0)           // 0%
-	DefaultMissingNetworkProposalVoteSlashingRate = Rate(1)           // 0.01%
-	DefaultDoubleSignSlashingRate                 = Rate(1000)        // 10%
 )
 
 // The following variables are read-only
@@ -93,7 +86,6 @@ var (
 	BigIntMinIRep        = new(big.Int).Mul(big.NewInt(MinIRep), BigIntICX)
 	BigIntIScoreICXRatio = big.NewInt(IScoreICXRatio)
 	BigIntRegPRepFee     = new(big.Int).Mul(big.NewInt(2000), BigIntICX)
-	BigIntDayBlocks      = big.NewInt(DayBlock)
 
 	DefaultMinBond = new(big.Int).Mul(big.NewInt(10_000), BigIntICX)
 )

@@ -282,8 +282,8 @@ func onRevision21(s *chainScore, _ int) error {
 	return nil
 }
 
+// onRevision23 handles states in PreIISS4 phase
 func onRevision23(s *chainScore, _ int) error {
-	revision := icmodule.RevisionPreIISS4
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RewardFundAllocation2
@@ -297,27 +297,10 @@ func onRevision23(s *chainScore, _ int) error {
 		return err
 	}
 
-	// slashing rate
-	if s.cc.ChainID() == CIDForMainNet {
-		items := []struct {
-			pt   icmodule.PenaltyType
-			rate icmodule.Rate
-		}{
-			{icmodule.PenaltyPRepDisqualification, icmodule.DefaultPRepDisqualificationSlashingRate},
-			{icmodule.PenaltyAccumulatedValidationFailure, icmodule.DefaultContinuousBlockValidationSlashingRate},
-			{icmodule.PenaltyValidationFailure, icmodule.DefaultBlockValidationSlashingRate},
-			{icmodule.PenaltyMissedNetworkProposalVote, icmodule.DefaultMissingNetworkProposalVoteSlashingRate},
-			{icmodule.PenaltyDoubleSign, icmodule.DefaultDoubleSignSlashingRate},
-		}
-		for _, item := range items {
-			if err := es.State.SetSlashingRate(revision, item.pt, item.rate); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
+// onRevision24 handles states in IISS4 phase
 func onRevision24(s *chainScore, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
