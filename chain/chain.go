@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/state"
 )
 
 type State int
@@ -428,7 +429,13 @@ func (c *singleChain) prepareDatabase(chainDir string) error {
 		return errors.Wrapf(err, "UnknownCacheStrategy(%s)", c.cfg.NodeCache)
 	}
 	cacheDir := path.Join(chainDir, DefaultCacheDir)
-	c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel, stores)
+	cdb = cache.AttachManager(cdb, cacheDir, mLevel, fLevel, stores)
+	cdb, err = state.AttachAPIInfoCache(cdb, ConfigDefaultAPIInfoCacheSize)
+	if err != nil {
+		_ = cdb.Close()
+		return errors.Wrap(err, "FailToAttachAPIInfoCache")
+	}
+	c.database = cdb
 	return nil
 }
 

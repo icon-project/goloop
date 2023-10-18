@@ -89,7 +89,7 @@ var genesisStorage, genesisPath string
 var keyStoreFile, keyStoreSecret string
 var saveFile, saveKeyStore string
 var cfg GoChainConfig
-var cpuProfile, memProfile string
+var cpuProfile, memProfile, blockProfile string
 var chainDir string
 var eeSocket string
 var modLevels map[string]string
@@ -130,6 +130,7 @@ func main() {
 	flag.StringVar(&cfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
 	flag.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
 	flag.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
+	flag.StringVar(&blockProfile, "blockprofile", "", "Memory Profiling data file")
 	flag.StringVar(&chainDir, "chain_dir", "", "Chain data directory (default: .chain/<address>/<nid>)")
 	flag.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
 	flag.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to be used for concurrency")
@@ -445,6 +446,12 @@ func Execute(cmd *cobra.Command, args []string) {
 	if memProfile != "" {
 		if err := cli.StartMemoryProfile(memProfile); err != nil {
 			log.Panicf("Fail to start memory profiling err=%+v", err)
+		}
+	}
+
+	if blockProfile != "" {
+		if err := cli.StartBlockProfile(blockProfile, 0); err != nil {
+			log.Panicf("Fail to start block profiling err=%+v", err)
 		}
 	}
 

@@ -20,6 +20,7 @@ const (
 	ConfigDefaultTxTimeout        = 5000 * time.Millisecond
 	ConfigDefaultChildrenLimit    = 10
 	ConfigDefaultNephewLimit      = 10
+	ConfigDefaultAPIInfoCacheSize  = 2048
 )
 
 const (

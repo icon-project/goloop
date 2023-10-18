@@ -88,6 +88,9 @@ public abstract class AbstractRLPDataReader implements DataReader {
                     ((arr[p + 2] & 0xff) << 16) |
                     ((arr[p + 3] & 0xff) << 8) |
                     (arr[p + 4] & 0xff);
+            if (l < 0) {
+                throw new UnsupportedOperationException();
+            }
         } else {
             throw new UnsupportedOperationException();
         }
@@ -116,6 +119,9 @@ public abstract class AbstractRLPDataReader implements DataReader {
                     ((arr[p + 2] & 0xff) << 16) |
                     ((arr[p + 3] & 0xff) << 8) |
                     (arr[p + 4] & 0xff);
+            if (l < 0) {
+                throw new UnsupportedOperationException();
+            }
         } else {
             throw new UnsupportedOperationException();
         }

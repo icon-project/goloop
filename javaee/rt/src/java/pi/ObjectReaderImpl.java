@@ -323,8 +323,10 @@ public class ObjectReaderImpl
 
     public void avm_skip(int count) {
         wrapVoidRead(() -> {
-            reader.skip(count);
-            chargeSkip();
+            for (var i=0; i<count; i++) {
+                reader.skip(1);
+                chargeSkip();
+            }
         });
     }
 

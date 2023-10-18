@@ -7,7 +7,7 @@ import (
 	"github.com/icon-project/goloop/common"
 )
 
-type Create func(string) (interface{}, error)
+type Create func([]byte) (interface{}, error)
 
 type LRUCache struct {
 	lock  sync.Mutex
@@ -34,11 +34,11 @@ func (c *LRUCache) putInLock(key string, value interface{}) {
 	}
 }
 
-func (c *LRUCache) Get(key string) (interface{}, error) {
+func (c *LRUCache) Get(key []byte) (interface{}, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	e, ok := c.items[key]
+	e, ok := c.items[string(key)]
 	if ok {
 		c.lru.MoveToBack(e)
 		i := e.Value.(item)
@@ -51,7 +51,7 @@ func (c *LRUCache) Get(key string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.putInLock(key, value)
+	c.putInLock(string(key), value)
 	return value, nil
 }
 
