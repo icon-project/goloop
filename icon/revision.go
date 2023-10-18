@@ -284,6 +284,7 @@ func onRevision21(s *chainScore, _ int) error {
 
 // onRevision23 handles states in PreIISS4 phase
 func onRevision23(s *chainScore, _ int) error {
+	rev := icmodule.Revision23
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RewardFundAllocation2
@@ -295,6 +296,22 @@ func onRevision23(s *chainScore, _ int) error {
 	// minBond for minimum wage
 	if err := es.State.SetMinimumBond(icmodule.DefaultMinBond); err != nil {
 		return err
+	}
+
+	// slashingRates migration for AccumulatedValidationFailure and MissedNetworkProposalVote
+	for _, pt := range []icmodule.PenaltyType{
+		icmodule.PenaltyAccumulatedValidationFailure,
+		icmodule.PenaltyMissedNetworkProposalVote,
+	} {
+		rate, err := es.State.GetSlashingRate(rev-1, pt)
+		if err != nil {
+			return err
+		}
+		if rate > 0 {
+			if err = es.State.SetSlashingRate(rev, pt, rate); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
