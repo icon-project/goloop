@@ -152,7 +152,7 @@ type Simulator interface {
 	//RegisterPRepNodePublicKey(address module.Address, pubKey []byte) error
 	//SetPRepNodePublicKey(pubKey []byte) error
 
-	// After RevisionPreIISS4
+	// After RevisionIISS4R0
 	GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error)
 	SetSlashingRates(from module.Address, rates map[string]icmodule.Rate) Transaction
 	GoBySetSlashingRates(csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) (Receipt, error)

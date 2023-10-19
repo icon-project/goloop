@@ -107,7 +107,7 @@ func TestPRep_ToJSON(t *testing.T) {
 	bh := int64(1000)
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight":   bh,
-		"revision":      icmodule.RevisionIISS4,
+		"revision":      icmodule.RevisionIISS4R1,
 		"activeDSAMask": int64(1),
 	})
 	br := sc.GetBondRequirement()
@@ -150,7 +150,7 @@ func TestPRep_IsElectable(t *testing.T) {
 	activeDSAMask := int64(3)
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight":     int64(1000),
-		"revision":        icmodule.RevisionIISS4,
+		"revision":        icmodule.RevisionIISS4R1,
 		"bondRequirement": br,
 		"activeDSAMask":   activeDSAMask,
 	})
@@ -215,8 +215,8 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}{
 		{icmodule.RevisionExtraMainPReps},
 		{icmodule.RevisionBTP2},
-		{icmodule.RevisionPreIISS4},
-		{icmodule.RevisionIISS4},
+		{icmodule.RevisionIISS4R0},
+		{icmodule.RevisionIISS4R1},
 	}
 
 	for i, arg := range args {
@@ -293,7 +293,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 				if prep.Owner().Equal(prep0.Owner()) {
 					expGrade := GradeMain
 					rev := sc.Revision()
-					if rev >= icmodule.RevisionIISS4 {
+					if rev >= icmodule.RevisionIISS4R1 {
 						expGrade = GradeCandidate
 					}
 					assert.Equal(t, expGrade, grade)
@@ -320,7 +320,7 @@ func TestPrepSetImpl_OnTermEnd(t *testing.T) {
 	var err error
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight":     int64(1000),
-		"revision":        icmodule.RevisionIISS4,
+		"revision":        icmodule.RevisionIISS4R1,
 		"activeDSAMask":   activeDSAMask,
 		"bondRequirement": icmodule.Rate(5),
 	})

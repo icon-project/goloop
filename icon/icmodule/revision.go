@@ -111,9 +111,9 @@ const (
 
 	RevisionUpdatePRepStats = Revision22
 
-	RevisionPreIISS4 = Revision23
+	RevisionIISS4R0 = Revision23
 
-	RevisionIISS4        = Revision24
+	RevisionIISS4R1      = Revision24
 	RevisionVoteEventLog = Revision24
 )
 

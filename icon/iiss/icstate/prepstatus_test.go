@@ -652,7 +652,7 @@ func TestPRepStatus_onPenaltyImposed(t *testing.T) {
 			},
 		},
 	}
-	revision := icmodule.RevisionIISS4
+	revision := icmodule.RevisionIISS4R1
 	termRevision := revision - 1
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -743,7 +743,7 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight": int64(100),
-		"revision":    icmodule.RevisionPreIISS4,
+		"revision":    icmodule.RevisionIISS4R0,
 	})
 	ps := NewPRepStatus(newDummyAddress(1))
 	assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
@@ -763,7 +763,7 @@ func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
 }
 
 func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4R1})
 	ps := NewPRepStatus(newDummyAddress(1))
 
 	type input struct {
@@ -802,7 +802,7 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 }
 
 func TestPRepStatusData_ToJSON(t *testing.T) {
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4R1})
 
 	ps := NewPRepStatus(newDummyAddress(1))
 	jso := ps.ToJSON(sc)
@@ -899,7 +899,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	var err error
 	limit := 30
 	owner := newDummyAddress(1)
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4R1})
 
 	ps := NewPRepStatus(owner)
 	assert.NoError(t, ps.Activate())
@@ -1022,11 +1022,11 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
 }
 
-// Assume that IsDoubleSignReportable() is called after RevisionIISS4
+// Assume that IsDoubleSignReportable() is called after RevisionIISS4R1
 func TestPRepStatus_IsDoubleSignReportable(t *testing.T) {
 	owner := newDummyAddress(1)
 	height := int64(1000)
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": height, "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": height, "revision": icmodule.RevisionIISS4R1})
 
 	ps := NewPRepStatus(owner)
 	assert.NoError(t, ps.Activate())

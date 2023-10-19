@@ -28,7 +28,7 @@ import (
 )
 
 func RecordSlashingRateChangedEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
-	if cc.Revision().Value() < icmodule.RevisionPreIISS4 {
+	if cc.Revision().Value() < icmodule.RevisionIISS4R0 {
 		var name string
 		switch penaltyType {
 		case icmodule.PenaltyMissedNetworkProposalVote:
@@ -87,7 +87,7 @@ func recordPenaltyImposedEvent(cc icmodule.CallContext, ps *icstate.PRepStatusSt
 }
 
 func recordSlashedEvent(cc icmodule.CallContext, owner, bonder module.Address, amount *big.Int) {
-	if amount.Sign() <= 0 && cc.Revision().Value() >= icmodule.RevisionPreIISS4 {
+	if amount.Sign() <= 0 && cc.Revision().Value() >= icmodule.RevisionIISS4R0 {
 		return
 	}
 	cc.OnEvent(

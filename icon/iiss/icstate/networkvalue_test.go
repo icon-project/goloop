@@ -459,7 +459,7 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 
 func TestState_SetConsistentValidationPenaltySlashRate(t *testing.T) {
 	var slashingRate icmodule.Rate
-	rev := icmodule.RevisionPreIISS4 - 1
+	rev := icmodule.RevisionIISS4R0 - 1
 	pt := icmodule.PenaltyAccumulatedValidationFailure
 
 	state := newDummyState(false)
@@ -469,40 +469,40 @@ func TestState_SetConsistentValidationPenaltySlashRate(t *testing.T) {
 	assert.Equal(t, icmodule.Rate(0), slashingRate)
 
 	rates := []icmodule.Rate{
-		 icmodule.ToRate(0),
-		 icmodule.ToRate(50),
-		 icmodule.ToRate(100),
+		icmodule.ToRate(0),
+		icmodule.ToRate(50),
+		icmodule.ToRate(100),
 	}
 	for _, rate := range rates {
-		 err := state.SetSlashingRate(rev, pt, rate)
-		 assert.NoError(t, err)
-		 assert.Equal(t, rate, state.getConsistentValidationPenaltySlashRate())
-		 slashingRate, _ = state.GetSlashingRate(rev, pt)
-		 assert.Equal(t, rate, slashingRate)
+		err := state.SetSlashingRate(rev, pt, rate)
+		assert.NoError(t, err)
+		assert.Equal(t, rate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, rate, slashingRate)
 
-		 assert.NoError(t, state.Flush())
-		 state.ClearCache()
-		 assert.Equal(t, rate, state.getConsistentValidationPenaltySlashRate())
-		 slashingRate, _ = state.GetSlashingRate(rev, pt)
-		 assert.Equal(t, rate, slashingRate)
+		assert.NoError(t, state.Flush())
+		state.ClearCache()
+		assert.Equal(t, rate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, rate, slashingRate)
 	}
 
 	expRate := rates[2]
 	for _, rate := range []icmodule.Rate{
-		 icmodule.ToRate(-10),
-		 icmodule.ToRate(101),
+		icmodule.ToRate(-10),
+		icmodule.ToRate(101),
 	} {
-		 err := state.SetSlashingRate(rev, pt, rate)
-		 assert.Error(t, err)
-		 assert.Equal(t, expRate, state.getConsistentValidationPenaltySlashRate())
-		 slashingRate, _ = state.GetSlashingRate(rev, pt)
-		 assert.Equal(t, expRate, slashingRate)
+		err := state.SetSlashingRate(rev, pt, rate)
+		assert.Error(t, err)
+		assert.Equal(t, expRate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, expRate, slashingRate)
 
-		 assert.NoError(t, state.Flush())
-		 state.ClearCache()
-		 assert.Equal(t, expRate, state.getConsistentValidationPenaltySlashRate())
-		 slashingRate, _ = state.GetSlashingRate(rev, pt)
-		 assert.Equal(t, expRate, slashingRate)
+		assert.NoError(t, state.Flush())
+		state.ClearCache()
+		assert.Equal(t, expRate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, expRate, slashingRate)
 	}
 }
 
@@ -525,7 +525,7 @@ func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
 	var slashingRate icmodule.Rate
 	state := newDummyState(false)
 
-	for _, rev := range []int{icmodule.RevisionPreIISS4-2, icmodule.RevisionPreIISS4-1} {
+	for _, rev := range []int{icmodule.RevisionIISS4R0 - 2, icmodule.RevisionIISS4R0 - 1} {
 		assert.Equal(t, icmodule.Rate(0), state.getNonVotePenaltySlashRate())
 
 		for _, rate := range []icmodule.Rate{
@@ -577,42 +577,42 @@ func TestState_SetSlashingRate(t *testing.T) {
 	}
 
 	// Not exists -> Rate(1)
-	rev := icmodule.RevisionIISS4
+	rev := icmodule.RevisionIISS4R1
 	state := newDummyState(false)
 
 	for i, in := range args {
-		 name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
-		 t.Run(name, func(t *testing.T) {
-			 rate, err := state.GetSlashingRate(rev, in.penaltyType)
-			 assert.NoError(t, err)
-			 assert.Equal(t, icmodule.Rate(0), rate)
+		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
+		t.Run(name, func(t *testing.T) {
+			rate, err := state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, icmodule.Rate(0), rate)
 
-			 err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
-			 assert.NoError(t, err)
+			err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
+			assert.NoError(t, err)
 
-			 rate, err = state.GetSlashingRate(rev, in.penaltyType)
-			 assert.NoError(t, err)
-			 assert.Equal(t, in.rate, rate)
-		 })
+			rate, err = state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, in.rate, rate)
+		})
 	}
 
 	// Rate(1) -> Rate(10)
 	for i, in := range args {
-		 name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
-		 t.Run(name, func(t *testing.T) {
-			 oldRate := in.rate
-			 in.rate = icmodule.Rate(70)
-			 rate, err := state.GetSlashingRate(rev, in.penaltyType)
-			 assert.NoError(t, err)
-			 assert.Equal(t, oldRate, rate)
+		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
+		t.Run(name, func(t *testing.T) {
+			oldRate := in.rate
+			in.rate = icmodule.Rate(70)
+			rate, err := state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, oldRate, rate)
 
-			 err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
-			 assert.NoError(t, err)
+			err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
+			assert.NoError(t, err)
 
-			 rate, err = state.GetSlashingRate(rev, in.penaltyType)
-			 assert.NoError(t, err)
-			 assert.Equal(t, in.rate, rate)
-		 })
+			rate, err = state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, in.rate, rate)
+		})
 	}
 }
 
@@ -622,8 +622,8 @@ func TestState_SetMinimumBond(t *testing.T) {
 	bond := s.GetMinimumBond()
 	assert.Nil(t, bond)
 
-	args := []struct{
-		bond *big.Int
+	args := []struct {
+		bond    *big.Int
 		success bool
 	}{
 		{nil, false},
@@ -637,7 +637,7 @@ func TestState_SetMinimumBond(t *testing.T) {
 		name := fmt.Sprintf("name_%02d_%s", i, arg.bond)
 		prevBond := s.GetMinimumBond()
 
-		t.Run(name, func(t *testing.T){
+		t.Run(name, func(t *testing.T) {
 			err := s.SetMinimumBond(arg.bond)
 			if arg.success {
 				assert.NoError(t, err)

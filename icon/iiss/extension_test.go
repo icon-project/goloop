@@ -373,7 +373,7 @@ func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
 	owner := common.MustNewAddressFromString("hx1234")
 	cc := newMockCallContext(map[string]interface{}{
 		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -410,7 +410,7 @@ func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 	owner := common.MustNewAddressFromString("hx1234")
 	cc := newMockCallContext(map[string]interface{}{
 		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -484,7 +484,7 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 	owner := common.MustNewAddressFromString("hx1234")
 	cc := newMockCallContext(map[string]interface{}{
 		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -593,7 +593,7 @@ func checkSlashingRates(rates map[string]interface{}) bool {
 
 func TestExtensionStateImpl_RequestUnjail(t *testing.T) {
 	var err error
-	rev := icmodule.RevisionIISS4
+	rev := icmodule.RevisionIISS4R1
 	owner := common.MustNewAddressFromString("hx1234")
 	cc := newMockCallContext(map[string]interface{}{
 		"from": owner,
@@ -621,7 +621,7 @@ func TestExtensionStateImpl_RequestUnjail(t *testing.T) {
 func TestExtensionStateImpl_GetPRepStats(t *testing.T) {
 	var err error
 	size := 2
-	rev := icmodule.RevisionIISS4
+	rev := icmodule.RevisionIISS4R1
 	bh := int64(1000)
 	cc := newMockCallContext(map[string]interface{}{
 		"rev":         icmodule.ValueToRevision(rev),

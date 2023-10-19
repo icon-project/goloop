@@ -89,7 +89,7 @@ func (p *PRep) IsElectable(sc icmodule.StateContext) bool {
 			return false
 		}
 	}
-	if rev >= icmodule.RevisionIISS4 {
+	if rev >= icmodule.RevisionIISS4R1 {
 		if !p.IsJailInfoElectable() {
 			return false
 		}

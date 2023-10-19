@@ -68,7 +68,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 			recordPenaltyImposedEvent(cc, ps, penaltyType)
 		}
 
-		if revision < icmodule.RevisionPreIISS4 && penaltyType == icmodule.PenaltyValidationFailure {
+		if revision < icmodule.RevisionIISS4R0 && penaltyType == icmodule.PenaltyValidationFailure {
 			// To keep statedb backward compatibility
 			continue
 		}
@@ -91,8 +91,8 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 	if !rate.IsValid() {
 		return errors.Errorf("Invalid slashRate %d", rate.Percent())
 	}
-	if rate == 0 && cc.Revision().Value() >= icmodule.RevisionPreIISS4 {
-		// Do not record Slashed() eventLog after RevisionPreIISS4
+	if rate == 0 && cc.Revision().Value() >= icmodule.RevisionIISS4R0 {
+		// Do not record Slashed() eventLog after RevisionIISS4R0
 		return nil
 	}
 

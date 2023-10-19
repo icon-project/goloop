@@ -218,7 +218,7 @@ func (term *termData) GetEndHeight() int64 {
 }
 
 func (term *termData) GetIISSVersion() int {
-	if term.revision >= icmodule.RevisionIISS4 {
+	if term.revision >= icmodule.RevisionIISS4R1 {
 		return IISSVersion4
 	} else if term.revision >= icmodule.RevisionEnableIISS3 {
 		return IISSVersion3
@@ -562,7 +562,7 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 		return nil
 	}
 	var version int
-	if revision < icmodule.RevisionIISS4 {
+	if revision < icmodule.RevisionIISS4R1 {
 		version = termVersion1
 	} else {
 		version = termVersion2

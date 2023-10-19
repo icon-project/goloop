@@ -360,11 +360,11 @@ func TestTermData_GetIISSVersion(t *testing.T) {
 			IISSVersion3,
 		},
 		{
-			icmodule.RevisionPreIISS4,
+			icmodule.RevisionIISS4R0,
 			IISSVersion3,
 		},
 		{
-			icmodule.RevisionIISS4,
+			icmodule.RevisionIISS4R1,
 			IISSVersion4,
 		},
 	}

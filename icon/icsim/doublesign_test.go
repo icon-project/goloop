@@ -42,11 +42,11 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 	cfg := NewSimConfigWithParams(map[string]interface{}{
 		"TermPeriod": termPeriod,
 	})
-	env, err := NewEnv(cfg, icmodule.RevisionIISS4)
+	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
 	assert.NoError(t, err)
 	assert.NotNil(t, sim)
-	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4))
+	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4R1))
 
 	// T(0)
 	assert.NoError(t, sim.GoToTermEnd(nil))
@@ -126,7 +126,7 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	cfg := NewSimConfigWithParams(map[string]interface{}{
 		"TermPeriod": termPeriod,
 	})
-	revision = icmodule.ValueToRevision(icmodule.RevisionPreIISS4)
+	revision = icmodule.ValueToRevision(icmodule.RevisionIISS4R0)
 	env, err := NewEnv(cfg, revision)
 	sim := env.Simulator()
 	assert.NoError(t, err)
@@ -137,7 +137,7 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	// T(0)
 	term := sim.TermSnapshot()
 	assert.Equal(t, icstate.IISSVersion3, term.GetIISSVersion())
-	revision = icmodule.ValueToRevision(icmodule.RevisionIISS4)
+	revision = icmodule.ValueToRevision(icmodule.RevisionIISS4R1)
 	rcpt, err = sim.GoBySetRevision(csi, env.Governance(), revision)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
@@ -208,11 +208,11 @@ func TestDoubleSign_HandleDoubleSignReportErrorCases(t *testing.T) {
 	cfg := NewSimConfigWithParams(map[string]interface{}{
 		"TermPeriod": termPeriod,
 	})
-	env, err := NewEnv(cfg, icmodule.RevisionIISS4)
+	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
 	assert.NoError(t, err)
 	assert.NotNil(t, sim)
-	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4))
+	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4R1))
 
 	// T(0)
 	assert.NoError(t, sim.GoToTermEnd(nil))
@@ -274,11 +274,11 @@ func TestDoubleSign_RequestUnjailForNormalPRep(t *testing.T) {
 	cfg := NewSimConfigWithParams(map[string]interface{}{
 		"TermPeriod": termPeriod,
 	})
-	env, err := NewEnv(cfg, icmodule.RevisionIISS4)
+	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
 	assert.NoError(t, err)
 	assert.NotNil(t, sim)
-	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4))
+	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4R1))
 
 	// T(0)
 	assert.NoError(t, sim.GoToTermEnd(nil))

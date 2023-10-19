@@ -669,7 +669,7 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 		return err
 	}
 	revision := s.cc.Revision().Value()
-	if revision <= icmodule.RevisionPreIISS4 {
+	if revision <= icmodule.RevisionIISS4R0 {
 		rf := es.State.GetRewardFundV1()
 		rf.SetIGlobal(iglobal.Value())
 		if err = es.State.SetRewardFund(rf); err != nil {
@@ -677,7 +677,7 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 		}
 	}
 
-	if revision >= icmodule.RevisionPreIISS4 {
+	if revision >= icmodule.RevisionIISS4R0 {
 		rf := es.State.GetRewardFundV2()
 		rf.SetIGlobal(iglobal.Value())
 		return es.State.SetRewardFund(rf)
