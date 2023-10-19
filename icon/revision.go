@@ -25,22 +25,60 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-type handleRevFunc func(s *chainScore, targetRev int) error
-
-var handleRevFuncs = map[int]handleRevFunc{
-	icmodule.Revision5:  onRevision5,
-	icmodule.Revision6:  onRevision6,
-	icmodule.Revision9:  onRevision9,
-	icmodule.Revision13: onRevision13,
-	icmodule.Revision14: onRevision14,
-	icmodule.Revision15: onRevision15,
-	icmodule.Revision17: onRevision17,
-	icmodule.Revision21: onRevision21,
-	icmodule.Revision23: onRevision23,
-	icmodule.Revision24: onRevision24,
+type handleRevFunc func(s *chainScore, rev, toRev int) error
+type revHandlerItem struct {
+	rev int
+	fn  handleRevFunc
 }
 
-func onRevision5(s *chainScore, targetRev int) error {
+var revHandlerTable = []revHandlerItem{
+	{icmodule.RevisionIISS, onRevIISS},
+	{icmodule.RevisionDecentralize, onRevDecentralize},
+	{icmodule.RevisionIISS2, onRevIISS2},
+	{icmodule.RevisionICON2R0, onRevICON2R0},
+	{icmodule.RevisionICON2R1, onRevICON2R1},
+	{icmodule.RevisionICON2R2, onRevEnableJavaEE},
+	{icmodule.RevisionICON2R3, onRevICON2R3},
+	{icmodule.RevisionBlockAccounts2, onRevBlockAccounts2},
+	{icmodule.RevisionIISS4R0, onRevIISS4R0},
+	{icmodule.RevisionIISS4R1, onRevIISS4R1},
+}
+
+// DO NOT update revHandlerMap manually
+var revHandlerMap = make(map[int][]revHandlerItem)
+
+func init() {
+	for _, item := range revHandlerTable {
+		rev := item.rev
+		items, ok := revHandlerMap[rev]
+		if !ok {
+			items = make([]revHandlerItem, 0, 1)
+		}
+		revHandlerMap[rev] = append(items, item)
+	}
+	revHandlerTable = nil
+}
+
+func (s *chainScore) handleRevisionChange(r1, r2 int) error {
+	s.log.Infof("handleRevisionChange %d->%d", r1, r2)
+	if r1 >= r2 {
+		return nil
+	}
+
+	for rev := r1 + 1; rev <= r2; rev++ {
+		if items, ok := revHandlerMap[rev]; ok {
+			for _, item := range items {
+				if err := item.fn(s, rev, r2); err != nil {
+					s.log.Infof("call handleRevFunc for %d", rev)
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func onRevIISS(s *chainScore, _, toRev int) error {
 	// goloop engine
 
 	as := s.cc.GetAccountState(state.SystemID)
@@ -142,14 +180,14 @@ func onRevision5(s *chainScore, targetRev int) error {
 		}
 	}
 
-	if err := es.GenesisTerm(s.cc.BlockHeight(), targetRev); err != nil {
+	if err := es.GenesisTerm(s.cc.BlockHeight(), toRev); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func onRevision6(s *chainScore, _ int) error {
+func onRevDecentralize(s *chainScore, _, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
@@ -159,7 +197,7 @@ func onRevision6(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision9(s *chainScore, _ int) error {
+func onRevIISS2(s *chainScore, _, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RevisionMultipleUnstakes
@@ -188,7 +226,7 @@ func onRevision9(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision13(s *chainScore, _ int) error {
+func onRevICON2R0(s *chainScore, _, _ int) error {
 	as := s.cc.GetAccountState(state.SystemID)
 
 	// using v2 block for ICON2
@@ -203,7 +241,7 @@ func onRevision13(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision14(s *chainScore, _ int) error {
+func onRevICON2R1(s *chainScore, _, _ int) error {
 	if s.cc.ChainID() == CIDForMainNet {
 		// The time when predefined accounts will be blocked is changed from rev10 to rev14
 		s.blockAccounts()
@@ -236,7 +274,7 @@ func onRevision14(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision15(s *chainScore, _ int) error {
+func onRevEnableJavaEE(s *chainScore, _, _ int) error {
 	as := s.cc.GetAccountState(state.SystemID)
 
 	// Enable JavaEE
@@ -247,7 +285,7 @@ func onRevision15(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision17(s *chainScore, _ int) error {
+func onRevICON2R3(s *chainScore, _, _ int) error {
 	revision := icmodule.Revision17
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 	iconConfig := s.loadIconConfig()
@@ -274,7 +312,7 @@ func onRevision17(s *chainScore, _ int) error {
 	return nil
 }
 
-func onRevision21(s *chainScore, _ int) error {
+func onRevBlockAccounts2(s *chainScore, _, _ int) error {
 	if s.cc.ChainID() == CIDForMainNet {
 		s.blockAccounts2()
 	}
@@ -283,8 +321,7 @@ func onRevision21(s *chainScore, _ int) error {
 }
 
 // onRevision23 handles states in PreIISS4 phase
-func onRevision23(s *chainScore, _ int) error {
-	rev := icmodule.Revision23
+func onRevIISS4R0(s *chainScore, rev, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// RewardFundAllocation2
@@ -318,7 +355,7 @@ func onRevision23(s *chainScore, _ int) error {
 }
 
 // onRevision24 handles states in IISS4 phase
-func onRevision24(s *chainScore, _ int) error {
+func onRevIISS4R1(s *chainScore, _, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	// IISS 4.0

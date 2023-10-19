@@ -93,23 +93,6 @@ func (s *chainScore) fromGovernance() bool {
 	return s.cc.Governance().Equal(s.from)
 }
 
-func (s *chainScore) handleRevisionChange(r1, r2 int) error {
-	s.log.Infof("handleRevisionChange %d->%d", r1, r2)
-	if r1 >= r2 {
-		return nil
-	}
-
-	for rev := r1 + 1; rev <= r2; rev++ {
-		if fn, ok := handleRevFuncs[rev]; ok {
-			if err := fn(s, r2); err != nil {
-				s.log.Infof("call handleRevFunc for %d", rev)
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (s *chainScore) blockAccounts() {
 	for target, _ := range icmodule.BlockedAccount {
 		addr := common.MustNewAddressFromString(target)
