@@ -369,8 +369,7 @@ func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]i
 	return jso, nil
 }
 
-func (es *ExtensionStateImpl) SetDelegation(
-	cc icmodule.CallContext, ds icstate.Delegations) error {
+func (es *ExtensionStateImpl) SetDelegation(cc icmodule.CallContext, ds icstate.Delegations) error {
 
 	var account *icstate.AccountState
 
@@ -450,6 +449,9 @@ func (es *ExtensionStateImpl) SetDelegation(
 	if icmodule.RevisionMultipleUnstakes <= revision && revision < icmodule.RevisionFixInvalidUnstake {
 		migrate.ReproduceUnstakeBugForDelegation(cc, es.logger)
 	}
+
+	recordDelegationEvent(cc, ds)
+
 	return nil
 }
 
@@ -614,7 +616,9 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 	return es.slash(cc, address, rate)
 }
 
-func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bonds icstate.Bonds) error {
+func (es *ExtensionStateImpl) SetBond(cc icmodule.CallContext, bonds icstate.Bonds) error {
+	blockHeight := cc.BlockHeight()
+	from := cc.From()
 	es.logger.Tracef("SetBond() start: from=%s bonds=%+v", from, bonds)
 
 	var account *icstate.AccountState
@@ -681,6 +685,8 @@ func (es *ExtensionStateImpl) SetBond(blockHeight int64, from module.Address, bo
 	if err = es.AddEventBond(blockHeight, from, delta); err != nil {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventBond")
 	}
+
+	recordBondEvent(cc, bonds)
 
 	es.logger.Tracef("SetBond() end")
 	return nil
