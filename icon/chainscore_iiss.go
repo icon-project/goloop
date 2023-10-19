@@ -877,6 +877,9 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 		if !ok {
 			return scoreresult.InvalidParameterError.New("InvalidRateType")
 		}
+		if err = icutils.CheckInt64Overflow(value.Value()); err != nil {
+			return err
+		}
 		if _, ok = rates[name]; ok {
 			return icmodule.DuplicateError.Errorf("DuplicatePenaltyName(%s)", name)
 		}
@@ -972,6 +975,12 @@ func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate *common.
 	if err != nil {
 		return err
 	}
+	// Argument overflow check
+	for _, v := range []*common.HexInt{rate, maxRate, maxChangeRate} {
+		if err = icutils.CheckInt64Overflow(v.Value()); err != nil {
+			return err
+		}
+	}
 	return es.InitCommissionInfo(
 		s.newCallContext(s.cc),
 		icmodule.Rate(rate.Int64()),
@@ -985,6 +994,9 @@ func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
+		return err
+	}
+	if err = icutils.CheckInt64Overflow(rate.Value()); err != nil {
 		return err
 	}
 	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate.Int64()))
@@ -1008,6 +1020,9 @@ func (s *chainScore) Ex_handleDoubleSignReport(
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
+		return err
+	}
+	if err = icutils.CheckInt64Overflow(blockHeight.Value()); err != nil {
 		return err
 	}
 	return es.HandleDoubleSignReport(
