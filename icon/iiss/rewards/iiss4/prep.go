@@ -379,15 +379,19 @@ func (p *PRepInfo) UpdateAccumulatedPower() {
 	}
 }
 
-func (p *PRepInfo) toTermIScore(reward *big.Int) *big.Int {
-	value := new(big.Int).Mul(reward, big.NewInt(p.GetTermPeriod()*icmodule.IScoreICXRatio))
+func fundToPeriodIScore(reward *big.Int, period int64) *big.Int {
+	value := new(big.Int).Mul(reward, big.NewInt(period*icmodule.IScoreICXRatio))
 	return value.Div(value, big.NewInt(icmodule.MonthBlock))
 }
 
 func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int, ru common.RewardUpdater) error {
-	tReward := p.toTermIScore(totalReward)
-	minWage := p.toTermIScore(totalMinWage)
+	p.log.Debugf("DistributeReward()")
+	tReward := fundToPeriodIScore(totalReward, p.GetTermPeriod())
+	minWage := fundToPeriodIScore(totalMinWage, p.GetTermPeriod())
+	p.log.Debugf("RewardFund: PRep: %d, wage: %d", tReward, minWage)
 	minWage.Div(minWage, big.NewInt(int64(p.electedPRepCount)))
+	p.log.Debugf("wage to a prep: %d", minWage)
+	p.log.Debugf("TotalAccumulatedPower: %d", p.totalAccumulatedPower)
 	for rank, key := range p.rank {
 		prep, _ := p.preps[key]
 		if rank >= p.electedPRepCount {
@@ -396,7 +400,6 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		if !prep.Rewardable(p.electedPRepCount) {
 			continue
 		}
-
 		prepReward := new(big.Int).Mul(tReward, prep.AccumulatedPower())
 		prepReward.Div(prepReward, p.totalAccumulatedPower)
 
@@ -404,18 +407,11 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		prep.SetCommission(commission)
 		prep.SetVoterReward(new(big.Int).Sub(prepReward, commission))
 
-		p.log.Debugf("PRep reward of %s: %d = %d * %d / %d",
-			prep.Owner(), prepReward, tReward, prep.AccumulatedPower(), p.totalAccumulatedPower)
-		p.log.Debugf("PRep commission of %s: %d = %d * %d / %d",
-			prep.Owner(), prep.Commission(), prepReward, prep.CommissionRate().NumInt64(), prep.CommissionRate().DenomInt64())
-		p.log.Debugf("PRep voter reward of %s: %d = %d - %d",
-			prep.Owner(), prep.VoterReward(), prepReward, commission)
-
 		iScore := new(big.Int).Set(commission)
 		if prep.Bonded().Cmp(minBond) >= 0 {
 			iScore.Add(iScore, minWage)
-			p.log.Debugf("PRep min wage of %s = %d", prep.Owner(), minWage)
 		}
+		p.log.Debugf("rank#%d: %+v", rank, prep)
 		if err := ru.UpdateIScore(prep.Owner(), iScore, common.RTPRep); err != nil {
 			return err
 		}

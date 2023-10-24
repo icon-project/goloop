@@ -156,8 +156,8 @@ func NewVotingEvents() *VotingEvents {
 }
 
 type Voter struct {
-	owner module.Address
-	votes map[string]*big.Int
+	owner            module.Address
+	accumulatedVotes map[string]*big.Int
 
 	log log.Logger
 }
@@ -169,10 +169,10 @@ func (v *Voter) Owner() module.Address {
 func (v *Voter) addVoting(voting icstate.Voting, period *big.Int) {
 	key := icutils.ToKey(voting.To())
 	amount := new(big.Int).Mul(voting.Amount(), period)
-	if value, ok := v.votes[key]; ok {
+	if value, ok := v.accumulatedVotes[key]; ok {
 		value.Add(value, amount)
 	} else {
-		v.votes[key] = amount
+		v.accumulatedVotes[key] = amount
 	}
 }
 
@@ -200,23 +200,26 @@ func (v *Voter) AddEvent(event *VoteEvent, period int) {
 func (v *Voter) CalculateReward(pInfo *PRepInfo) *big.Int {
 	iScore := new(big.Int)
 
-	for k, vote := range v.votes {
+	v.log.Debugf("Voter reward of %s", v.owner)
+	for k, av := range v.accumulatedVotes {
 		prep := pInfo.GetPRep(k)
 		if prep != nil && prep.Rewardable(pInfo.ElectedPRepCount()) {
-			r := new(big.Int).Mul(vote, prep.VoterReward())
+			r := new(big.Int).Mul(av, prep.VoterReward())
 			r.Div(r, prep.AccumulatedVoted())
-			v.log.Debugf("voter reward %d = %d * %d / %d", r, vote, prep.VoterReward(), prep.AccumulatedVoted())
+			v.log.Debugf("vote reward for %s: %d = %d * %d / %d",
+				prep.Owner(), r, prep.VoterReward(), av, prep.AccumulatedVoted())
 			iScore.Add(iScore, r)
 		}
 	}
+	v.log.Debugf("Voter reward of %s = %d", v.owner, iScore)
 
 	return iScore
 }
 
 func NewVoter(owner module.Address, logger log.Logger) *Voter {
 	return &Voter{
-		owner: owner,
-		votes: make(map[string]*big.Int),
-		log:   logger,
+		owner:            owner,
+		accumulatedVotes: make(map[string]*big.Int),
+		log:              logger,
 	}
 }
