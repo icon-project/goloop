@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -23,6 +24,8 @@ type protocolHandler struct {
 
 	run chan bool
 	mtx sync.RWMutex
+
+	currentPkt *Packet
 }
 
 func newProtocolHandler(
@@ -122,6 +125,31 @@ func (ph *protocolHandler) getSubProtocols() []module.ProtocolInfo {
 	return spis
 }
 
+var ErrInProgress = errors.NewBase(errors.UnknownError, "InProgressError")
+
+func (ph *protocolHandler) onPacketResult(pkt *Packet, isRelay bool, err error) {
+	if isRelay && pkt.ttl == byte(module.BroadcastAll) && pkt.dest != p2pDestPeer {
+		if err := ph.m.send(pkt); err != nil {
+			ph.logger.Tracef("fail to relay error:{%+v} pkt=%s", err, pkt)
+		}
+	}
+	if err != nil {
+		ph.logger.Tracef("OnReceive returns err=%+v", err)
+	}
+}
+
+func (ph *protocolHandler) HandleInBackground() (module.OnResult, error) {
+	if ph.currentPkt == nil {
+		return nil, errors.InvalidStateError.New("NotOnReceive()")
+	}
+	pkt := ph.currentPkt
+	ph.currentPkt = nil
+
+	return func(isRelay bool, err error) {
+		ph.onPacketResult(pkt, isRelay, err)
+	}, ErrInProgress
+}
+
 func (ph *protocolHandler) receiveRoutine() {
 Loop:
 	for {
@@ -137,11 +165,11 @@ Loop:
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				p := ctx.Value(p2pContextKeyPeer).(*Peer)
 				r := ph.getReactor()
-				isRelay, _ := r.OnReceive(pkt.subProtocol, pkt.payload, p.ID())
-				if isRelay && pkt.ttl == byte(module.BroadcastAll) && pkt.dest != p2pDestPeer {
-					if err := ph.m.send(pkt); err != nil {
-						ph.logger.Tracef("fail to relay error:{%+v} pkt:%s", err, pkt)
-					}
+				ph.currentPkt = pkt
+				isRelay, err := r.OnReceive(pkt.subProtocol, pkt.payload, p.ID())
+				if err != ErrInProgress || ph.currentPkt != nil {
+					ph.currentPkt = nil
+					ph.onPacketResult(pkt, isRelay, err)
 				}
 			}
 		}
