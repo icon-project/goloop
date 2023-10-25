@@ -81,6 +81,7 @@ public class Validator {
         }
         String cur = jar.mainClassName;
         Map<Member, MemberDecl> mmap = new HashMap<>();
+        Set<String> visited = new HashSet<>();
         while (cur != null) {
             var classBytes = classMap.get(cur);
             if (classBytes==null) {
@@ -90,7 +91,11 @@ public class Validator {
             for (var m : cv.getMethodDecls()) {
                 mmap.putIfAbsent(m.getMember(), m);
             }
+            visited.add(cur);
             cur = Utilities.internalNameToFullyQualifiedName(cv.getSuperName());
+            if (visited.contains(cur)) {
+                fail("cyclic inheritance in main class " + jar.mainClassName);
+            }
         }
         Set<String> eeMethodNames = new HashSet<>();
         for (var eem : eeMethods) {
