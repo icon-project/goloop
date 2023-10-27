@@ -111,10 +111,10 @@ const (
 
 	RevisionUpdatePRepStats = Revision22
 
-	RevisionPreIISS4     = Revision23
-	RevisionVoteEventLog = Revision23
+	RevisionPreIISS4 = Revision23
 
-	RevisionIISS4 = Revision24
+	RevisionIISS4        = Revision24
+	RevisionVoteEventLog = Revision24
 )
 
 var revisionFlags = []module.Revision{
