@@ -836,7 +836,7 @@ def setDelegation(delegations: List[Vote]) -> None:
 - from revison 24
 ```python
 @eventlog(indexed=1)
-def SetDelegation(address: Address, delegations: bytes) -> None:
+def DelegationSet(address: Address, delegations: bytes) -> None:
 ```
 
 | Name        | Type    | Description                                 |
@@ -868,7 +868,7 @@ def setBond(bonds: List[Vote]) -> None:
 - from revison 24
 ```python
 @eventlog(indexed=1)
-def SetBond(address: Address, bonds: bytes) -> None:
+def BondSet(address: Address, bonds: bytes) -> None:
 ```
 
 | Name    | Type    | Description                           |

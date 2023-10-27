@@ -295,7 +295,7 @@ func recordBondEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SetBond(Address,bytes)"), cc.From().Bytes()},
+		[][]byte{[]byte("BondSet(Address,bytes)"), cc.From().Bytes()},
 		[][]byte{codec.BC.MustMarshalToBytes(bonds)},
 	)
 }
@@ -305,7 +305,7 @@ func recordDelegationEvent(cc icmodule.CallContext, delegations icstate.Delegati
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SetDelegation(Address,bytes)"), cc.From().Bytes()},
+		[][]byte{[]byte("DelegationSet(Address,bytes)"), cc.From().Bytes()},
 		[][]byte{codec.BC.MustMarshalToBytes(delegations)},
 	)
 }
