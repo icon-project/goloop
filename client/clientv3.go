@@ -518,11 +518,19 @@ func (c *ClientV3) Monitor(reqUrl string, reqPtr, respPtr interface{},
 			}()
 			c.wsReadJSONLoop(conn, respPtr, cb)
 		}()
+		return nil
 	} else {
 		defer c.wsClose(conn)
-		c.wsReadJSONLoop(conn, respPtr, cb)
+		var ret error
+		c.wsReadJSONLoop(conn, respPtr, func(v interface{}) {
+			if err, ok := v.(error) ; ok {
+				ret = err
+			} else {
+				cb(v)
+			}
+		})
+		return ret;
 	}
-	return nil
 }
 
 func (c *ClientV3) Cleanup() {
