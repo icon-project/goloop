@@ -167,9 +167,9 @@ func (s *chainScore) Ex_openBTPNetwork(networkTypeName string, name string, owne
 			if err = es.OnOpenBTPNetwork(cc, bc, networkTypeName); err != nil {
 				return 0, err
 			}
-			iiss.RecordBTPNetworkTypeActivatedEvent(cc, networkTypeName, ntid)
+			iiss.EmitBTPNetworkTypeActivatedEvent(cc, networkTypeName, ntid)
 		}
-		iiss.RecordBTPNetworkOpenedEvent(cc, ntid, nid)
+		iiss.EmitBTPNetworkOpenedEvent(cc, ntid, nid)
 		return nid, nil
 	}
 }
@@ -185,7 +185,7 @@ func (s *chainScore) Ex_closeBTPNetwork(id *common.HexInt) error {
 		if ntid, err := bs.CloseNetwork(s.newBTPContext(), nid); err != nil {
 			return err
 		} else {
-			iiss.RecordBTPNetworkClosedEvent(s.newCallContext(s.cc), ntid, nid)
+			iiss.EmitBTPNetworkClosedEvent(s.newCallContext(s.cc), ntid, nid)
 		}
 	}
 	return nil
@@ -207,7 +207,7 @@ func (s *chainScore) Ex_sendBTPMessage(networkId *common.HexInt, message []byte)
 			return err
 		}
 		s.cc.OnBTPMessage(nid, message)
-		iiss.RecordBTPMessageEvent(s.newCallContext(s.cc), nid, sn)
+		iiss.EmitBTPMessageEvent(s.newCallContext(s.cc), nid, sn)
 		return nil
 	}
 }

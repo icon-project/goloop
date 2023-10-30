@@ -232,7 +232,7 @@ func (ctx *callContextImpl) HandleBurn(from module.Address, amount *big.Int) err
 		if err != nil {
 			return err
 		}
-		recordICXBurnedEvent(ctx, from, amount, ts)
+		emitICXBurnedEvent(ctx, from, amount, ts)
 	}
 	return nil
 }

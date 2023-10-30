@@ -348,7 +348,7 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
 		return err
 	}
-	iiss.RecordGovernanceVariablesSetEvent(s.newCallContext(s.cc), s.from, irep.Value())
+	iiss.EmitGovernanceVariablesSetEvent(s.newCallContext(s.cc), s.from, irep.Value())
 	return nil
 }
 
@@ -431,7 +431,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	cc := s.newCallContext(s.cc)
 	if bytes.Compare(cc.TransactionID(), skippedClaimTX) == 0 {
 		// Skip this TX like ICON1 mainnet.
-		iiss.RecordIScoreClaimEvent(cc, s.from, icmodule.BigIntZero, icmodule.BigIntZero)
+		iiss.EmitIScoreClaimEvent(cc, s.from, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 	es, err := s.getExtensionState()
@@ -850,7 +850,7 @@ func (s *chainScore) setLegacySlashingRate(penaltyType icmodule.PenaltyType, sla
 		}
 		return err
 	}
-	iiss.RecordSlashingRateChangedEvent(cc, penaltyType, rate)
+	iiss.EmitSlashingRateChangedEvent(cc, penaltyType, rate)
 	return nil
 }
 
@@ -959,7 +959,7 @@ func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
 			nBond,
 		)
 	}
-	iiss.RecordMinimumBondChangedEvent(s.newCallContext(s.cc), nBond)
+	iiss.EmitMinimumBondChangedEvent(s.newCallContext(s.cc), nBond)
 	return nil
 }
 
