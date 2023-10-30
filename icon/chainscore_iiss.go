@@ -660,7 +660,7 @@ func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error)
 	}
 }
 
-func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
+func (s *chainScore) Ex_setRewardFund(iglobal *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -671,7 +671,7 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 	revision := s.cc.Revision().Value()
 	if revision <= icmodule.RevisionIISS4R0 {
 		rf := es.State.GetRewardFundV1()
-		rf.SetIGlobal(iglobal.Value())
+		rf.SetIGlobal(iglobal)
 		if err = es.State.SetRewardFund(rf); err != nil {
 			return err
 		}
@@ -679,7 +679,7 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 
 	if revision >= icmodule.RevisionIISS4R0 {
 		rf := es.State.GetRewardFundV2()
-		rf.SetIGlobal(iglobal.Value())
+		rf.SetIGlobal(iglobal)
 		return es.State.SetRewardFund(rf)
 	}
 	return nil
@@ -877,8 +877,8 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 		if !ok {
 			return scoreresult.InvalidParameterError.New("InvalidRateType")
 		}
-		if err = icutils.CheckInt64Overflow(value.Value()); err != nil {
-			return err
+		if !value.IsInt64() {
+			return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", value)
 		}
 		if _, ok = rates[name]; ok {
 			return icmodule.DuplicateError.Errorf("DuplicatePenaltyName(%s)", name)
@@ -933,7 +933,7 @@ func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
 	return bond, nil
 }
 
-func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
+func (s *chainScore) Ex_setMinimumBond(nBond *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -941,14 +941,13 @@ func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	if bond.Sign() < 0 {
+	if nBond.Sign() < 0 {
 		return scoreresult.InvalidParameterError.New("NegativeMinimumBond")
 	}
 	oBond := es.State.GetMinimumBond()
 	if oBond == nil {
 		return icmodule.NotFoundError.New("MinimumBondNotFound")
 	}
-	nBond := &bond.Int
 	if oBond.Cmp(nBond) == 0 {
 		return nil
 	}
@@ -967,28 +966,22 @@ func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContex
 	return iiss.NewCallContext(cc, s.from)
 }
 
-func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate *common.HexInt) error {
+func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate int64) error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
 	es, err := s.getExtensionState()
 	if err != nil {
 		return err
-	}
-	// Argument overflow check
-	for _, v := range []*common.HexInt{rate, maxRate, maxChangeRate} {
-		if err = icutils.CheckInt64Overflow(v.Value()); err != nil {
-			return err
-		}
 	}
 	return es.InitCommissionInfo(
 		s.newCallContext(s.cc),
-		icmodule.Rate(rate.Int64()),
-		icmodule.Rate(maxRate.Int64()),
-		icmodule.Rate(maxChangeRate.Int64()))
+		icmodule.Rate(rate),
+		icmodule.Rate(maxRate),
+		icmodule.Rate(maxChangeRate))
 }
 
-func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
+func (s *chainScore) Ex_setCommissionRate(rate int64) error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
@@ -996,10 +989,7 @@ func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	if err = icutils.CheckInt64Overflow(rate.Value()); err != nil {
-		return err
-	}
-	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate.Int64()))
+	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate))
 }
 
 func (s *chainScore) Ex_requestUnjail() error {
@@ -1014,7 +1004,7 @@ func (s *chainScore) Ex_requestUnjail() error {
 }
 
 func (s *chainScore) Ex_handleDoubleSignReport(
-	dsType string, blockHeight *common.HexInt, signer module.Address) error {
+	dsType string, blockHeight int64, signer module.Address) error {
 	if err := s.checkSystem(true); err != nil {
 		return err
 	}
@@ -1022,13 +1012,10 @@ func (s *chainScore) Ex_handleDoubleSignReport(
 	if err != nil {
 		return err
 	}
-	if err = icutils.CheckInt64Overflow(blockHeight.Value()); err != nil {
-		return err
-	}
 	return es.HandleDoubleSignReport(
 		s.newCallContext(s.cc),
 		dsType,
-		blockHeight.Int64(),
+		blockHeight,
 		signer,
 	)
 }
