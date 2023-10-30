@@ -832,6 +832,18 @@ def setDelegation(delegations: List[Vote]) -> None:
 |:------------|:----------------------|:-------------------------------|
 | delegations | List\[[Vote](#vote)\] | list of delegation information |
 
+*Event Log:*
+- from revison 24
+```python
+@eventlog(indexed=1)
+def DelegationSet(address: Address, delegations: bytes) -> None:
+```
+
+| Name        | Type    | Description                                 |
+|:------------|:--------|:--------------------------------------------|
+| address     | Address | address of the delegator                    |
+| delegations | bytes   | rlp encoded data of parameter `delegations` |
+
 *Revision:* 5 ~
 
 ### setBond
@@ -851,6 +863,18 @@ def setBond(bonds: List[Vote]) -> None:
 | Name  | Type                  | Description              |
 |:------|:----------------------|:-------------------------|
 | bonds | List\[[Vote](#vote)\] | list of bond information |
+
+*Event Log:*
+- from revison 24
+```python
+@eventlog(indexed=1)
+def BondSet(address: Address, bonds: bytes) -> None:
+```
+
+| Name    | Type    | Description                           |
+|:--------|:--------|:--------------------------------------|
+| address | Address | address of the bonder                 |
+| bonds   | bytes   | rlp encoded data of parameter `bonds` |
 
 *Revision:* 5 ~
 

@@ -19,6 +19,7 @@ package iiss
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -286,5 +287,25 @@ func recordDoubleSignReportedEvent(cc icmodule.CallContext, signer module.Addres
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("DoubleSignReported(Address,int,str)"), signer.Bytes()},
 		[][]byte{intconv.Int64ToBytes(dsBlockHeight), []byte(dsType)},
+	)
+}
+
+func recordBondEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
+	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
+		return
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("BondSet(Address,bytes)"), cc.From().Bytes()},
+		[][]byte{codec.BC.MustMarshalToBytes(bonds)},
+	)
+}
+
+func recordDelegationEvent(cc icmodule.CallContext, delegations icstate.Delegations) {
+	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
+		return
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("DelegationSet(Address,bytes)"), cc.From().Bytes()},
+		[][]byte{codec.BC.MustMarshalToBytes(delegations)},
 	)
 }

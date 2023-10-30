@@ -406,7 +406,7 @@ func TestVoter(t *testing.T) {
 	for _, voting := range votings {
 		voter.AddVoting(voting, pInfo.GetTermPeriod())
 	}
-	for key, amount := range voter.votes {
+	for key, amount := range voter.accumulatedVotes {
 		v, _ := expectVotes[key]
 		assert.Equal(t, v, amount, common.MustNewAddress([]byte(key)))
 	}
@@ -447,7 +447,7 @@ func TestVoter(t *testing.T) {
 	for _, event := range events {
 		voter.AddEvent(event, pInfo.OffsetLimit()-event.Offset())
 	}
-	for key, amount := range voter.votes {
+	for key, amount := range voter.accumulatedVotes {
 		v, _ := expectVotes[key]
 		assert.Equal(t, v, amount, common.MustNewAddress([]byte(key)))
 	}
@@ -455,7 +455,7 @@ func TestVoter(t *testing.T) {
 	// CalculateReward
 	key := icutils.ToKey(a1)
 	prep1 := pInfo.GetPRep(key)
-	expectReward := big.NewInt(prep1.VoterReward().Int64() * voter.votes[key].Int64() / prep1.AccumulatedVoted().Int64())
+	expectReward := big.NewInt(prep1.VoterReward().Int64() * voter.accumulatedVotes[key].Int64() / prep1.AccumulatedVoted().Int64())
 	r := voter.CalculateReward(pInfo)
 	assert.Equal(t, expectReward, r)
 }

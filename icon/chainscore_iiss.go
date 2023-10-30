@@ -368,7 +368,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err = es.SetBond(s.cc.BlockHeight(), s.from, bonds); err != nil {
+	if err = es.SetBond(s.newCallContext(s.cc), bonds); err != nil {
 		return err
 	}
 	logger.Tracef("Ex_setBond() end")
