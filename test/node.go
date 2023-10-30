@@ -104,7 +104,7 @@ func NewNode(t T, o ...FixtureOption) *Node {
 
 	ctx.CM = cm
 	ctx.EM = em
-	c.sm = NewServiceManager(c, plt, cm, em)
+	c.sm = cf.NewSM(ctx)
 
 	c.bm = cf.NewBM(ctx)
 	lastBlk, err := c.bm.GetLastBlock()

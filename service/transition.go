@@ -813,14 +813,16 @@ func (t *transition) doExecute(alreadyValidated bool) {
 		t.bs = bs
 	}
 
-	if ctx.Revision().Has(module.ReportDoubleSign) {
-		vl := ctx.GetValidatorState()
+	if root, err := ctx.GetDoubleSignContextRoot() ; err != nil {
+		t.reportExecution(err)
+		return
+	} else if root != nil {
 		dsch, err := contract.NewDSContextHistoryDB(ctx.GetAccountState(state.SystemID))
 		if err != nil {
 			t.reportExecution(err)
 			return
 		}
-		if err := dsch.Push(ctx.BlockHeight(), vl.GetSnapshot().Hash()); err != nil {
+		if err := dsch.Push(ctx.BlockHeight(), root.Hash()); err != nil {
 			t.reportExecution(err)
 			return
 		}

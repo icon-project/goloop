@@ -163,7 +163,7 @@ func (c *transitionResultCache) GetWorldContext(result []byte, vh []byte) (state
 		return nil, err
 	}
 	if item.worldContext == nil {
-		wss, err := c.getWorldSnapshotInLock(result, nil)
+		wss, err := c.getWorldSnapshotInLock(result, vh)
 		if err != nil {
 			return nil, err
 		}
