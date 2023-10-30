@@ -545,11 +545,12 @@ func (sim *simulatorImpl) GoBySetBond(
 	return sim.goByOneTransaction(csi, TypeSetBond, from, bonds)
 }
 
-func (sim *simulatorImpl) setBond(es *iiss.ExtensionStateImpl, wc icmodule.WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setBond(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
 	args := tx.Args()
 	from := args[0].(module.Address)
 	bonds := args[1].(icstate.Bonds)
-	return es.SetBond(wc.BlockHeight(), from, bonds)
+	cc := NewCallContext(wc, from)
+	return es.SetBond(cc, bonds)
 }
 
 func (sim *simulatorImpl) GetBonderListInJSON(address module.Address) map[string]interface{} {
