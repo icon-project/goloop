@@ -1924,7 +1924,7 @@ func (es *ExtensionStateImpl) RequestUnjail(cc icmodule.CallContext) error {
 		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
 	}
 
-	return ps.NotifyEvent(NewStateContext(cc, es), icmodule.PRepEventRequestUnjail)
+	return ps.OnEvent(NewStateContext(cc, es), icmodule.PRepEventRequestUnjail)
 }
 
 func (es *ExtensionStateImpl) GetPRepStats(cc icmodule.CallContext) (map[string]interface{}, error) {

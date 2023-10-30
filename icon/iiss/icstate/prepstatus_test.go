@@ -676,7 +676,7 @@ func TestPRepStatus_onPenaltyImposed(t *testing.T) {
 				"revision":     revision,
 				"termRevision": termRevision,
 			})
-			err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			err = ps.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
@@ -907,7 +907,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.Equal(t, None, ps.LastState())
 	assert.True(t, ps.IsActive())
 
-	err = ps.NotifyEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
+	err = ps.OnEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
 	assert.NoError(t, err)
 	assert.Equal(t, GradeMain, ps.Grade())
 	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
@@ -919,7 +919,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 		oFailCont := ps.GetVFailCont(sc.BlockHeight())
 
 		sc.IncreaseBlockHeightBy(1)
-		err = ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, false)
+		err = ps.OnEvent(sc, icmodule.PRepEventBlockVote, false)
 		assert.NoError(t, err)
 		assert.Equal(t, Failure, ps.LastState())
 
@@ -929,7 +929,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	}
 
 	// Impose penalty
-	err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+	err = ps.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 	assert.NoError(t, err)
 	assert.Equal(t, GradeCandidate, ps.Grade())
 	assert.True(t, ps.IsAlreadyPenalized())
@@ -950,7 +950,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 		oFailCont := ps.GetVFailCont(sc.BlockHeight())
 
 		sc.IncreaseBlockHeightBy(1)
-		err = ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, false)
+		err = ps.OnEvent(sc, icmodule.PRepEventBlockVote, false)
 		assert.NoError(t, err)
 
 		assert.Equal(t, oTotal+1, ps.GetVTotal(sc.BlockHeight()))
@@ -964,7 +964,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	oFailCont := ps.GetVFailCont(sc.BlockHeight())
 
 	sc.IncreaseBlockHeightBy(1)
-	err = ps.NotifyEvent(sc, icmodule.PRepEventValidatorOut)
+	err = ps.OnEvent(sc, icmodule.PRepEventValidatorOut)
 	assert.NoError(t, err)
 	assert.Equal(t, None, ps.LastState())
 	assert.Equal(t, GradeCandidate, ps.Grade())
@@ -983,7 +983,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 
 	// Request Unjail after 1 block
 	sc.IncreaseBlockHeightBy(1)
-	err = ps.NotifyEvent(sc, icmodule.PRepEventRequestUnjail)
+	err = ps.OnEvent(sc, icmodule.PRepEventRequestUnjail)
 	assert.NoError(t, err)
 	assert.Equal(t, None, ps.LastState())
 	assert.Equal(t, GradeCandidate, ps.Grade())
@@ -1005,7 +1005,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
 	assert.Equal(t, oFailCont, ps.GetVFailCont(sc.BlockHeight()))
 
-	err = ps.NotifyEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
+	err = ps.OnEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
 	assert.NoError(t, err)
 	assert.Equal(t, GradeMain, ps.Grade())
 	assert.Equal(t, None, ps.LastState())

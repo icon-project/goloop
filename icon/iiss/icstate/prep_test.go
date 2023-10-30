@@ -186,7 +186,7 @@ func TestPRep_IsElectable(t *testing.T) {
 		name := fmt.Sprintf("name-%02d", i)
 
 		if arg.pt != icmodule.PenaltyNone {
-			err := prep.NotifyEvent(sc, icmodule.PRepEventImposePenalty, arg.pt)
+			err := prep.OnEvent(sc, icmodule.PRepEventImposePenalty, arg.pt)
 			assert.NoError(t, err)
 		}
 		assert.Zero(t, arg.bonded.Cmp(prep.Bonded()))
@@ -242,7 +242,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 
 			sc.IncreaseBlockHeightBy(50)
 			prep0 := prepSet.GetByIndex(0)
-			err = prep0.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			err = prep0.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 
 			prepWithNoPower := prepSet.GetByIndex(1)
@@ -339,7 +339,7 @@ func TestPrepSetImpl_OnTermEnd(t *testing.T) {
 		}
 
 		if i >= inJails[0] && i < inJails[1] {
-			err = prep.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			err = prep.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 			assert.True(t, prep.IsInJail())
 		}

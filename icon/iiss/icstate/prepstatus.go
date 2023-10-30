@@ -646,7 +646,7 @@ func (ps *PRepStatusState) shiftVPenaltyMask(limit int) {
 	ps.vPenaltyMask = (ps.vPenaltyMask << 1) & buildPenaltyMask(limit)
 }
 
-func (ps *PRepStatusState) NotifyEvent(
+func (ps *PRepStatusState) OnEvent(
 	sc icmodule.StateContext, event icmodule.PRepEvent, data ...interface{}) error {
 	switch event {
 	case icmodule.PRepEventBlockVote:

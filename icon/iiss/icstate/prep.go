@@ -138,7 +138,7 @@ func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext, limit int) error {
 			newGrade = GradeCandidate
 		}
 
-		if err := prep.NotifyEvent(sc, icmodule.PRepEventTermEnd, newGrade, limit); err != nil {
+		if err := prep.OnEvent(sc, icmodule.PRepEventTermEnd, newGrade, limit); err != nil {
 			return err
 		}
 	}
