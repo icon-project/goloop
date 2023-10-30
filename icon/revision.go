@@ -50,10 +50,7 @@ var revHandlerMap = make(map[int][]revHandlerItem)
 func init() {
 	for _, item := range revHandlerTable {
 		rev := item.rev
-		items, ok := revHandlerMap[rev]
-		if !ok {
-			items = make([]revHandlerItem, 0, 1)
-		}
+		items, _ := revHandlerMap[rev]
 		revHandlerMap[rev] = append(items, item)
 	}
 	revHandlerTable = nil
