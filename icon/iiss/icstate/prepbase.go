@@ -163,7 +163,7 @@ func (r *PRepInfo) equal(r2 *PRepInfo) bool {
 }
 
 type PRepBaseData struct {
-	version 	int
+	version int
 
 	// Fields in version1
 	city        string
@@ -174,18 +174,20 @@ type PRepBaseData struct {
 	p2pEndpoint string
 	website     string
 	node        *common.Address
-	irep       *big.Int
-	irepHeight int64
-	bonderList BonderList
+	irep        *big.Int
+	irepHeight  int64
+	bonderList  BonderList
 	// Fields in version2
 	ci *CommissionInfo
 }
 
 func (p *PRepBaseData) Version() int {
-	if p.ci == nil {
-		return PRepBaseVersion1
-	} else {
-		return PRepBaseVersion2
+	return p.version
+}
+
+func (p *PRepBaseData) setVersion(version int) {
+	if version > p.version {
+		p.version = version
 	}
 }
 
@@ -409,6 +411,7 @@ func (p *PRepBaseSnapshot) RLPDecodeFields(d codec.Decoder) error {
 		&p.bonderList,
 	)
 	if err == nil && p.Version() == PRepBaseVersion2 {
+		p.ci = NewEmptyCommissionInfo()
 		err = d.Decode(p.ci)
 	}
 	return err
@@ -427,14 +430,11 @@ func (p *PRepBaseSnapshot) Equal(object icobject.Impl) bool {
 }
 
 func NewPRepBaseSnapshot(version int) *PRepBaseSnapshot {
-	pss := new(PRepBaseSnapshot)
-	if version == PRepBaseVersion2 {
-		pss.ci = NewEmptyCommissionInfo()
+	return &PRepBaseSnapshot{
+		PRepBaseData: PRepBaseData{
+			version: version,
+		},
 	}
-	if pss.Version() != version {
-		panic("NewPRepBaseSnapshot() error")
-	}
-	return pss
 }
 
 type PRepBaseState struct {
@@ -444,7 +444,7 @@ type PRepBaseState struct {
 
 func (p *PRepBaseState) GetSnapshot() *PRepBaseSnapshot {
 	if p.last == nil {
-		p.last = &PRepBaseSnapshot {
+		p.last = &PRepBaseSnapshot{
 			PRepBaseData: p.PRepBaseData.clone(),
 		}
 	}
@@ -528,6 +528,7 @@ func (p *PRepBaseState) InitCommissionInfo(ci *CommissionInfo) error {
 		return icmodule.DuplicateError.New("CommissionInfoAlreadySet")
 	}
 	p.ci = ci
+	p.setVersion(PRepBaseVersion2)
 	p.setDirty()
 	return nil
 }
