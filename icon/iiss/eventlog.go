@@ -55,9 +55,9 @@ func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.Pena
 }
 
 func EmitCommissionRateInitializedEvent(
-	cc icmodule.CallContext, owner module.Address, rate, maxRate, maxChangeRate icmodule.Rate) {
+	cc icmodule.CallContext, rate, maxRate, maxChangeRate icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("CommissionRateInitialized(Address,int,int,int)"), owner.Bytes()},
+		[][]byte{[]byte("CommissionRateInitialized(Address,int,int,int)"), cc.From().Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(rate.NumInt64()),
 			intconv.Int64ToBytes(maxRate.NumInt64()),
@@ -67,9 +67,9 @@ func EmitCommissionRateInitializedEvent(
 }
 
 func EmitCommissionRateSetEvent(
-	cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) {
+	cc icmodule.CallContext, rate icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("CommissionRateSet(Address,int)"), owner.Bytes()},
+		[][]byte{[]byte("CommissionRateSet(Address,int)"), cc.From().Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(rate.NumInt64()),
 		},
@@ -97,7 +97,7 @@ func EmitSlashedEvent(cc icmodule.CallContext, owner, bonder module.Address, amo
 	)
 }
 
-func EmitIScoreClaimEvent(cc icmodule.CallContext, address module.Address, claim, icx *big.Int) {
+func EmitIScoreClaimEvent(cc icmodule.CallContext, claim, icx *big.Int) {
 	revision := cc.Revision().Value()
 	if revision < icmodule.Revision9 {
 		cc.OnEvent(state.SystemAddress,
@@ -113,7 +113,7 @@ func EmitIScoreClaimEvent(cc icmodule.CallContext, address module.Address, claim
 		cc.OnEvent(state.SystemAddress,
 			[][]byte{
 				[]byte("IScoreClaimedV2(Address,int,int)"),
-				address.Bytes(),
+				cc.From().Bytes(),
 			},
 			[][]byte{
 				intconv.BigIntToBytes(claim),
@@ -160,17 +160,17 @@ func EmitTermStartedEvent(cc icmodule.CallContext, term *icstate.TermSnapshot) {
 	)
 }
 
-func EmitPRepRegisteredEvent(cc icmodule.CallContext, from module.Address) {
+func EmitPRepRegisteredEvent(cc icmodule.CallContext) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepRegistered(Address)")},
-		[][]byte{from.Bytes()},
+		[][]byte{cc.From().Bytes()},
 	)
 }
 
-func EmitPRepSetEvent(cc icmodule.CallContext, from module.Address) {
+func EmitPRepSetEvent(cc icmodule.CallContext) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepSet(Address)")},
-		[][]byte{from.Bytes()},
+		[][]byte{cc.From().Bytes()},
 	)
 }
 
@@ -197,10 +197,10 @@ func EmitRewardFundBurnedEvent(cc icmodule.CallContext, key string, from module.
 	)
 }
 
-func EmitPRepUnregisteredEvent(cc icmodule.CallContext, owner module.Address) {
+func EmitPRepUnregisteredEvent(cc icmodule.CallContext) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepUnregistered(Address)")},
-		[][]byte{owner.Bytes()},
+		[][]byte{cc.From().Bytes()},
 	)
 }
 
@@ -248,9 +248,9 @@ func EmitBTPMessageEvent(cc icmodule.CallContext, nid, sn int64) {
 	)
 }
 
-func EmitGovernanceVariablesSetEvent(cc icmodule.CallContext, from module.Address, irep *big.Int) {
+func EmitGovernanceVariablesSetEvent(cc icmodule.CallContext, irep *big.Int) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), from.Bytes()},
+		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), cc.From().Bytes()},
 		[][]byte{intconv.BigIntToBytes(irep)},
 	)
 }

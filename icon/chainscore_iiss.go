@@ -348,7 +348,7 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
 		return err
 	}
-	iiss.EmitGovernanceVariablesSetEvent(s.newCallContext(s.cc), s.from, irep.Value())
+	iiss.EmitGovernanceVariablesSetEvent(s.newCallContext(s.cc), irep.Value())
 	return nil
 }
 
@@ -431,7 +431,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	cc := s.newCallContext(s.cc)
 	if bytes.Compare(cc.TransactionID(), skippedClaimTX) == 0 {
 		// Skip this TX like ICON1 mainnet.
-		iiss.EmitIScoreClaimEvent(cc, s.from, icmodule.BigIntZero, icmodule.BigIntZero)
+		iiss.EmitIScoreClaimEvent(cc, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 	es, err := s.getExtensionState()

@@ -60,6 +60,14 @@ type Call struct {
 	params []interface{}
 }
 
+func (c *Call) Method() string {
+	return c.method
+}
+
+func (c *Call) Params() []interface{} {
+	return c.params
+}
+
 type CallTracer struct {
 	callMap map[string][]*Call
 }

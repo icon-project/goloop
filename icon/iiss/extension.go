@@ -582,7 +582,7 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
 
-	EmitPRepUnregisteredEvent(cc, owner)
+	EmitPRepUnregisteredEvent(cc)
 	return nil
 }
 
@@ -1335,7 +1335,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		)
 	}
 
-	EmitPRepRegisteredEvent(cc, from)
+	EmitPRepRegisteredEvent(cc)
 	return nil
 }
 
@@ -1369,7 +1369,7 @@ func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRe
 	if err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", from)
 	}
-	EmitPRepSetEvent(cc, from)
+	EmitPRepSetEvent(cc)
 
 	if icmodule.Revision8 <= revision && revision < icmodule.RevisionStopICON1Support && nodeUpdate {
 		// ICON1 update term when main P-Rep modify p2p endpoint or node address
@@ -1461,7 +1461,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 	}
 	if iScore.Sign() == 0 {
 		// there is no IScore to claim
-		EmitIScoreClaimEvent(cc, from, icmodule.BigIntZero, icmodule.BigIntZero)
+		EmitIScoreClaimEvent(cc, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 
@@ -1500,7 +1500,7 @@ func (es *ExtensionStateImpl) ClaimIScore(cc icmodule.CallContext) error {
 		}
 		es.claimed[icutils.ToKey(from)] = newClaimed(cc.TransactionID(), claim)
 	}
-	EmitIScoreClaimEvent(cc, from, claim, icx)
+	EmitIScoreClaimEvent(cc, claim, icx)
 	return nil
 }
 
@@ -1835,7 +1835,7 @@ func (es *ExtensionStateImpl) InitCommissionInfo(
 	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
 		return err
 	}
-	EmitCommissionRateInitializedEvent(cc, owner, rate, maxRate, maxChangeRate)
+	EmitCommissionRateInitializedEvent(cc, rate, maxRate, maxChangeRate)
 	return nil
 }
 
@@ -1883,7 +1883,7 @@ func (es *ExtensionStateImpl) SetCommissionRate(cc icmodule.CallContext, rate ic
 	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
 		return err
 	}
-	EmitCommissionRateSetEvent(cc, owner, rate)
+	EmitCommissionRateSetEvent(cc, rate)
 	return nil
 }
 
