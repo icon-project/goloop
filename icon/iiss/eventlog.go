@@ -27,7 +27,7 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-func EmitSlashingRateChangedEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
+func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
 	if cc.Revision().Value() < icmodule.RevisionIISS4R0 {
 		var name string
 		switch penaltyType {
@@ -46,15 +46,15 @@ func EmitSlashingRateChangedEvent(cc icmodule.CallContext, penaltyType icmodule.
 	}
 
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateChangedV2(int,int)")},
+		[][]byte{[]byte("SlashingRateSet(str,int)")},
 		[][]byte{
-			intconv.Int64ToBytes(int64(penaltyType)),
+			[]byte(penaltyType.String()),
 			intconv.Int64ToBytes(rate.NumInt64()),
 		},
 	)
 }
 
-func emitCommissionRateInitializedEvent(
+func EmitCommissionRateInitializedEvent(
 	cc icmodule.CallContext, owner module.Address, rate, maxRate, maxChangeRate icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("CommissionRateInitialized(Address,int,int,int)"), owner.Bytes()},
@@ -66,17 +66,17 @@ func emitCommissionRateInitializedEvent(
 	)
 }
 
-func emitCommissionRateChangedEvent(
+func EmitCommissionRateSetEvent(
 	cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("CommissionRateChanged(Address,int)"), owner.Bytes()},
+		[][]byte{[]byte("CommissionRateSet(Address,int)"), owner.Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(rate.NumInt64()),
 		},
 	)
 }
 
-func emitPenaltyImposedEvent(cc icmodule.CallContext, ps *icstate.PRepStatusState, pt icmodule.PenaltyType) {
+func EmitPenaltyImposedEvent(cc icmodule.CallContext, ps *icstate.PRepStatusState, pt icmodule.PenaltyType) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), ps.Owner().Bytes()},
 		[][]byte{
@@ -86,7 +86,7 @@ func emitPenaltyImposedEvent(cc icmodule.CallContext, ps *icstate.PRepStatusStat
 	)
 }
 
-func emitSlashedEvent(cc icmodule.CallContext, owner, bonder module.Address, amount *big.Int) {
+func EmitSlashedEvent(cc icmodule.CallContext, owner, bonder module.Address, amount *big.Int) {
 	if amount.Sign() <= 0 && cc.Revision().Value() >= icmodule.RevisionIISS4R0 {
 		return
 	}
@@ -123,7 +123,7 @@ func EmitIScoreClaimEvent(cc icmodule.CallContext, address module.Address, claim
 	}
 }
 
-func emitPRepIssuedEvent(cc icmodule.CallContext, prep *IssuePRepJSON) {
+func EmitPRepIssuedEvent(cc icmodule.CallContext, prep *IssuePRepJSON) {
 	if prep != nil {
 		cc.OnEvent(state.SystemAddress,
 			[][]byte{[]byte("PRepIssued(int,int,int,int)")},
@@ -137,7 +137,7 @@ func emitPRepIssuedEvent(cc icmodule.CallContext, prep *IssuePRepJSON) {
 	}
 }
 
-func emitICXIssuedEvent(cc icmodule.CallContext, result *IssueResultJSON, issue *icstate.Issue) {
+func EmitICXIssuedEvent(cc icmodule.CallContext, result *IssueResultJSON, issue *icstate.Issue) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("ICXIssued(int,int,int,int)")},
 		[][]byte{
@@ -149,7 +149,7 @@ func emitICXIssuedEvent(cc icmodule.CallContext, result *IssueResultJSON, issue 
 	)
 }
 
-func emitTermStartedEvent(cc icmodule.CallContext, term *icstate.TermSnapshot) {
+func EmitTermStartedEvent(cc icmodule.CallContext, term *icstate.TermSnapshot) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("TermStarted(int,int,int)")},
 		[][]byte{
@@ -160,21 +160,21 @@ func emitTermStartedEvent(cc icmodule.CallContext, term *icstate.TermSnapshot) {
 	)
 }
 
-func emitPRepRegisteredEvent(cc icmodule.CallContext, from module.Address) {
+func EmitPRepRegisteredEvent(cc icmodule.CallContext, from module.Address) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepRegistered(Address)")},
 		[][]byte{from.Bytes()},
 	)
 }
 
-func emitPRepSetEvent(cc icmodule.CallContext, from module.Address) {
+func EmitPRepSetEvent(cc icmodule.CallContext, from module.Address) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepSet(Address)")},
 		[][]byte{from.Bytes()},
 	)
 }
 
-func emitRewardFundTransferredEvent(cc icmodule.CallContext, key string, from, to module.Address, amount *big.Int) {
+func EmitRewardFundTransferredEvent(cc icmodule.CallContext, key string, from, to module.Address, amount *big.Int) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("RewardFundTransferred(str,Address,Address,int)")},
 		[][]byte{
@@ -186,7 +186,7 @@ func emitRewardFundTransferredEvent(cc icmodule.CallContext, key string, from, t
 	)
 }
 
-func emitRewardFundBurnedEvent(cc icmodule.CallContext, key string, from module.Address, amount *big.Int) {
+func EmitRewardFundBurnedEvent(cc icmodule.CallContext, key string, from module.Address, amount *big.Int) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("RewardFundBurned(str,Address,int)")},
 		[][]byte{
@@ -197,7 +197,7 @@ func emitRewardFundBurnedEvent(cc icmodule.CallContext, key string, from module.
 	)
 }
 
-func emitPRepUnregisteredEvent(cc icmodule.CallContext, owner module.Address) {
+func EmitPRepUnregisteredEvent(cc icmodule.CallContext, owner module.Address) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("PRepUnregistered(Address)")},
 		[][]byte{owner.Bytes()},
@@ -255,14 +255,14 @@ func EmitGovernanceVariablesSetEvent(cc icmodule.CallContext, from module.Addres
 	)
 }
 
-func EmitMinimumBondChangedEvent(cc icmodule.CallContext, bond *big.Int) {
+func EmitMinimumBondSetEvent(cc icmodule.CallContext, bond *big.Int) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("MinimumBondChanged(int)")},
+		[][]byte{[]byte("MinimumBondSet(int)")},
 		[][]byte{intconv.BigIntToBytes(bond)},
 	)
 }
 
-func emitICXBurnedEvent(cc icmodule.CallContext, from module.Address, amount, ts *big.Int) {
+func EmitICXBurnedEvent(cc icmodule.CallContext, from module.Address, amount, ts *big.Int) {
 	rev := cc.Revision().Value()
 	if rev < icmodule.RevisionBurnV2 {
 		var burnSig string
@@ -283,14 +283,14 @@ func emitICXBurnedEvent(cc icmodule.CallContext, from module.Address, amount, ts
 	}
 }
 
-func emitDoubleSignReportedEvent(cc icmodule.CallContext, signer module.Address, dsBlockHeight int64, dsType string) {
+func EmitDoubleSignReportedEvent(cc icmodule.CallContext, signer module.Address, dsBlockHeight int64, dsType string) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("DoubleSignReported(Address,int,str)"), signer.Bytes()},
 		[][]byte{intconv.Int64ToBytes(dsBlockHeight), []byte(dsType)},
 	)
 }
 
-func emitBondEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
+func EmitBondSetEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
 	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
 		return
 	}
@@ -300,7 +300,7 @@ func emitBondEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
 	)
 }
 
-func emitDelegationEvent(cc icmodule.CallContext, delegations icstate.Delegations) {
+func EmitDelegationSetEvent(cc icmodule.CallContext, delegations icstate.Delegations) {
 	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
 		return
 	}

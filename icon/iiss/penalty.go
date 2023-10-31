@@ -65,7 +65,7 @@ func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner modul
 	for _, penaltyType := range penaltyTypes {
 		if penaltyType == icmodule.PenaltyValidationFailure || isIISS4Activated {
 			// Record PenaltyImposed eventlog
-			emitPenaltyImposedEvent(cc, ps, penaltyType)
+			EmitPenaltyImposedEvent(cc, ps, penaltyType)
 		}
 
 		if revision < icmodule.RevisionIISS4R0 && penaltyType == icmodule.PenaltyValidationFailure {
@@ -150,7 +150,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		}
 
 		// Record Slashed eventlog
-		emitSlashedEvent(cc, owner, bonder, slashedStake)
+		EmitSlashedEvent(cc, owner, bonder, slashedStake)
 		// slashedStake is the same as the sum of slashedBond and slashedUnbond
 		logger.TSystemf(
 			"IISS bonder slash loop end bonder=%s slashedBond=%v slashedUnbond=%v slashedStake=%v",

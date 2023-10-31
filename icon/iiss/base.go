@@ -293,12 +293,12 @@ func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byt
 	}
 
 	// make event log
-	emitPRepIssuedEvent(cc, prep)
-	emitICXIssuedEvent(cc, result, issue)
+	EmitPRepIssuedEvent(cc, prep)
+	EmitICXIssuedEvent(cc, result, issue)
 
 	term := es.State.GetTermSnapshot()
 	if cc.BlockHeight() == term.StartHeight() {
-		emitTermStartedEvent(cc, term)
+		EmitTermStartedEvent(cc, term)
 	}
 	return nil
 }

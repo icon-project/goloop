@@ -450,7 +450,7 @@ func (es *ExtensionStateImpl) SetDelegation(cc icmodule.CallContext, ds icstate.
 		migrate.ReproduceUnstakeBugForDelegation(cc, es.logger)
 	}
 
-	emitDelegationEvent(cc, ds)
+	EmitDelegationSetEvent(cc, ds)
 
 	return nil
 }
@@ -582,7 +582,7 @@ func (es *ExtensionStateImpl) UnregisterPRep(cc icmodule.CallContext) error {
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventEnable")
 	}
 
-	emitPRepUnregisteredEvent(cc, owner)
+	EmitPRepUnregisteredEvent(cc, owner)
 	return nil
 }
 
@@ -599,7 +599,7 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 	pt := icmodule.PenaltyPRepDisqualification
 	ps := es.State.GetPRepStatusByOwner(address, false)
 	// Record PenaltyImposed eventlog
-	emitPenaltyImposedEvent(cc, ps, pt)
+	EmitPenaltyImposedEvent(cc, ps, pt)
 	rate, _ := es.State.GetSlashingRate(cc.Revision().Value(), pt)
 	return es.slash(cc, address, rate)
 }
@@ -611,7 +611,7 @@ func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address
 		return icmodule.NotFoundError.Errorf("PRepNotFound(%s)", address)
 	}
 	pt := icmodule.PenaltyMissedNetworkProposalVote
-	emitPenaltyImposedEvent(cc, ps, pt)
+	EmitPenaltyImposedEvent(cc, ps, pt)
 	rate, _ := es.State.GetSlashingRate(cc.Revision().Value(), pt)
 	return es.slash(cc, address, rate)
 }
@@ -686,7 +686,7 @@ func (es *ExtensionStateImpl) SetBond(cc icmodule.CallContext, bonds icstate.Bon
 		return scoreresult.UnknownFailureError.Wrapf(err, "Failed to add EventBond")
 	}
 
-	emitBondEvent(cc, bonds)
+	EmitBondSetEvent(cc, bonds)
 
 	es.logger.Tracef("SetBond() end")
 	return nil
@@ -1335,7 +1335,7 @@ func (es *ExtensionStateImpl) RegisterPRep(cc icmodule.CallContext, info *icstat
 		)
 	}
 
-	emitPRepRegisteredEvent(cc, from)
+	EmitPRepRegisteredEvent(cc, from)
 	return nil
 }
 
@@ -1369,7 +1369,7 @@ func (es *ExtensionStateImpl) SetPRep(cc icmodule.CallContext, info *icstate.PRe
 	if err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(err, "Failed to set PRep: from=%v", from)
 	}
-	emitPRepSetEvent(cc, from)
+	EmitPRepSetEvent(cc, from)
 
 	if icmodule.Revision8 <= revision && revision < icmodule.RevisionStopICON1Support && nodeUpdate {
 		// ICON1 update term when main P-Rep modify p2p endpoint or node address
@@ -1711,7 +1711,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {
 				return err
 			}
-			emitRewardFundTransferredEvent(cc, k.key, from, to, amount)
+			EmitRewardFundTransferredEvent(cc, k.key, from, to, amount)
 		} else {
 			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
 				if err := cc.Withdraw(from, amount, module.Burn); err != nil {
@@ -1723,7 +1723,7 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 			if err := cc.HandleBurn(from, amount); err != nil {
 				return err
 			}
-			emitRewardFundBurnedEvent(cc, k.key, from, amount)
+			EmitRewardFundBurnedEvent(cc, k.key, from, amount)
 			es.logger.Warnf("Burn %s for %s", amount, k.key)
 		}
 	}
@@ -1797,7 +1797,7 @@ func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values m
 					return err
 				}
 				// Record slashingRateChangedV2 eventLogs in PenaltyType order
-				EmitSlashingRateChangedEvent(cc, pt, rate)
+				EmitSlashingRateSetEvent(cc, pt, rate)
 			}
 		}
 	}
@@ -1835,7 +1835,7 @@ func (es *ExtensionStateImpl) InitCommissionInfo(
 	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
 		return err
 	}
-	emitCommissionRateInitializedEvent(cc, owner, rate, maxRate, maxChangeRate)
+	EmitCommissionRateInitializedEvent(cc, owner, rate, maxRate, maxChangeRate)
 	return nil
 }
 
@@ -1883,7 +1883,7 @@ func (es *ExtensionStateImpl) SetCommissionRate(cc icmodule.CallContext, rate ic
 	if err = es.Front.AddCommissionRate(owner, rate); err != nil {
 		return err
 	}
-	emitCommissionRateChangedEvent(cc, owner, rate)
+	EmitCommissionRateSetEvent(cc, owner, rate)
 	return nil
 }
 
@@ -1970,13 +1970,13 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 		// Ignore DoubleSignReports silently
 		return nil
 	}
-	emitDoubleSignReportedEvent(cc, owner, dsBlockHeight, dsType)
+	EmitDoubleSignReportedEvent(cc, owner, dsBlockHeight, dsType)
 
 	const pt = icmodule.PenaltyDoubleSign
 	if err := es.State.ImposePenalty(sc, pt, ps); err != nil {
 		return err
 	}
-	emitPenaltyImposedEvent(cc, ps, pt)
+	EmitPenaltyImposedEvent(cc, ps, pt)
 
 	rate, err := es.State.GetSlashingRate(sc.Revision(), pt)
 	if err != nil {

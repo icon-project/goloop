@@ -850,7 +850,7 @@ func (s *chainScore) setLegacySlashingRate(penaltyType icmodule.PenaltyType, sla
 		}
 		return err
 	}
-	iiss.EmitSlashingRateChangedEvent(cc, penaltyType, rate)
+	iiss.EmitSlashingRateSetEvent(cc, penaltyType, rate)
 	return nil
 }
 
@@ -958,7 +958,7 @@ func (s *chainScore) Ex_setMinimumBond(nBond *big.Int) error {
 			nBond,
 		)
 	}
-	iiss.EmitMinimumBondChangedEvent(s.newCallContext(s.cc), nBond)
+	iiss.EmitMinimumBondSetEvent(s.newCallContext(s.cc), nBond)
 	return nil
 }
 
