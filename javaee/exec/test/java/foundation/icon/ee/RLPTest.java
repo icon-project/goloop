@@ -37,6 +37,26 @@ public class RLPTest extends SimpleTest {
 
             return 1;
         }
+
+        @External
+        public void skipBasic() {
+            byte[] data = new byte[5];
+            data[3] = 1;
+            ObjectReader r = Context.newByteArrayObjectReader("RLPn", data);
+            r.skip(3);
+            var by = r.readByte();
+            Context.require(by==1);
+            r.skip(1);
+        }
+
+        @External
+        public void negativeSkipCount() {
+            byte[] data = new byte[] {0, 1};
+            ObjectReader r = Context.newByteArrayObjectReader("RLPn", data);
+            r.skip(-1);
+            var by = r.read(Byte.class);
+            Context.require(by==0);
+        }
     }
 
     @Test
@@ -44,5 +64,17 @@ public class RLPTest extends SimpleTest {
         var c = sm.mustDeploy(Score.class);
         var res = c.tryInvoke("readOverflowLenString");
         Assertions.assertEquals(Status.UnknownFailure, res.getStatus());
+    }
+
+    @Test
+    void skipBasic() {
+        var c = sm.mustDeploy(Score.class);
+        c.invoke("skipBasic");
+    }
+
+    @Test
+    void negativeSkipCount() {
+        var c = sm.mustDeploy(Score.class);
+        c.invoke("negativeSkipCount");
     }
 }
