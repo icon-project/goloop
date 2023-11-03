@@ -215,7 +215,7 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 			return err
 		}
 		if voted[i] == false {
-			if err = es.handlePenalty(cc, voter); err != nil {
+			if err = es.handleBlockValidationPenalty(cc, voter); err != nil {
 				return err
 			}
 		}
