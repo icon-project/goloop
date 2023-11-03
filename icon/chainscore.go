@@ -841,9 +841,7 @@ var chainMethods = []*chainMethod{
 	{scoreapi.Method{
 		scoreapi.Function, "getPRepCountConfig",
 		scoreapi.FlagReadOnly, 0,
-		[]scoreapi.Parameter{
-			{"counts", scoreapi.ListTypeOf(1, scoreapi.String), nil, nil},
-		},
+		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},

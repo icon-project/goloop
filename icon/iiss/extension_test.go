@@ -717,7 +717,8 @@ func TestExtensionStateImpl_SetPRepCountConfig(t *testing.T) {
 		{map[string]int64{"main": 22, "sub": 78, "extra": 3}, true},
 		{map[string]int64{"main": 19, "sub": 81, "extra": 9}, true},
 		{map[string]int64{"main": 25, "sub": 75}, true},
-		{map[string]int64{"main": 10}, true},
+		{map[string]int64{"main": 10}, false},
+		{map[string]int64{"main": 20}, true},
 		{map[string]int64{"sub": 40}, true},
 		{map[string]int64{"extra": 3}, true},
 		{map[string]int64{"main": 1001}, false},
@@ -734,7 +735,7 @@ func TestExtensionStateImpl_SetPRepCountConfig(t *testing.T) {
 	}
 
 	for i, arg := range args {
-		name := fmt.Sprintf("setPRepCountConfig-%02d", i)
+		name := fmt.Sprintf("case-%02d", i)
 		counts := arg.counts
 		success := arg.success
 
@@ -743,12 +744,13 @@ func TestExtensionStateImpl_SetPRepCountConfig(t *testing.T) {
 			if success {
 				assert.NoError(t, err)
 				for k, v := range counts {
-					switch k {
-					case "main":
+					pct, _ := icstate.StringToPRepCountType(k)
+					switch pct {
+					case icstate.PRepCountMain:
 						main = v
-					case "sub":
+					case icstate.PRepCountSub:
 						sub = v
-					case "extra":
+					case icstate.PRepCountExtra:
 						extra = v
 					}
 				}
@@ -757,58 +759,11 @@ func TestExtensionStateImpl_SetPRepCountConfig(t *testing.T) {
 			}
 
 			// Get all PRepCounts
-			jso, err := es.GetPRepCountConfig(nil)
+			jso, err := es.GetPRepCountConfig()
 			assert.NoError(t, err)
 			assert.Equal(t, main, jso["main"])
 			assert.Equal(t, sub, jso["sub"])
 			assert.Equal(t, extra, jso["extra"])
-		})
-	}
-
-	args2 := []struct {
-		names   []string
-		success bool
-	}{
-		{nil, true},
-		{[]string{}, true},
-		{[]string{"main", "sub", "extra"}, true},
-		{[]string{"main"}, true},
-		{[]string{"sub"}, true},
-		{[]string{"extra"}, true},
-		{[]string{"main", "sub"}, true},
-		{[]string{"main", "extra"}, true},
-		{[]string{"sub", "extra"}, true},
-		{[]string{"sub2", "extra"}, false},
-		{[]string{"main", "main", "extra"}, false},
-		{[]string{"main2"}, false},
-		{[]string{"sub2"}, false},
-		{[]string{"extra2"}, false},
-	}
-
-	for i, arg := range args2 {
-		name := fmt.Sprintf("getPRepCountConfig-%02d", i)
-		t.Run(name, func(t *testing.T){
-			size := len(arg.names)
-			if size == 0 {
-				size = 3
-			}
-			jso, err := es.GetPRepCountConfig(arg.names)
-			if arg.success {
-				assert.Equal(t, size, len(jso))
-				assert.NoError(t, err)
-				for k, v := range jso {
-					switch k {
-					case "main":
-						assert.Equal(t, main, v)
-					case "sub":
-						assert.Equal(t, sub, v)
-					case "extra":
-						assert.Equal(t, extra, v)
-					}
-				}
-			} else {
-				assert.Error(t, err)
-			}
 		})
 	}
 }

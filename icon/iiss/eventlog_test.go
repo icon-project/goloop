@@ -487,8 +487,7 @@ func TestEmitPRepCountConfigSetEvent(t *testing.T) {
 		"from": from,
 	})
 
-	cfg := icstate.NewPRepCountConfig(22, 78, 3)
-	EmitPRepCountConfigSetEvent(cc, cfg)
+	EmitPRepCountConfigSetEvent(cc, 22, 78, 3)
 	scoreAddress, indexed, data := getParams(cc)
 	checkEventLogSignature(t, scoreAddress, indexed, data)
 }

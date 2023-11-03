@@ -1055,7 +1055,7 @@ func (s *chainScore) Ex_setPRepCountConfig(values []interface{}) error {
 	return es.SetPRepCountConfig(s.newCallContext(s.cc), counts)
 }
 
-func (s *chainScore) Ex_getPRepCountConfig(values []interface{}) (map[string]interface{}, error) {
+func (s *chainScore) Ex_getPRepCountConfig() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
@@ -1063,22 +1063,5 @@ func (s *chainScore) Ex_getPRepCountConfig(values []interface{}) (map[string]int
 	if err != nil {
 		return nil, err
 	}
-	if len(values) > 3 {
-		return nil, scoreresult.InvalidParameterError.Errorf("TooManyCountNames")
-	}
-
-	size := len(values)
-	if size == 0 {
-		size = 3
-	}
-
-	names := make([]string, 0, size)
-	for _, v := range values {
-		name, ok := v.(string)
-		if !ok {
-			return nil, scoreresult.InvalidParameterError.New("InvalidNameType")
-		}
-		names = append(names, name)
-	}
-	return es.GetPRepCountConfig(names)
+	return es.GetPRepCountConfig()
 }

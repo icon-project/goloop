@@ -364,7 +364,7 @@ func TestPrepSetImpl_OnTermEnd(t *testing.T) {
 		}
 	}
 	assert.Equal(t, electables, electables2)
-	assert.Equal(t, cfg.MainPReps(MainPRepAll), prepSet.GetPRepSize(GradeMain))
+	assert.Equal(t, cfg.MainPReps()+cfg.ExtraMainPReps(), prepSet.GetPRepSize(GradeMain))
 	assert.Equal(t, electables, prepSet.GetPRepSize(GradeMain)+prepSet.GetPRepSize(GradeSub))
 	assert.Equal(t, totalPReps-electables, prepSet.GetPRepSize(GradeCandidate))
 
