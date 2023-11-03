@@ -1,10 +1,18 @@
-import java.util.concurrent.TimeUnit
-
 allprojects {
     apply plugin: 'java'
 
     repositories {
         mavenCentral()
+    }
+}
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.squareup.okhttp3:okhttp:3.11.0"
     }
 }
 
@@ -39,6 +47,13 @@ compileTestJava {
     options.warnings = true
     options.deprecation = true
 }
+
+
+import okhttp3.MediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import java.util.concurrent.TimeUnit
 
 class ChainTest extends Test {
     String configFile = "./data/config.json"
@@ -99,7 +114,7 @@ class ChainTest extends Test {
         }))
     }
 
-    void startDocker(String serverPort) {
+    void startDocker(int serverPort) {
         def glTag = System.getProperty("GL_TAG", "latest")
         List<String> commands = new LinkedList<String>()
         commands.add("docker")
@@ -151,14 +166,17 @@ class ChainTest extends Test {
                 logging.println("DBType: ${dbType}")
             }
             if (useDocker != null && useDocker == "true") {
-                startDocker(getServerPort())
+                def uri = getServerURI()
+                startDocker(uri.port)
             } else {
                 startServer()
             }
             systemProperty("CHAIN_ENV", envFile)
 
-            // wait for a while to get ready.
-            sleep(1000)
+            def uri = getServerURI()
+            if (!waitServer("${uri}/api/v3")) {
+                throw new Exception('FAIL to start server')
+            }
         } else {
             systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
         }
@@ -170,13 +188,44 @@ class ChainTest extends Test {
         }
     }
 
-    private String getServerPort() {
-        def stdout = new ByteArrayOutputStream()
-        def proc = ['sh', '-c', "grep localhost ${envFile} | cut -d \':\' -f 3"].execute(null, getWorkingDir())
-        proc.waitForProcessOutput(stdout, System.err)
-        def serverPort = stdout.toString().trim()
-        logging.println("ServerPort: ${serverPort}")
-        return serverPort
+    private URI getServerURI() {
+        def envProps = new Properties()
+        envProps.load(new File(getWorkingDir(), envFile).newReader())
+        def url = envProps.get('node0.url') as String
+        if (url == null) {
+            throw new IllegalStateException("${envFile} doesn't have node0.url")
+        }
+        return new URI(url)
+    }
+
+    /**
+     * Wait for the server on-line.
+     *
+     * It calls "icx_getNetworkInfo" to check whether the server is on-line
+     * @param url Server URL for API endpoint. It uses "<url>/api/v3" for calls
+     * @return Whether it success or not
+     */
+    boolean waitServer(String url) {
+        println("WAIT server url=${url}")
+        def client = new OkHttpClient()
+        def JSON = MediaType.get('application/json')
+        def jsonGetNetworkInfo = "{ \"jsonrpc\": \"2.0\", \"method\": \"icx_getNetworkInfo\", \"id\": 123 }"
+        def rb = RequestBody.create(JSON, jsonGetNetworkInfo)
+
+        for (int cnt=10 ; cnt>0 ; cnt--) {
+            try {
+                def req = new Request.Builder().url(url).post(rb).build()
+                def res = client.newCall(req).execute()
+                if (res.code() == 200) {
+                    println("WAIT done")
+                    return true
+                }
+            } catch (Throwable th) {
+                logger.info("WAIT exception th=${th}")
+            }
+            sleep(1000)
+        }
+        return false
     }
 
     synchronized void stopServer() {
