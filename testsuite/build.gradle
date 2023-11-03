@@ -118,6 +118,7 @@ class ChainTest extends Test {
         commands.add("--name")
         commands.add("gochain-" + dockerEnv)
         commands.add("goloop/gochain:${glTag}")
+        stopContainer(true)
         process = commands.execute(null, getWorkingDir())
         if (process.waitFor() == 0) {
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -187,11 +188,17 @@ class ChainTest extends Test {
         }
     }
 
+    synchronized void stopContainer(boolean remove) {
+        ["docker", "stop", "gochain-${dockerEnv}"].execute(null, getWorkingDir()).waitFor()
+        if (remove) {
+            ["docker", "rm", "gochain-${dockerEnv}"].execute(null, getWorkingDir()).waitFor()
+        }
+    }
+
     synchronized void stopDocker() {
         if (process != null && process.exitValue() == 0) {
             logging.println("STOPPING docker container")
-            ["docker", "stop", "gochain-${dockerEnv}"].execute(null, getWorkingDir()).waitFor()
-            ["docker", "rm", "gochain-${dockerEnv}"].execute(null, getWorkingDir()).waitFor()
+            stopContainer(false)
             process = null
         }
     }
