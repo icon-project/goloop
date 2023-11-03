@@ -552,7 +552,8 @@ func (p *PRepBaseState) CommissionInfoExists() bool {
 
 var emptyPRepBaseSnapshot = &PRepBaseSnapshot{
 	PRepBaseData: PRepBaseData{
-		irep: new(big.Int),
+		version: PRepBaseVersion1,
+		irep:    icmodule.BigIntZero,
 	},
 }
 
