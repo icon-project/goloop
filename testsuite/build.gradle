@@ -48,6 +48,7 @@ class ChainTest extends Test {
     String gsFile = null
     String gsDir = null
     String dockerEnv = null
+    String dbType = null
     Process process = null
 
     void startServer() {
@@ -63,6 +64,10 @@ class ChainTest extends Test {
         } else if (gsDir != null) {
             commands.add("--genesis")
             commands.add(gsDir)
+        }
+        if (dbType != null) {
+            commands.add('--db_type')
+            commands.add(dbType)
         }
         def logLevel = System.getProperty("LOG_LEVEL")
         if (logLevel != null && logLevel.length() != 0) {
@@ -106,6 +111,10 @@ class ChainTest extends Test {
         commands.add("${serverPort}:${serverPort}")
         commands.add("--env-file")
         commands.add("data/dockerenv/" + dockerEnv)
+        if (dbType != null) {
+            commands.add("--env")
+            commands.add("GOCHAIN_DB_TYPE="+dbType)
+        }
         commands.add("--name")
         commands.add("gochain-" + dockerEnv)
         commands.add("goloop/gochain:${glTag}")
@@ -128,6 +137,7 @@ class ChainTest extends Test {
         def noServer = System.getProperty("NO_SERVER")
         if (noServer == null || noServer != "true") {
             def useDocker = System.getProperty("USE_DOCKER", "false")
+            dbType = System.getProperty("DB_TYPE")
             logging.println("STARTING Stand-alone server")
             logging.println("Docker: ${useDocker}")
             logging.println("Config: ${configFile}")
@@ -135,6 +145,9 @@ class ChainTest extends Test {
             logging.println("Env   : ${envFile}")
             if (gsFile != null) {
                 logging.println("GSFile: ${gsFile}")
+            }
+            if (dbType != null) {
+                logging.println("DBType: ${dbType}")
             }
             if (useDocker != null && useDocker == "true") {
                 startDocker(getServerPort())
