@@ -121,10 +121,10 @@ func checkEventLogSignature(t *testing.T, scoreAddress module.Address, indexed, 
 func TestEmitSlashingRateSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
 	rate := icmodule.Rate(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":   int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 
 	for _, rev := range []int{icmodule.RevisionIISS4R0 - 1, icmodule.RevisionIISS4R0} {
@@ -139,10 +139,10 @@ func TestEmitSlashingRateSetEvent(t *testing.T) {
 }
 
 func TestEmitCommissionRateInitializedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":   int64(1000),
-		"from": newDummyAddress(1),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        newDummyAddress(1),
 	})
 	rate := icmodule.ToRate(0)
 	maxRate := icmodule.ToRate(100)
@@ -155,10 +155,10 @@ func TestEmitCommissionRateInitializedEvent(t *testing.T) {
 
 func TestEmitCommissionRateSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":   int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	rate := icmodule.ToRate(1)
 
@@ -172,9 +172,9 @@ func TestEmitCommissionRateSetEvent(t *testing.T) {
 }
 
 func TestEmitPenaltyImposedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 	owner := newDummyAddress(2)
 	ps := icstate.NewPRepStatus(owner)
@@ -186,9 +186,9 @@ func TestEmitPenaltyImposedEvent(t *testing.T) {
 }
 
 func TestEmitSlashedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 	owner := newDummyAddress(2)
 	bonder := newDummyAddress(3)
@@ -202,9 +202,9 @@ func TestEmitSlashedEvent(t *testing.T) {
 
 func TestEmitIScoreClaimEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	icx := icutils.ToLoop(1)
 	claim := icutils.ICXToIScore(icx)
@@ -220,9 +220,9 @@ func TestEmitIScoreClaimEvent(t *testing.T) {
 }
 
 func TestEmitPRepIssuedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 
 	prep := &IssuePRepJSON{
@@ -238,9 +238,9 @@ func TestEmitPRepIssuedEvent(t *testing.T) {
 }
 
 func TestEmitICXIssuedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 
 	result := &IssueResultJSON{
@@ -256,9 +256,9 @@ func TestEmitICXIssuedEvent(t *testing.T) {
 }
 
 func TestEmitTermStartedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 	term := &icstate.TermSnapshot{}
 
@@ -269,10 +269,10 @@ func TestEmitTermStartedEvent(t *testing.T) {
 
 func TestEmitPRepRegisteredEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 
 	EmitPRepRegisteredEvent(cc)
@@ -282,10 +282,10 @@ func TestEmitPRepRegisteredEvent(t *testing.T) {
 
 func TestEmitPRepSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 
 	EmitPRepSetEvent(cc)
@@ -295,10 +295,10 @@ func TestEmitPRepSetEvent(t *testing.T) {
 
 func TestEmitRewardFundTransferredEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	to := newDummyAddress(2)
 	amount := icutils.ToLoop(1)
@@ -310,10 +310,10 @@ func TestEmitRewardFundTransferredEvent(t *testing.T) {
 
 func TestEmitRewardFundBurnedEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	amount := icutils.ToLoop(1)
 
@@ -324,10 +324,10 @@ func TestEmitRewardFundBurnedEvent(t *testing.T) {
 
 func TestEmitPRepUnregisteredEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 
 	EmitPRepUnregisteredEvent(cc)
@@ -336,9 +336,9 @@ func TestEmitPRepUnregisteredEvent(t *testing.T) {
 }
 
 func TestEmitBTPNetworkTypeActivatedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 
 	EmitBTPNetworkTypeActivatedEvent(cc, "icon", 7)
@@ -347,9 +347,9 @@ func TestEmitBTPNetworkTypeActivatedEvent(t *testing.T) {
 }
 
 func TestEmitBTPNetworkOpenedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 
 	EmitBTPNetworkOpenedEvent(cc, 7, 1)
@@ -358,9 +358,9 @@ func TestEmitBTPNetworkOpenedEvent(t *testing.T) {
 }
 
 func TestEmitBTPNetworkClosedEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 
 	EmitBTPNetworkClosedEvent(cc, 7, 1)
@@ -369,9 +369,9 @@ func TestEmitBTPNetworkClosedEvent(t *testing.T) {
 }
 
 func TestEmitBTPMessageEvent(t *testing.T) {
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
 	})
 
 	EmitBTPMessageEvent(cc, 7, 100)
@@ -381,10 +381,10 @@ func TestEmitBTPMessageEvent(t *testing.T) {
 
 func TestEmitGovernanceVariablesSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	irep := icutils.ToLoop(100)
 
@@ -395,10 +395,10 @@ func TestEmitGovernanceVariablesSetEvent(t *testing.T) {
 
 func TestEmitMinimumBondSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	bond := icutils.ToLoop(10_000)
 
@@ -409,10 +409,10 @@ func TestEmitMinimumBondSetEvent(t *testing.T) {
 
 func TestEmitICXBurnedEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	amount := icutils.ToLoop(1)
 	ts := icutils.ToLoop(100)
@@ -429,10 +429,10 @@ func TestEmitICXBurnedEvent(t *testing.T) {
 
 func TestEmitDoubleSignReportedEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	signer := newDummyAddress(100)
 
@@ -443,10 +443,10 @@ func TestEmitDoubleSignReportedEvent(t *testing.T) {
 
 func TestEmitBondSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionVoteEventLog),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionVoteEventLog),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	var bonds icstate.Bonds
 	for i := 0; i < 3; i++ {
@@ -462,10 +462,10 @@ func TestEmitBondSetEvent(t *testing.T) {
 
 func TestEmitDelegationSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionVoteEventLog),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionVoteEventLog),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 	var ds icstate.Delegations
 	for i := 0; i < 3; i++ {
@@ -481,10 +481,10 @@ func TestEmitDelegationSetEvent(t *testing.T) {
 
 func TestEmitPRepCountConfigSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev": icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
-		"bh":  int64(1000),
-		"from": from,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
 	})
 
 	EmitPRepCountConfigSetEvent(cc, 22, 78, 3)

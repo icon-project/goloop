@@ -99,6 +99,14 @@ func NewCallTracer() *CallTracer {
 	}
 }
 
+type CallCtxOption int
+
+const (
+	CallCtxOptionRevision CallCtxOption = iota
+	CallCtxOptionBlockHeight
+	CallCtxOptionFrom
+)
+
 type mockCallContext struct {
 	*CallTracer
 	icmodule.CallContext
@@ -145,17 +153,17 @@ func (cc *mockCallContext) HandleBurn(address module.Address, amount *big.Int) e
 	return nil
 }
 
-func (cc *mockCallContext) Set(params map[string]interface{}) {
+func (cc *mockCallContext) Set(params map[CallCtxOption]interface{}) {
 	for key, value := range params {
 		switch key {
-		case "rev", "revision":
+		case CallCtxOptionRevision:
 			cc.rev = value.(module.Revision)
-		case "bh", "blockHeight", "height":
+		case CallCtxOptionBlockHeight:
 			cc.blockHeight = value.(int64)
-		case "from", "owner", "sender":
+		case CallCtxOptionFrom:
 			cc.from = value.(module.Address)
 		default:
-			log.Panicf("UnexpectedName(%s)", key)
+			log.Panicf("UnexpectedName(%d)", key)
 		}
 	}
 }
@@ -165,7 +173,7 @@ func (cc *mockCallContext) IncreaseBlockHeightBy(amount int64) int64 {
 	return cc.blockHeight
 }
 
-func newMockCallContext(params map[string]interface{}) *mockCallContext {
+func newMockCallContext(params map[CallCtxOption]interface{}) *mockCallContext {
 	cc := &mockCallContext{
 		CallTracer: NewCallTracer(),
 	}
@@ -379,9 +387,9 @@ func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
 
 	var err error
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -416,9 +424,9 @@ func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
 func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 	var err error
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -490,9 +498,9 @@ func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 
 func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -603,9 +611,9 @@ func TestExtensionStateImpl_RequestUnjail(t *testing.T) {
 	var err error
 	rev := icmodule.RevisionIISS4R1
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(rev),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(rev),
 	})
 	es := newDummyExtensionState(t)
 
@@ -631,9 +639,9 @@ func TestExtensionStateImpl_GetPRepStats(t *testing.T) {
 	size := 2
 	rev := icmodule.RevisionIISS4R1
 	bh := int64(1000)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev":         icmodule.ValueToRevision(rev),
-		"blockHeight": bh,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(rev),
+		CallCtxOptionBlockHeight: bh,
 	})
 	es := newDummyExtensionState(t)
 
@@ -704,9 +712,9 @@ func TestExtensionStateImpl_SetPRepCountConfig(t *testing.T) {
 	var main, sub, extra int64
 	rev := icmodule.RevisionIISS4R1
 	bh := int64(1000)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev":         icmodule.ValueToRevision(rev),
-		"blockHeight": bh,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(rev),
+		CallCtxOptionBlockHeight: bh,
 	})
 	es := newDummyExtensionState(t)
 
