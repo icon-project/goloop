@@ -133,7 +133,7 @@ func TestPRep_ToJSON(t *testing.T) {
 	assert.Equal(t, prep.LastHeight(), jso["lastHeight"])
 	assert.Equal(t, int(prep.Grade()), jso["grade"])
 	assert.Equal(t, int(prep.Status()), jso["status"])
-	assert.Equal(t, prep.getPenaltyType(sc), jso["penalty"])
+	assert.Equal(t, int(prep.getPenaltyType(sc)), jso["penalty"])
 	assert.Zero(t, prep.Bonded().Cmp(jso["bonded"].(*big.Int)))
 	assert.Zero(t, prep.Delegated().Cmp(jso["delegated"].(*big.Int)))
 	assert.Zero(t, prep.GetPower(br).Cmp(jso["power"].(*big.Int)))

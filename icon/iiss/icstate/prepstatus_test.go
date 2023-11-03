@@ -746,24 +746,29 @@ func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
 		"revision":    icmodule.RevisionIISS4R0,
 	})
 	ps := NewPRepStatus(newDummyAddress(1))
-	assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
+	assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType(sc))
 
 	for i := 0; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
-		assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
+		assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType(sc))
 	}
 
 	for i := 1; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
-		assert.Equal(t, int(icmodule.PenaltyValidationFailure), ps.getPenaltyType(sc))
+		assert.Equal(t, icmodule.PenaltyValidationFailure, ps.getPenaltyType(sc))
 	}
 
 	ps.SetStatus(Disqualified)
-	assert.Equal(t, int(icmodule.PenaltyPRepDisqualification), ps.getPenaltyType(sc))
+	assert.Equal(t, icmodule.PenaltyPRepDisqualification, ps.getPenaltyType(sc))
 }
 
 func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4R1})
+	sc := newMockStateContext(
+		map[string]interface{}{
+			"blockHeight": int64(100),
+			"revision":    icmodule.RevisionIISS4R1,
+		},
+	)
 	ps := NewPRepStatus(newDummyAddress(1))
 
 	type input struct {
@@ -772,7 +777,7 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 	}
 	type output struct {
 		success bool
-		ptBits  int
+		pt      icmodule.PenaltyType
 	}
 	args := []struct {
 		in  input
@@ -780,7 +785,15 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 	}{
 		{
 			input{Active, icmodule.PenaltyValidationFailure},
-			output{true, 1 << icmodule.PenaltyValidationFailure},
+			output{true, icmodule.PenaltyValidationFailure},
+		},
+		{
+			input{Active, icmodule.PenaltyAccumulatedValidationFailure},
+			output{true, icmodule.PenaltyAccumulatedValidationFailure},
+		},
+		{
+			input{Active, icmodule.PenaltyDoubleSign},
+			output{true, icmodule.PenaltyDoubleSign},
 		},
 	}
 
@@ -796,7 +809,7 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 			}
 
 			ret := ps.getPenaltyType(sc)
-			assert.Equal(t, ret, arg.out.ptBits)
+			assert.Equal(t, ret, arg.out.pt)
 		})
 	}
 }

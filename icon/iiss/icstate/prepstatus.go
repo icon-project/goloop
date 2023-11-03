@@ -292,7 +292,7 @@ func (ps *prepStatusData) ToJSON(sc icmodule.StateContext) map[string]interface{
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
 	jso["status"] = int(ps.status)
-	jso["penalty"] = ps.getPenaltyType(sc)
+	jso["penalty"] = int(ps.getPenaltyType(sc))
 	jso["lastHeight"] = ps.lastHeight
 	jso["delegated"] = ps.delegated
 	jso["bonded"] = ps.bonded
@@ -307,39 +307,37 @@ func (ps *prepStatusData) ToJSON(sc icmodule.StateContext) map[string]interface{
 	return jso
 }
 
-func (ps *prepStatusData) getPenaltyType(sc icmodule.StateContext) int {
+func (ps *prepStatusData) getPenaltyType(sc icmodule.StateContext) icmodule.PenaltyType {
 	if sc.TermIISSVersion() >= IISSVersion4 {
 		return ps.getPenaltyTypeV1()
 	}
-	return int(ps.getPenaltyTypeV0())
+	return ps.getPenaltyTypeV0()
 }
 
 func (ps *prepStatusData) getPenaltyTypeV0() icmodule.PenaltyType {
 	if ps.status == Disqualified {
 		return icmodule.PenaltyPRepDisqualification
 	}
-	if (ps.vPenaltyMask & 1) == 0 {
-		return icmodule.PenaltyNone
-	} else {
+	if (ps.vPenaltyMask & 1) != 0 {
 		return icmodule.PenaltyValidationFailure
 	}
+	return icmodule.PenaltyNone
 }
 
-func (ps *prepStatusData) getPenaltyTypeV1() int {
-	ptBits := 0
+func (ps *prepStatusData) getPenaltyTypeV1() icmodule.PenaltyType {
 	if ps.status == Disqualified {
-		ptBits |= 1 << icmodule.PenaltyPRepDisqualification
-	}
-	if (ps.vPenaltyMask & 1) != 0 {
-		ptBits |= 1 << icmodule.PenaltyValidationFailure
-	}
-	if icutils.MatchAll(ps.ji.Flags(), JFlagAccumulatedValidationFailure) {
-		ptBits |= 1 << icmodule.PenaltyAccumulatedValidationFailure
+		return icmodule.PenaltyPRepDisqualification
 	}
 	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleSign) {
-		ptBits |= 1 << icmodule.PenaltyDoubleSign
+		return icmodule.PenaltyDoubleSign
 	}
-	return ptBits
+	if (ps.vPenaltyMask & 1) != 0 {
+		if icutils.MatchAll(ps.ji.Flags(), JFlagAccumulatedValidationFailure) {
+			return icmodule.PenaltyAccumulatedValidationFailure
+		}
+		return icmodule.PenaltyValidationFailure
+	}
+	return icmodule.PenaltyNone
 }
 
 func (ps *prepStatusData) GetStatsInJSON(blockHeight int64) map[string]interface{} {
