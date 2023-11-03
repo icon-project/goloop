@@ -185,7 +185,7 @@ func (p *PRepBaseData) Version() int {
 	return p.version
 }
 
-func (p *PRepBaseData) setVersion(version int) {
+func (p *PRepBaseData) migrateVersion(version int) {
 	if version > p.version {
 		p.version = version
 	}
@@ -411,8 +411,7 @@ func (p *PRepBaseSnapshot) RLPDecodeFields(d codec.Decoder) error {
 		&p.bonderList,
 	)
 	if err == nil && p.Version() == PRepBaseVersion2 {
-		p.ci = NewEmptyCommissionInfo()
-		err = d.Decode(p.ci)
+		err = d.Decode(&p.ci)
 	}
 	return err
 }
@@ -528,7 +527,7 @@ func (p *PRepBaseState) InitCommissionInfo(ci *CommissionInfo) error {
 		return icmodule.DuplicateError.New("CommissionInfoAlreadySet")
 	}
 	p.ci = ci
-	p.setVersion(PRepBaseVersion2)
+	p.migrateVersion(PRepBaseVersion2)
 	p.setDirty()
 	return nil
 }
