@@ -28,7 +28,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
-	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -217,37 +216,6 @@ func newTestPRepInfo(preps []prep, br icmodule.Rate, offsetLimit, electedPRepCou
 	return pInfo
 }
 
-type testIScoreUpdater struct {
-	iScore map[rc.RewardType]map[string]*big.Int
-}
-
-func newTestIScoreUpdater() *testIScoreUpdater {
-	return &testIScoreUpdater{
-		iScore: make(map[rc.RewardType]map[string]*big.Int),
-	}
-}
-
-func (tiu *testIScoreUpdater) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
-	key := icutils.ToKey(addr)
-	if tiu.iScore[t] == nil {
-		tiu.iScore[t] = make(map[string]*big.Int)
-	}
-	if is, ok := tiu.iScore[t][key]; ok {
-		is.Add(is, reward)
-	} else {
-		tiu.iScore[t][key] = reward
-	}
-	return nil
-}
-
-func (tiu *testIScoreUpdater) GetIScore(addr module.Address, t rc.RewardType) *big.Int {
-	if is, ok := tiu.iScore[t][icutils.ToKey(addr)]; ok {
-		return is
-	} else {
-		return new(big.Int)
-	}
-}
-
 func TestPRepInfo(t *testing.T) {
 	a1, _ := common.NewAddressFromString("hx1")
 	a2, _ := common.NewAddressFromString("hx2")
@@ -406,8 +374,7 @@ func TestPRepInfo(t *testing.T) {
 	}
 	assert.Equal(t, totalPower, pInfo.TotalAccumulatedPower())
 
-	// DistributeReward
-	tiu := newTestIScoreUpdater()
+	// CalculateReward
 	totalReward := int64(1_000_000_000)
 	totalMinWage := int64(10_000_000)
 	minWage := totalMinWage * int64(pInfo.OffsetLimit()+1) * icmodule.IScoreICXRatio / icmodule.MonthBlock
@@ -430,13 +397,13 @@ func TestPRepInfo(t *testing.T) {
 		{a5, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
 	}
 
-	err := pInfo.DistributeReward(big.NewInt(totalReward), big.NewInt(totalMinWage), big.NewInt(minBond), tiu)
+	err := pInfo.CalculateReward(big.NewInt(totalReward), big.NewInt(totalMinWage), big.NewInt(minBond))
 	assert.NoError(t, err)
 	for _, is := range iScores {
 		p := pInfo.GetPRep(icutils.ToKey(is.target))
 		assert.Equal(t, is.commission, p.Commission(), p)
 		assert.Equal(t, is.voterReward, p.VoterReward(), p)
-		assert.Equal(t, new(big.Int).Add(is.commission, is.minWage), tiu.GetIScore(is.target, rc.RTPRep), p)
+		assert.Equal(t, new(big.Int).Add(is.commission, is.minWage), p.GetReward(), p)
 	}
 }
 

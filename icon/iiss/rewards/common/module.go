@@ -17,8 +17,6 @@
 package common
 
 import (
-	"math/big"
-
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -33,19 +31,17 @@ type Calculator interface {
 	Logger() log.Logger
 }
 
+// Reader reads from icreward.Snapshot
 type Reader interface {
 	GetDelegating(addr module.Address) (*icreward.Delegating, error)
 	GetBonding(addr module.Address) (*icreward.Bonding, error)
 }
 
+// Writer writes to icreward.State
 type Writer interface {
 	SetVoted(addr module.Address, voted *icreward.Voted) error
 	SetDelegating(addr module.Address, delegating *icreward.Delegating) error
 	SetBonding(addr module.Address, bonding *icreward.Bonding) error
-}
-
-type RewardUpdater interface {
-	UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error
 }
 
 type Reward interface {

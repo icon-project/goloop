@@ -195,7 +195,7 @@ func TestReward_NewReward(t *testing.T) {
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
 	rr := r.(*reward)
-	assert.Nil(t, rr.Global())
+	assert.Nil(t, rr.g)
 
 	tc.AddGlobal(0)
 	tc.Build()
@@ -204,7 +204,7 @@ func TestReward_NewReward(t *testing.T) {
 	assert.NoError(t, err)
 	rr = r.(*reward)
 	g, err := tc.GetGlobalFromBack()
-	assert.Equal(t, g, rr.Global())
+	assert.Equal(t, g, rr.g)
 }
 
 func TestReward(t *testing.T) {

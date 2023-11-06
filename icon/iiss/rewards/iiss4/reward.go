@@ -47,10 +47,6 @@ func NewReward(c rc.Calculator) (rc.Reward, error) {
 	return &reward{c: c, g: global}, nil
 }
 
-func (r *reward) Global() icstage.Global {
-	return r.g
-}
-
 func (r *reward) Logger() log.Logger {
 	return r.c.Logger()
 }
@@ -140,11 +136,11 @@ func (r *reward) processEvents() error {
 		switch type_ {
 		case icstage.TypeEventEnable:
 			obj := icstage.ToEventEnable(o)
-			r.Logger().Debugf("get event at %d %+v", int(r.Global().GetStartHeight())+keyOffset, obj)
+			r.Logger().Debugf("get event at %d %+v", int(r.g.GetStartHeight())+keyOffset, obj)
 			r.pi.SetStatus(obj.Target(), obj.Status())
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
-			r.Logger().Debugf("get event at %d %+v", int(r.Global().GetStartHeight())+keyOffset, obj)
+			r.Logger().Debugf("get event at %d %+v", int(r.g.GetStartHeight())+keyOffset, obj)
 			vType := vtDelegate
 			if type_ == icstage.TypeEventBond {
 				vType = vtBond
@@ -198,16 +194,27 @@ func (r *reward) write() error {
 	return nil
 }
 
+// prepReward calculates commission and wage of PRep and writes to icreward.IScore.
 func (r *reward) prepReward() error {
 	global := r.g.GetV3()
-	return r.pi.DistributeReward(
+	err := r.pi.CalculateReward(
 		global.GetRewardFundAmountByKey(icstate.KeyIprep),
 		global.GetRewardFundAmountByKey(icstate.KeyIwage),
 		global.MinBond(),
-		r,
 	)
+	if err != nil {
+		return err
+	}
+
+	for _, prep := range r.pi.PReps() {
+		if err = r.UpdateIScore(prep.Owner(), prep.GetReward(), rc.RTPRep); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
+// voterReward calculates voter reward of all ICONist who has bond or delegation and writes to icreward.IScore.
 func (r *reward) voterReward() error {
 	base := r.c.Base()
 
@@ -246,8 +253,8 @@ func (r *reward) voterReward() error {
 			r.ve.SetCalculated(addr)
 		}
 
-		amount := voter.CalculateReward(r.pi)
-		if err = r.UpdateIScore(voter.Owner(), amount, rc.RTVoter); err != nil {
+		iscore := voter.CalculateReward(r.pi)
+		if err = r.UpdateIScore(voter.Owner(), iscore, rc.RTVoter); err != nil {
 			return err
 		}
 	}
@@ -288,8 +295,8 @@ func (r *reward) voterReward() error {
 			r.ve.SetCalculated(addr)
 		}
 
-		reward := voter.CalculateReward(r.pi)
-		if err = r.UpdateIScore(voter.Owner(), reward, rc.RTVoter); err != nil {
+		iscore := voter.CalculateReward(r.pi)
+		if err = r.UpdateIScore(voter.Owner(), iscore, rc.RTVoter); err != nil {
 			return err
 		}
 	}
@@ -308,8 +315,8 @@ func (r *reward) voterReward() error {
 		}
 		r.ve.SetCalculated(addr)
 
-		reward := voter.CalculateReward(r.pi)
-		if err = r.UpdateIScore(voter.Owner(), reward, rc.RTVoter); err != nil {
+		iscore := voter.CalculateReward(r.pi)
+		if err = r.UpdateIScore(voter.Owner(), iscore, rc.RTVoter); err != nil {
 			return err
 		}
 	}

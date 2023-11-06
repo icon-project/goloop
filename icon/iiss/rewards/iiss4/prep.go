@@ -46,6 +46,7 @@ type PRep struct {
 	accumulatedPower  *big.Int
 	commission        *big.Int // in IScore
 	voterReward       *big.Int // in IScore
+	wage              *big.Int // in IScore
 }
 
 func (p *PRep) Electable() bool {
@@ -74,10 +75,6 @@ func (p *PRep) Delegated() *big.Int {
 
 func (p *PRep) CommissionRate() icmodule.Rate {
 	return p.commissionRate
-}
-
-func (p *PRep) SetCommissionRate(value icmodule.Rate) {
-	p.commissionRate = value
 }
 
 func (p *PRep) GetVoted() *big.Int {
@@ -148,10 +145,6 @@ func (p *PRep) Commission() *big.Int {
 	return p.commission
 }
 
-func (p *PRep) SetCommission(value *big.Int) {
-	p.commission = value
-}
-
 func (p *PRep) VoterReward() *big.Int {
 	return p.voterReward
 }
@@ -160,12 +153,28 @@ func (p *PRep) SetVoterReward(value *big.Int) {
 	p.voterReward = value
 }
 
+func (p *PRep) GetReward() *big.Int {
+	return new(big.Int).Add(p.commission, p.wage)
+}
+
 func (p *PRep) AccumulatedBonded() *big.Int {
 	return p.accumulatedBonded
 }
 
 func (p *PRep) AccumulatedVoted() *big.Int {
 	return p.accumulatedVoted
+}
+
+func (p *PRep) CalculateReward(totalPRepReward, totalAccumulatedPower, minBond, minWage *big.Int) {
+	prepReward := new(big.Int).Mul(totalPRepReward, p.accumulatedPower)
+	prepReward.Div(prepReward, totalAccumulatedPower)
+
+	commission := p.commissionRate.MulBigInt(prepReward)
+	p.commission = commission
+	p.voterReward = new(big.Int).Sub(prepReward, commission)
+	if p.bonded.Cmp(minBond) >= 0 {
+		p.wage = minWage
+	}
 }
 
 func (p *PRep) Bigger(p1 *PRep) bool {
@@ -209,7 +218,8 @@ func (p *PRep) Equal(p1 *PRep) bool {
 		p.accumulatedVoted.Cmp(p1.accumulatedVoted) == 0 &&
 		p.accumulatedPower.Cmp(p1.accumulatedPower) == 0 &&
 		p.commission.Cmp(p1.commission) == 0 &&
-		p.voterReward.Cmp(p1.voterReward) == 0
+		p.voterReward.Cmp(p1.voterReward) == 0 &&
+		p.wage.Cmp(p1.wage) == 0
 }
 
 func (p *PRep) Clone() *PRep {
@@ -226,6 +236,7 @@ func (p *PRep) Clone() *PRep {
 		accumulatedPower:  new(big.Int).Set(p.accumulatedPower),
 		commission:        new(big.Int).Set(p.commission),
 		voterReward:       new(big.Int).Set(p.voterReward),
+		wage:              new(big.Int).Set(p.wage),
 	}
 }
 func (p *PRep) Format(f fmt.State, c rune) {
@@ -234,16 +245,16 @@ func (p *PRep) Format(f fmt.State, c rune) {
 		if f.Flag('+') {
 			fmt.Fprintf(f, "PRep{status=%s delegated=%d bonded=%d commissionRate=%d "+
 				"owner=%s power=%d pubkey=%v rank=%d accumulatedBonded=%d accumulatedVoted=%d accumulatedPower=%d "+
-				"commission=%d voterReward=%d}",
+				"commission=%d voterReward=%d wage=%d}",
 				p.status, p.delegated, p.bonded, p.commissionRate,
 				p.owner, p.power, p.pubkey, p.rank, p.accumulatedBonded, p.accumulatedVoted, p.accumulatedPower,
-				p.commission, p.voterReward,
+				p.commission, p.voterReward, p.wage,
 			)
 		} else {
-			fmt.Fprintf(f, "PRep{%s %d %d %d %s %d %v %d %d %d %d %d %d}",
+			fmt.Fprintf(f, "PRep{%s %d %d %d %s %d %v %d %d %d %d %d %d %d}",
 				p.status, p.delegated, p.bonded, p.commissionRate,
 				p.owner, p.power, p.pubkey, p.rank, p.accumulatedBonded, p.accumulatedVoted, p.accumulatedPower,
-				p.commission, p.voterReward,
+				p.commission, p.voterReward, p.wage,
 			)
 		}
 	}
@@ -264,9 +275,11 @@ func NewPRep(owner module.Address, status icmodule.EnableStatus, delegated, bond
 		accumulatedPower:  new(big.Int),
 		commission:        new(big.Int),
 		voterReward:       new(big.Int),
+		wage:              new(big.Int),
 	}
 }
 
+// PRepInfo stores information for PRep reward calculation.
 type PRepInfo struct {
 	preps                 map[string]*PRep
 	totalAccumulatedPower *big.Int
@@ -276,6 +289,10 @@ type PRepInfo struct {
 	offsetLimit      int
 	rank             []string
 	log              log.Logger
+}
+
+func (p *PRepInfo) PReps() map[string]*PRep {
+	return p.preps
 }
 
 func (p *PRepInfo) GetPRep(key string) *PRep {
@@ -322,7 +339,7 @@ func (p *PRepInfo) SetStatus(target module.Address, status icmodule.EnableStatus
 
 func (p *PRepInfo) Sort() {
 	size := len(p.preps)
-	pSlice := make([]*PRep, size, size)
+	pSlice := make([]*PRep, size)
 	i := 0
 	for _, data := range p.preps {
 		pSlice[i] = data
@@ -331,7 +348,7 @@ func (p *PRepInfo) Sort() {
 	sort.Slice(pSlice, func(i, j int) bool {
 		return pSlice[i].Bigger(pSlice[j])
 	})
-	rank := make([]string, size, size)
+	rank := make([]string, size)
 	for idx, prep := range pSlice {
 		key := icutils.ToKey(prep.Owner())
 		rank[idx] = key
@@ -365,7 +382,7 @@ func (p *PRepInfo) ApplyVote(vType VoteType, votes icstage.VoteList, offset int)
 	}
 }
 
-// UpdateAccumulatedPower update accumulatedPower of elected PRep and totalAccumulatedPower of PRepInfo
+// UpdateAccumulatedPower update accumulatedPower of elected PRep and totalAccumulatedPower of PRepInfo.
 func (p *PRepInfo) UpdateAccumulatedPower() {
 	for i, key := range p.rank {
 		if i >= p.electedPRepCount {
@@ -384,8 +401,9 @@ func fundToPeriodIScore(reward *big.Int, period int64) *big.Int {
 	return value.Div(value, big.NewInt(icmodule.MonthBlock))
 }
 
-func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int, ru common.RewardUpdater) error {
-	p.log.Debugf("DistributeReward()")
+// CalculateReward calculates commission, wage and voter reward of the PRep.
+func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) error {
+	p.log.Debugf("CalculateReward()")
 	tReward := fundToPeriodIScore(totalReward, p.GetTermPeriod())
 	minWage := fundToPeriodIScore(totalMinWage, p.GetTermPeriod())
 	p.log.Debugf("RewardFund: PRep: %d, wage: %d", tReward, minWage)
@@ -400,21 +418,9 @@ func (p *PRepInfo) DistributeReward(totalReward, totalMinWage, minBond *big.Int,
 		if !prep.Rewardable(p.electedPRepCount) {
 			continue
 		}
-		prepReward := new(big.Int).Mul(tReward, prep.AccumulatedPower())
-		prepReward.Div(prepReward, p.totalAccumulatedPower)
+		prep.CalculateReward(tReward, p.totalAccumulatedPower, minBond, minWage)
 
-		commission := prep.CommissionRate().MulBigInt(prepReward)
-		prep.SetCommission(commission)
-		prep.SetVoterReward(new(big.Int).Sub(prepReward, commission))
-
-		iScore := new(big.Int).Set(commission)
-		if prep.Bonded().Cmp(minBond) >= 0 {
-			iScore.Add(iScore, minWage)
-		}
 		p.log.Debugf("rank#%d: %+v", rank, prep)
-		if err := ru.UpdateIScore(prep.Owner(), iScore, common.RTPRep); err != nil {
-			return err
-		}
 	}
 	return nil
 }
