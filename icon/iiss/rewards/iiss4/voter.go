@@ -66,36 +66,36 @@ func NewVoteEvent(vType VoteType, votes icstage.VoteList, offset int) *VoteEvent
 	}
 }
 
-type VotingEvents struct {
+type VoteEvents struct {
 	events     map[string][]*VoteEvent
 	calculated map[string]struct{}
 }
 
-func (v *VotingEvents) Events() map[string][]*VoteEvent {
+func (v *VoteEvents) Events() map[string][]*VoteEvent {
 	return v.events
 }
 
-func (v *VotingEvents) Get(from module.Address) []*VoteEvent {
+func (v *VoteEvents) Get(from module.Address) []*VoteEvent {
 	events, _ := v.events[icutils.ToKey(from)]
 	return events
 }
 
-func (v *VotingEvents) SetCalculated(from module.Address) {
+func (v *VoteEvents) SetCalculated(from module.Address) {
 	v.calculated[icutils.ToKey(from)] = struct{}{}
 }
 
-func (v *VotingEvents) IsCalculated(key string) bool {
+func (v *VoteEvents) IsCalculated(key string) bool {
 	_, ok := v.calculated[key]
 	return ok
 }
 
-func (v *VotingEvents) AddEvent(vType VoteType, from module.Address, votes icstage.VoteList, offset int) {
+func (v *VoteEvents) AddEvent(vType VoteType, from module.Address, votes icstage.VoteList, offset int) {
 	key := icutils.ToKey(from)
 	v.events[key] = append(v.events[key], NewVoteEvent(vType, votes, offset))
 }
 
 // Write writes updated Bonding and Delegating to database
-func (v *VotingEvents) Write(reader rc.Reader, writer rc.Writer) error {
+func (v *VoteEvents) Write(reader rc.Reader, writer rc.Writer) error {
 	for key, events := range v.events {
 		from, err := common.NewAddress([]byte(key))
 		if err != nil {
@@ -148,8 +148,8 @@ func (v *VotingEvents) Write(reader rc.Reader, writer rc.Writer) error {
 	return nil
 }
 
-func NewVotingEvents() *VotingEvents {
-	return &VotingEvents{
+func NewVoteEvents() *VoteEvents {
+	return &VoteEvents{
 		events:     make(map[string][]*VoteEvent),
 		calculated: make(map[string]struct{}),
 	}

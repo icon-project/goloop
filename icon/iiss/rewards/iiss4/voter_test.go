@@ -33,7 +33,7 @@ import (
 )
 
 func TestVotingEvents(t *testing.T) {
-	ve := NewVotingEvents()
+	ve := NewVoteEvents()
 
 	a1, _ := common.NewAddressFromString("hx1")
 	a2, _ := common.NewAddressFromString("hx2")
@@ -210,7 +210,7 @@ func TestVotingEvents_Write(t *testing.T) {
 		},
 	}
 
-	ve := &VotingEvents{
+	ve := &VoteEvents{
 		events: map[string][]*VoteEvent{
 			icutils.ToKey(a1): {
 				{

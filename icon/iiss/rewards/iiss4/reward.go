@@ -36,7 +36,7 @@ type reward struct {
 	c  rc.Calculator
 	g  icstage.Global
 	pi *PRepInfo
-	ve *VotingEvents
+	ve *VoteEvents
 }
 
 func NewReward(c rc.Calculator) (rc.Reward, error) {
@@ -119,7 +119,7 @@ func (r *reward) loadPRepInfo() error {
 }
 
 func (r *reward) processEvents() error {
-	ve := NewVotingEvents()
+	ve := NewVoteEvents()
 	back := r.c.Back()
 	eventPrefix := icstage.EventKey.Build()
 	for iter := back.Filter(eventPrefix); iter.Has(); iter.Next() {

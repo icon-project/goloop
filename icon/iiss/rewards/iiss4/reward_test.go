@@ -522,7 +522,7 @@ func TestReward(t *testing.T) {
 		}
 	})
 
-	t.Run(fmt.Sprintf("write-VotingEvents"), func(t *testing.T) {
+	t.Run(fmt.Sprintf("write-VoteEvents"), func(t *testing.T) {
 		for _, a := range addrs {
 			delegating := false
 			bonding := false
