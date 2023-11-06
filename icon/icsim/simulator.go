@@ -46,6 +46,7 @@ const (
 	TypeSetCommissionRate
 	TypeRequestUnjail
 	TypeHandleDoubleSignReport
+	TypeSetPRepCountConfig
 )
 
 type Transaction interface {
@@ -171,6 +172,10 @@ type Simulator interface {
 		from module.Address, dsType string, dsBlockHeight int64, signer module.Address) (Receipt, error)
 	RequestUnjail(from module.Address) Transaction
 	GoByRequestUnjail(csi module.ConsensusInfo, from module.Address) (Receipt, error)
+
+	GetPRepCountConfig() (map[string]interface{}, error)
+	SetPRepCountConfig(from module.Address, counts map[string]int64) Transaction
+	GoBySetPRepCountConfig(csi module.ConsensusInfo, from module.Address, counts map[string]int64) (Receipt, error)
 }
 
 func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) module.ConsensusInfo {
