@@ -542,7 +542,7 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 		},
 	}
 
-	jso, err := es.GetSlashingRates(cc, nil)
+	jso, err := es.GetSlashingRates(cc)
 	assert.NoError(t, err)
 	for key, value := range jso {
 		assert.True(t, icmodule.ToPenaltyType(key) != icmodule.PenaltyNone)
@@ -554,14 +554,14 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 		rates := arg.rates
 
 		t.Run(name, func(t *testing.T) {
-			oldRates, err := es.GetSlashingRates(cc, nil)
+			oldRates, err := es.GetSlashingRates(cc)
 			assert.NoError(t, err)
 
 			err = es.SetSlashingRates(cc, rates)
 
 			if !arg.success {
 				assert.Error(t, err)
-				jso, err = es.GetSlashingRates(cc, nil)
+				jso, err = es.GetSlashingRates(cc)
 				assert.Equal(t, oldRates, jso)
 				return
 			}
@@ -571,27 +571,12 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 			for key, rate := range rates {
 				expRates[key] = rate.NumInt64()
 			}
-			jso, err = es.GetSlashingRates(cc, nil)
+			jso, err = es.GetSlashingRates(cc)
 			assert.NoError(t, err)
 			assert.True(t, checkSlashingRates(jso))
 			assert.Equal(t, expRates, jso)
 		})
 	}
-
-	penaltyTypes := []icmodule.PenaltyType{
-		icmodule.PenaltyDoubleSign,
-		icmodule.PenaltyAccumulatedValidationFailure,
-	}
-	jso, err = es.GetSlashingRates(cc, penaltyTypes)
-	assert.NoError(t, err)
-	assert.Equal(t, len(penaltyTypes), len(jso))
-	for _, pt := range penaltyTypes {
-		_, ok := jso[pt.String()]
-		assert.True(t, ok)
-	}
-
-	_, err = es.GetSlashingRates(cc, []icmodule.PenaltyType{icmodule.PenaltyNone})
-	assert.Error(t, err)
 }
 
 func checkSlashingRates(rates map[string]interface{}) bool {

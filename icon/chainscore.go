@@ -683,9 +683,7 @@ var chainMethods = []*chainMethod{
 	{scoreapi.Method{
 		scoreapi.Function, "getSlashingRates",
 		scoreapi.FlagReadOnly, 0,
-		[]scoreapi.Parameter{
-			{"names", scoreapi.ListTypeOf(1, scoreapi.String), nil, nil},
-		},
+		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},

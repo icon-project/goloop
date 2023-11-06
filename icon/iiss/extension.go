@@ -1804,15 +1804,10 @@ func (es *ExtensionStateImpl) SetSlashingRates(cc icmodule.CallContext, values m
 	return nil
 }
 
-func (es *ExtensionStateImpl) GetSlashingRates(
-	cc icmodule.CallContext, penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
-	if len(penaltyTypes) == 0 {
-		penaltyTypes = icmodule.GetPenaltyTypes()
-	}
-
+func (es *ExtensionStateImpl) GetSlashingRates(cc icmodule.CallContext) (map[string]interface{}, error) {
 	revision := cc.Revision().Value()
 	jso := make(map[string]interface{})
-	for _, pt := range penaltyTypes {
+	for _, pt := range icmodule.GetPenaltyTypes() {
 		if rate, err := es.State.GetSlashingRate(revision, pt); err == nil {
 			jso[pt.String()] = rate.NumInt64()
 		} else {

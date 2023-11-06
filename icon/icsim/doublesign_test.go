@@ -149,7 +149,7 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
-	jso, err := sim.GetSlashingRates([]icmodule.PenaltyType{icmodule.PenaltyDoubleSign})
+	jso, err := sim.GetSlashingRates()
 	assert.NoError(t, err)
 	assert.Equal(t, slashingRate.NumInt64(), jso[penaltyType.String()])
 

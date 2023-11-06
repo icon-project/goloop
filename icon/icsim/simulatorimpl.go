@@ -718,10 +718,10 @@ func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 	}
 }
 
-func (sim *simulatorImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
+func (sim *simulatorImpl) GetSlashingRates() (map[string]interface{}, error) {
 	es := sim.getExtensionState(true)
 	cc := sim.newCallContext()
-	return es.GetSlashingRates(cc, penaltyTypes)
+	return es.GetSlashingRates(cc)
 }
 
 func (sim *simulatorImpl) SetSlashingRates(from module.Address, rates map[string]icmodule.Rate) Transaction {

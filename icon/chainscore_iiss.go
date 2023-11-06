@@ -888,7 +888,7 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 	return es.SetSlashingRates(s.newCallContext(s.cc), rates)
 }
 
-func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]interface{}, error) {
+func (s *chainScore) Ex_getSlashingRates() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
@@ -896,26 +896,7 @@ func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]inter
 	if err != nil {
 		return nil, err
 	}
-
-	var pt icmodule.PenaltyType
-	var penaltyTypes []icmodule.PenaltyType
-	bits := 0
-	for _, v := range values {
-		name, ok := v.(string)
-		if !ok {
-			return nil, scoreresult.InvalidParameterError.New("InvalidNameType")
-		}
-		if pt = icmodule.ToPenaltyType(name); pt == icmodule.PenaltyNone {
-			return nil, scoreresult.InvalidParameterError.Errorf("InvalidName(%s)", name)
-		}
-		bit := 1 << int(pt)
-		if bits&bit != 0 {
-			return nil, icmodule.DuplicateError.Errorf("DuplicateName(%s)", name)
-		}
-		bits |= bit
-		penaltyTypes = append(penaltyTypes, pt)
-	}
-	return es.GetSlashingRates(s.newCallContext(s.cc), penaltyTypes)
+	return es.GetSlashingRates(s.newCallContext(s.cc))
 }
 
 func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
