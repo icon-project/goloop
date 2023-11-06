@@ -1,0 +1,42 @@
+name: Release goloop image
+
+on:
+  release:
+    branches:
+      - master
+
+jobs:
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - id: last
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: ${{ github.repository }}
+
+      - name: Tag name
+        id: source
+        run: |
+          echo ::set-output name=TAG::${{ steps.last.outputs.release }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push gochain image
+        run: | 
+          make gochain-image 
+          docker push iconloop/gochain:latest
+          docker push iconloop/gochain:${{ steps.source.outputs.TAG }}
+
+      - name: Build and push goloop image
+        run: |
+          make goloop-image 
+          docker push iconloop/goloop:latest
+          docker push iconloop/goloop:${{ steps.source.outputs.TAG }}
