@@ -1,8 +1,6 @@
 package icsim
 
 import (
-	"strings"
-
 	"github.com/icon-project/goloop/icon/icmodule"
 )
 
@@ -70,28 +68,41 @@ func NewSimConfig() *SimConfig {
 	}
 }
 
-func NewSimConfigWithParams(params map[string]interface{}) *SimConfig {
+type SimConfigOption int
+
+const (
+	SCOBondRequirement SimConfigOption = iota
+	SCOTermPeriod
+	SCOValidationFailurePenaltyCondition
+	SCOAccumulatedValidationFailurePenaltyCondition
+	SCOAccumulatedValidationFailurePenaltySlashingRate
+	SCOMissedNetworkProposalVotePenaltySlashingRate
+	SCOMainPReps
+	SCOSubPReps
+	SCOExtraMainPReps
+)
+
+func NewSimConfigWithParams(params map[SimConfigOption]interface{}) *SimConfig {
 	cfg := NewSimConfig()
 	for k, v := range params {
-		k = strings.ToLower(k)
 		switch k {
-		case "br", strings.ToLower("BondRequirement"):
+		case SCOBondRequirement:
 			cfg.BondRequirement = v.(icmodule.Rate)
-		case "tp", "tperiod", strings.ToLower("TermPeriod"):
+		case SCOTermPeriod:
 			cfg.TermPeriod = v.(int64)
-		case "vpc", strings.ToLower("ValidationPenaltyCondition"):
+		case SCOValidationFailurePenaltyCondition:
 			cfg.ValidationPenaltyCondition = v.(int64)
-		case "cvpc", strings.ToLower("ConsistentValidationPenaltyCondition"):
+		case SCOAccumulatedValidationFailurePenaltyCondition:
 			cfg.ConsistentValidationPenaltyCondition = v.(int64)
-		case strings.ToLower("ConsistentValidationPenaltySlashRate"):
+		case SCOAccumulatedValidationFailurePenaltySlashingRate:
 			cfg.ConsistentValidationPenaltySlashRate = v.(icmodule.Rate)
-		case strings.ToLower("NonVotePenaltySlashRate"):
+		case SCOMissedNetworkProposalVotePenaltySlashingRate:
 			cfg.NonVotePenaltySlashRate = v.(icmodule.Rate)
-		case strings.ToLower("MainPReps"), strings.ToLower("MainPRepCount"):
+		case SCOMainPReps:
 			cfg.MainPRepCount = v.(int64)
-		case strings.ToLower("SubPReps"), strings.ToLower("SubPRepCount"):
+		case SCOSubPReps:
 			cfg.SubPRepCount = v.(int64)
-		case strings.ToLower("ExtraMainPReps"), strings.ToLower("ExtraMainPRepCount"):
+		case SCOExtraMainPReps:
 			cfg.ExtraMainPRepCount = v.(int64)
 		}
 	}

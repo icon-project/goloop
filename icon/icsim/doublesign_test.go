@@ -39,8 +39,8 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 	var csi module.ConsensusInfo
 	var rcpt Receipt
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
 	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
@@ -123,8 +123,8 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	var revision module.Revision
 	slashingRate := icmodule.ToRate(10)
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
 	revision = icmodule.ValueToRevision(icmodule.RevisionIISS4R0)
 	env, err := NewEnv(cfg, revision)
@@ -205,8 +205,8 @@ func TestDoubleSign_HandleDoubleSignReportErrorCases(t *testing.T) {
 	var csi module.ConsensusInfo
 	var rcpt Receipt
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
 	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
@@ -271,8 +271,8 @@ func TestDoubleSign_RequestUnjailForNormalPRep(t *testing.T) {
 	var csi module.ConsensusInfo
 	var rcpt Receipt
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
 	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
