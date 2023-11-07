@@ -386,7 +386,7 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 			return nil, err
 		}
 		obj := icreward.ToVoted(o)
-		if obj.Enable() == false {
+		if obj.IsEnabled() == false {
 			// do not collect disabled P-Rep
 			continue
 		}
@@ -934,7 +934,7 @@ func (vd *votedData) Status() icmodule.EnableStatus {
 }
 
 func (vd *votedData) Enable() bool {
-	return vd.voted.Enable()
+	return vd.voted.IsEnabled()
 }
 
 func (vd *votedData) SetStatus(status icmodule.EnableStatus) {
