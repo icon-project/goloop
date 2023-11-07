@@ -348,7 +348,7 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
 		return err
 	}
-	iiss.RecordGovernanceVariablesSetEvent(s.newCallContext(s.cc), s.from, irep.Value())
+	iiss.EmitGovernanceVariablesSetEvent(s.newCallContext(s.cc), irep.Value())
 	return nil
 }
 
@@ -431,7 +431,7 @@ func (s *chainScore) Ex_claimIScore() error {
 	cc := s.newCallContext(s.cc)
 	if bytes.Compare(cc.TransactionID(), skippedClaimTX) == 0 {
 		// Skip this TX like ICON1 mainnet.
-		iiss.RecordIScoreClaimEvent(cc, s.from, icmodule.BigIntZero, icmodule.BigIntZero)
+		iiss.EmitIScoreClaimEvent(cc, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 	es, err := s.getExtensionState()
@@ -660,7 +660,7 @@ func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error)
 	}
 }
 
-func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
+func (s *chainScore) Ex_setRewardFund(iglobal *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -669,17 +669,17 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 		return err
 	}
 	revision := s.cc.Revision().Value()
-	if revision <= icmodule.RevisionPreIISS4 {
+	if revision <= icmodule.RevisionIISS4R0 {
 		rf := es.State.GetRewardFundV1()
-		rf.SetIGlobal(iglobal.Value())
+		rf.SetIGlobal(iglobal)
 		if err = es.State.SetRewardFund(rf); err != nil {
 			return err
 		}
 	}
 
-	if revision >= icmodule.RevisionPreIISS4 {
+	if revision >= icmodule.RevisionIISS4R0 {
 		rf := es.State.GetRewardFundV2()
-		rf.SetIGlobal(iglobal.Value())
+		rf.SetIGlobal(iglobal)
 		return es.State.SetRewardFund(rf)
 	}
 	return nil
@@ -850,7 +850,7 @@ func (s *chainScore) setLegacySlashingRate(penaltyType icmodule.PenaltyType, sla
 		}
 		return err
 	}
-	iiss.RecordSlashingRateChangedEvent(cc, penaltyType, rate)
+	iiss.EmitSlashingRateSetEvent(cc, penaltyType, rate)
 	return nil
 }
 
@@ -877,6 +877,9 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 		if !ok {
 			return scoreresult.InvalidParameterError.New("InvalidRateType")
 		}
+		if !value.IsInt64() {
+			return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", value)
+		}
 		if _, ok = rates[name]; ok {
 			return icmodule.DuplicateError.Errorf("DuplicatePenaltyName(%s)", name)
 		}
@@ -885,7 +888,7 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 	return es.SetSlashingRates(s.newCallContext(s.cc), rates)
 }
 
-func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]interface{}, error) {
+func (s *chainScore) Ex_getSlashingRates() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(true); err != nil {
 		return nil, err
 	}
@@ -893,26 +896,7 @@ func (s *chainScore) Ex_getSlashingRates(values []interface{}) (map[string]inter
 	if err != nil {
 		return nil, err
 	}
-
-	var pt icmodule.PenaltyType
-	var penaltyTypes []icmodule.PenaltyType
-	bits := 0
-	for _, v := range values {
-		name, ok := v.(string)
-		if !ok {
-			return nil, scoreresult.InvalidParameterError.New("InvalidNameType")
-		}
-		if pt = icmodule.ToPenaltyType(name); pt == icmodule.PenaltyNone {
-			return nil, scoreresult.InvalidParameterError.Errorf("InvalidName(%s)", name)
-		}
-		bit := 1 << int(pt)
-		if bits&bit != 0 {
-			return nil, icmodule.DuplicateError.Errorf("DuplicateName(%s)", name)
-		}
-		bits |= bit
-		penaltyTypes = append(penaltyTypes, pt)
-	}
-	return es.GetSlashingRates(s.newCallContext(s.cc), penaltyTypes)
+	return es.GetSlashingRates(s.newCallContext(s.cc))
 }
 
 func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
@@ -930,7 +914,7 @@ func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
 	return bond, nil
 }
 
-func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
+func (s *chainScore) Ex_setMinimumBond(nBond *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -938,14 +922,13 @@ func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	if bond.Sign() < 0 {
+	if nBond.Sign() < 0 {
 		return scoreresult.InvalidParameterError.New("NegativeMinimumBond")
 	}
 	oBond := es.State.GetMinimumBond()
 	if oBond == nil {
 		return icmodule.NotFoundError.New("MinimumBondNotFound")
 	}
-	nBond := &bond.Int
 	if oBond.Cmp(nBond) == 0 {
 		return nil
 	}
@@ -956,7 +939,7 @@ func (s *chainScore) Ex_setMinimumBond(bond *common.HexInt) error {
 			nBond,
 		)
 	}
-	iiss.RecordMinimumBondChangedEvent(s.newCallContext(s.cc), nBond)
+	iiss.EmitMinimumBondSetEvent(s.newCallContext(s.cc), nBond)
 	return nil
 }
 
@@ -964,7 +947,7 @@ func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContex
 	return iiss.NewCallContext(cc, s.from)
 }
 
-func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate *common.HexInt) error {
+func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate int64) error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
@@ -974,12 +957,12 @@ func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate *common.
 	}
 	return es.InitCommissionInfo(
 		s.newCallContext(s.cc),
-		icmodule.Rate(rate.Int64()),
-		icmodule.Rate(maxRate.Int64()),
-		icmodule.Rate(maxChangeRate.Int64()))
+		icmodule.Rate(rate),
+		icmodule.Rate(maxRate),
+		icmodule.Rate(maxChangeRate))
 }
 
-func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
+func (s *chainScore) Ex_setCommissionRate(rate int64) error {
 	if err := s.tryChargeCall(true); err != nil {
 		return err
 	}
@@ -987,7 +970,7 @@ func (s *chainScore) Ex_setCommissionRate(rate *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate.Int64()))
+	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate))
 }
 
 func (s *chainScore) Ex_requestUnjail() error {
@@ -1002,7 +985,7 @@ func (s *chainScore) Ex_requestUnjail() error {
 }
 
 func (s *chainScore) Ex_handleDoubleSignReport(
-	dsType string, blockHeight *common.HexInt, signer module.Address) error {
+	dsType string, blockHeight int64, signer module.Address) error {
 	if err := s.checkSystem(true); err != nil {
 		return err
 	}
@@ -1013,7 +996,53 @@ func (s *chainScore) Ex_handleDoubleSignReport(
 	return es.HandleDoubleSignReport(
 		s.newCallContext(s.cc),
 		dsType,
-		blockHeight.Int64(),
+		blockHeight,
 		signer,
 	)
+}
+
+func (s *chainScore) Ex_setPRepCountConfig(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if len(values) == 0 {
+		return scoreresult.InvalidParameterError.Errorf("NoArgument")
+	}
+
+	counts := make(map[string]int64)
+	for _, v := range values {
+		pair, ok := v.(map[string]interface{})
+		name, ok := pair["name"].(string)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidNameType")
+		}
+		value, ok := pair["value"].(*common.HexInt)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidValueType")
+		}
+		if !value.IsInt64() {
+			return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", value)
+		}
+		if _, ok = counts[name]; ok {
+			return icmodule.DuplicateError.Errorf("DuplicateName(%s)", name)
+		}
+		counts[name] = value.Int64()
+	}
+
+	return es.SetPRepCountConfig(s.newCallContext(s.cc), counts)
+}
+
+func (s *chainScore) Ex_getPRepCountConfig() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	return es.GetPRepCountConfig()
 }

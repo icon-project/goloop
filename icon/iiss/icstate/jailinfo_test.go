@@ -143,7 +143,7 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 	var unjailRequestHeight int64
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight": int64(1000),
-		"revision":    icmodule.RevisionIISS4,
+		"revision":    icmodule.RevisionIISS4R1,
 	})
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
@@ -208,7 +208,7 @@ func TestJailInfo_OnUnjailRequested(t *testing.T) {
 			ji := arg.ji
 			sc := newMockStateContext(map[string]interface{}{
 				"blockHeight": arg.bh,
-				"revision":    icmodule.RevisionIISS4,
+				"revision":    icmodule.RevisionIISS4R1,
 			})
 			err := ji.OnUnjailRequested(sc)
 			if arg.success {
@@ -269,7 +269,7 @@ func TestJailInfo_OnMainPRepIn(t *testing.T) {
 			ji := arg.ji
 			sc := newMockStateContext(map[string]interface{}{
 				"blockHeight": arg.bh,
-				"revision":    icmodule.RevisionIISS4,
+				"revision":    icmodule.RevisionIISS4R1,
 			})
 			err := ji.OnMainPRepIn(sc)
 			if exp.success {

@@ -46,6 +46,7 @@ const (
 	TypeSetCommissionRate
 	TypeRequestUnjail
 	TypeHandleDoubleSignReport
+	TypeSetPRepCountConfig
 )
 
 type Transaction interface {
@@ -152,8 +153,8 @@ type Simulator interface {
 	//RegisterPRepNodePublicKey(address module.Address, pubKey []byte) error
 	//SetPRepNodePublicKey(pubKey []byte) error
 
-	// After RevisionPreIISS4
-	GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error)
+	// After RevisionIISS4R0
+	GetSlashingRates() (map[string]interface{}, error)
 	SetSlashingRates(from module.Address, rates map[string]icmodule.Rate) Transaction
 	GoBySetSlashingRates(csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) (Receipt, error)
 
@@ -171,6 +172,10 @@ type Simulator interface {
 		from module.Address, dsType string, dsBlockHeight int64, signer module.Address) (Receipt, error)
 	RequestUnjail(from module.Address) Transaction
 	GoByRequestUnjail(csi module.ConsensusInfo, from module.Address) (Receipt, error)
+
+	GetPRepCountConfig() (map[string]interface{}, error)
+	SetPRepCountConfig(from module.Address, counts map[string]int64) Transaction
+	GoBySetPRepCountConfig(csi module.ConsensusInfo, from module.Address, counts map[string]int64) (Receipt, error)
 }
 
 func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) module.ConsensusInfo {

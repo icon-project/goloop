@@ -394,7 +394,7 @@ func (s *State) OnBlockVote(sc icmodule.StateContext, owner module.Address, vote
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	err := ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, voted)
+	err := ps.OnEvent(sc, icmodule.PRepEventBlockVote, voted)
 	s.logger.Tracef("OnBlockVote() bh=%d voted=%t owner=%v %+v", blockHeight, voted, owner, ps)
 	return err
 }
@@ -411,7 +411,7 @@ func (s *State) OnMainPRepReplaced(sc icmodule.StateContext, oldOwner, newOwner 
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", newOwner)
 	}
-	err := ps.NotifyEvent(sc, icmodule.PRepEventMainIn, s.GetConsistentValidationPenaltyMask())
+	err := ps.OnEvent(sc, icmodule.PRepEventMainIn, s.GetConsistentValidationPenaltyMask())
 	s.logger.Tracef("OnMainPRepReplaced()   end: bh=%d old=%v new=%v %+v", blockHeight, oldOwner, newOwner, ps)
 	return err
 }
@@ -421,7 +421,7 @@ func (s *State) OnValidatorOut(sc icmodule.StateContext, owner module.Address) e
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	err := ps.NotifyEvent(sc, icmodule.PRepEventValidatorOut)
+	err := ps.OnEvent(sc, icmodule.PRepEventValidatorOut)
 	s.logger.Tracef("OnValidatorOut(): bh=%d owner=%v %+v", sc.BlockHeight(), owner, ps)
 
 	return err
@@ -453,7 +453,7 @@ func (s *State) ImposePenalty(
 
 	// Update the state of PRepStatus
 	oldGrade := ps.Grade()
-	err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, pt)
+	err = ps.OnEvent(sc, icmodule.PRepEventImposePenalty, pt)
 	s.logger.Debugf("ImposePenalty() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
 	if err != nil {
 		return err

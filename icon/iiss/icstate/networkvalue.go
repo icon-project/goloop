@@ -318,7 +318,7 @@ func (s *State) SetRewardFund(r *RewardFund) error {
 }
 
 func (s *State) GetRewardFund(revision int) *RewardFund {
-	if revision <= icmodule.RevisionPreIISS4 {
+	if revision <= icmodule.RevisionIISS4R0 {
 		return s.GetRewardFundV1()
 	} else {
 		return s.GetRewardFundV2()
@@ -403,7 +403,7 @@ func (s *State) setNonVotePenaltySlashRate(value icmodule.Rate) error {
 }
 
 func (s *State) GetSlashingRate(revision int, penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
-	if revision < icmodule.RevisionPreIISS4 {
+	if revision < icmodule.RevisionIISS4R0 {
 		switch penaltyType {
 		case icmodule.PenaltyAccumulatedValidationFailure:
 			return s.getConsistentValidationPenaltySlashRate(), nil
@@ -427,7 +427,7 @@ func (s *State) getSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate
 }
 
 func (s *State) SetSlashingRate(revision int, penaltyType icmodule.PenaltyType, rate icmodule.Rate) error {
-	if revision < icmodule.RevisionPreIISS4 {
+	if revision < icmodule.RevisionIISS4R0 {
 		switch penaltyType {
 		case icmodule.PenaltyAccumulatedValidationFailure:
 			return s.setConsistentValidationPenaltySlashRate(rate)
@@ -450,7 +450,7 @@ func (s *State) setSlashingRate(penaltyType icmodule.PenaltyType, rate icmodule.
 }
 
 // GetMinimumBond returns the minimum bond related to minimum wage
-// It returns nil before RevisionPreIISS4
+// It returns nil before RevisionIISS4R0
 func (s *State) GetMinimumBond() *big.Int {
 	return getValue(s.store, VarMinBond).BigInt()
 }
@@ -480,7 +480,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund(revision).ToJSON()
-	if revision == icmodule.RevisionPreIISS4 {
+	if revision == icmodule.RevisionIISS4R0 {
 		jso["rewardFund2"] = s.GetRewardFundV2().ToJSON()
 	}
 	jso["unbondingMax"] = s.GetUnbondingMax()
@@ -498,7 +498,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	rate, _ = s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
 	jso["proposalNonVotePenaltySlashRatio"] = rate.Percent()
 
-	if revision >= icmodule.RevisionPreIISS4 {
+	if revision >= icmodule.RevisionIISS4R0 {
 		jso["minimumBond"] = s.GetMinimumBond()
 	}
 

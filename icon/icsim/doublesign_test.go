@@ -39,14 +39,14 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 	var csi module.ConsensusInfo
 	var rcpt Receipt
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
-	env, err := NewEnv(cfg, icmodule.RevisionIISS4)
+	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
 	assert.NoError(t, err)
 	assert.NotNil(t, sim)
-	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4))
+	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4R1))
 
 	// T(0)
 	assert.NoError(t, sim.GoToTermEnd(nil))
@@ -123,10 +123,10 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	var revision module.Revision
 	slashingRate := icmodule.ToRate(10)
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
-	revision = icmodule.ValueToRevision(icmodule.RevisionPreIISS4)
+	revision = icmodule.ValueToRevision(icmodule.RevisionIISS4R0)
 	env, err := NewEnv(cfg, revision)
 	sim := env.Simulator()
 	assert.NoError(t, err)
@@ -137,7 +137,7 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	// T(0)
 	term := sim.TermSnapshot()
 	assert.Equal(t, icstate.IISSVersion3, term.GetIISSVersion())
-	revision = icmodule.ValueToRevision(icmodule.RevisionIISS4)
+	revision = icmodule.ValueToRevision(icmodule.RevisionIISS4R1)
 	rcpt, err = sim.GoBySetRevision(csi, env.Governance(), revision)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
@@ -149,7 +149,7 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
-	jso, err := sim.GetSlashingRates([]icmodule.PenaltyType{icmodule.PenaltyDoubleSign})
+	jso, err := sim.GetSlashingRates()
 	assert.NoError(t, err)
 	assert.Equal(t, slashingRate.NumInt64(), jso[penaltyType.String()])
 
@@ -205,14 +205,14 @@ func TestDoubleSign_HandleDoubleSignReportErrorCases(t *testing.T) {
 	var csi module.ConsensusInfo
 	var rcpt Receipt
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
-	env, err := NewEnv(cfg, icmodule.RevisionIISS4)
+	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
 	assert.NoError(t, err)
 	assert.NotNil(t, sim)
-	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4))
+	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4R1))
 
 	// T(0)
 	assert.NoError(t, sim.GoToTermEnd(nil))
@@ -271,14 +271,14 @@ func TestDoubleSign_RequestUnjailForNormalPRep(t *testing.T) {
 	var csi module.ConsensusInfo
 	var rcpt Receipt
 
-	cfg := NewSimConfigWithParams(map[string]interface{}{
-		"TermPeriod": termPeriod,
+	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOTermPeriod: termPeriod,
 	})
-	env, err := NewEnv(cfg, icmodule.RevisionIISS4)
+	env, err := NewEnv(cfg, icmodule.RevisionIISS4R1)
 	sim := env.Simulator()
 	assert.NoError(t, err)
 	assert.NotNil(t, sim)
-	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4))
+	assert.Equal(t, sim.Revision(), icmodule.ValueToRevision(icmodule.RevisionIISS4R1))
 
 	// T(0)
 	assert.NoError(t, sim.GoToTermEnd(nil))

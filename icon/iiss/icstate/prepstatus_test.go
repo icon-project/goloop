@@ -652,7 +652,7 @@ func TestPRepStatus_onPenaltyImposed(t *testing.T) {
 			},
 		},
 	}
-	revision := icmodule.RevisionIISS4
+	revision := icmodule.RevisionIISS4R1
 	termRevision := revision - 1
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -676,7 +676,7 @@ func TestPRepStatus_onPenaltyImposed(t *testing.T) {
 				"revision":     revision,
 				"termRevision": termRevision,
 			})
-			err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			err = ps.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 			assert.Equal(t, out.lh, ps.lastHeight)
 			assert.Equal(t, out.ls, ps.lastState)
@@ -743,27 +743,32 @@ func TestPRepStatusSnapshot_RLPEncodeFields(t *testing.T) {
 func TestPRepStatusData_getPenaltyTypeBeforeIISS4(t *testing.T) {
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight": int64(100),
-		"revision":    icmodule.RevisionPreIISS4,
+		"revision":    icmodule.RevisionIISS4R0,
 	})
 	ps := NewPRepStatus(newDummyAddress(1))
-	assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
+	assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType(sc))
 
 	for i := 0; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
-		assert.Equal(t, int(icmodule.PenaltyNone), ps.getPenaltyType(sc))
+		assert.Equal(t, icmodule.PenaltyNone, ps.getPenaltyType(sc))
 	}
 
 	for i := 1; i < 10; i += 2 {
 		ps.vPenaltyMask = uint32(i)
-		assert.Equal(t, int(icmodule.PenaltyValidationFailure), ps.getPenaltyType(sc))
+		assert.Equal(t, icmodule.PenaltyValidationFailure, ps.getPenaltyType(sc))
 	}
 
 	ps.SetStatus(Disqualified)
-	assert.Equal(t, int(icmodule.PenaltyPRepDisqualification), ps.getPenaltyType(sc))
+	assert.Equal(t, icmodule.PenaltyPRepDisqualification, ps.getPenaltyType(sc))
 }
 
 func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(
+		map[string]interface{}{
+			"blockHeight": int64(100),
+			"revision":    icmodule.RevisionIISS4R1,
+		},
+	)
 	ps := NewPRepStatus(newDummyAddress(1))
 
 	type input struct {
@@ -772,7 +777,7 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 	}
 	type output struct {
 		success bool
-		ptBits  int
+		pt      icmodule.PenaltyType
 	}
 	args := []struct {
 		in  input
@@ -780,7 +785,15 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 	}{
 		{
 			input{Active, icmodule.PenaltyValidationFailure},
-			output{true, 1 << icmodule.PenaltyValidationFailure},
+			output{true, icmodule.PenaltyValidationFailure},
+		},
+		{
+			input{Active, icmodule.PenaltyAccumulatedValidationFailure},
+			output{true, icmodule.PenaltyAccumulatedValidationFailure},
+		},
+		{
+			input{Active, icmodule.PenaltyDoubleSign},
+			output{true, icmodule.PenaltyDoubleSign},
 		},
 	}
 
@@ -796,13 +809,13 @@ func TestPRepStatusData_getPenaltyTypeAfterIISS4(t *testing.T) {
 			}
 
 			ret := ps.getPenaltyType(sc)
-			assert.Equal(t, ret, arg.out.ptBits)
+			assert.Equal(t, ret, arg.out.pt)
 		})
 	}
 }
 
 func TestPRepStatusData_ToJSON(t *testing.T) {
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(100), "revision": icmodule.RevisionIISS4R1})
 
 	ps := NewPRepStatus(newDummyAddress(1))
 	jso := ps.ToJSON(sc)
@@ -899,7 +912,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	var err error
 	limit := 30
 	owner := newDummyAddress(1)
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4R1})
 
 	ps := NewPRepStatus(owner)
 	assert.NoError(t, ps.Activate())
@@ -907,7 +920,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.Equal(t, None, ps.LastState())
 	assert.True(t, ps.IsActive())
 
-	err = ps.NotifyEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
+	err = ps.OnEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
 	assert.NoError(t, err)
 	assert.Equal(t, GradeMain, ps.Grade())
 	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
@@ -919,7 +932,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 		oFailCont := ps.GetVFailCont(sc.BlockHeight())
 
 		sc.IncreaseBlockHeightBy(1)
-		err = ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, false)
+		err = ps.OnEvent(sc, icmodule.PRepEventBlockVote, false)
 		assert.NoError(t, err)
 		assert.Equal(t, Failure, ps.LastState())
 
@@ -929,7 +942,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	}
 
 	// Impose penalty
-	err = ps.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+	err = ps.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 	assert.NoError(t, err)
 	assert.Equal(t, GradeCandidate, ps.Grade())
 	assert.True(t, ps.IsAlreadyPenalized())
@@ -950,7 +963,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 		oFailCont := ps.GetVFailCont(sc.BlockHeight())
 
 		sc.IncreaseBlockHeightBy(1)
-		err = ps.NotifyEvent(sc, icmodule.PRepEventBlockVote, false)
+		err = ps.OnEvent(sc, icmodule.PRepEventBlockVote, false)
 		assert.NoError(t, err)
 
 		assert.Equal(t, oTotal+1, ps.GetVTotal(sc.BlockHeight()))
@@ -964,7 +977,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	oFailCont := ps.GetVFailCont(sc.BlockHeight())
 
 	sc.IncreaseBlockHeightBy(1)
-	err = ps.NotifyEvent(sc, icmodule.PRepEventValidatorOut)
+	err = ps.OnEvent(sc, icmodule.PRepEventValidatorOut)
 	assert.NoError(t, err)
 	assert.Equal(t, None, ps.LastState())
 	assert.Equal(t, GradeCandidate, ps.Grade())
@@ -983,7 +996,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 
 	// Request Unjail after 1 block
 	sc.IncreaseBlockHeightBy(1)
-	err = ps.NotifyEvent(sc, icmodule.PRepEventRequestUnjail)
+	err = ps.OnEvent(sc, icmodule.PRepEventRequestUnjail)
 	assert.NoError(t, err)
 	assert.Equal(t, None, ps.LastState())
 	assert.Equal(t, GradeCandidate, ps.Grade())
@@ -1005,7 +1018,7 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.Equal(t, oFail, ps.GetVFail(sc.BlockHeight()))
 	assert.Equal(t, oFailCont, ps.GetVFailCont(sc.BlockHeight()))
 
-	err = ps.NotifyEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
+	err = ps.OnEvent(sc, icmodule.PRepEventTermEnd, GradeMain, limit)
 	assert.NoError(t, err)
 	assert.Equal(t, GradeMain, ps.Grade())
 	assert.Equal(t, None, ps.LastState())
@@ -1022,11 +1035,11 @@ func TestPRepStatusState_NotifyEvent(t *testing.T) {
 	assert.Zero(t, ps.GetVFailCont(sc.BlockHeight()))
 }
 
-// Assume that IsDoubleSignReportable() is called after RevisionIISS4
+// Assume that IsDoubleSignReportable() is called after RevisionIISS4R1
 func TestPRepStatus_IsDoubleSignReportable(t *testing.T) {
 	owner := newDummyAddress(1)
 	height := int64(1000)
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": height, "revision": icmodule.RevisionIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": height, "revision": icmodule.RevisionIISS4R1})
 
 	ps := NewPRepStatus(owner)
 	assert.NoError(t, ps.Activate())

@@ -60,6 +60,14 @@ type Call struct {
 	params []interface{}
 }
 
+func (c *Call) Method() string {
+	return c.method
+}
+
+func (c *Call) Params() []interface{} {
+	return c.params
+}
+
 type CallTracer struct {
 	callMap map[string][]*Call
 }
@@ -90,6 +98,14 @@ func NewCallTracer() *CallTracer {
 		callMap: make(map[string][]*Call),
 	}
 }
+
+type CallCtxOption int
+
+const (
+	CallCtxOptionRevision CallCtxOption = iota
+	CallCtxOptionBlockHeight
+	CallCtxOptionFrom
+)
 
 type mockCallContext struct {
 	*CallTracer
@@ -137,17 +153,17 @@ func (cc *mockCallContext) HandleBurn(address module.Address, amount *big.Int) e
 	return nil
 }
 
-func (cc *mockCallContext) Set(params map[string]interface{}) {
+func (cc *mockCallContext) Set(params map[CallCtxOption]interface{}) {
 	for key, value := range params {
 		switch key {
-		case "rev", "revision":
+		case CallCtxOptionRevision:
 			cc.rev = value.(module.Revision)
-		case "bh", "blockHeight", "height":
+		case CallCtxOptionBlockHeight:
 			cc.blockHeight = value.(int64)
-		case "from", "owner", "sender":
+		case CallCtxOptionFrom:
 			cc.from = value.(module.Address)
 		default:
-			log.Panicf("UnexpectedName(%s)", key)
+			log.Panicf("UnexpectedName(%d)", key)
 		}
 	}
 }
@@ -157,7 +173,7 @@ func (cc *mockCallContext) IncreaseBlockHeightBy(amount int64) int64 {
 	return cc.blockHeight
 }
 
-func newMockCallContext(params map[string]interface{}) *mockCallContext {
+func newMockCallContext(params map[CallCtxOption]interface{}) *mockCallContext {
 	cc := &mockCallContext{
 		CallTracer: NewCallTracer(),
 	}
@@ -371,9 +387,9 @@ func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
 
 	var err error
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -408,9 +424,9 @@ func TestExtensionStateImpl_InitCommissionRate(t *testing.T) {
 func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 	var err error
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -482,9 +498,9 @@ func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 
 func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(icmodule.RevisionPreIISS4),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 	})
 	es := newDummyExtensionState(t)
 
@@ -526,7 +542,7 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 		},
 	}
 
-	jso, err := es.GetSlashingRates(cc, nil)
+	jso, err := es.GetSlashingRates(cc)
 	assert.NoError(t, err)
 	for key, value := range jso {
 		assert.True(t, icmodule.ToPenaltyType(key) != icmodule.PenaltyNone)
@@ -538,14 +554,14 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 		rates := arg.rates
 
 		t.Run(name, func(t *testing.T) {
-			oldRates, err := es.GetSlashingRates(cc, nil)
+			oldRates, err := es.GetSlashingRates(cc)
 			assert.NoError(t, err)
 
 			err = es.SetSlashingRates(cc, rates)
 
 			if !arg.success {
 				assert.Error(t, err)
-				jso, err = es.GetSlashingRates(cc, nil)
+				jso, err = es.GetSlashingRates(cc)
 				assert.Equal(t, oldRates, jso)
 				return
 			}
@@ -555,27 +571,12 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 			for key, rate := range rates {
 				expRates[key] = rate.NumInt64()
 			}
-			jso, err = es.GetSlashingRates(cc, nil)
+			jso, err = es.GetSlashingRates(cc)
 			assert.NoError(t, err)
 			assert.True(t, checkSlashingRates(jso))
 			assert.Equal(t, expRates, jso)
 		})
 	}
-
-	penaltyTypes := []icmodule.PenaltyType{
-		icmodule.PenaltyDoubleSign,
-		icmodule.PenaltyAccumulatedValidationFailure,
-	}
-	jso, err = es.GetSlashingRates(cc, penaltyTypes)
-	assert.NoError(t, err)
-	assert.Equal(t, len(penaltyTypes), len(jso))
-	for _, pt := range penaltyTypes {
-		_, ok := jso[pt.String()]
-		assert.True(t, ok)
-	}
-
-	_, err = es.GetSlashingRates(cc, []icmodule.PenaltyType{icmodule.PenaltyNone})
-	assert.Error(t, err)
 }
 
 func checkSlashingRates(rates map[string]interface{}) bool {
@@ -593,11 +594,11 @@ func checkSlashingRates(rates map[string]interface{}) bool {
 
 func TestExtensionStateImpl_RequestUnjail(t *testing.T) {
 	var err error
-	rev := icmodule.RevisionIISS4
+	rev := icmodule.RevisionIISS4R1
 	owner := common.MustNewAddressFromString("hx1234")
-	cc := newMockCallContext(map[string]interface{}{
-		"from": owner,
-		"rev":  icmodule.ValueToRevision(rev),
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionFrom:     owner,
+		CallCtxOptionRevision: icmodule.ValueToRevision(rev),
 	})
 	es := newDummyExtensionState(t)
 
@@ -621,11 +622,11 @@ func TestExtensionStateImpl_RequestUnjail(t *testing.T) {
 func TestExtensionStateImpl_GetPRepStats(t *testing.T) {
 	var err error
 	size := 2
-	rev := icmodule.RevisionIISS4
+	rev := icmodule.RevisionIISS4R1
 	bh := int64(1000)
-	cc := newMockCallContext(map[string]interface{}{
-		"rev":         icmodule.ValueToRevision(rev),
-		"blockHeight": bh,
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(rev),
+		CallCtxOptionBlockHeight: bh,
 	})
 	es := newDummyExtensionState(t)
 
@@ -689,4 +690,73 @@ func TestExtensionStateImpl_GetPRepStats(t *testing.T) {
 	prepInJSON := preps[0].(map[string]interface{})
 	prepInJSON["address"] = prepInJSON["address"].(module.Address).String()
 	assert.Equal(t, exp, prepInJSON)
+}
+
+func TestExtensionStateImpl_SetPRepCountConfig(t *testing.T) {
+	var err error
+	var main, sub, extra int64
+	rev := icmodule.RevisionIISS4R1
+	bh := int64(1000)
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision:    icmodule.ValueToRevision(rev),
+		CallCtxOptionBlockHeight: bh,
+	})
+	es := newDummyExtensionState(t)
+
+	args := []struct {
+		counts  map[string]int64
+		success bool
+	}{
+		{map[string]int64{"main": 22, "sub": 78, "extra": 3}, true},
+		{map[string]int64{"main": 19, "sub": 81, "extra": 9}, true},
+		{map[string]int64{"main": 25, "sub": 75}, true},
+		{map[string]int64{"main": 10}, false},
+		{map[string]int64{"main": 20}, true},
+		{map[string]int64{"sub": 40}, true},
+		{map[string]int64{"extra": 3}, true},
+		{map[string]int64{"main": 1001}, false},
+		{map[string]int64{"sub": 10001}, false},
+		{map[string]int64{"extra": 1001}, false},
+		{map[string]int64{"main": -1}, false},
+		{map[string]int64{"sub": -1}, false},
+		{map[string]int64{"extra": -1}, false},
+		{map[string]int64{"main": 0}, false},
+		{map[string]int64{"main": 4, "sub": 2}, false},
+		{map[string]int64{"main2": 4, "sub": 2}, false},
+		{map[string]int64{"main": 4, "sub": 6, "extra": 0}, true},
+		{map[string]int64{"extra": 1}, true},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		counts := arg.counts
+		success := arg.success
+
+		t.Run(name, func(t *testing.T) {
+			err = es.SetPRepCountConfig(cc, counts)
+			if success {
+				assert.NoError(t, err)
+				for k, v := range counts {
+					pct, _ := icstate.StringToPRepCountType(k)
+					switch pct {
+					case icstate.PRepCountMain:
+						main = v
+					case icstate.PRepCountSub:
+						sub = v
+					case icstate.PRepCountExtra:
+						extra = v
+					}
+				}
+			} else {
+				assert.Error(t, err)
+			}
+
+			// Get all PRepCounts
+			jso, err := es.GetPRepCountConfig()
+			assert.NoError(t, err)
+			assert.Equal(t, main, jso["main"])
+			assert.Equal(t, sub, jso["sub"])
+			assert.Equal(t, extra, jso["extra"])
+		})
+	}
 }

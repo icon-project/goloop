@@ -428,7 +428,7 @@ func TestValidateCountryAlpha3(t *testing.T) {
 }
 
 func TestMinBigInt(t *testing.T) {
-	args := []struct{
+	args := []struct {
 		v0, v1, min int64
 	}{
 		{0, 0, 0},
@@ -456,11 +456,11 @@ func TestMinBigInt(t *testing.T) {
 }
 
 func TestCalcPower(t *testing.T) {
-	args := []struct{
-		br icmodule.Rate
+	args := []struct {
+		br     icmodule.Rate
 		bonded int64
-		voted int64
-		power int64
+		voted  int64
+		power  int64
 	}{
 		{0, 0, 0, 0},
 		{0, 1000, 1000, 1000},
@@ -486,7 +486,7 @@ func TestCalcPower(t *testing.T) {
 }
 
 func TestMatchAll(t *testing.T) {
-	args := []struct{
+	args := []struct {
 		flags   int
 		flag    int
 		success bool
@@ -503,14 +503,14 @@ func TestMatchAll(t *testing.T) {
 
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T){
+		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, arg.success, MatchAll(arg.flags, arg.flag))
 		})
 	}
 }
 
 func TestMatchAny(t *testing.T) {
-	args := []struct{
+	args := []struct {
 		flags   int
 		flag    int
 		success bool
@@ -527,8 +527,41 @@ func TestMatchAny(t *testing.T) {
 
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
-		t.Run(name, func(t *testing.T){
+		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, arg.success, MatchAny(arg.flags, arg.flag))
+		})
+	}
+}
+
+func TestCheckInt64Overflow(t *testing.T) {
+	args := []struct {
+		text     string
+		overflow bool
+	}{
+		{"0x1234567890123456", false},
+		{"-0x1", false},
+		{"-0x0", false},
+		{"0x7fffffffffffffff", false},
+		{"-0x7fffffffffffffff", false},
+		{"0x8000000000000000", true},
+		{"0xffffffffffffffff", true},
+		{"-0xffffffffffffffff", true},
+		{"0x1ffffffffffffffff", true},
+		{"0x12345678901234567890", true},
+	}
+	for _, arg := range args {
+		value := new(big.Int)
+		_, ok := value.SetString(arg.text, 0)
+		assert.True(t, ok)
+
+		name := fmt.Sprintf("case %x %t", value, ok)
+		t.Run(name, func(t *testing.T) {
+			err := CheckInt64Overflow(value)
+			if arg.overflow {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

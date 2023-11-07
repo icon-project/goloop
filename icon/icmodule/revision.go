@@ -61,6 +61,7 @@ const (
 
 	RevisionFixBugDisabledPRep = Revision8
 
+	RevisionIISS2                     = Revision9
 	RevisionFixBurnEventSignature     = Revision9
 	RevisionMultipleUnstakes          = Revision9
 	RevisionFixEmailValidation        = Revision9
@@ -107,13 +108,14 @@ const (
 	// Unused
 	// RevisionJavaFixMapValues = Revision20
 
-	RevisionBTP2 = Revision21
+	RevisionBTP2           = Revision21
+	RevisionBlockAccounts2 = Revision21
 
 	RevisionUpdatePRepStats = Revision22
 
-	RevisionPreIISS4 = Revision23
+	RevisionIISS4R0 = Revision23
 
-	RevisionIISS4        = Revision24
+	RevisionIISS4R1      = Revision24
 	RevisionVoteEventLog = Revision24
 )
 

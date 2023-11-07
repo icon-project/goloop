@@ -64,11 +64,11 @@ func (ci *CommissionInfo) String() string {
 }
 
 func (ci *CommissionInfo) RLPDecodeSelf(d codec.Decoder) error {
-	return d.DecodeAll(&ci.rate, &ci.maxRate, &ci.maxChangeRate)
+	return d.DecodeListOf(&ci.rate, &ci.maxRate, &ci.maxChangeRate)
 }
 
 func (ci *CommissionInfo) RLPEncodeSelf(e codec.Encoder) error {
-	return e.EncodeMulti(ci.rate, ci.maxRate, ci.maxChangeRate)
+	return e.EncodeListOf(ci.rate, ci.maxRate, ci.maxChangeRate)
 }
 
 func (ci *CommissionInfo) Clone() *CommissionInfo {

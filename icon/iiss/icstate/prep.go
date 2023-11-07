@@ -89,7 +89,7 @@ func (p *PRep) IsElectable(sc icmodule.StateContext) bool {
 			return false
 		}
 	}
-	if rev >= icmodule.RevisionIISS4 {
+	if rev >= icmodule.RevisionIISS4R1 {
 		if !p.IsJailInfoElectable() {
 			return false
 		}
@@ -138,7 +138,7 @@ func (p *prepSetImpl) OnTermEnd(sc icmodule.StateContext, limit int) error {
 			newGrade = GradeCandidate
 		}
 
-		if err := prep.NotifyEvent(sc, icmodule.PRepEventTermEnd, newGrade, limit); err != nil {
+		if err := prep.OnEvent(sc, icmodule.PRepEventTermEnd, newGrade, limit); err != nil {
 			return err
 		}
 	}
@@ -232,7 +232,7 @@ func (p *prepSetImpl) sortBeforeRevBTP2(sc icmodule.StateContext, cfg PRepCountC
 	SortByPower(sc, p.preps)
 
 	size := len(p.preps)
-	mainPRepCount := cfg.MainPReps(MainPRepNormal)
+	mainPRepCount := cfg.MainPReps()
 
 	if size <= mainPRepCount {
 		// Not enough number of active preps to be extra main preps
@@ -242,7 +242,7 @@ func (p *prepSetImpl) sortBeforeRevBTP2(sc icmodule.StateContext, cfg PRepCountC
 
 	// electedPRepCount MUST BE larger than mainPRepCount
 	electedPRepCount := icutils.Min(size, cfg.ElectedPReps())
-	extraMainPRepCount := icutils.Min(cfg.MainPReps(MainPRepExtra), electedPRepCount-mainPRepCount)
+	extraMainPRepCount := icutils.Min(cfg.ExtraMainPReps(), electedPRepCount-mainPRepCount)
 
 	if sc.Revision() < icmodule.RevisionExtraMainPReps || extraMainPRepCount <= 0 {
 		// No need to find extraMainPReps
@@ -281,7 +281,7 @@ func (p *prepSetImpl) sortBeforeRevBTP2(sc icmodule.StateContext, cfg PRepCountC
 
 func (p *prepSetImpl) sortAfterRevBTP2(sc icmodule.StateContext, cfg PRepCountConfig) {
 	// All counts are configuration values; Default: 22, 78, 3
-	mainPRepCount := cfg.MainPReps(MainPRepNormal)
+	mainPRepCount := cfg.MainPReps()
 
 	SortByPower(sc, p.preps)
 
@@ -293,7 +293,7 @@ func (p *prepSetImpl) sortAfterRevBTP2(sc icmodule.StateContext, cfg PRepCountCo
 		}
 	}
 
-	extraMainPRepCount := icutils.Min(cfg.MainPReps(MainPRepExtra), electablePReps-mainPRepCount)
+	extraMainPRepCount := icutils.Min(cfg.ExtraMainPReps(), electablePReps-mainPRepCount)
 	if extraMainPRepCount <= 0 {
 		// No need to find extra MainPReps
 		p.classifyPReps(electablePReps, electablePReps)

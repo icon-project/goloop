@@ -17,40 +17,62 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/icon/icmodule"
 )
 
-type MainPRepType int
+type PRepCountType int
+
 const (
-	MainPRepNormal MainPRepType = iota
-	MainPRepExtra
-	MainPRepAll
+	PRepCountMain  PRepCountType = iota
+	PRepCountSub
+	PRepCountExtra
 )
+
+func (pct PRepCountType) String() string {
+	switch pct {
+	case PRepCountMain:
+		return "main"
+	case PRepCountSub:
+		return "sub"
+	case PRepCountExtra:
+		return "extra"
+	default:
+		return ""
+	}
+}
+
+func StringToPRepCountType(name string) (PRepCountType, bool) {
+	switch name {
+	case "main":
+		return PRepCountMain, true
+	case "sub":
+		return PRepCountSub, true
+	case "extra":
+		return PRepCountExtra, true
+	default:
+		return -1, false
+	}
+}
 
 type PRepCountConfig interface {
-	MainPReps(mpt MainPRepType) int
+	MainPReps() int
+	ExtraMainPReps() int
 	SubPReps() int
 	ElectedPReps() int
 }
 
 type prepCountConfig struct {
-	mainPReps int
-	subPReps int
+	mainPReps      int
+	subPReps       int
 	extraMainPReps int
 }
 
-func (p prepCountConfig) MainPReps(mpt MainPRepType) int {
-	switch mpt {
-	case MainPRepNormal:
-		return p.mainPReps
-	case MainPRepExtra:
-		return p.extraMainPReps
-	case MainPRepAll:
-		return p.mainPReps + p.extraMainPReps
-	default:
-		log.Panicf("UnknownMainPRepType(%d)", mpt)
-	}
-	return -1
+func (p prepCountConfig) MainPReps() int {
+	return p.mainPReps
+}
+
+func (p prepCountConfig) ExtraMainPReps() int {
+	return p.extraMainPReps
 }
 
 func (p prepCountConfig) SubPReps() int {
@@ -63,8 +85,21 @@ func (p prepCountConfig) ElectedPReps() int {
 
 func NewPRepCountConfig(mainPReps, subPReps, extraMainPReps int) PRepCountConfig {
 	return prepCountConfig{
-		mainPReps: mainPReps,
-		subPReps: subPReps,
+		mainPReps:      mainPReps,
+		subPReps:       subPReps,
 		extraMainPReps: extraMainPReps,
 	}
+}
+
+func ValidatePRepCountConfig(main, sub, extra int64) error {
+	if main <= 0 || main > 1000 {
+		return icmodule.IllegalArgumentError.Errorf("InvalidMainPRepCount(%d)", main)
+	}
+	if sub < 0 || sub > 1000 {
+		return icmodule.IllegalArgumentError.Errorf("InvalidSubPRepCount(%d)", sub)
+	}
+	if extra < 0 || extra > sub || extra > (main-1)/2 {
+		return icmodule.IllegalArgumentError.Errorf("InvalidExtraMainPRepCount(%d)", extra)
+	}
+	return nil
 }

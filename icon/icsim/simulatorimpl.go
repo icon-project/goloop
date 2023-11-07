@@ -432,6 +432,8 @@ func (sim *simulatorImpl) executeTx(wc WorldContext, tx Transaction) error {
 		err = sim.requestUnjail(es, wc, tx)
 	case TypeHandleDoubleSignReport:
 		err = sim.handleDoubleSignReport(es, wc, tx)
+	case TypeSetPRepCountConfig:
+		err = sim.setPRepCountConfig(es, wc, tx)
 	default:
 		return errors.Errorf("Unexpected transaction: %v", tx.Type())
 	}
@@ -718,10 +720,10 @@ func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 	}
 }
 
-func (sim *simulatorImpl) GetSlashingRates(penaltyTypes []icmodule.PenaltyType) (map[string]interface{}, error) {
+func (sim *simulatorImpl) GetSlashingRates() (map[string]interface{}, error) {
 	es := sim.getExtensionState(true)
 	cc := sim.newCallContext()
-	return es.GetSlashingRates(cc, penaltyTypes)
+	return es.GetSlashingRates(cc)
 }
 
 func (sim *simulatorImpl) SetSlashingRates(from module.Address, rates map[string]icmodule.Rate) Transaction {
@@ -833,6 +835,28 @@ func (sim *simulatorImpl) handleDoubleSignReport(es *iiss.ExtensionStateImpl, wc
 	signer := args[3].(module.Address)
 	cc := NewCallContext(wc, from)
 	return es.HandleDoubleSignReport(cc, dsType, dsBlockHeight, signer)
+}
+
+func (sim *simulatorImpl) GetPRepCountConfig() (map[string]interface{}, error) {
+	es := sim.getExtensionState(true)
+	return es.GetPRepCountConfig()
+}
+
+func (sim *simulatorImpl) SetPRepCountConfig(from module.Address, counts map[string]int64) Transaction {
+	return NewTransaction(TypeSetPRepCountConfig, from, counts)
+}
+
+func (sim *simulatorImpl) GoBySetPRepCountConfig(
+	csi module.ConsensusInfo, from module.Address, counts map[string]int64) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetPRepCountConfig, from, counts)
+}
+
+func (sim *simulatorImpl) setPRepCountConfig(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+	args := tx.Args()
+	from := args[0].(module.Address)
+	counts := args[1].(map[string]int64)
+	cc := NewCallContext(wc, from)
+	return es.SetPRepCountConfig(cc, counts)
 }
 
 func NewSimulator(

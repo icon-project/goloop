@@ -30,6 +30,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -261,4 +262,11 @@ func MatchAll(flags, flag int) bool {
 
 func MatchAny(flags, flag int) bool {
 	return flags&flag != 0
+}
+
+func CheckInt64Overflow(value *big.Int) error {
+	if !value.IsInt64() {
+		return scoreresult.InvalidParameterError.Errorf("Int64Overflow(0x%x)", value)
+	}
+	return nil
 }

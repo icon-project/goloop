@@ -26,13 +26,13 @@ func Test_ExtraMainPReps(t *testing.T) {
 	var vl []module.Validator
 	br := icmodule.ToRate(5) // 5%
 
-	c := NewSimConfigWithParams(map[string]interface{}{
-		"MainPReps":                            int64(mainPRepCount),
-		"ExtraMainPReps":                       int64(extraMainPRepCount),
-		"TermPeriod":                           int64(termPeriod),
-		"ValidationPenaltyCondition":           int64(validationPenaltyCondition),
-		"ConsistentValidationPenaltyCondition": int64(consistentValidationPenaltyCondition),
-		"br":                                   icmodule.ToRate(5),
+	c := NewSimConfigWithParams(map[SimConfigOption]interface{}{
+		SCOMainPReps:                         int64(mainPRepCount),
+		SCOExtraMainPReps:                    int64(extraMainPRepCount),
+		SCOTermPeriod:                        int64(termPeriod),
+		SCOValidationFailurePenaltyCondition: int64(validationPenaltyCondition),
+		SCOAccumulatedValidationFailurePenaltyCondition: int64(consistentValidationPenaltyCondition),
+		SCOBondRequirement: icmodule.ToRate(5),
 	})
 
 	// Decentralization is activated

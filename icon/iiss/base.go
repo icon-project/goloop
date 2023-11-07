@@ -215,7 +215,7 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 			return err
 		}
 		if voted[i] == false {
-			if err = es.handlePenalty(cc, voter); err != nil {
+			if err = es.handleBlockValidationPenalty(cc, voter); err != nil {
 				return err
 			}
 		}
@@ -293,12 +293,12 @@ func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byt
 	}
 
 	// make event log
-	recordPRepIssuedEvent(cc, prep)
-	recordICXIssuedEvent(cc, result, issue)
+	EmitPRepIssuedEvent(cc, prep)
+	EmitICXIssuedEvent(cc, result, issue)
 
 	term := es.State.GetTermSnapshot()
 	if cc.BlockHeight() == term.StartHeight() {
-		recordTermStartedEvent(cc, term)
+		EmitTermStartedEvent(cc, term)
 	}
 	return nil
 }

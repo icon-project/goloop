@@ -102,7 +102,7 @@ func newMockStateContext(params map[string]interface{}) *mockStateContext {
 	if sc.termRevision == 0 {
 		sc.termRevision = sc.revision
 	}
-	if sc.termRevision >= icmodule.RevisionIISS4 {
+	if sc.termRevision >= icmodule.RevisionIISS4R1 {
 		sc.termIISSVersion = IISSVersion4
 	}
 	return sc
@@ -455,7 +455,7 @@ func TestState_OnBlockVote(t *testing.T) {
 
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight": int64(1000),
-		"revision":    icmodule.RevisionPreIISS4 - 1,
+		"revision":    icmodule.RevisionIISS4R0 - 1,
 	})
 	err = state.OnBlockVote(sc, owner, true)
 	assert.Error(t, err)
@@ -523,10 +523,10 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 	args := []struct {
 		in input
 	}{
-		{input{icmodule.RevisionIISS4, icmodule.RevisionIISS4 - 1}},
-		{input{icmodule.RevisionIISS4, icmodule.RevisionIISS4}},
-		{input{icmodule.RevisionIISS4 + 1, icmodule.RevisionIISS4}},
-		{input{icmodule.RevisionIISS4 + 1, icmodule.RevisionIISS4 + 1}},
+		{input{icmodule.RevisionIISS4R1, icmodule.RevisionIISS4R1 - 1}},
+		{input{icmodule.RevisionIISS4R1, icmodule.RevisionIISS4R1}},
+		{input{icmodule.RevisionIISS4R1 + 1, icmodule.RevisionIISS4R1}},
+		{input{icmodule.RevisionIISS4R1 + 1, icmodule.RevisionIISS4R1 + 1}},
 	}
 
 	for i, arg := range args {
@@ -600,80 +600,80 @@ func TestState_ImposePenalty(t *testing.T) {
 	}{
 		{
 			input{
-				icmodule.RevisionIISS4 - 1,
-				icmodule.RevisionIISS4 - 1,
+				icmodule.RevisionIISS4R1 - 1,
+				icmodule.RevisionIISS4R1 - 1,
 				icmodule.PenaltyValidationFailure,
 			},
 			output{0},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4,
-				icmodule.RevisionIISS4 - 1,
+				icmodule.RevisionIISS4R1,
+				icmodule.RevisionIISS4R1 - 1,
 				icmodule.PenaltyValidationFailure,
 			},
 			output{0},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4,
-				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4R1,
+				icmodule.RevisionIISS4R1,
 				icmodule.PenaltyValidationFailure,
 			},
 			output{JFlagInJail},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4 + 1,
-				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4R1 + 1,
+				icmodule.RevisionIISS4R1,
 				icmodule.PenaltyValidationFailure,
 			},
 			output{JFlagInJail},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4 + 1,
-				icmodule.RevisionIISS4 + 1,
+				icmodule.RevisionIISS4R1 + 1,
+				icmodule.RevisionIISS4R1 + 1,
 				icmodule.PenaltyValidationFailure,
 			},
 			output{JFlagInJail},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4 - 1,
-				icmodule.RevisionIISS4 - 1,
+				icmodule.RevisionIISS4R1 - 1,
+				icmodule.RevisionIISS4R1 - 1,
 				icmodule.PenaltyDoubleSign,
 			},
 			output{0},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4,
-				icmodule.RevisionIISS4 - 1,
+				icmodule.RevisionIISS4R1,
+				icmodule.RevisionIISS4R1 - 1,
 				icmodule.PenaltyDoubleSign,
 			},
 			output{0},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4,
-				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4R1,
+				icmodule.RevisionIISS4R1,
 				icmodule.PenaltyDoubleSign,
 			},
 			output{JFlagInJail | JFlagDoubleSign},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4 + 1,
-				icmodule.RevisionIISS4,
+				icmodule.RevisionIISS4R1 + 1,
+				icmodule.RevisionIISS4R1,
 				icmodule.PenaltyDoubleSign,
 			},
 			output{JFlagInJail | JFlagDoubleSign},
 		},
 		{
 			input{
-				icmodule.RevisionIISS4 + 1,
-				icmodule.RevisionIISS4 + 1,
+				icmodule.RevisionIISS4R1 + 1,
+				icmodule.RevisionIISS4R1 + 1,
 				icmodule.PenaltyDoubleSign,
 			},
 			output{JFlagInJail | JFlagDoubleSign},
@@ -777,7 +777,7 @@ func TestState_DisablePRep(t *testing.T) {
 	assert.Equal(t, delegation, ps.Delegated().Int64())
 	assert.Equal(t, Active, ps.Status())
 
-	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionPreIISS4})
+	sc := newMockStateContext(map[string]interface{}{"blockHeight": int64(1000), "revision": icmodule.RevisionIISS4R0})
 	err = state.DisablePRep(sc, owner, Unregistered)
 	assert.NoError(t, err)
 	assert.NoError(t, state.Flush())
@@ -807,7 +807,7 @@ func TestState_CheckValidationPenalty(t *testing.T) {
 	blockHeight := int64(1000)
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight": blockHeight,
-		"revision":    icmodule.RevisionPreIISS4 - 1,
+		"revision":    icmodule.RevisionIISS4R0 - 1,
 	})
 	ps := state.GetPRepStatusByOwner(owner, false)
 	for i := 0; i < condition; i++ {
@@ -990,7 +990,7 @@ func TestState_OnValidatorOut(t *testing.T) {
 
 			sc := newMockStateContext(map[string]interface{}{
 				"blockHeight": blockHeight,
-				"revision":    icmodule.RevisionPreIISS4 - 1,
+				"revision":    icmodule.RevisionIISS4R0 - 1,
 			})
 			err = state.OnValidatorOut(sc, owner)
 			assert.Error(t, err)

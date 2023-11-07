@@ -85,7 +85,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Address,
 		},
-	}, 0, icmodule.RevisionPreIISS4 - 1},
+	}, 0, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "addressToTxHashes",
 		scoreapi.FlagReadOnly, 1,
@@ -95,7 +95,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.List,
 		},
-	}, 0, icmodule.RevisionPreIISS4 - 1},
+	}, 0, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "acceptScore",
 		scoreapi.FlagExternal, 1,
@@ -273,7 +273,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "getIRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -281,7 +281,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "getRRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -289,7 +289,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setStake",
 		scoreapi.FlagExternal, 1,
@@ -525,7 +525,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Bool,
 		},
-	}, icmodule.Revision9, icmodule.RevisionPreIISS4 - 1},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "disqualifyPRep",
 		scoreapi.FlagExternal, 1,
@@ -568,7 +568,7 @@ var chainMethods = []*chainMethod{
 			{"ivoter", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R0, icmodule.RevisionIISS4 - 1},
+	}, icmodule.RevisionICON2R0, icmodule.RevisionIISS4R1 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setRewardFundAllocation2",
 		scoreapi.FlagExternal, 1,
@@ -581,7 +581,7 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.RevisionPreIISS4, 0},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getScoreOwner",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -658,7 +658,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4 - 1},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setNonVoteSlashingRate",
 		scoreapi.FlagExternal, 1,
@@ -666,7 +666,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, icmodule.RevisionPreIISS4 - 1},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setSlashingRates",
 		scoreapi.FlagExternal, 1,
@@ -679,17 +679,15 @@ var chainMethods = []*chainMethod{
 			},
 		},
 		nil,
-	}, icmodule.RevisionPreIISS4, 0},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getSlashingRates",
 		scoreapi.FlagReadOnly, 0,
-		[]scoreapi.Parameter{
-			{"names", scoreapi.ListTypeOf(1, scoreapi.String), nil, nil},
-		},
+		nil,
 		[]scoreapi.DataType{
 			scoreapi.Dict,
 		},
-	}, icmodule.RevisionPreIISS4, 0},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setUseSystemDeposit",
 		scoreapi.FlagExternal, 2,
@@ -782,7 +780,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.RevisionPreIISS4, 0},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setMinimumBond",
 		scoreapi.FlagExternal, 1,
@@ -790,7 +788,7 @@ var chainMethods = []*chainMethod{
 			{"bond", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionPreIISS4, 0},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "initCommissionRate",
 		scoreapi.FlagExternal, 3,
@@ -800,7 +798,7 @@ var chainMethods = []*chainMethod{
 			{"maxChangeRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionPreIISS4, 0},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setCommissionRate",
 		scoreapi.FlagExternal, 1,
@@ -808,13 +806,13 @@ var chainMethods = []*chainMethod{
 			{"rate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionPreIISS4, 0},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "requestUnjail",
 		scoreapi.FlagExternal, 0,
 		nil,
 		nil,
-	}, icmodule.RevisionIISS4, 0},
+	}, icmodule.RevisionIISS4R1, 0},
 	{scoreapi.Method{
 		scoreapi.Function, contract.HandleDoubleSignReport,
 		scoreapi.FlagExternal, 3,
@@ -824,7 +822,28 @@ var chainMethods = []*chainMethod{
 			{"signer", scoreapi.Address, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionIISS4, 0},
+	}, icmodule.RevisionIISS4R1, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setPRepCountConfig",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"counts", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepCountConfig",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionIISS4R0, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {

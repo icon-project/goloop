@@ -107,7 +107,7 @@ func TestPRep_ToJSON(t *testing.T) {
 	bh := int64(1000)
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight":   bh,
-		"revision":      icmodule.RevisionIISS4,
+		"revision":      icmodule.RevisionIISS4R1,
 		"activeDSAMask": int64(1),
 	})
 	br := sc.GetBondRequirement()
@@ -133,7 +133,7 @@ func TestPRep_ToJSON(t *testing.T) {
 	assert.Equal(t, prep.LastHeight(), jso["lastHeight"])
 	assert.Equal(t, int(prep.Grade()), jso["grade"])
 	assert.Equal(t, int(prep.Status()), jso["status"])
-	assert.Equal(t, prep.getPenaltyType(sc), jso["penalty"])
+	assert.Equal(t, int(prep.getPenaltyType(sc)), jso["penalty"])
 	assert.Zero(t, prep.Bonded().Cmp(jso["bonded"].(*big.Int)))
 	assert.Zero(t, prep.Delegated().Cmp(jso["delegated"].(*big.Int)))
 	assert.Zero(t, prep.GetPower(br).Cmp(jso["power"].(*big.Int)))
@@ -150,7 +150,7 @@ func TestPRep_IsElectable(t *testing.T) {
 	activeDSAMask := int64(3)
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight":     int64(1000),
-		"revision":        icmodule.RevisionIISS4,
+		"revision":        icmodule.RevisionIISS4R1,
 		"bondRequirement": br,
 		"activeDSAMask":   activeDSAMask,
 	})
@@ -186,7 +186,7 @@ func TestPRep_IsElectable(t *testing.T) {
 		name := fmt.Sprintf("name-%02d", i)
 
 		if arg.pt != icmodule.PenaltyNone {
-			err := prep.NotifyEvent(sc, icmodule.PRepEventImposePenalty, arg.pt)
+			err := prep.OnEvent(sc, icmodule.PRepEventImposePenalty, arg.pt)
 			assert.NoError(t, err)
 		}
 		assert.Zero(t, arg.bonded.Cmp(prep.Bonded()))
@@ -215,8 +215,8 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 	}{
 		{icmodule.RevisionExtraMainPReps},
 		{icmodule.RevisionBTP2},
-		{icmodule.RevisionPreIISS4},
-		{icmodule.RevisionIISS4},
+		{icmodule.RevisionIISS4R0},
+		{icmodule.RevisionIISS4R1},
 	}
 
 	for i, arg := range args {
@@ -242,7 +242,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 
 			sc.IncreaseBlockHeightBy(50)
 			prep0 := prepSet.GetByIndex(0)
-			err = prep0.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			err = prep0.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 
 			prepWithNoPower := prepSet.GetByIndex(1)
@@ -293,7 +293,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 				if prep.Owner().Equal(prep0.Owner()) {
 					expGrade := GradeMain
 					rev := sc.Revision()
-					if rev >= icmodule.RevisionIISS4 {
+					if rev >= icmodule.RevisionIISS4R1 {
 						expGrade = GradeCandidate
 					}
 					assert.Equal(t, expGrade, grade)
@@ -320,7 +320,7 @@ func TestPrepSetImpl_OnTermEnd(t *testing.T) {
 	var err error
 	sc := newMockStateContext(map[string]interface{}{
 		"blockHeight":     int64(1000),
-		"revision":        icmodule.RevisionIISS4,
+		"revision":        icmodule.RevisionIISS4R1,
 		"activeDSAMask":   activeDSAMask,
 		"bondRequirement": icmodule.Rate(5),
 	})
@@ -339,7 +339,7 @@ func TestPrepSetImpl_OnTermEnd(t *testing.T) {
 		}
 
 		if i >= inJails[0] && i < inJails[1] {
-			err = prep.NotifyEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			err = prep.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
 			assert.NoError(t, err)
 			assert.True(t, prep.IsInJail())
 		}
@@ -364,7 +364,7 @@ func TestPrepSetImpl_OnTermEnd(t *testing.T) {
 		}
 	}
 	assert.Equal(t, electables, electables2)
-	assert.Equal(t, cfg.MainPReps(MainPRepAll), prepSet.GetPRepSize(GradeMain))
+	assert.Equal(t, cfg.MainPReps()+cfg.ExtraMainPReps(), prepSet.GetPRepSize(GradeMain))
 	assert.Equal(t, electables, prepSet.GetPRepSize(GradeMain)+prepSet.GetPRepSize(GradeSub))
 	assert.Equal(t, totalPReps-electables, prepSet.GetPRepSize(GradeCandidate))
 
