@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package rewards
+package calculator
 
 import (
 	"bytes"
@@ -29,16 +29,16 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/icon/icmodule"
+	rc "github.com/icon-project/goloop/icon/iiss/calculator/common"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
-	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
 
-func (c *Calculator) calculateRewardV3() (err error) {
+func (c *calculator) calculateRewardV3() (err error) {
 	startTS := time.Now()
 	if err = c.calculateBlockProduce(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate block produce reward")
@@ -64,7 +64,7 @@ func (c *Calculator) calculateRewardV3() (err error) {
 	return nil
 }
 
-func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
+func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
 	iScore, err := c.temp.GetIScore(addr)
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (c *Calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.Rew
 	return nil
 }
 
-func (c *Calculator) replayBugDisabledPRep() error {
+func (c *calculator) replayBugDisabledPRep() error {
 	revision := c.global.GetRevision()
 	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||
 		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
@@ -129,7 +129,7 @@ func varForBlockProduceReward(irep *big.Int, mainPRepCount int) *big.Int {
 	return v
 }
 
-func (c *Calculator) calculateBlockProduce() error {
+func (c *calculator) calculateBlockProduce() error {
 	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
 		return nil
 	}
@@ -164,7 +164,7 @@ func (c *Calculator) calculateBlockProduce() error {
 	return nil
 }
 
-func (c *Calculator) loadValidators() ([]*validator, error) {
+func (c *calculator) loadValidators() ([]*validator, error) {
 	vl, err := c.back.GetValidators()
 	if err != nil {
 		return nil, err
@@ -249,7 +249,7 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	return
 }
 
-func (c *Calculator) calculateVotedReward() error {
+func (c *calculator) calculateVotedReward() error {
 	// Calculate reward with a new configuration from next block
 	from := -1
 	multiplier, divider := varForVotedReward(c.global)
@@ -327,7 +327,7 @@ func (c *Calculator) calculateVotedReward() error {
 	return nil
 }
 
-func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
+func (c *calculator) loadVotedInfo() (*votedInfo, error) {
 	electedPRepCount := c.global.GetElectedPRepCount()
 	bondRequirement := c.global.GetBondRequirement()
 	vInfo := newVotedInfo(electedPRepCount)
@@ -370,7 +370,7 @@ func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 }
 
 // loadPRepInfo load P-Rep status from base
-func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
+func (c *calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 	prepInfo := make(map[string]*pRepEnable)
 	for iter := c.base.Filter(icreward.VotedKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
@@ -432,7 +432,7 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 	return
 }
 
-func (c *Calculator) calculateVotingReward() error {
+func (c *calculator) calculateVotingReward() error {
 	totalVotingAmount := new(big.Int)
 	delegatingMap := make(map[string]map[int]icstage.VoteList)
 	bondingMap := make(map[string]map[int]icstage.VoteList)
@@ -582,7 +582,7 @@ func (c *Calculator) calculateVotingReward() error {
 	return nil
 }
 
-func (c *Calculator) addDataForBugDisabledPRep(prepInfo map[string]*pRepEnable, multiplier, divider *big.Int) error {
+func (c *calculator) addDataForBugDisabledPRep(prepInfo map[string]*pRepEnable, multiplier, divider *big.Int) error {
 	revision := c.global.GetRevision()
 	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||
 		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
@@ -627,7 +627,7 @@ func (c *Calculator) addDataForBugDisabledPRep(prepInfo map[string]*pRepEnable, 
 }
 
 // processVoting calculator voting reward with delegating and bonding data.
-func (c *Calculator) processVoting(
+func (c *calculator) processVoting(
 	_type int,
 	multiplier *big.Int,
 	divider *big.Int,
@@ -695,7 +695,7 @@ func (c *Calculator) processVoting(
 //	divider = 100 * Term period * total voting amount
 //
 // reward = multiplier * voting amount * period / divider
-func (c *Calculator) votingReward(
+func (c *calculator) votingReward(
 	multiplier *big.Int,
 	divider *big.Int,
 	from int,
@@ -738,7 +738,7 @@ func (c *Calculator) votingReward(
 }
 
 // processVotingEvent calculate reward for account who got DELEGATE event
-func (c *Calculator) processVotingEvent(
+func (c *calculator) processVotingEvent(
 	_type int,
 	multiplier *big.Int,
 	divider *big.Int,
@@ -817,7 +817,7 @@ func toVoting(_type int, o trie.Object) icreward.Voting {
 }
 
 // getVoting read Voting object from MPT and return cloned object
-func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting, error) {
+func (c *calculator) getVoting(_type int, addr *common.Address) (icreward.Voting, error) {
 	switch _type {
 	case icreward.TypeDelegating:
 		delegating, err := c.temp.GetDelegating(addr)
@@ -846,7 +846,7 @@ func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting
 	return nil, nil
 }
 
-func (c *Calculator) writeVoting(addr *common.Address, data interface{}) error {
+func (c *calculator) writeVoting(addr *common.Address, data interface{}) error {
 	switch o := data.(type) {
 	case *icreward.Delegating:
 		return c.temp.SetDelegating(addr, o)

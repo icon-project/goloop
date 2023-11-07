@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package rewards
+package calculator
 
 import (
 	"fmt"
@@ -690,7 +690,7 @@ func TestCalculator_VotingReward(t *testing.T) {
 		},
 	}
 
-	calculator := new(Calculator)
+	calculator := new(calculator)
 	calculator.log = log.New()
 
 	for _, tt := range tests {

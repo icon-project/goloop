@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package rewards
+package calculator
 
 import (
 	"math/big"
@@ -32,8 +32,8 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 )
 
-func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
-	c := new(Calculator)
+func MakeCalculator(database db.Database, back *icstage.Snapshot) *calculator {
+	c := new(calculator)
 	c.back = back
 	c.base = icreward.NewSnapshot(database, nil)
 	c.temp = c.base.NewState()
@@ -109,13 +109,13 @@ func TestCalculator_processClaim(t *testing.T) {
 }
 
 func TestCalculator_WaitResult(t *testing.T) {
-	c := &Calculator{
+	c := &calculator{
 		startHeight: InitBlockHeight,
 	}
 	err := c.WaitResult(1234)
 	assert.NoError(t, err)
 
-	c = &Calculator{
+	c = &calculator{
 		startHeight: 3414,
 	}
 	err = c.WaitResult(1234)
@@ -133,7 +133,7 @@ func TestCalculator_WaitResult(t *testing.T) {
 	c.setResult(nil, errors.ErrInvalidState)
 	assert.Equal(t, "done", <-toTC)
 
-	c = &Calculator{
+	c = &calculator{
 		startHeight: 3414,
 	}
 	go func() {

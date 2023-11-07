@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package rewards
+package calculator
 
 import (
 	"bytes"
@@ -27,15 +27,15 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
+	rc "github.com/icon-project/goloop/icon/iiss/calculator/common"
+	"github.com/icon-project/goloop/icon/iiss/calculator/iiss4"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
-	"github.com/icon-project/goloop/icon/iiss/rewards/iiss4"
 )
 
-type Calculator struct {
+type calculator struct {
 	log log.Logger
 
 	startHeight int64
@@ -52,35 +52,35 @@ type Calculator struct {
 	result  *icreward.Snapshot
 }
 
-func (c *Calculator) Result() *icreward.Snapshot {
+func (c *calculator) Result() *icreward.Snapshot {
 	return c.result
 }
 
-func (c *Calculator) StartHeight() int64 {
+func (c *calculator) StartHeight() int64 {
 	return c.startHeight
 }
 
-func (c *Calculator) TotalReward() *big.Int {
+func (c *calculator) TotalReward() *big.Int {
 	return c.stats.Total()
 }
 
-func (c *Calculator) Back() *icstage.Snapshot {
+func (c *calculator) Back() *icstage.Snapshot {
 	return c.back
 }
 
-func (c *Calculator) Base() *icreward.Snapshot {
+func (c *calculator) Base() *icreward.Snapshot {
 	return c.base
 }
 
-func (c *Calculator) Temp() *icreward.State {
+func (c *calculator) Temp() *icreward.State {
 	return c.temp
 }
 
-func (c *Calculator) Global() icstage.Global {
+func (c *calculator) Global() icstage.Global {
 	return c.global
 }
 
-func (c *Calculator) WaitResult(blockHeight int64) error {
+func (c *calculator) WaitResult(blockHeight int64) error {
 	if c.startHeight == InitBlockHeight {
 		return nil
 	}
@@ -99,7 +99,7 @@ func (c *Calculator) WaitResult(blockHeight int64) error {
 	return c.err
 }
 
-func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
+func (c *calculator) setResult(result *icreward.Snapshot, err error) {
 	if result == nil && err == nil {
 		c.log.Panicf("InvalidParameters(result=%+v, err=%+v)")
 	}
@@ -119,15 +119,15 @@ func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
 	c.waiters = nil
 }
 
-func (c *Calculator) Stats() *rc.Stats {
+func (c *calculator) Stats() *rc.Stats {
 	return c.stats
 }
 
-func (c *Calculator) Logger() log.Logger {
+func (c *calculator) Logger() log.Logger {
 	return c.log
 }
 
-func (c *Calculator) Stop() {
+func (c *calculator) Stop() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -140,13 +140,13 @@ func (c *Calculator) Stop() {
 	}
 }
 
-func (c *Calculator) IsRunningFor(dbase db.Database, back, reward []byte) bool {
+func (c *calculator) IsRunningFor(dbase db.Database, back, reward []byte) bool {
 	return c.database == dbase &&
 		bytes.Equal(c.back.Bytes(), back) &&
 		bytes.Equal(c.base.Bytes(), reward)
 }
 
-func (c *Calculator) run() error {
+func (c *calculator) run() error {
 	var err error
 	defer func() {
 		if err != nil {
@@ -187,7 +187,7 @@ func (c *Calculator) run() error {
 	return nil
 }
 
-func (c *Calculator) prepare() error {
+func (c *calculator) prepare() error {
 	var err error
 	c.log.Infof("Start calculation %d", c.startHeight)
 	c.log.Infof("Global Option: %+v", c.global)
@@ -204,7 +204,7 @@ func (c *Calculator) prepare() error {
 	return nil
 }
 
-func (c *Calculator) processClaim() error {
+func (c *calculator) processClaim() error {
 	for iter := c.back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
@@ -238,7 +238,7 @@ func (c *Calculator) processClaim() error {
 	return nil
 }
 
-func (c *Calculator) postWork() (err error) {
+func (c *calculator) postWork() (err error) {
 	// write BTP data to temp. Use BTP data in the next term
 	if err = c.processBTP(); err != nil {
 		return err
@@ -250,7 +250,7 @@ func (c *Calculator) postWork() (err error) {
 	return nil
 }
 
-func (c *Calculator) processBTP() error {
+func (c *calculator) processBTP() error {
 	for iter := c.back.Filter(icstage.BTPKey.Build()); iter.Has(); iter.Next() {
 		o, _, err := iter.Get()
 		if err != nil {
@@ -283,7 +283,7 @@ func (c *Calculator) processBTP() error {
 	return nil
 }
 
-func (c *Calculator) processCommissionRate() error {
+func (c *calculator) processCommissionRate() error {
 	prefix := icstage.CommissionRateKey.Build()
 	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
@@ -322,7 +322,7 @@ func (c *Calculator) processCommissionRate() error {
 
 const InitBlockHeight = -1
 
-func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
+func New(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *calculator {
 	var err error
 	var global icstage.Global
 	var startHeight int64
@@ -338,7 +338,7 @@ func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icrewar
 	} else {
 		startHeight = global.GetStartHeight()
 	}
-	c := &Calculator{
+	c := &calculator{
 		database:    database,
 		back:        back,
 		base:        reward,
