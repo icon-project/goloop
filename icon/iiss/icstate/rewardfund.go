@@ -221,7 +221,7 @@ func (r *RewardFund) RLPDecodeSelf(d codec.Decoder) error {
 	if err = d2.Decode(&iGlobal); err != nil {
 		return err
 	}
-	if iGlobal.Cmp(big.NewInt(RFVersionReserved)) == 1 {
+	if iGlobal.Cmp(big.NewInt(RFVersionReserved)) > 0 {
 		r.version = RFVersion1
 		r.iGlobal = iGlobal
 		var Iprep, Icps, Irelay, Ivoter int64
