@@ -346,18 +346,20 @@ func (cs *consensus) logAndCheckProposalMessage(msg *ProposalMessage) error {
 	var blk module.Block
 	var vl module.ValidatorList
 
-	if cs.height+configDSMLogBegin <= msg.Height {
+	inRange := cs.height+configDSMLogBegin <= msg.Height && msg.Height < cs.height+configDSMLogEnd
+	if !inRange {
+		return nil
+	}
+	if msg.Height <= cs.height {
 		var err error
 		blk, err = cs.c.BlockManager().GetBlockByHeight(msg.Height - 1)
 		if err != nil {
 			return err
 		}
 		vl = blk.NextValidators()
-	} else if msg.Height < cs.height+configDSMLogEnd {
-		blk = cs.lastBlock
-		vl = cs.validators
 	} else {
-		return nil
+		vl = cs.validators
+		cs.log.Debugf("use current validator list for proposal checking cs.height=%d msg.Height=%d", cs.height, msg.Height)
 	}
 
 	idx := vl.IndexOf(msg.address())
@@ -366,6 +368,9 @@ func (cs *consensus) logAndCheckProposalMessage(msg *ProposalMessage) error {
 	}
 	dsd := cs.dsmLog.LogAndCheckProposalMessage(msg)
 	if dsd != nil {
+		if blk == nil {
+			return errors.Errorf("cannot report conflicting vote: no previous block cs.height=%d msg.Height=%d", cs.height, msg.Height)
+		}
 		err := cs.c.ServiceManager().SendDoubleSignReport(blk.Result(), blk.NextValidatorsHash(), dsd)
 		return err
 	}
@@ -415,18 +420,20 @@ func (cs *consensus) logAndCheckVoteMessage(msg *VoteMessage) error {
 	var blk module.Block
 	var vl module.ValidatorList
 
-	if cs.height+configDSMLogBegin <= msg.Height {
+	inRange := cs.height+configDSMLogBegin <= msg.Height && msg.Height < cs.height+configDSMLogEnd
+	if !inRange {
+		return nil
+	}
+	if msg.Height <= cs.height {
 		var err error
 		blk, err = cs.c.BlockManager().GetBlockByHeight(msg.Height - 1)
 		if err != nil {
 			return err
 		}
 		vl = blk.NextValidators()
-	} else if msg.Height < cs.height+configDSMLogEnd {
-		blk = cs.lastBlock
-		vl = cs.validators
 	} else {
-		return nil
+		vl = cs.validators
+		cs.log.Debugf("use current validator list for vote checking cs.height=%d msg.Height=%d", cs.height, msg.Height)
 	}
 
 	idx := vl.IndexOf(msg.address())
@@ -435,6 +442,9 @@ func (cs *consensus) logAndCheckVoteMessage(msg *VoteMessage) error {
 	}
 	dsd := cs.dsmLog.LogAndCheckVoteMessage(msg)
 	if dsd != nil {
+		if blk == nil {
+			return errors.Errorf("cannot report conflicting vote: no previous block cs.height=%d msg.Height=%d", cs.height, msg.Height)
+		}
 		err := cs.c.ServiceManager().SendDoubleSignReport(blk.Result(), blk.NextValidatorsHash(), dsd)
 		return err
 	}
