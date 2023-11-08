@@ -43,7 +43,13 @@ func (r *iiss4Reward) Logger() log.Logger {
 }
 
 func (r *iiss4Reward) Calculate() error {
+	r.Logger().Infof("Start calculation %d", r.g.GetStartHeight())
+	r.Logger().Infof("Global Option: %+v", r.g)
+
 	var err error
+	if err = processClaim(r.c); err != nil {
+		return err
+	}
 
 	if err = r.loadPRepInfo(); err != nil {
 		return err
@@ -62,6 +68,14 @@ func (r *iiss4Reward) Calculate() error {
 	}
 
 	if err = r.voterReward(); err != nil {
+		return err
+	}
+
+	if err = processBTP(r.c); err != nil {
+		return err
+	}
+
+	if err = processCommissionRate(r.c); err != nil {
 		return err
 	}
 

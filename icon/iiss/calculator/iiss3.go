@@ -38,6 +38,17 @@ import (
 )
 
 func (c *calculator) Calculate() (err error) {
+	c.log.Infof("Start calculation %d", c.startHeight)
+	c.log.Infof("Global Option: %+v", c.global)
+
+	if err = processClaim(c); err != nil {
+		return err
+	}
+
+	if err = c.replayBugDisabledPRep(); err != nil {
+		return err
+	}
+
 	startTS := time.Now()
 	if err = c.calculateBlockProduce(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate block produce reward")
@@ -60,6 +71,15 @@ func (c *calculator) Calculate() (err error) {
 	c.log.Infof("Calculation time: total=%s blockProduce=%s voted=%s voting=%s",
 		finalTS.Sub(startTS), bpTS.Sub(startTS), votedTS.Sub(bpTS), finalTS.Sub(votedTS),
 	)
+
+	if err = processBTP(c); err != nil {
+		return err
+	}
+
+	if err = processCommissionRate(c); err != nil {
+		return err
+	}
+
 	return nil
 }
 

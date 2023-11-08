@@ -152,10 +152,6 @@ func (c *calculator) run() error {
 		}
 	}()
 
-	if err = c.prepare(); err != nil {
-		return icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
-	}
-
 	iv := c.global.GetIISSVersion()
 	var r Reward
 	switch iv {
@@ -172,34 +168,15 @@ func (c *calculator) run() error {
 		return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
 	}
 
-	if err = c.postWork(); err != nil {
-		return icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
-	}
-
 	c.log.Infof("Calculation statistics: %s", c.stats)
 	c.setResult(c.temp.GetSnapshot(), nil)
 	return nil
 }
 
-func (c *calculator) prepare() error {
-	var err error
-	c.log.Infof("Start calculation %d", c.startHeight)
-	c.log.Infof("Global Option: %+v", c.global)
-
-	// write claim data to temp
-	if err = c.processClaim(); err != nil {
-		return err
-	}
-
-	// replay BugDisabledPRep
-	if err = c.replayBugDisabledPRep(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *calculator) processClaim() error {
-	for iter := c.back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
+func processClaim(ctx Context) error {
+	back := ctx.Back()
+	temp := ctx.Temp()
+	for iter := back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
@@ -215,7 +192,7 @@ func (c *calculator) processClaim() error {
 			if err != nil {
 				return nil
 			}
-			iScore, err := c.temp.GetIScore(addr)
+			iScore, err := temp.GetIScore(addr)
 			if err != nil {
 				return nil
 			}
@@ -223,8 +200,8 @@ func (c *calculator) processClaim() error {
 			if nIScore.Value().Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
 			}
-			c.log.Tracef("Claim %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
-			if err = c.temp.SetIScore(addr, nIScore); err != nil {
+			ctx.Logger().Tracef("Claim %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
+			if err = temp.SetIScore(addr, nIScore); err != nil {
 				return err
 			}
 		}
@@ -232,20 +209,10 @@ func (c *calculator) processClaim() error {
 	return nil
 }
 
-func (c *calculator) postWork() (err error) {
-	// write BTP data to temp. Use BTP data in the next term
-	if err = c.processBTP(); err != nil {
-		return err
-	}
-	// update Voted.commissionRate of temp. Use updated commission rate in the next term
-	if err = c.processCommissionRate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *calculator) processBTP() error {
-	for iter := c.back.Filter(icstage.BTPKey.Build()); iter.Has(); iter.Next() {
+func processBTP(ctx Context) error {
+	back := ctx.Back()
+	temp := ctx.Temp()
+	for iter := back.Filter(icstage.BTPKey.Build()); iter.Has(); iter.Next() {
 		o, _, err := iter.Get()
 		if err != nil {
 			return err
@@ -254,22 +221,22 @@ func (c *calculator) processBTP() error {
 		switch obj.Tag().Type() {
 		case icstage.TypeBTPDSA:
 			value := icstage.ToBTPDSA(o)
-			dsa, err := c.temp.GetDSA()
+			dsa, err := temp.GetDSA()
 			if err != nil {
 				return err
 			}
 			nDSA := dsa.Updated(value.Index())
-			if err = c.temp.SetDSA(nDSA); err != nil {
+			if err = temp.SetDSA(nDSA); err != nil {
 				return err
 			}
 		case icstage.TypeBTPPublicKey:
 			value := icstage.ToBTPPublicKey(o)
-			pubKey, err := c.temp.GetPublicKey(value.From())
+			pubKey, err := temp.GetPublicKey(value.From())
 			if err != nil {
 				return nil
 			}
 			nPubKey := pubKey.Updated(value.Index())
-			if err = c.temp.SetPublicKey(value.From(), nPubKey); err != nil {
+			if err = temp.SetPublicKey(value.From(), nPubKey); err != nil {
 				return err
 			}
 		}
@@ -277,9 +244,11 @@ func (c *calculator) processBTP() error {
 	return nil
 }
 
-func (c *calculator) processCommissionRate() error {
+func processCommissionRate(ctx Context) error {
+	back := ctx.Back()
+	temp := ctx.Temp()
 	prefix := icstage.CommissionRateKey.Build()
-	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
+	for iter := back.Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
@@ -296,7 +265,7 @@ func (c *calculator) processCommissionRate() error {
 				return nil
 			}
 			cr := icstage.ToCommissionRate(o)
-			voted, err := c.temp.GetVoted(addr)
+			voted, err := temp.GetVoted(addr)
 			if err != nil {
 				return nil
 			}
@@ -305,7 +274,7 @@ func (c *calculator) processCommissionRate() error {
 			}
 			nVoted := voted.Clone()
 			nVoted.SetCommissionRate(cr.Value())
-			err = c.temp.SetVoted(addr, nVoted)
+			err = temp.SetVoted(addr, nVoted)
 			if err != nil {
 				return nil
 			}

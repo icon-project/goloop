@@ -94,7 +94,7 @@ func TestCalculator_processClaim(t *testing.T) {
 	}
 	c.back = front.GetSnapshot()
 
-	err := c.processClaim()
+	err := processClaim(c)
 	assert.NoError(t, err)
 
 	// check result
@@ -209,7 +209,7 @@ func TestCalculator_processCommissionRate(t *testing.T) {
 	}
 	c.back = front.GetSnapshot()
 
-	err = c.processCommissionRate()
+	err = processCommissionRate(c)
 	assert.NoError(t, err)
 
 	// check result
