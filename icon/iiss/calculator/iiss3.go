@@ -37,7 +37,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func (c *calculator) calculateRewardV3() (err error) {
+func (c *calculator) Calculate() (err error) {
 	startTS := time.Now()
 	if err = c.calculateBlockProduce(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate block produce reward")
@@ -1206,4 +1206,12 @@ func (p *pRepEnable) SetStartOffset(value int) {
 
 func (p *pRepEnable) SetEndOffset(value int) {
 	p.endOffset = value
+}
+
+type iiss3Reward struct {
+	*calculator
+}
+
+func NewIISS3Reward(c *calculator) Reward {
+	return &iiss3Reward{c}
 }

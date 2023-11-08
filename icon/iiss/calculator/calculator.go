@@ -157,23 +157,19 @@ func (c *calculator) run() error {
 	}
 
 	iv := c.global.GetIISSVersion()
-	if iv <= icstate.IISSVersion3 {
-		if err = c.calculateRewardV3(); err != nil {
-			return err
+	var r Reward
+	switch iv {
+	case icstate.IISSVersion2, icstate.IISSVersion3:
+		r = NewIISS3Reward(c)
+	case icstate.IISSVersion4:
+		if r, err = NewIISS4Reward(c); err != nil {
+			return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
 		}
-	} else {
-		var r Reward
-		switch iv {
-		case icstate.IISSVersion4:
-			if r, err = NewIISS4Reward(c); err != nil {
-				return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
-			}
-		default:
-			return icmodule.CalculationFailedError.Wrapf(err, "invalid IISS version")
-		}
-		if err = r.Calculate(); err != nil {
-			return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
-		}
+	default:
+		return icmodule.CalculationFailedError.Wrapf(err, "invalid IISS version")
+	}
+	if err = r.Calculate(); err != nil {
+		return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
 	}
 
 	if err = c.postWork(); err != nil {
