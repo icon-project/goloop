@@ -300,9 +300,8 @@ func TestReward(t *testing.T) {
 
 	// check sort
 	t.Run(fmt.Sprintf("loadPRepInfo-Sort"), func(t *testing.T) {
-		for i, key := range rr.pi.rank {
-			p := rr.pi.GetPRep(key)
-			assert.Equal(t, i+1, p.Rank())
+		for i, p := range rr.pi.rank {
+			assert.Equal(t, i, p.Rank())
 		}
 	})
 

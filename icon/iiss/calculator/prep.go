@@ -53,7 +53,7 @@ func (p *PRep) IsElectable() bool {
 }
 
 func (p *PRep) IsRewardable(electedPRepCount int) bool {
-	return p.status == icmodule.ESEnable && p.rank <= electedPRepCount && p.accumulatedPower.Sign() == 1
+	return p.status == icmodule.ESEnable && p.rank < electedPRepCount && p.accumulatedPower.Sign() == 1
 }
 
 func (p *PRep) Status() icmodule.EnableStatus {
@@ -286,7 +286,7 @@ type PRepInfo struct {
 	electedPRepCount int
 	bondRequirement  icmodule.Rate
 	offsetLimit      int
-	rank             []string
+	rank             []*PRep
 	log              log.Logger
 }
 
@@ -338,32 +338,28 @@ func (p *PRepInfo) SetStatus(target module.Address, status icmodule.EnableStatus
 
 func (p *PRepInfo) Sort() {
 	size := len(p.preps)
-	pSlice := make([]*PRep, size)
+	orderedPreps := make([]*PRep, size)
 	i := 0
 	for _, data := range p.preps {
-		pSlice[i] = data
+		orderedPreps[i] = data
 		i += 1
 	}
-	sort.Slice(pSlice, func(i, j int) bool {
-		return pSlice[i].Bigger(pSlice[j])
+	sort.Slice(orderedPreps, func(i, j int) bool {
+		return orderedPreps[i].Bigger(orderedPreps[j])
 	})
-	rank := make([]string, size)
-	for idx, prep := range pSlice {
-		key := icutils.ToKey(prep.Owner())
-		rank[idx] = key
-		p.preps[key].SetRank(idx + 1)
+	for idx, prep := range orderedPreps {
+		prep.SetRank(idx)
 	}
-	p.rank = rank
+	p.rank = orderedPreps
 }
 
+// InitAccumulated update accumulated values of elected PReps
 func (p *PRepInfo) InitAccumulated() {
-	for i, key := range p.rank {
+	for i, prep := range p.rank {
 		if i >= p.electedPRepCount {
 			break
 		}
-		prep := p.preps[key]
 		prep.InitAccumulated(p.GetTermPeriod())
-		p.preps[key] = prep
 	}
 }
 
@@ -383,13 +379,11 @@ func (p *PRepInfo) ApplyVote(vType VoteType, votes icstage.VoteList, offset int)
 
 // UpdateAccumulatedPower update accumulatedPower of elected PRep and totalAccumulatedPower of PRepInfo.
 func (p *PRepInfo) UpdateAccumulatedPower() {
-	for i, key := range p.rank {
+	for i, prep := range p.rank {
 		if i >= p.electedPRepCount {
 			break
 		}
-		prep := p.preps[key]
 		power := prep.UpdateAccumulatedPower(p.bondRequirement)
-		p.preps[key] = prep
 		p.totalAccumulatedPower = new(big.Int).Add(p.totalAccumulatedPower, power)
 		p.log.Debugf("[%d] totalAccumulatedPower %d = old + %d by %s", i, p.totalAccumulatedPower, power, prep.owner)
 	}
@@ -409,9 +403,8 @@ func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) 
 	minWage.Div(minWage, big.NewInt(int64(p.electedPRepCount)))
 	p.log.Debugf("wage to a prep: %d", minWage)
 	p.log.Debugf("TotalAccumulatedPower: %d", p.totalAccumulatedPower)
-	for rank, key := range p.rank {
-		prep, _ := p.preps[key]
-		if rank >= p.electedPRepCount {
+	for i, prep := range p.rank {
+		if i >= p.electedPRepCount {
 			break
 		}
 		if !prep.IsRewardable(p.electedPRepCount) {
@@ -419,7 +412,7 @@ func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) 
 		}
 		prep.CalculateReward(tReward, p.totalAccumulatedPower, minBond, minWage)
 
-		p.log.Debugf("rank#%d: %+v", rank, prep)
+		p.log.Debugf("rank#%d: %+v", i, prep)
 	}
 	return nil
 }
