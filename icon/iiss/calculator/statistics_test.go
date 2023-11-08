@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package common
+package calculator
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type sValue struct {

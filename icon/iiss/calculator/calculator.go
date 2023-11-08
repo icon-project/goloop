@@ -27,8 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
-	rc "github.com/icon-project/goloop/icon/iiss/calculator/common"
-	"github.com/icon-project/goloop/icon/iiss/calculator/iiss4"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -44,7 +42,7 @@ type calculator struct {
 	base        *icreward.Snapshot
 	global      icstage.Global
 	temp        *icreward.State
-	stats       *rc.Stats
+	stats       *Stats
 
 	lock    sync.Mutex
 	waiters []*sync.Cond
@@ -119,7 +117,7 @@ func (c *calculator) setResult(result *icreward.Snapshot, err error) {
 	c.waiters = nil
 }
 
-func (c *calculator) Stats() *rc.Stats {
+func (c *calculator) Stats() *Stats {
 	return c.stats
 }
 
@@ -164,10 +162,10 @@ func (c *calculator) run() error {
 			return err
 		}
 	} else {
-		var r rc.Reward
+		var r Reward
 		switch iv {
 		case icstate.IISSVersion4:
-			if r, err = iiss4.NewReward(c); err != nil {
+			if r, err = NewIISS4Reward(c); err != nil {
 				return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
 			}
 		default:
@@ -346,7 +344,7 @@ func New(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot
 		log:         logger,
 		global:      global,
 		startHeight: startHeight,
-		stats:       rc.NewStats(),
+		stats:       NewStats(),
 	}
 	if startHeight != InitBlockHeight {
 		go c.run()

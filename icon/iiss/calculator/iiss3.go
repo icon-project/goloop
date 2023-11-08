@@ -29,7 +29,6 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/icon/icmodule"
-	rc "github.com/icon-project/goloop/icon/iiss/calculator/common"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -64,7 +63,7 @@ func (c *calculator) calculateRewardV3() (err error) {
 	return nil
 }
 
-func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.RewardType) error {
+func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error {
 	iScore, err := c.temp.GetIScore(addr)
 	if err != nil {
 		return err
@@ -76,11 +75,11 @@ func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t rc.Rew
 	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
 
 	switch t {
-	case rc.RTBlockProduce:
+	case RTBlockProduce:
 		c.stats.IncreaseBlockProduce(reward)
-	case rc.RTPRep:
+	case RTPRep:
 		c.stats.IncreaseVoted(reward)
-	case rc.RTVoter:
+	case RTVoter:
 		c.stats.IncreaseVoting(reward)
 	default:
 		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
@@ -108,7 +107,7 @@ func (c *calculator) replayBugDisabledPRep() error {
 			return err
 		}
 		obj := icreward.ToBugDisabledPRep(o)
-		if err = c.UpdateIScore(addr, obj.Value(), rc.RTVoter); err != nil {
+		if err = c.UpdateIScore(addr, obj.Value(), RTVoter); err != nil {
 			return err
 		}
 		if err = c.temp.DeleteBugDisabledPRep(addr); err != nil {
@@ -156,7 +155,7 @@ func (c *calculator) calculateBlockProduce() error {
 	}
 
 	for _, v := range validators {
-		if err = c.UpdateIScore(v.Address(), v.IScore(), rc.RTBlockProduce); err != nil {
+		if err = c.UpdateIScore(v.Address(), v.IScore(), RTBlockProduce); err != nil {
 			return err
 		}
 	}
@@ -320,7 +319,7 @@ func (c *calculator) calculateVotedReward() error {
 			continue
 		}
 
-		if err = c.UpdateIScore(addr, prep.IScore(), rc.RTPRep); err != nil {
+		if err = c.UpdateIScore(addr, prep.IScore(), RTPRep); err != nil {
 			return err
 		}
 	}
@@ -673,7 +672,7 @@ func (c *calculator) processVoting(
 			}
 			reward = c.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
 		}
-		if err = c.UpdateIScore(addr, reward, rc.RTVoter); err != nil {
+		if err = c.UpdateIScore(addr, reward, RTVoter); err != nil {
 			return err
 		}
 	}
@@ -799,7 +798,7 @@ func (c *calculator) processVotingEvent(
 		if err = c.writeVoting(addr, voting); err != nil {
 			return nil
 		}
-		if err = c.UpdateIScore(addr, reward, rc.RTVoter); err != nil {
+		if err = c.UpdateIScore(addr, reward, RTVoter); err != nil {
 			return err
 		}
 	}

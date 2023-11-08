@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
-	rc "github.com/icon-project/goloop/icon/iiss/calculator/common"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -95,7 +94,7 @@ func (v *VoteEvents) AddEvent(vType VoteType, from module.Address, votes icstage
 }
 
 // Write writes updated Bonding and Delegating to database
-func (v *VoteEvents) Write(reader rc.Reader, writer rc.Writer) error {
+func (v *VoteEvents) Write(reader RewardReader, writer RewardWriter) error {
 	for key, events := range v.events {
 		from, err := common.NewAddress([]byte(key))
 		if err != nil {
@@ -203,7 +202,7 @@ func (v *Voter) CalculateReward(pInfo *PRepInfo) *big.Int {
 	v.log.Debugf("Voter reward of %s", v.owner)
 	for k, av := range v.accumulatedVotes {
 		prep := pInfo.GetPRep(k)
-		if prep != nil && prep.Rewardable(pInfo.ElectedPRepCount()) {
+		if prep != nil && prep.IsRewardable(pInfo.ElectedPRepCount()) {
 			r := new(big.Int).Mul(av, prep.VoterReward())
 			r.Div(r, prep.AccumulatedVoted())
 			v.log.Debugf("vote reward for %s: %d = %d * %d / %d",

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"math/big"

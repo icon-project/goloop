@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package common
+package calculator
 
 import (
 	"github.com/icon-project/goloop/common/log"
@@ -23,7 +23,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-type Calculator interface {
+type Context interface {
 	Back() *icstage.Snapshot
 	Base() *icreward.Snapshot
 	Temp() *icreward.State
@@ -31,14 +31,14 @@ type Calculator interface {
 	Logger() log.Logger
 }
 
-// Reader reads from icreward.Snapshot
-type Reader interface {
+// RewardReader reads from icreward.Snapshot
+type RewardReader interface {
 	GetDelegating(addr module.Address) (*icreward.Delegating, error)
 	GetBonding(addr module.Address) (*icreward.Bonding, error)
 }
 
-// Writer writes to icreward.State
-type Writer interface {
+// RewardWriter writes to icreward.State
+type RewardWriter interface {
 	SetVoted(addr module.Address, voted *icreward.Voted) error
 	SetDelegating(addr module.Address, delegating *icreward.Delegating) error
 	SetBonding(addr module.Address, bonding *icreward.Bonding) error

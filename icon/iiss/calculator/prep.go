@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"bytes"
@@ -24,7 +24,6 @@ import (
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/calculator/common"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -49,11 +48,11 @@ type PRep struct {
 	wage              *big.Int // in IScore
 }
 
-func (p *PRep) Electable() bool {
+func (p *PRep) IsElectable() bool {
 	return p.pubkey && (p.status == icmodule.ESEnable || p.status == icmodule.ESUnjail)
 }
 
-func (p *PRep) Rewardable(electedPRepCount int) bool {
+func (p *PRep) IsRewardable(electedPRepCount int) bool {
 	return p.status == icmodule.ESEnable && p.rank <= electedPRepCount && p.accumulatedPower.Sign() == 1
 }
 
@@ -178,8 +177,8 @@ func (p *PRep) CalculateReward(totalPRepReward, totalAccumulatedPower, minBond, 
 }
 
 func (p *PRep) Bigger(p1 *PRep) bool {
-	if p.Electable() != p1.Electable() {
-		return p.Electable()
+	if p.IsElectable() != p1.IsElectable() {
+		return p.IsElectable()
 	}
 	c := p.power.Cmp(p1.power)
 	if c != 0 {
@@ -415,7 +414,7 @@ func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) 
 		if rank >= p.electedPRepCount {
 			break
 		}
-		if !prep.Rewardable(p.electedPRepCount) {
+		if !prep.IsRewardable(p.electedPRepCount) {
 			continue
 		}
 		prep.CalculateReward(tReward, p.totalAccumulatedPower, minBond, minWage)
@@ -426,7 +425,7 @@ func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) 
 }
 
 // Write writes updated Voted to database
-func (p *PRepInfo) Write(writer common.Writer) error {
+func (p *PRepInfo) Write(writer RewardWriter) error {
 	for _, prep := range p.preps {
 		err := writer.SetVoted(prep.Owner(), prep.ToVoted())
 		if err != nil {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"math/big"
@@ -253,7 +253,7 @@ func TestPRepInfo(t *testing.T) {
 	pInfo.InitAccumulated()
 	for i, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
-		if p.rank <= pInfo.ElectedPRepCount() && p.Electable() {
+		if p.rank <= pInfo.ElectedPRepCount() && p.IsElectable() {
 			accBonded := new(big.Int).Mul(p.Bonded(), big.NewInt(pInfo.GetTermPeriod()))
 			accVoted := new(big.Int).Mul(new(big.Int).Add(p.Bonded(), p.Delegated()), big.NewInt(pInfo.GetTermPeriod()))
 			assert.Equal(t, accBonded, p.AccumulatedBonded(), i)

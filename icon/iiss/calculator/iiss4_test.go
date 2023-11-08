@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"fmt"
@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
-	rc "github.com/icon-project/goloop/icon/iiss/calculator/common"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -44,7 +43,7 @@ type testCalculator struct {
 	back  *icstage.Snapshot
 	base  *icreward.Snapshot
 	temp  *icreward.State
-	stats *rc.Stats
+	stats *Stats
 }
 
 func (t *testCalculator) Back() *icstage.Snapshot {
@@ -59,7 +58,7 @@ func (t *testCalculator) Temp() *icreward.State {
 	return t.temp
 }
 
-func (t *testCalculator) Stats() *rc.Stats {
+func (t *testCalculator) Stats() *Stats {
 	return t.stats
 }
 
@@ -146,7 +145,7 @@ func (t *testCalculator) isVoterRewardable(addr module.Address, pi *PRepInfo) (b
 		for _, v := range d.Delegations {
 			k := icutils.ToKey(v.To())
 			p := pi.GetPRep(k)
-			if p.Rewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
+			if p.IsRewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
 				return true, nil
 			}
 		}
@@ -160,7 +159,7 @@ func (t *testCalculator) isVoterRewardable(addr module.Address, pi *PRepInfo) (b
 		for _, v := range b.Bonds {
 			k := icutils.ToKey(v.To())
 			p := pi.GetPRep(k)
-			if p.Rewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
+			if p.IsRewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
 				return true, nil
 			}
 		}
@@ -180,7 +179,7 @@ func newTestCalculator() *testCalculator {
 	tc := &testCalculator{
 		stage:  icstage.NewState(database),
 		reward: icreward.NewState(database, nil),
-		stats:  rc.NewStats(),
+		stats:  NewStats(),
 		log:    log.New(),
 	}
 	tc.Build()
@@ -191,18 +190,18 @@ func TestReward_NewReward(t *testing.T) {
 	tc := newTestCalculator()
 
 	tc.Build()
-	r, err := NewReward(tc)
+	r, err := NewIISS4Reward(tc)
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
-	rr := r.(*reward)
+	rr := r.(*iiss4Reward)
 	assert.Nil(t, rr.g)
 
 	tc.AddGlobal(0)
 	tc.Build()
-	r, err = NewReward(tc)
+	r, err = NewIISS4Reward(tc)
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
-	rr = r.(*reward)
+	rr = r.(*iiss4Reward)
 	g, err := tc.GetGlobalFromBack()
 	assert.Equal(t, g, rr.g)
 }
@@ -274,11 +273,11 @@ func TestReward(t *testing.T) {
 
 	tc.Build()
 
-	r, err := NewReward(tc)
+	r, err := NewIISS4Reward(tc)
 	assert.NoError(t, err)
 
 	// loadPRepInfo()
-	rr := r.(*reward)
+	rr := r.(*iiss4Reward)
 	err = rr.loadPRepInfo()
 	assert.NoError(t, err)
 
