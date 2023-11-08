@@ -185,8 +185,8 @@ func TestVoted_Equal(t *testing.T) {
 	voted1 := NewVoted()
 	voted2 := NewVoted()
 	assert.True(t, voted1.Equal(voted2))
-	voted1.SetVersion(1000)
-	voted2.SetVersion(1000)
+	voted1.version = 1000
+	voted2.version = 1000
 	assert.False(t, voted1.Equal(voted2))
 }
 

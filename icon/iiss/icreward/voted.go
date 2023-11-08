@@ -47,10 +47,6 @@ func (v *Voted) Version() int {
 	return v.version
 }
 
-func (v *Voted) SetVersion(version int) {
-	v.version = version
-}
-
 func (v *Voted) Status() icmodule.EnableStatus {
 	return v.status
 }
