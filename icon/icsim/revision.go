@@ -244,11 +244,7 @@ func (sim *simulatorImpl) handleRev23(ws state.WorldState) error {
 
 	// RewardFundAllocation2
 	r := es.State.GetRewardFundV1()
-	if err := es.State.SetRewardFund(r.ToRewardFundV2()); err != nil {
-		return err
-	}
-	// minBond for minimum wage
-	return es.State.SetMinimumBond(icmodule.DefaultMinBond)
+	return es.State.SetRewardFund(r.ToRewardFundV2())
 }
 
 func (sim *simulatorImpl) handleRev24(ws state.WorldState) error {

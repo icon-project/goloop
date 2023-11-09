@@ -70,7 +70,7 @@ func newTermState(version, sequence int, period int64) *TermState {
 		rf = newTestRewardFundV1()
 	} else {
 		rf = newTestRewardFundV2()
-		mb = icmodule.DefaultMinBond
+		mb = icmodule.BigIntZero
 	}
 	return &TermState{
 		termData: termData{
@@ -300,7 +300,7 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 			rrep = icmodule.BigIntZero
 		} else {
 			rf = rf2
-			mb = icmodule.DefaultMinBond
+			mb = icmodule.BigIntZero
 		}
 		termState := &TermState{
 			termData: termData{

@@ -327,11 +327,6 @@ func onRevIISS4R0(s *chainScore, rev, _ int) error {
 		return err
 	}
 
-	// minBond for minimum wage
-	if err := es.State.SetMinimumBond(icmodule.DefaultMinBond); err != nil {
-		return err
-	}
-
 	// slashingRates migration for AccumulatedValidationFailure and MissedNetworkProposalVote
 	for _, pt := range []icmodule.PenaltyType{
 		icmodule.PenaltyAccumulatedValidationFailure,
