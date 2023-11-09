@@ -23,7 +23,6 @@ import (
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -32,14 +31,10 @@ import (
 )
 
 type iiss4Reward struct {
-	c  Context
+	Context
 	g  icstage.Global
 	pi *PRepInfo
 	ve *VoteEvents
-}
-
-func (r *iiss4Reward) Logger() log.Logger {
-	return r.c.Logger()
 }
 
 func (r *iiss4Reward) Calculate() error {
@@ -47,7 +42,7 @@ func (r *iiss4Reward) Calculate() error {
 	r.Logger().Infof("Global Option: %+v", r.g)
 
 	var err error
-	if err = processClaim(r.c); err != nil {
+	if err = processClaim(r); err != nil {
 		return err
 	}
 
@@ -71,11 +66,11 @@ func (r *iiss4Reward) Calculate() error {
 		return err
 	}
 
-	if err = processBTP(r.c); err != nil {
+	if err = processBTP(r); err != nil {
 		return err
 	}
 
-	if err = processCommissionRate(r.c); err != nil {
+	if err = processCommissionRate(r); err != nil {
 		return err
 	}
 
@@ -86,7 +81,7 @@ func (r *iiss4Reward) Calculate() error {
 func (r *iiss4Reward) loadPRepInfo() error {
 	var err error
 	var dsa *icreward.DSA
-	base := r.c.Base()
+	base := r.Base()
 
 	if dsa, err = base.GetDSA(); err != nil {
 		return err
@@ -125,7 +120,7 @@ func (r *iiss4Reward) loadPRepInfo() error {
 
 func (r *iiss4Reward) processEvents() error {
 	ve := NewVoteEvents()
-	back := r.c.Back()
+	back := r.Back()
 	eventPrefix := icstage.EventKey.Build()
 	for iter := back.Filter(eventPrefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
@@ -160,11 +155,11 @@ func (r *iiss4Reward) processEvents() error {
 }
 
 func (r *iiss4Reward) UpdateIScore(addr module.Address, amount *big.Int, t RewardType) error {
-	r.c.Logger().Debugf("Update IScore of %s, %d by %s", addr, amount, t.String())
+	r.Logger().Debugf("Update IScore of %s, %d by %s", addr, amount, t.String())
 	if amount.Sign() == 0 {
 		return nil
 	}
-	temp := r.c.Temp()
+	temp := r.Temp()
 	iScore, err := temp.GetIScore(addr)
 	if err != nil {
 		return err
@@ -174,7 +169,7 @@ func (r *iiss4Reward) UpdateIScore(addr module.Address, amount *big.Int, t Rewar
 		return err
 	}
 
-	stats := r.c.Stats()
+	stats := r.Stats()
 	switch t {
 	case RTPRep:
 		stats.IncreaseVoted(amount)
@@ -188,8 +183,8 @@ func (r *iiss4Reward) UpdateIScore(addr module.Address, amount *big.Int, t Rewar
 
 // write writes Voted, Delegating and Bonding to temp
 func (r *iiss4Reward) write() error {
-	base := r.c.Base()
-	temp := r.c.Temp()
+	base := r.Base()
+	temp := r.Temp()
 	if err := r.pi.Write(temp); err != nil {
 		return err
 	}
@@ -221,7 +216,7 @@ func (r *iiss4Reward) prepReward() error {
 
 // voterReward calculates voter reward of all ICONist who has bond or delegation and writes to icreward.IScore.
 func (r *iiss4Reward) voterReward() error {
-	base := r.c.Base()
+	base := r.Base()
 
 	prefix := icreward.DelegatingKey.Build()
 	for iter := base.Filter(prefix); iter.Has(); iter.Next() {
@@ -239,7 +234,7 @@ func (r *iiss4Reward) voterReward() error {
 		if err != nil {
 			return err
 		}
-		voter := NewVoter(addr, r.c.Logger())
+		voter := NewVoter(addr, r.Logger())
 		voter.AddVoting(icreward.ToDelegating(o), r.pi.GetTermPeriod())
 
 		b, err := base.GetBonding(addr)
@@ -289,7 +284,7 @@ func (r *iiss4Reward) voterReward() error {
 			continue
 		}
 
-		voter := NewVoter(addr, r.c.Logger())
+		voter := NewVoter(addr, r.Logger())
 		voter.AddVoting(icreward.ToBonding(o), r.pi.GetTermPeriod())
 
 		events := r.ve.Get(addr)
@@ -314,7 +309,7 @@ func (r *iiss4Reward) voterReward() error {
 		if err != nil {
 			return err
 		}
-		voter := NewVoter(addr, r.c.Logger())
+		voter := NewVoter(addr, r.Logger())
 		for _, event := range events {
 			voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
 		}
@@ -334,5 +329,5 @@ func NewIISS4Reward(c Context) (Reward, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &iiss4Reward{c: c, g: global}, nil
+	return &iiss4Reward{Context: c, g: global}, nil
 }
