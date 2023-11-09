@@ -620,7 +620,7 @@ func TestState_SetMinimumBond(t *testing.T) {
 	s := newDummyState(false)
 
 	bond := s.GetMinimumBond()
-	assert.Nil(t, bond)
+	assert.Zero(t, bond.Sign())
 
 	args := []struct {
 		bond    *big.Int

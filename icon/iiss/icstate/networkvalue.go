@@ -452,7 +452,11 @@ func (s *State) setSlashingRate(penaltyType icmodule.PenaltyType, rate icmodule.
 // GetMinimumBond returns the minimum bond related to minimum wage
 // It returns nil before RevisionIISS4R0
 func (s *State) GetMinimumBond() *big.Int {
-	return getValue(s.store, VarMinBond).BigInt()
+	ret := getValue(s.store, VarMinBond).BigInt()
+	if ret == nil {
+		ret = icmodule.BigIntZero
+	}
+	return ret
 }
 
 func (s *State) SetMinimumBond(bond *big.Int) error {
