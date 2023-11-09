@@ -166,7 +166,7 @@ func (c *calculator) run() (ret error) {
 		}
 	}()
 
-	var r Reward
+	var r RewardCalculator
 	var err error
 	iv := c.global.GetIISSVersion()
 	switch iv {

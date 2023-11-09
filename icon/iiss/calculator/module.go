@@ -47,6 +47,6 @@ type RewardWriter interface {
 	SetBonding(addr module.Address, bonding *icreward.Bonding) error
 }
 
-type Reward interface {
+type RewardCalculator interface {
 	Calculate() error
 }

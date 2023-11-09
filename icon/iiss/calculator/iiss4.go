@@ -298,7 +298,7 @@ func (r *iiss4Reward) processVoterReward() error {
 	return nil
 }
 
-func NewIISS4Reward(c Context) (Reward, error) {
+func NewIISS4Reward(c Context) (RewardCalculator, error) {
 	global, err := c.Back().GetGlobal()
 	if err != nil {
 		return nil, err
