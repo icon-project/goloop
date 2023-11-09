@@ -93,8 +93,8 @@ func (v *VoteEvents) AddEvent(vType VoteType, from module.Address, votes icstage
 	v.events[key] = append(v.events[key], NewVoteEvent(vType, votes, offset))
 }
 
-// Write writes updated Bonding and Delegating to database
-func (v *VoteEvents) Write(reader RewardReader, writer RewardWriter) error {
+// UpdateVoting writes updated Bonding and Delegating to database
+func (v *VoteEvents) UpdateVoting(reader RewardReader, writer RewardWriter) error {
 	for key, events := range v.events {
 		from, err := common.NewAddress([]byte(key))
 		if err != nil {
@@ -165,7 +165,7 @@ func (v *Voter) Owner() module.Address {
 	return v.owner
 }
 
-func (v *Voter) addVoting(voting icstate.Voting, period *big.Int) {
+func (v *Voter) applyVoting(voting icstate.Voting, period *big.Int) {
 	key := icutils.ToKey(voting.To())
 	amount := new(big.Int).Mul(voting.Amount(), period)
 	if value, ok := v.accumulatedVotes[key]; ok {
@@ -175,7 +175,7 @@ func (v *Voter) addVoting(voting icstate.Voting, period *big.Int) {
 	}
 }
 
-func (v *Voter) AddVoting(voting icreward.Voting, period int64) {
+func (v *Voter) ApplyVoting(voting icreward.Voting, period int64) {
 	v.log.Debugf("Add voting to %s: %+v, %d", v.owner, voting, period)
 	pr := big.NewInt(period)
 	iter := voting.Iterator()
@@ -183,16 +183,16 @@ func (v *Voter) AddVoting(voting icreward.Voting, period int64) {
 		if vote, err := iter.Get(); err != nil {
 			continue
 		} else {
-			v.addVoting(vote, pr)
+			v.applyVoting(vote, pr)
 		}
 	}
 }
 
-func (v *Voter) AddEvent(event *VoteEvent, period int) {
+func (v *Voter) ApplyEvent(event *VoteEvent, period int) {
 	v.log.Debugf("Add event to %s: %+v, %d", v.owner, event, period)
 	pr := big.NewInt(int64(period))
 	for _, vote := range event.Votes() {
-		v.addVoting(vote, pr)
+		v.applyVoting(vote, pr)
 	}
 }
 

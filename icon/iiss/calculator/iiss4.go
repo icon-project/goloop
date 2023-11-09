@@ -50,15 +50,11 @@ func (r *iiss4Reward) Calculate() error {
 		return err
 	}
 
-	if err = r.write(); err != nil {
+	if err = r.processPrepReward(); err != nil {
 		return err
 	}
 
-	if err = r.prepReward(); err != nil {
-		return err
-	}
-
-	if err = r.voterReward(); err != nil {
+	if err = r.processVoterReward(); err != nil {
 		return err
 	}
 
@@ -147,24 +143,25 @@ func (r *iiss4Reward) processEvents() error {
 	}
 	r.pi.UpdateAccumulatedPower()
 	r.ve = ve
-	return nil
+
+	return r.UpdateVoteInfo()
 }
 
-// write writes Voted, Delegating and Bonding to temp
-func (r *iiss4Reward) write() error {
+// UpdateVoteInfo writes Voted, Bonding and Delegating to temp
+func (r *iiss4Reward) UpdateVoteInfo() error {
 	base := r.Base()
 	temp := r.Temp()
-	if err := r.pi.Write(temp); err != nil {
+	if err := r.pi.UpdateVoted(temp); err != nil {
 		return err
 	}
-	if err := r.ve.Write(base, temp); err != nil {
+	if err := r.ve.UpdateVoting(base, temp); err != nil {
 		return err
 	}
 	return nil
 }
 
-// prepReward calculates commission and wage of PRep and writes to icreward.IScore.
-func (r *iiss4Reward) prepReward() error {
+// processPrepReward calculates commission and wage of PRep and writes to icreward.IScore.
+func (r *iiss4Reward) processPrepReward() error {
 	global := r.g.GetV3()
 	err := r.pi.CalculateReward(
 		global.GetRewardFundAmountByKey(icstate.KeyIprep),
@@ -183,8 +180,8 @@ func (r *iiss4Reward) prepReward() error {
 	return nil
 }
 
-// voterReward calculates voter reward of all ICONist who has bond or delegation and writes to icreward.IScore.
-func (r *iiss4Reward) voterReward() error {
+// processVoterReward calculates voter reward of all ICONist who has bond or delegation and writes to icreward.IScore.
+func (r *iiss4Reward) processVoterReward() error {
 	base := r.Base()
 
 	prefix := icreward.DelegatingKey.Build()
@@ -192,6 +189,10 @@ func (r *iiss4Reward) voterReward() error {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
+		}
+		d := icreward.ToDelegating(o)
+		if d == nil || d.IsEmpty() {
+			continue
 		}
 		var keySplit [][]byte
 		keySplit, err = containerdb.SplitKeys(key)
@@ -204,20 +205,20 @@ func (r *iiss4Reward) voterReward() error {
 			return err
 		}
 		voter := NewVoter(addr, r.Logger())
-		voter.AddVoting(icreward.ToDelegating(o), r.pi.GetTermPeriod())
+		voter.ApplyVoting(d, r.pi.GetTermPeriod())
 
 		b, err := base.GetBonding(addr)
 		if err != nil {
 			return err
 		}
 		if b != nil && b.IsEmpty() == false {
-			voter.AddVoting(b, r.pi.GetTermPeriod())
+			voter.ApplyVoting(b, r.pi.GetTermPeriod())
 		}
 
 		events := r.ve.Get(addr)
 		if events != nil {
 			for _, event := range events {
-				voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
+				voter.ApplyEvent(event, r.pi.OffsetLimit()-event.Offset())
 			}
 			r.ve.SetCalculated(addr)
 		}
@@ -233,6 +234,10 @@ func (r *iiss4Reward) voterReward() error {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
+		}
+		b := icreward.ToBonding(o)
+		if b == nil || b.IsEmpty() {
+			continue
 		}
 		var keySplit [][]byte
 		keySplit, err = containerdb.SplitKeys(key)
@@ -254,12 +259,12 @@ func (r *iiss4Reward) voterReward() error {
 		}
 
 		voter := NewVoter(addr, r.Logger())
-		voter.AddVoting(icreward.ToBonding(o), r.pi.GetTermPeriod())
+		voter.ApplyVoting(b, r.pi.GetTermPeriod())
 
 		events := r.ve.Get(addr)
 		if events != nil {
 			for _, event := range events {
-				voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
+				voter.ApplyEvent(event, r.pi.OffsetLimit()-event.Offset())
 			}
 			r.ve.SetCalculated(addr)
 		}
@@ -280,7 +285,7 @@ func (r *iiss4Reward) voterReward() error {
 		}
 		voter := NewVoter(addr, r.Logger())
 		for _, event := range events {
-			voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
+			voter.ApplyEvent(event, r.pi.OffsetLimit()-event.Offset())
 		}
 		r.ve.SetCalculated(addr)
 

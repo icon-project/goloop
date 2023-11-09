@@ -519,10 +519,10 @@ func TestReward(t *testing.T) {
 		})
 	}
 
-	// write()
-	err = rr.write()
+	// UpdateVoteInfo()
+	err = rr.UpdateVoteInfo()
 	assert.NoError(t, err)
-	t.Run(fmt.Sprintf("write-PrepInfo"), func(t *testing.T) {
+	t.Run(fmt.Sprintf("UpdateVoteInfo-PrepInfo"), func(t *testing.T) {
 		for _, a := range addrs {
 			key := icutils.ToKey(a)
 			p := rr.pi.GetPRep(key)
@@ -533,7 +533,7 @@ func TestReward(t *testing.T) {
 		}
 	})
 
-	t.Run(fmt.Sprintf("write-VoteEvents"), func(t *testing.T) {
+	t.Run(fmt.Sprintf("UpdateVoteInfo-VoteEvents"), func(t *testing.T) {
 		for _, a := range addrs {
 			delegating := false
 			bonding := false
@@ -565,12 +565,12 @@ func TestReward(t *testing.T) {
 		}
 	})
 
-	// prepReward()
-	err = rr.prepReward()
+	// processPrepReward()
+	err = rr.processPrepReward()
 	assert.NoError(t, err)
 
 	for _, p := range rr.pi.preps {
-		t.Run(fmt.Sprintf("prepReward-%s", p.Owner()), func(t *testing.T) {
+		t.Run(fmt.Sprintf("processPrepReward-%s", p.Owner()), func(t *testing.T) {
 			rewardable := p.Rank() <= rr.pi.ElectedPRepCount() && p.Status() == icmodule.ESEnable && p.AccumulatedPower().Sign() == 1
 			if p.CommissionRate() == 0 {
 				assert.Equal(t, 0, p.Commission().Sign())
@@ -588,7 +588,7 @@ func TestReward(t *testing.T) {
 		})
 	}
 
-	// voterReward()
+	// processVoterReward()
 	oldIScore := make(map[string]*icreward.IScore)
 	for _, a := range addrs {
 		key := icutils.ToKey(a)
@@ -596,10 +596,10 @@ func TestReward(t *testing.T) {
 		assert.NoError(t, err)
 		oldIScore[key] = iScore
 	}
-	err = rr.voterReward()
+	err = rr.processVoterReward()
 	assert.NoError(t, err)
 	for _, a := range addrs {
-		t.Run(fmt.Sprintf("voterReward-%s", a), func(t *testing.T) {
+		t.Run(fmt.Sprintf("processVoterReward-%s", a), func(t *testing.T) {
 			key := icutils.ToKey(a)
 			iScore, err := tc.GetIScoreFromTemp(a)
 			assert.NoError(t, err)

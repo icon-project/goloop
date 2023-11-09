@@ -417,8 +417,8 @@ func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) 
 	return nil
 }
 
-// Write writes updated Voted to database
-func (p *PRepInfo) Write(writer RewardWriter) error {
+// UpdateVoted writes updated Voted to database
+func (p *PRepInfo) UpdateVoted(writer RewardWriter) error {
 	for _, prep := range p.preps {
 		err := writer.SetVoted(prep.Owner(), prep.ToVoted())
 		if err != nil {
