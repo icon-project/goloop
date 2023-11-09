@@ -159,16 +159,16 @@ func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t Reward
 	return nil
 }
 
-func (c *calculator) run() error {
-	var err error
+func (c *calculator) run() (ret error) {
 	defer func() {
-		if err != nil {
-			c.setResult(nil, err)
+		if ret != nil {
+			c.setResult(nil, ret)
 		}
 	}()
 
-	iv := c.global.GetIISSVersion()
 	var r Reward
+	var err error
+	iv := c.global.GetIISSVersion()
 	switch iv {
 	case icstate.IISSVersion2, icstate.IISSVersion3:
 		if r, err = NewIISS3Reward(c); err != nil {
@@ -179,7 +179,7 @@ func (c *calculator) run() error {
 			return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
 		}
 	default:
-		return icmodule.CalculationFailedError.Wrapf(err, "invalid IISS version")
+		return icmodule.CalculationFailedError.New("invalid IISS version")
 	}
 	if err = r.Calculate(); err != nil {
 		return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
