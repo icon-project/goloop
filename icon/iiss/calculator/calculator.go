@@ -155,17 +155,7 @@ func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t Reward
 		return err
 	}
 	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
-
-	switch t {
-	case RTBlockProduce:
-		c.stats.IncreaseBlockProduce(reward)
-	case RTPRep:
-		c.stats.IncreaseVoted(reward)
-	case RTVoter:
-		c.stats.IncreaseVoting(reward)
-	default:
-		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
-	}
+	c.stats.IncreaseReward(t, reward)
 	return nil
 }
 

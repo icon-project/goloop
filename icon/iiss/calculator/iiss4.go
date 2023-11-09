@@ -17,17 +17,13 @@
 package calculator
 
 import (
-	"math/big"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	"github.com/icon-project/goloop/module"
 )
 
 type iiss4Reward struct {
@@ -151,33 +147,6 @@ func (r *iiss4Reward) processEvents() error {
 	}
 	r.pi.UpdateAccumulatedPower()
 	r.ve = ve
-	return nil
-}
-
-func (r *iiss4Reward) UpdateIScore(addr module.Address, amount *big.Int, t RewardType) error {
-	r.Logger().Debugf("Update IScore of %s, %d by %s", addr, amount, t.String())
-	if amount.Sign() == 0 {
-		return nil
-	}
-	temp := r.Temp()
-	iScore, err := temp.GetIScore(addr)
-	if err != nil {
-		return err
-	}
-	nIScore := iScore.Added(amount)
-	if err = temp.SetIScore(addr, nIScore); err != nil {
-		return err
-	}
-
-	stats := r.Stats()
-	switch t {
-	case RTPRep:
-		stats.IncreaseVoted(amount)
-	case RTVoter:
-		stats.IncreaseVoting(amount)
-	default:
-		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
-	}
 	return nil
 }
 

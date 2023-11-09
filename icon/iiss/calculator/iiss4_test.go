@@ -67,6 +67,15 @@ func (t *testCalculator) Logger() log.Logger {
 }
 
 func (t *testCalculator) UpdateIScore(addr module.Address, reward *big.Int, type_ RewardType) error {
+	iScore, err := t.temp.GetIScore(addr)
+	if err != nil {
+		return err
+	}
+	nIScore := iScore.Added(reward)
+	if err = t.temp.SetIScore(addr, nIScore); err != nil {
+		return err
+	}
+	t.stats.IncreaseReward(type_, reward)
 	return nil
 }
 
