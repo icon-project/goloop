@@ -66,6 +66,10 @@ func (t *testCalculator) Logger() log.Logger {
 	return t.log
 }
 
+func (t *testCalculator) UpdateIScore(addr module.Address, reward *big.Int, type_ RewardType) error {
+	return nil
+}
+
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
 	rFund := icstate.NewRewardFund(icstate.RFVersion2)
 	rFund.SetIGlobal(big.NewInt(1_000_000))

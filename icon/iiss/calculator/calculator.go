@@ -31,6 +31,7 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/module"
 )
 
 type calculator struct {
@@ -144,6 +145,30 @@ func (c *calculator) IsRunningFor(dbase db.Database, back, reward []byte) bool {
 		bytes.Equal(c.base.Bytes(), reward)
 }
 
+func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error {
+	iScore, err := c.temp.GetIScore(addr)
+	if err != nil {
+		return err
+	}
+	nIScore := iScore.Added(reward)
+	if err = c.temp.SetIScore(addr, nIScore); err != nil {
+		return err
+	}
+	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
+
+	switch t {
+	case RTBlockProduce:
+		c.stats.IncreaseBlockProduce(reward)
+	case RTPRep:
+		c.stats.IncreaseVoted(reward)
+	case RTVoter:
+		c.stats.IncreaseVoting(reward)
+	default:
+		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
+	}
+	return nil
+}
+
 func (c *calculator) run() error {
 	var err error
 	defer func() {
@@ -156,7 +181,9 @@ func (c *calculator) run() error {
 	var r Reward
 	switch iv {
 	case icstate.IISSVersion2, icstate.IISSVersion3:
-		r = NewIISS3Reward(c)
+		if r, err = NewIISS3Reward(c); err != nil {
+			return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS3 reward")
+		}
 	case icstate.IISSVersion4:
 		if r, err = NewIISS4Reward(c); err != nil {
 			return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")

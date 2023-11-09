@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -690,14 +689,15 @@ func TestCalculator_VotingReward(t *testing.T) {
 		},
 	}
 
-	calculator := new(calculator)
-	calculator.log = log.New()
+	c := newTestCalculator()
+	r, err := NewIISS3Reward(c)
+	assert.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
-			calculator.global = &testGlobal{iissVersion: args.iissVersion}
-			reward := calculator.votingReward(
+			r.g = &testGlobal{iissVersion: args.iissVersion}
+			reward := r.votingReward(
 				big.NewInt(int64(args.multiplier)),
 				big.NewInt(int64(args.divider)),
 				args.from,

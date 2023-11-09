@@ -17,6 +17,8 @@
 package calculator
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
@@ -29,6 +31,7 @@ type Context interface {
 	Temp() *icreward.State
 	Stats() *Stats
 	Logger() log.Logger
+	UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error
 }
 
 // RewardReader reads from icreward.Snapshot
