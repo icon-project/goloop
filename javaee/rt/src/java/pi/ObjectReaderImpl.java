@@ -321,12 +321,20 @@ public class ObjectReaderImpl
         });
     }
 
+    private static final int STEP = 1<< 16;
+
     public void avm_skip(int count) {
+        if (count <= 0) {
+            return;
+        }
         wrapVoidRead(() -> {
-            for (var i=0; i<count; i++) {
-                reader.skip(1);
+            int l = count;
+            for (; l>=STEP; l-=STEP) {
+                reader.skip(STEP);
                 chargeSkip();
             }
+            reader.skip(l);
+            chargeSkip();
         });
     }
 

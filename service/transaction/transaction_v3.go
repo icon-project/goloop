@@ -402,7 +402,7 @@ func checkV3JSON(jso map[string]interface{}) bool {
 	return true
 }
 
-func parseV3JSON(js []byte, raw bool) (Transaction, error) {
+func parseV3JSON(js []byte, jsm map[string]any, raw bool) (Transaction, error) {
 	jso, err := parseTransactionJSON(js)
 	if err != nil {
 		return nil, err
@@ -411,7 +411,7 @@ func parseV3JSON(js []byte, raw bool) (Transaction, error) {
 	tx.transactionV3Data = jso.transactionV3Data
 
 	if !raw {
-		id, err := jso.calcHash(Version3)
+		id, err := calcHashOfTransactionJSMap(jsm, Version3)
 		if err != nil {
 			return nil, err
 		}

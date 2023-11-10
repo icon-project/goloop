@@ -140,7 +140,7 @@ func (f *Fixture) newPrecommitsAndPCM(blk module.BlockData, round int32, ntsVote
 			blk,
 			round,
 			consensus.VoteTypePrecommit,
-			bpsID.WithAppData(uint16(ntsVoteCount)),
+			bpsID.WithAppData(uint64(ntsVoteCount)),
 			blk.Timestamp()+1,
 			f.Chain.NID(),
 			pcm,

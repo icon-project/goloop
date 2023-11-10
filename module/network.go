@@ -37,6 +37,13 @@ type ProtocolHandler interface {
 	GetPeers() []PeerID
 }
 
+type OnResult func(isRelay bool, err error)
+
+type AsyncProtocolHandler interface {
+	ProtocolHandler
+	HandleInBackground() (OnResult, error)
+}
+
 type BroadcastType byte
 type Role byte
 

@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/btp/ntm"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 )
@@ -35,13 +36,26 @@ func NewPrecommitMessage(
 	)
 }
 
+type nilVerifyCtx struct {
+}
+
+var theNilVerifyCtx nilVerifyCtx
+
+func (ctx nilVerifyCtx) ValidNID(nid uint32) bool {
+	return true
+}
+
+func (ctx nilVerifyCtx) NID() int {
+	return 0
+}
+
 func TestNewPrecommitMessage(t *testing.T) {
 	w := wallet.New()
 	vm := NewPrecommitMessage(
 		w,
-		1, 0, nil, nil, 0,
+		1, 0, make([]byte, 32), nil, 0,
 	)
-	err := vm.Verify()
+	err := vm.Verify(theNilVerifyCtx)
 	assert.NoError(t, err)
 }
 
@@ -51,7 +65,7 @@ func FuzzNewProposalMessage(f *testing.F) {
 		msg := NewProposalMessage()
 		_, err := msgCodec.UnmarshalFromBytes(data, msg)
 		if err == nil {
-			msg.Verify()
+			msg.Verify(theNilVerifyCtx)
 		}
 	})
 }
@@ -61,7 +75,7 @@ func FuzzNewBlockPartMessage(f *testing.F) {
 		msg := newBlockPartMessage()
 		_, err := msgCodec.UnmarshalFromBytes(data, msg)
 		if err == nil {
-			msg.Verify()
+			msg.Verify(theNilVerifyCtx)
 		}
 	})
 }
@@ -71,7 +85,7 @@ func FuzzNewVoteMessage(f *testing.F) {
 		msg := newVoteMessage()
 		_, err := msgCodec.UnmarshalFromBytes(data, msg)
 		if err == nil {
-			msg.Verify()
+			msg.Verify(theNilVerifyCtx)
 		}
 	})
 }
@@ -81,7 +95,7 @@ func FuzzNewRoundStateMessage(f *testing.F) {
 		msg := newRoundStateMessage()
 		_, err := msgCodec.UnmarshalFromBytes(data, msg)
 		if err == nil {
-			msg.Verify()
+			msg.Verify(theNilVerifyCtx)
 		}
 	})
 }
@@ -91,7 +105,7 @@ func FuzzNewVoteListMessage(f *testing.F) {
 		msg := newVoteListMessage()
 		_, err := msgCodec.UnmarshalFromBytes(data, msg)
 		if err == nil {
-			msg.Verify()
+			msg.Verify(theNilVerifyCtx)
 		}
 	})
 }
@@ -124,7 +138,7 @@ func TestVoteMessage_VerifyOK(t *testing.T) {
 	msg.Timestamp = 10
 	msg.NTSDProofParts = nil
 	_ = msg.Sign(wp.wallet)
-	assert.NoError(msg.Verify())
+	assert.NoError(msg.Verify(theNilVerifyCtx))
 }
 
 func TestVoteMessage_VerifyMismatchBetweenAppDataAndNTSDProofPartsLen(t *testing.T) {
@@ -149,7 +163,7 @@ func TestVoteMessage_VerifyMismatchBetweenAppDataAndNTSDProofPartsLen(t *testing
 	pp, _ := pc.NewProofPart([]byte("abc"), wp)
 	msg.NTSDProofParts[0] = pp.Bytes()
 	_ = msg.Sign(w)
-	assert.Error(msg.Verify())
+	assert.Error(msg.Verify(theNilVerifyCtx))
 }
 
 func TestVoteMessage_VerifyMismatchBetweenNTSVoteBasesAndNTSDProofParts(t *testing.T) {
@@ -172,5 +186,152 @@ func TestVoteMessage_VerifyMismatchBetweenNTSVoteBasesAndNTSDProofParts(t *testi
 	pp, _ := pc.NewProofPart([]byte("abc"), wp)
 	msg.NTSDProofParts[0] = pp.Bytes()
 	_ = msg.Sign(w)
-	assert.Error(msg.Verify())
+	assert.Error(msg.Verify(theNilVerifyCtx))
+}
+
+func TestProposal_EncodeAsV1IfPossible(t *testing.T) {
+	msgV1 := proposalV1{
+		_HR: _HR{
+			1, 1,
+		},
+		BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+	}
+	msgV2 := proposalV2{
+		_HR: _HR{
+			1, 1,
+		},
+		BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+	}
+	assert.Equal(t,
+		codec.MustMarshalToBytes(&msgV1), codec.MustMarshalToBytes(&msgV2),
+	)
+}
+
+func TestProposal_SendV1ReceiveV2(t *testing.T) {
+	msgV1 := proposalV1{
+		_HR: _HR{
+			1, 1,
+		},
+		BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+	}
+	bsV1 := codec.MustMarshalToBytes(&msgV1)
+	var msgV2 proposalV2
+	codec.MustUnmarshalFromBytes(bsV1, &msgV2)
+	assert.Equal(t,
+		proposalV2{
+			_HR: _HR{
+				1, 1,
+			},
+			BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+		},
+		msgV2,
+	)
+}
+
+func TestProposal_SendV2ReceiveV1(t *testing.T) {
+	msgV2 := proposalV2{
+		_HR: _HR{
+			1, 1,
+		},
+		BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+	}
+	bsV2 := codec.MustMarshalToBytes(&msgV2)
+	var msgV1 proposalV1
+	codec.MustUnmarshalFromBytes(bsV2, &msgV1)
+	assert.Equal(t,
+		proposalV1{
+			_HR: _HR{
+				1, 1,
+			},
+			BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+		},
+		msgV1,
+	)
+}
+
+func TestProposal_SendV2ReceiveV2(t *testing.T) {
+	msgV2 := proposalV2{
+		_HR: _HR{
+			1, 1,
+		},
+		BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+		NID:            1,
+	}
+	bsV2 := codec.MustMarshalToBytes(&msgV2)
+	var msgV2Another proposalV2
+	codec.MustUnmarshalFromBytes(bsV2, &msgV2Another)
+	assert.Equal(t,
+		proposalV2{
+			_HR: _HR{
+				1, 1,
+			},
+			BlockPartSetID: &PartSetID{1, []byte{0, 1, 2}},
+			NID:            1,
+		},
+		msgV2Another,
+	)
+}
+
+func TestProposalMessage_Encoding(t *testing.T) {
+	msg1 := NewProposalMessageV1()
+	msg1.Height = 1
+	msg1.Round = 1
+	msg1.BlockPartSetID = &PartSetID{1, []byte{0, 1, 2}}
+	msg1.POLRound = 1
+	bs := codec.MustMarshalToBytes(msg1)
+
+	msg2 := NewProposalMessage()
+	msg2.Height = 1
+	msg2.Round = 1
+	msg2.BlockPartSetID = &PartSetID{1, []byte{0, 1, 2}}
+	msg2.POLRound = 1
+	bs2 := codec.MustMarshalToBytes(msg2)
+	assert.Equal(t, bs, bs2)
+}
+
+func TestProposalMessage_SendV1ReceiveV2(t *testing.T) {
+	msg1 := NewProposalMessageV1()
+	msg1.Height = 1
+	msg1.Round = 1
+	msg1.BlockPartSetID = &PartSetID{1, []byte{0, 1, 2}}
+	msg1.POLRound = 1
+	bsV1 := codec.MustMarshalToBytes(&msg1)
+	var msg2 *ProposalMessage
+	codec.MustUnmarshalFromBytes(bsV1, &msg2)
+	assert.EqualValues(t, 1, msg2.Height)
+	assert.EqualValues(t, 1, msg2.Round)
+	assert.EqualValues(t, &PartSetID{1, []byte{0, 1, 2}}, msg2.BlockPartSetID)
+	assert.EqualValues(t, 1, msg2.POLRound)
+	assert.EqualValues(t, 0, msg2.NID)
+}
+
+func TestProposalMessage_SendV2ReceiveV1(t *testing.T) {
+	msg1 := NewProposalMessage()
+	msg1.Height = 1
+	msg1.Round = 1
+	msg1.BlockPartSetID = &PartSetID{1, []byte{0, 1, 2}}
+	msg1.POLRound = 1
+	bsV1 := codec.MustMarshalToBytes(&msg1)
+	var msg2 *ProposalMessageV1
+	codec.MustUnmarshalFromBytes(bsV1, &msg2)
+	assert.EqualValues(t, 1, msg2.Height)
+	assert.EqualValues(t, 1, msg2.Round)
+	assert.EqualValues(t, &PartSetID{1, []byte{0, 1, 2}}, msg2.BlockPartSetID)
+	assert.EqualValues(t, 1, msg2.POLRound)
+}
+
+func TestProposalMessage_SendV2ReceiveV2(t *testing.T) {
+	msg1 := NewProposalMessage()
+	msg1.Height = 1
+	msg1.Round = 1
+	msg1.BlockPartSetID = &PartSetID{1, []byte{0, 1, 2}}
+	msg1.POLRound = 1
+	bsV1 := codec.MustMarshalToBytes(&msg1)
+	var msg2 *ProposalMessage
+	codec.MustUnmarshalFromBytes(bsV1, &msg2)
+	assert.EqualValues(t, 1, msg2.Height)
+	assert.EqualValues(t, 1, msg2.Round)
+	assert.EqualValues(t, &PartSetID{1, []byte{0, 1, 2}}, msg2.BlockPartSetID)
+	assert.EqualValues(t, 1, msg2.POLRound)
+	assert.EqualValues(t, 0, msg2.NID)
 }

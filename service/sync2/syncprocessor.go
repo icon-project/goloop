@@ -382,7 +382,7 @@ func (s *syncProcessor) HandleData(reqID uint32, sender *peer, data []BucketIDAn
 		} else {
 			if err != merkle.ErrNoRequester {
 				hasError = true
-				s.logger.Warnf("HandleData() failed builder.OnData err=%v item=%v", err, item)
+				s.logger.Warnf("HandleData() failed builder.OnData err=%+v item=%v", err, item)
 			}
 		}
 	}

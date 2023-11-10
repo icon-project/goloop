@@ -118,6 +118,22 @@ type TransactionResult struct {
 	StepDetails        interface{}      `json:"stepUsedDetails,omitempty"`
 }
 
+type EventNotification struct {
+	Hash   jsonrpc.HexBytes `json:"hash"`
+	Height jsonrpc.HexInt   `json:"height"`
+	Index  jsonrpc.HexInt   `json:"index"`
+	Events []jsonrpc.HexInt `json:"events"`
+	Logs   []EventLog       `json:"logs,omitempty"`
+}
+
+type BlockNotification struct {
+	Hash    jsonrpc.HexBytes     `json:"hash"`
+	Height  jsonrpc.HexInt       `json:"height"`
+	Indexes [][]jsonrpc.HexInt   `json:"indexes,omitempty"`
+	Events  [][][]jsonrpc.HexInt `json:"events,omitempty"`
+	Logs    [][][]EventLog       `json:"logs,omitempty"`
+}
+
 //refer service/txresult/receipt.go:29 eventLogJSON
 type EventLog struct {
 	Addr    jsonrpc.Address `json:"scoreAddress"`
@@ -447,19 +463,19 @@ func (c *ClientV3) GetNetworkInfo() (*NetworkInfo, error) {
 	return result, nil
 }
 
-func (c *ClientV3) MonitorBlock(param *server.BlockRequest, cb func(v *server.BlockNotification), cancelCh <-chan bool) error {
-	resp := &server.BlockNotification{}
+func (c *ClientV3) MonitorBlock(param *server.BlockRequest, cb func(v *BlockNotification), cancelCh <-chan bool) error {
+	resp := &BlockNotification{}
 	return c.Monitor("/block", param, resp, func(v interface{}) {
-		if bn, ok := v.(*server.BlockNotification); ok {
+		if bn, ok := v.(*BlockNotification); ok {
 			cb(bn)
 		}
 	}, cancelCh)
 }
 
-func (c *ClientV3) MonitorEvent(param *server.EventRequest, cb func(v *server.EventNotification), cancelCh <-chan bool) error {
-	resp := &server.EventNotification{}
+func (c *ClientV3) MonitorEvent(param *server.EventRequest, cb func(v *EventNotification), cancelCh <-chan bool) error {
+	resp := &EventNotification{}
 	return c.Monitor("/event", param, resp, func(v interface{}) {
-		if en, ok := v.(*server.EventNotification); ok {
+		if en, ok := v.(*EventNotification); ok {
 			cb(en)
 		}
 	}, cancelCh)
@@ -502,11 +518,19 @@ func (c *ClientV3) Monitor(reqUrl string, reqPtr, respPtr interface{},
 			}()
 			c.wsReadJSONLoop(conn, respPtr, cb)
 		}()
+		return nil
 	} else {
 		defer c.wsClose(conn)
-		c.wsReadJSONLoop(conn, respPtr, cb)
+		var ret error
+		c.wsReadJSONLoop(conn, respPtr, func(v interface{}) {
+			if err, ok := v.(error) ; ok {
+				ret = err
+			} else {
+				cb(v)
+			}
+		})
+		return ret;
 	}
-	return nil
 }
 
 func (c *ClientV3) Cleanup() {

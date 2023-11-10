@@ -161,7 +161,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	if err != nil {
 		return nil, err
 	}
-	dsrTxs, err := m.dsm.Candidate(pt.dsrTracker, wc)
+	dsrTxs, err := m.dsm.Candidate(pt.dsrTracker, wc, m.chain.NID())
 	if err != nil {
 		return nil, err
 	}
@@ -735,6 +735,14 @@ func (m *manager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (m *manager) GetRevision(result []byte) module.Revision {
+	as, err := m.getSystemByteStoreState(result)
+	if err != nil {
+		return module.NoRevision
+	}
+	return m.plt.ToRevision(int(scoredb.NewVarDB(as, state.VarRevision).Int64()))
+}
+
 func (m *manager) BTPNetworkFromResult(result []byte, nid int64) (module.BTPNetwork, error) {
 	as, err := m.getSystemByteStoreState(result)
 	if err != nil {
@@ -920,14 +928,21 @@ func (m *manager) GetStepPrice(result []byte) (*big.Int, error) {
 }
 
 func (m *manager) SendDoubleSignReport(result []byte, vh []byte, data []module.DoubleSignData)  error {
-	wss, err := m.trc.GetWorldSnapshot(result, vh)
+	wc, err := m.trc.GetWorldContext(result, vh)
 	if err != nil {
 		return err
 	}
 	if len(data) < 1 || data[0] == nil {
 		return errors.IllegalArgumentError.New("InvalidDSData")
 	}
-	ctx, err := state.NewDoubleSignContext(wss, data[0].Type())
+	root, err := wc.GetDoubleSignContextRoot()
+	if err != nil {
+		return err
+	}
+	if root == nil {
+		return errors.IllegalArgumentError.New("DoubleSignReportIsNotEnabled")
+	}
+	ctx, err := root.ContextOf(data[0].Type())
 	if err != nil {
 		return err
 	}

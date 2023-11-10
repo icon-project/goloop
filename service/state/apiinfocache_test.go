@@ -119,5 +119,6 @@ func TestAttachAPIInfoCache(t *testing.T) {
 
 	// no data in database
 	info, err = bk2.Get(hash)
-	assert.Error(t, err)
+	assert.NoError(t, err)
+	assert.True(t, info==nil)
 }

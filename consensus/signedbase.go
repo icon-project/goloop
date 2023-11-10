@@ -23,7 +23,8 @@ type signedBase struct {
 
 func (s *signedBase) hash() []byte {
 	if s._hash == nil {
-		s._hash = crypto.SHA3Sum256(s._byteser.bytes())
+		bs := s._byteser.bytes()
+		s._hash = crypto.SHA3Sum256(bs)
 	}
 	return s._hash
 }

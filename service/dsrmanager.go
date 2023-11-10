@@ -119,7 +119,7 @@ type doubleSignReport struct {
 
 const InvalidFirstHeight = -1
 type dsrManager struct {
-	lock        sync.Mutex
+	lock        sync.RWMutex
 	log         log.Logger
 	todo        list.List
 	done        list.List
@@ -141,15 +141,14 @@ func (m *dsrManager) Add(data []module.DoubleSignData, ctx module.DoubleSignCont
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	if len(data)!=2 {
+	if len(data)!=2 || ctx == nil {
 		return errors.IllegalArgumentError.Errorf("InvalidDataLength(len=%d)", len(data))
 	}
 
 	height := data[0].Height()
 	if m.firstHeight == InvalidFirstHeight || height < m.firstHeight {
-		m.log.Infof("DROP DSR: feature is not enabled or out of history first=%d, height=%d",
+		return errors.InvalidStateError.Errorf("InvalidState(first=%d,height=%d)",
 			m.firstHeight, height)
-		return nil
 	}
 
 	if !data[0].IsConflictWith(data[1]) {
@@ -180,9 +179,9 @@ func (m *dsrManager) Add(data []module.DoubleSignData, ctx module.DoubleSignCont
 	return nil
 }
 
-func (m *dsrManager) Candidate(tracker DSRTracker, wc state.WorldContext) ([]module.Transaction, error) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+func (m *dsrManager) Candidate(tracker DSRTracker, wc state.WorldContext, nid int) ([]module.Transaction, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 
 	as := wc.GetAccountState(state.SystemID)
 	ch, err := contract.NewDSContextHistoryDB(as)
@@ -204,7 +203,7 @@ func (m *dsrManager) Candidate(tracker DSRTracker, wc state.WorldContext) ([]mod
 		if tracker.Has(r.Height, r.Signer) {
 			continue
 		}
-		tx := transaction.NewDoubleSignReportTx(r.Data, r.Context, wc.BlockTimeStamp())
+		tx := transaction.NewDoubleSignReportTx(r.Data, r.Context, nid, wc.BlockTimeStamp())
 		txs = append(txs, tx)
 	}
 	return txs, nil
@@ -264,8 +263,8 @@ func (m *dsrManager) Commit(rs []DSRLocator) {
 }
 
 func (m *dsrManager) Has(height int64, signer module.Address) bool {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 
 	key := keyForDSR(height, signer)
 	if e, ok := m.reports[key]; ok {
@@ -303,7 +302,5 @@ func newDSRManager(logger log.Logger) *dsrManager {
 		reports:     make(map[string]*list.Element),
 		firstHeight: InvalidFirstHeight,
 	}
-	s.todo.Init()
-	s.done.Init()
 	return s
 }

@@ -62,6 +62,9 @@ func GetAPIInfoFromBucket(bk db.Bucket, hash []byte) (*scoreapi.Info, error) {
 		return nil, errors.CriticalIOError.Wrapf(err, "FailToGetAPIInfo(hash=%x)", hash)
 
 	}
+	if bs == nil {
+		return nil, nil
+	}
 	var info scoreapi.Info
 	_, err = codec.BC.UnmarshalFromBytes(bs, &info)
 	if err != nil {

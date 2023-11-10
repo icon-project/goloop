@@ -242,6 +242,19 @@ func (sm *ServiceManager) GetNextBlockVersion(result []byte) int {
 	return v
 }
 
+func (sm *ServiceManager) GetRevision(result []byte) module.Revision {
+	ws, err := service.NewWorldSnapshot(sm.dbase, sm.plt, result, nil)
+	if err != nil {
+		return module.NoRevision
+	}
+	ass := ws.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	if as == nil {
+		return module.NoRevision
+	}
+	return sm.plt.ToRevision(int(scoredb.NewVarDB(as, state.VarRevision).Int64()))
+}
+
 func (sm *ServiceManager) getSystemByteStoreState(result []byte) (containerdb.BytesStoreState, error) {
 	ws, err := service.NewWorldSnapshot(sm.dbase, sm.plt, result, nil)
 	if err != nil {

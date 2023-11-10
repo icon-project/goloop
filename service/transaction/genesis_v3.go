@@ -101,24 +101,28 @@ func useNormalGenesisSerialize(jso map[string]interface{}) bool {
 	return false
 }
 
-func serializeGenesis(bs []byte) ([]byte, error) {
-	var jso map[string]interface{}
-	if err := json.Unmarshal(bs, &jso); err != nil {
-		return nil, err
-	}
+func serializeGenesisMap(jso map[string]interface{}) ([]byte, error) {
 	if useNormalGenesisSerialize(jso) {
 		return SerializeMap(jso, nil, nil)
 	}
 	return legacySerializeMap(jso)
 }
 
-func (g *genesisV3JSON) calcHash() ([]byte, error) {
-	bs, err := serializeGenesis(g.raw)
+func calcHashOfGenesisMap(jso map[string]interface{}) ([]byte, error) {
+	bs, err := serializeGenesisMap(jso)
 	if err != nil {
 		return nil, err
 	}
 	bs = append([]byte("genesis_tx."), bs...)
 	return crypto.SHA3Sum256(bs), nil
+}
+
+func (g *genesisV3JSON) calcHash() ([]byte, error) {
+	var jso map[string]interface{}
+	if err := json.Unmarshal(g.raw, &jso); err != nil {
+		return nil, err
+	}
+	return calcHashOfGenesisMap(jso)
 }
 
 func (g *genesisV3JSON) updateTxHash() error {
@@ -370,12 +374,20 @@ func (g *genesisV3) IsSkippable() bool {
 	return false
 }
 
-func checkV3Genesis(jso map[string]interface{}) bool {
+func checkV3GenesisJSON(jso map[string]interface{}) bool {
 	_, hasAccounts := jso["accounts"]
 	return hasAccounts
 }
 
 func parseV3Genesis(js []byte, raw bool) (Transaction, error) {
+	var jso map[string]interface{}
+	if err := json.Unmarshal(js, &jso); err != nil {
+		return nil, err
+	}
+	return parseV3GenesisJSON(js, jso, raw)
+}
+
+func parseV3GenesisJSON(js []byte, jsm map[string]interface{}, raw bool) (Transaction, error) {
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
 		return nil, errors.IllegalArgumentError.Wrapf(err, "Invalid json for genesis(%s)", string(js))
@@ -383,8 +395,10 @@ func parseV3Genesis(js []byte, raw bool) (Transaction, error) {
 	if len(genjs.Accounts) != 0 {
 		genjs.raw = js
 		tx := &genesisV3{genesisV3JSON: genjs}
-		if err := tx.updateTxHash(); err != nil {
+		if id, err := calcHashOfGenesisMap(jsm); err != nil {
 			return nil, InvalidGenesisError.Wrap(err, "FailToMakeTxHash")
+		} else {
+			tx.txHash = id
 		}
 		return tx, nil
 	}
@@ -394,7 +408,7 @@ func parseV3Genesis(js []byte, raw bool) (Transaction, error) {
 func init() {
 	RegisterFactory(&Factory{
 		Priority:  10,
-		CheckJSON: checkV3Genesis,
-		ParseJSON: parseV3Genesis,
+		CheckJSON: checkV3GenesisJSON,
+		ParseJSON: parseV3GenesisJSON,
 	})
 }

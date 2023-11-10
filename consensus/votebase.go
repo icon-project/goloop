@@ -69,9 +69,9 @@ type voteBase struct {
 }
 
 type roundDecision struct {
-	BlockID                       []byte
-	BlockPartSetIDAndNTSVoteCount *PartSetIDAndAppData
-	NTSVoteBases                  []ntsVoteBase
+	BlockID                  []byte
+	BlockPartSetIDAndAppData *PartSetIDAndAppData
+	NTSVoteBases             []ntsVoteBase
 }
 
 func (v *voteBase) SetRoundDecision(bid []byte, bpsIDAndNTSVoteCount *PartSetIDAndAppData, ntsVoteBases []ntsVoteBase) {
@@ -82,15 +82,15 @@ func (v *voteBase) SetRoundDecision(bid []byte, bpsIDAndNTSVoteCount *PartSetIDA
 }
 
 // RoundDecisionDigest returns digest for a vote. The digest values of two
-// votes are different if their BlockID, BlockPartSetIDAndNTSVoteCount, len(NTSVotes),
+// votes are different if their BlockID, BlockPartSetIDAndAppData, len(NTSVotes),
 // NTSVotes[i].NetworkTypeID or NTSVotes[i].NetworkTypeSectionHash is
 // different where 0 <= i < len(NTSVotes).
 func (v *voteBase) RoundDecisionDigest() []byte {
 	if v.decisionDigest == nil {
 		format := roundDecision{
-			BlockID:                       v.BlockID,
-			BlockPartSetIDAndNTSVoteCount: v.BlockPartSetIDAndNTSVoteCount,
-			NTSVoteBases:                  v.NTSVoteBases,
+			BlockID:                  v.BlockID,
+			BlockPartSetIDAndAppData: v.BlockPartSetIDAndNTSVoteCount,
+			NTSVoteBases:             v.NTSVoteBases,
 		}
 		// Sometimes we make zero length array for NTSVoteBases. Normalize for
 		// consistent hash value.
@@ -129,4 +129,17 @@ func (v voteBase) String() string {
 		v.BlockPartSetIDAndNTSVoteCount,
 		v.NTSVoteBases,
 	)
+}
+
+func (v *voteBase) NID() (uint32, error) {
+	if v.BlockPartSetIDAndNTSVoteCount == nil {
+		var nid int32
+		_, err := codec.UnmarshalFromBytes(v.BlockID, &nid)
+		if err != nil {
+			return 0, err
+		}
+		return uint32(nid), nil
+	}
+	nid, _ := destructPSIDAppData(v.BlockPartSetIDAndNTSVoteCount.AppData())
+	return nid, nil
 }

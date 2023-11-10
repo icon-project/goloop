@@ -1140,7 +1140,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				param.EventFilters = append(param.EventFilters, ef)
 			}
 			OnInterrupt(rpcClient.Cleanup)
-			err = rpcClient.MonitorBlock(param, func(v *server.BlockNotification) {
+			err = rpcClient.MonitorBlock(param, func(v *client.BlockNotification) {
 				JsonPrettyPrintln(os.Stdout, v)
 			}, nil)
 			if err != nil {
@@ -1214,7 +1214,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				}
 			}
 			OnInterrupt(rpcClient.Cleanup)
-			err := rpcClient.MonitorEvent(param, func(v *server.EventNotification) {
+			err := rpcClient.MonitorEvent(param, func(v *client.EventNotification) {
 				JsonPrettyPrintln(os.Stdout, v)
 			}, nil)
 			if err != nil {
