@@ -41,6 +41,12 @@ type CallContext interface {
 	TransactionInfo() *state.TransactionInfo
 }
 
+type StateContextFlag int
+
+const (
+	SCFlagNoHasPublicKeyInGetPRepTerm StateContextFlag = 1 << iota
+)
+
 type StateContext interface {
 	BlockHeight() int64
 	Revision() int
@@ -49,4 +55,5 @@ type StateContext interface {
 	GetActiveDSAMask() int64
 	GetBondRequirement() Rate
 	AddEventEnable(from module.Address, status EnableStatus) error
+	Flags() StateContextFlag
 }

@@ -113,7 +113,8 @@ const (
 
 	RevisionUpdatePRepStats = Revision22
 
-	RevisionIISS4R0 = Revision23
+	RevisionIISS4R0                        = Revision23
+	RevisionFixInvalidDSAMaskInGetPRepTerm = Revision23
 
 	RevisionIISS4R1      = Revision24
 	RevisionVoteEventLog = Revision24

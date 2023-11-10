@@ -287,7 +287,6 @@ func (ps *prepStatusData) clone() prepStatusData {
 func (ps *prepStatusData) ToJSON(sc icmodule.StateContext) map[string]interface{} {
 	blockHeight := sc.BlockHeight()
 	br := sc.GetBondRequirement()
-	activeDSAMask := sc.GetActiveDSAMask()
 
 	jso := make(map[string]interface{})
 	jso["grade"] = int(ps.grade)
@@ -300,9 +299,15 @@ func (ps *prepStatusData) ToJSON(sc icmodule.StateContext) map[string]interface{
 	totalBlocks := ps.GetVTotal(blockHeight)
 	jso["totalBlocks"] = totalBlocks
 	jso["validatedBlocks"] = totalBlocks - ps.GetVFail(blockHeight)
-	if activeDSAMask != 0 {
-		jso["hasPublicKey"] = (ps.GetDSAMask() & activeDSAMask) == activeDSAMask
+
+	// Replays a bug where the response of getPRepTerm() did not have a HasPublicKey field
+	if (sc.Flags() & icmodule.SCFlagNoHasPublicKeyInGetPRepTerm) == 0 {
+		activeDSAMask := sc.GetActiveDSAMask()
+		if activeDSAMask != 0 {
+			jso["hasPublicKey"] = (ps.GetDSAMask() & activeDSAMask) == activeDSAMask
+		}
 	}
+
 	ps.ji.ToJSON(sc, jso)
 	return jso
 }

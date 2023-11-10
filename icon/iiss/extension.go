@@ -1163,7 +1163,13 @@ func (es *ExtensionStateImpl) GetPRepTermInJSON(cc icmodule.CallContext) (map[st
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
-	sc := NewStateContext(cc, es)
+
+	var flag icmodule.StateContextFlag
+	if cc.Revision().Value() < icmodule.RevisionFixInvalidDSAMaskInGetPRepTerm {
+		flag = icmodule.SCFlagNoHasPublicKeyInGetPRepTerm
+	}
+	sc := NewStateContextByFlags(cc, es, flag)
+
 	jso := term.ToJSON(sc, es.State)
 	jso["blockHeight"] = cc.BlockHeight()
 	return jso, nil

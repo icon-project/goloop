@@ -39,6 +39,10 @@ type mockStateContext struct {
 	eventLogger     icmodule.EnableEventLogger
 }
 
+func (m *mockStateContext) Flags() icmodule.StateContextFlag {
+	return 0
+}
+
 func (m *mockStateContext) BlockHeight() int64 {
 	return m.blockHeight
 }

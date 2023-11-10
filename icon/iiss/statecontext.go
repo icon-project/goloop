@@ -26,6 +26,8 @@ type stateContext struct {
 	icmodule.WorldContext
 	*icstate.State
 	eventLogger icmodule.EnableEventLogger
+	// StateContext just delivers them to the destination
+	flags       icmodule.StateContextFlag
 
 	// Cache
 	br   icmodule.Rate
@@ -33,12 +35,22 @@ type stateContext struct {
 }
 
 func NewStateContext(wc icmodule.WorldContext, es *ExtensionStateImpl) icmodule.StateContext {
+	return NewStateContextByFlags(wc, es, 0)
+}
+
+func NewStateContextByFlags(
+	wc icmodule.WorldContext, es *ExtensionStateImpl, flags icmodule.StateContextFlag) icmodule.StateContext {
 	return &stateContext{
 		WorldContext: wc,
 		State:        es.State,
 		br:           icmodule.Rate(-1),
 		eventLogger:  es,
+		flags:        flags,
 	}
+}
+
+func (sc *stateContext) Flags() icmodule.StateContextFlag {
+	return sc.flags
 }
 
 func (sc *stateContext) Revision() int {

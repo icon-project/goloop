@@ -51,6 +51,10 @@ type mockStateContext struct {
 	br              icmodule.Rate
 }
 
+func (m mockStateContext) Flags() icmodule.StateContextFlag {
+	return 0
+}
+
 func (m mockStateContext) BlockHeight() int64 {
 	return m.blockHeight
 }
