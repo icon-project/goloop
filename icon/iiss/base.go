@@ -422,7 +422,7 @@ func checkBaseV3JSON(jso map[string]interface{}) bool {
 	return true
 }
 
-func parseBaseV3JSON(bs []byte, raw bool) (transaction.Transaction, error) {
+func parseBaseV3JSON(bs []byte, jsm map[string]any, raw bool) (transaction.Transaction, error) {
 	tx := new(baseV3)
 	if err := json.Unmarshal(bs, &tx.baseV3Data); err != nil {
 		return nil, transaction.InvalidFormat.Wrap(err, "InvalidJSON")
