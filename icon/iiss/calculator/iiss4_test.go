@@ -206,17 +206,15 @@ func TestReward_NewReward(t *testing.T) {
 	r, err := NewIISS4Reward(tc)
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
-	rr := r.(*iiss4Reward)
-	assert.Nil(t, rr.g)
+	assert.Nil(t, r.g)
 
 	tc.AddGlobal(0)
 	tc.Build()
 	r, err = NewIISS4Reward(tc)
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
-	rr = r.(*iiss4Reward)
 	g, err := tc.GetGlobalFromBack()
-	assert.Equal(t, g, rr.g)
+	assert.Equal(t, g, r.g)
 }
 
 func TestReward(t *testing.T) {
@@ -290,14 +288,13 @@ func TestReward(t *testing.T) {
 	assert.NoError(t, err)
 
 	// loadPRepInfo()
-	rr := r.(*iiss4Reward)
-	err = rr.loadPRepInfo()
+	err = r.loadPRepInfo()
 	assert.NoError(t, err)
 
 	for _, a := range addrs {
 		t.Run(fmt.Sprintf("loadPRepInfo-voted-%s", a), func(t *testing.T) {
 			key := icutils.ToKey(a)
-			p := rr.pi.GetPRep(key)
+			p := r.pi.GetPRep(key)
 
 			v := voteds[key]
 			if v.IsEmpty() {
@@ -313,18 +310,18 @@ func TestReward(t *testing.T) {
 
 	// check sort
 	t.Run(fmt.Sprintf("loadPRepInfo-Sort"), func(t *testing.T) {
-		for i, p := range rr.pi.rank {
+		for i, p := range r.pi.rank {
 			assert.Equal(t, i, p.Rank())
 		}
 	})
 
 	// check initAccumulated
 	t.Run(fmt.Sprintf("loadPRepInfo-InitAccumulated"), func(t *testing.T) {
-		for k, p := range rr.pi.preps {
-			if p.Rank() <= rr.pi.ElectedPRepCount() {
-				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(rr.pi.GetTermPeriod()))
+		for k, p := range r.pi.preps {
+			if p.Rank() <= r.pi.ElectedPRepCount() {
+				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(r.pi.GetTermPeriod()))
 				assert.Equal(t, bonded, p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
-				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(rr.pi.GetTermPeriod()))
+				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(r.pi.GetTermPeriod()))
 				assert.Equal(t, voted, p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
 			} else {
 				assert.Equal(t, new(big.Int), p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
@@ -427,7 +424,7 @@ func TestReward(t *testing.T) {
 
 	tc.Build()
 
-	err = rr.processEvents()
+	err = r.processEvents()
 	assert.NoError(t, err)
 
 	sExpects := []struct {
@@ -444,7 +441,7 @@ func TestReward(t *testing.T) {
 	for _, e := range sExpects {
 		t.Run(fmt.Sprintf("processEvent-Status:%s", e.name), func(t *testing.T) {
 			key := icutils.ToKey(e.addr)
-			p := rr.pi.GetPRep(key)
+			p := r.pi.GetPRep(key)
 			assert.Equal(t, e.status, p.Status())
 		})
 	}
@@ -511,7 +508,7 @@ func TestReward(t *testing.T) {
 	}
 	for _, e := range vExpects {
 		t.Run(fmt.Sprintf("processEvent-Voting-%s", e.addr), func(t *testing.T) {
-			events := rr.ve.Get(e.addr)
+			events := r.ve.Get(e.addr)
 			assert.Equal(t, len(e.events), len(events))
 			for i := 0; i < len(events); i++ {
 				assert.True(t, e.events[i].Equal(events[i]))
@@ -520,12 +517,12 @@ func TestReward(t *testing.T) {
 	}
 
 	// UpdateVoteInfo()
-	err = rr.UpdateVoteInfo()
+	err = r.UpdateVoteInfo()
 	assert.NoError(t, err)
 	t.Run(fmt.Sprintf("UpdateVoteInfo-PrepInfo"), func(t *testing.T) {
 		for _, a := range addrs {
 			key := icutils.ToKey(a)
-			p := rr.pi.GetPRep(key)
+			p := r.pi.GetPRep(key)
 
 			voted, err := tc.GetVotedFromTemp(a)
 			assert.NoError(t, err)
@@ -566,12 +563,12 @@ func TestReward(t *testing.T) {
 	})
 
 	// processPrepReward()
-	err = rr.processPrepReward()
+	err = r.processPrepReward()
 	assert.NoError(t, err)
 
-	for _, p := range rr.pi.preps {
+	for _, p := range r.pi.preps {
 		t.Run(fmt.Sprintf("processPrepReward-%s", p.Owner()), func(t *testing.T) {
-			rewardable := p.Rank() <= rr.pi.ElectedPRepCount() && p.Status() == icmodule.ESEnable && p.AccumulatedPower().Sign() == 1
+			rewardable := p.Rank() <= r.pi.ElectedPRepCount() && p.Status() == icmodule.ESEnable && p.AccumulatedPower().Sign() == 1
 			if p.CommissionRate() == 0 {
 				assert.Equal(t, 0, p.Commission().Sign())
 			} else {
@@ -580,7 +577,7 @@ func TestReward(t *testing.T) {
 			assert.Equal(t, rewardable, p.VoterReward().Sign() == 1)
 			iScore, err := tc.GetIScoreFromTemp(p.Owner())
 			assert.NoError(t, err)
-			if rewardable && (p.CommissionRate() > 0 || p.Bonded().Cmp(rr.g.GetV3().MinBond()) >= 0) {
+			if rewardable && (p.CommissionRate() > 0 || p.Bonded().Cmp(r.g.GetV3().MinBond()) >= 0) {
 				assert.Equal(t, rewardable, iScore.Value().Sign() == 1)
 			} else {
 				assert.Nil(t, iScore)
@@ -596,7 +593,7 @@ func TestReward(t *testing.T) {
 		assert.NoError(t, err)
 		oldIScore[key] = iScore
 	}
-	err = rr.processVoterReward()
+	err = r.processVoterReward()
 	assert.NoError(t, err)
 	for _, a := range addrs {
 		t.Run(fmt.Sprintf("processVoterReward-%s", a), func(t *testing.T) {
@@ -604,7 +601,7 @@ func TestReward(t *testing.T) {
 			iScore, err := tc.GetIScoreFromTemp(a)
 			assert.NoError(t, err)
 
-			rewardable, err := tc.isVoterRewardable(a, rr.pi)
+			rewardable, err := tc.isVoterRewardable(a, r.pi)
 			assert.NoError(t, err)
 
 			ois := oldIScore[key]
