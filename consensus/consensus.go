@@ -57,6 +57,13 @@ const (
 	configCommitWALDataSize           = 1024 * 500
 	configRoundTimeoutThresholdFactor = 2
 	configBPMCacheSize                = 1 << 20 // 1MB
+	configBPMCacheLimit               = 3
+	configDSMLogSize                  = 1 << 20 // 1MB
+
+	// DSM is cached for the open range
+	// [cur+configDSMLogBegin, cur+configDSMLogEnd).
+	configDSMLogBegin = -9
+	configDSMLogEnd   = 10
 )
 
 type hrs struct {
@@ -88,6 +95,7 @@ type consensus struct {
 	srcUID         []byte
 	bpmCache       bpmCache
 	timeoutPropose time.Duration
+	dsmLog         dsmLog
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -162,6 +170,7 @@ func New(
 		bpp:            bpp,
 		srcUID:         module.GetSourceNetworkUID(c),
 		bpmCache:       makeBPMCache(configBPMCacheSize),
+		dsmLog:       makeDSMLog(configDSMLogSize),
 		lastVoteData:   lastVoteData,
 		timeoutPropose: tmoPropose,
 	}
@@ -302,7 +311,7 @@ func (cs *consensus) OnReceive(
 		return false, err
 	}
 	cs.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
-	if err = msg.Verify(); err != nil {
+	if err = msg.Verify(cs); err != nil {
 		cs.log.Warnf("consensus message verify failed: OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
@@ -333,7 +342,46 @@ func (cs *consensus) OnLeave(id module.PeerID) {
 	cs.log.Debugf("OnLeave(peer:%v)\n", common.HexPre(id.Bytes()))
 }
 
+func (cs *consensus) logAndCheckProposalMessage(msg *ProposalMessage) error {
+	var blk module.Block
+	var vl module.ValidatorList
+
+	inRange := cs.height+configDSMLogBegin <= msg.Height && msg.Height < cs.height+configDSMLogEnd
+	if !inRange {
+		return nil
+	}
+	if msg.Height <= cs.height {
+		var err error
+		blk, err = cs.c.BlockManager().GetBlockByHeight(msg.Height - 1)
+		if err != nil {
+			return err
+		}
+		vl = blk.NextValidators()
+	} else {
+		vl = cs.validators
+		cs.log.Debugf("use current validator list for proposal checking cs.height=%d msg.Height=%d", cs.height, msg.Height)
+	}
+
+	idx := vl.IndexOf(msg.address())
+	if idx < 0 {
+		return errors.Errorf("not a validator addr=%s height=%d", msg.address(), msg.Height)
+	}
+	dsd := cs.dsmLog.LogAndCheckProposalMessage(msg)
+	if dsd != nil {
+		if blk == nil {
+			return errors.Errorf("cannot report conflicting vote: no previous block cs.height=%d msg.Height=%d", cs.height, msg.Height)
+		}
+		err := cs.c.ServiceManager().SendDoubleSignReport(blk.Result(), blk.NextValidatorsHash(), dsd)
+		return err
+	}
+	return nil
+}
+
 func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) error {
+	err := cs.logAndCheckProposalMessage(msg)
+	if err != nil {
+		cs.log.Debugf("log or report failed: %+v", err)
+	}
 	if msg.Height != cs.height || msg.Round != cs.round || cs.step >= stepCommit {
 		return nil
 	}
@@ -368,9 +416,43 @@ func (cs *consensus) ReceiveProposalMessage(msg *ProposalMessage, unicast bool) 
 	return nil
 }
 
+func (cs *consensus) logAndCheckVoteMessage(msg *VoteMessage) error {
+	var blk module.Block
+	var vl module.ValidatorList
+
+	inRange := cs.height+configDSMLogBegin <= msg.Height && msg.Height < cs.height+configDSMLogEnd
+	if !inRange {
+		return nil
+	}
+	if msg.Height <= cs.height {
+		var err error
+		blk, err = cs.c.BlockManager().GetBlockByHeight(msg.Height - 1)
+		if err != nil {
+			return err
+		}
+		vl = blk.NextValidators()
+	} else {
+		vl = cs.validators
+		cs.log.Debugf("use current validator list for vote checking cs.height=%d msg.Height=%d", cs.height, msg.Height)
+	}
+
+	idx := vl.IndexOf(msg.address())
+	if idx < 0 {
+		return errors.Errorf("not a validator addr=%s height=%d", msg.address(), msg.Height)
+	}
+	dsd := cs.dsmLog.LogAndCheckVoteMessage(msg)
+	if dsd != nil {
+		if blk == nil {
+			return errors.Errorf("cannot report conflicting vote: no previous block cs.height=%d msg.Height=%d", cs.height, msg.Height)
+		}
+		err := cs.c.ServiceManager().SendDoubleSignReport(blk.Result(), blk.NextValidatorsHash(), dsd)
+		return err
+	}
+	return nil
+}
+
 func (cs *consensus) ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool) (int, error) {
-	const cacheLimit = 3
-	if cs.height <= msg.Height && msg.Height < cs.height+cacheLimit {
+	if cs.height <= msg.Height && msg.Height < cs.height+configBPMCacheLimit {
 		_ = cs.bpmCache.Put(msg)
 	}
 	if msg.Height != cs.height {
@@ -413,6 +495,11 @@ func (cs *consensus) ReceiveVoteMessage(msg *VoteMessage, unicast bool) (int, er
 		}
 	}
 
+	err := cs.logAndCheckVoteMessage(msg)
+	if err != nil {
+		cs.log.Debugf("log or report failed: %+v", err)
+	}
+
 	if msg.Height != cs.height {
 		return -1, nil
 	}
@@ -420,7 +507,7 @@ func (cs *consensus) ReceiveVoteMessage(msg *VoteMessage, unicast bool) (int, er
 	if index < 0 {
 		return -1, errors.Errorf("bad voter %v", msg.address())
 	}
-	err := msg.VerifyNTSDProofParts(cs.nextPCM, cs.srcUID, index)
+	err = msg.VerifyNTSDProofParts(cs.nextPCM, cs.srcUID, index)
 	if err != nil {
 		return -1, err
 	}
@@ -1008,6 +1095,14 @@ func (cs *consensus) enterNewHeight() {
 	}
 }
 
+func (cs *consensus) nidForCSMessage() uint32 {
+	rev := cs.c.ServiceManager().GetRevision(cs.lastBlock.Result())
+	if rev.Has(module.UseNIDInConsensusMessage) {
+		return uint32(cs.c.NID())
+	}
+	return 0
+}
+
 func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) {
 	err := cs.doSendProposal(blockParts, polRound)
 	if err != nil {
@@ -1021,6 +1116,7 @@ func (cs *consensus) doSendProposal(blockParts PartSet, polRound int32) error {
 	msg.Round = cs.round
 	msg.BlockPartSetID = blockParts.ID()
 	msg.POLRound = polRound
+	msg.NID = cs.nidForCSMessage()
 	err := msg.Sign(cs.c.Wallet())
 	if err != nil {
 		return err
@@ -1140,6 +1236,18 @@ func (cs *consensus) ntsVoteBaseAndDecisionProofParts(
 	return ntsVoteBases, ntsdProofParts, nil
 }
 
+// psidAppData encode appData for PartSetID. Format:
+//  NID(32) NTSVoteCount(16)
+func psidAppData(nid uint32, ntsVoteCount uint16) uint64 {
+	return uint64(nid)<<16 | uint64(ntsVoteCount)
+}
+
+func destructPSIDAppData(appData uint64) (nid uint32, ntsVoteCount uint16) {
+	nid = uint32(appData >> 16)
+	ntsVoteCount = uint16(appData)
+	return nid, ntsVoteCount
+}
+
 func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 	if cs.validators.IndexOf(cs.c.Wallet().Address()) < 0 {
 		return nil
@@ -1163,7 +1271,9 @@ func (cs *consensus) doSendVote(vt VoteType, blockParts *blockPartSet) error {
 				return err
 			}
 		}
-		msg.SetRoundDecision(blockParts.block.ID(), blockParts.ID().WithAppData(uint16(len(ntsVoteBases))), ntsVoteBases)
+		appData := psidAppData(cs.nidForCSMessage(), uint16(len(ntsVoteBases)))
+		msg.SetRoundDecision(blockParts.block.ID(), blockParts.ID().
+			WithAppData(appData), ntsVoteBases)
 		msg.NTSDProofParts = ntsdProofParts
 	} else {
 		msg.SetRoundDecision(cs.nid, nil, nil)
@@ -1276,7 +1386,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
-			if err = msg.Verify(); err != nil {
+			if err = msg.Verify(cs); err != nil {
 				return err
 			}
 			if !m.address().Equal(cs.c.Wallet().Address()) {
@@ -1291,7 +1401,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
-			if err = msg.Verify(); err != nil {
+			if err = msg.Verify(cs); err != nil {
 				return err
 			}
 			if !m.address().Equal(cs.c.Wallet().Address()) {
@@ -1319,7 +1429,7 @@ func (cs *consensus) applyRoundWAL() error {
 				if vmsg.height() != cs.height {
 					continue
 				}
-				if err = msg.Verify(); err != nil {
+				if err = msg.Verify(cs); err != nil {
 					return err
 				}
 				cs.log.Tracef("WAL: round vote %v\n", vmsg)
@@ -1397,7 +1507,7 @@ func (cs *consensus) applyLockWAL() error {
 				if vmsg.height() != cs.height {
 					continue
 				}
-				if err = msg.Verify(); err != nil {
+				if err = msg.Verify(cs); err != nil {
 					return err
 				}
 				cs.log.Tracef("WAL: round vote %v\n", vmsg)
@@ -1439,7 +1549,7 @@ func (cs *consensus) applyLockWAL() error {
 			if bpset == nil {
 				continue
 			}
-			if err = msg.Verify(); err != nil {
+			if err = msg.Verify(cs); err != nil {
 				return err
 			}
 			bp, err := NewPart(m.BlockPart)
@@ -1506,7 +1616,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 				vs := newVoteSet(prevValidators.Len())
 				for i := 0; i < m.VoteList.Len(); i++ {
 					msg := m.VoteList.Get(i)
-					if err = msg.Verify(); err != nil {
+					if err = msg.Verify(cs); err != nil {
 						return err
 					}
 					cs.log.Tracef("WAL: round vote %v\n", msg)
@@ -1523,7 +1633,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 			} else if m.VoteList.Get(0).height() == cs.height {
 				for i := 0; i < m.VoteList.Len(); i++ {
 					vmsg := m.VoteList.Get(i)
-					if err = msg.Verify(); err != nil {
+					if err = msg.Verify(cs); err != nil {
 						return err
 					}
 					cs.log.Tracef("WAL: round vote %v\n", vmsg)
@@ -2078,6 +2188,14 @@ func (cs *consensus) GetBlockProof(height int64, opt int32) ([]byte, error) {
 		return nil, err
 	}
 	return cvs.Bytes(), nil
+}
+
+func (cs *consensus) ValidNID(nid uint32) bool {
+	return nid == 0 || int(nid) == cs.c.NID()
+}
+
+func (cs *consensus) NID() int {
+	return cs.c.NID()
 }
 
 type WalMessageWriter struct {

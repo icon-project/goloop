@@ -35,7 +35,7 @@ public abstract class Array extends Object implements Cloneable, IArray {
      * @param perElementFee energy to be charged per element depending on type.
      */
     static protected void chargeEnergyInitArray(int length, int perElementFee) {
-        long cost = EnergyCalculator.multiply(length, perElementFee);
+        long cost = EnergyCalculator.multiply(Math.max(length, 0), perElementFee);
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 

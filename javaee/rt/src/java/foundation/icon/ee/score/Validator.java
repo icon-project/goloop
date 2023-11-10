@@ -42,7 +42,7 @@ public class Validator {
         throw new ValidationException(String.format(fmt, args));
     }
 
-    private static ValidationException fail(Exception cause, String fmt, Object... args) throws
+    private static ValidationException fail(Throwable cause, String fmt, Object... args) throws
             ValidationException {
         throw new ValidationException(String.format(fmt, args), cause);
     }
@@ -75,8 +75,8 @@ public class Validator {
             structDB = new StructDB(classMap);
             eeMethods = MethodUnpacker.readFrom(apisBytes);
         } catch (IOException e) {
-            throw fail ("bad APIS format");
-        } catch (RuntimeException e) {
+            throw fail("bad APIS format");
+        } catch (Throwable e) {
             throw fail(e, "malformed class file");
         }
         String cur = jar.mainClassName;

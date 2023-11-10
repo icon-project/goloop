@@ -41,9 +41,9 @@ const (
 )
 
 type PartSetIDAndAppData struct {
-	// CountWord: MSB AppData(16) Count(16)
+	// CountWord: MSB AppData(48) Count(16)
 	// Use bitfield not to break existing message protocol
-	CountWord uint32
+	CountWord uint64
 	Hash      []byte
 }
 
@@ -57,11 +57,11 @@ func (ida *PartSetIDAndAppData) ID() *PartSetID {
 	}
 }
 
-func (ida *PartSetIDAndAppData) AppData() uint16 {
+func (ida *PartSetIDAndAppData) AppData() uint64 {
 	if ida == nil {
 		return 0
 	}
-	return uint16(ida.CountWord >> countWidth)
+	return uint64(ida.CountWord >> countWidth)
 }
 
 type PartSetID struct {
@@ -69,12 +69,12 @@ type PartSetID struct {
 	Hash  []byte
 }
 
-func (id *PartSetID) WithAppData(appData uint16) *PartSetIDAndAppData {
+func (id *PartSetID) WithAppData(appData uint64) *PartSetIDAndAppData {
 	if id == nil {
 		return nil
 	}
 	return &PartSetIDAndAppData{
-		CountWord: uint32(appData)<<countWidth | uint32(id.Count),
+		CountWord: appData<<countWidth | uint64(id.Count),
 		Hash:      id.Hash,
 	}
 }
@@ -259,7 +259,7 @@ func NewPartSetFromID(h *PartSetID) PartSet {
 	return &partSet{
 		parts: make([]*part, h.Count),
 		tree:  trie_manager.NewImmutable(db.NewNullDB(), h.Hash),
-		ba: NewBitArray(int(h.Count)),
+		ba:    NewBitArray(int(h.Count)),
 	}
 }
 

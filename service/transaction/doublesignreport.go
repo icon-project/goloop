@@ -55,6 +55,7 @@ type doubleSignReportTxData struct {
 	Timestamp common.HexInt64   `json:"timestamp"`
 	DataType  string                     `json:"dataType"`
 	Data      *contract.DoubleSignReport `json:"data"`
+	NID       common.HexInt64 			 `json:"nid"`
 	Signature *common.Signature          `json:"signature,omitempty"`
 }
 
@@ -72,6 +73,8 @@ func (d *doubleSignReportTxData) serialize(buf *bytes.Buffer) {
 		buf.Write([]byte(".from."))
 		buf.Write([]byte(d.From.String()))
 	}
+	buf.Write([]byte(".nid."))
+	buf.Write([]byte(d.NID.String()))
 
 	buf.Write([]byte(".timestamp."))
 	buf.Write([]byte(d.Timestamp.String()))
@@ -127,7 +130,8 @@ func (tx *doubleSignReportTx) ToJSON(version module.JSONVersion) (interface{}, e
 	jso := map[string]interface{}{
 		"dataType": tx.data.DataType,
 		"data": tx.data.Data,
-		"txHash": tx.ID(),
+		"nid": tx.data.NID,
+		"txHash": common.HexBytes(tx.ID()),
 		"timestamp": tx.data.Timestamp,
 		"version": tx.data.Version,
 	}
@@ -139,7 +143,7 @@ func (tx *doubleSignReportTx) ToJSON(version module.JSONVersion) (interface{}, e
 }
 
 func (tx *doubleSignReportTx) ValidateNetwork(nid int) bool {
-	return true
+	return tx.data.NID.Value == int64(nid)
 }
 
 func (tx *doubleSignReportTx) decodeDoubleSignReport(wc state.WorldContext) ([]module.DoubleSignData, module.DoubleSignContext, error) {
@@ -161,6 +165,9 @@ func (tx *doubleSignReportTx) PreValidate(wc state.WorldContext, update bool) er
 	if data, dsc, err := tx.decodeDoubleSignReport(wc) ; err != nil {
 		return err
 	} else {
+		if !data[0].ValidateNetwork(int(tx.data.NID.Value)) || !data[1].ValidateNetwork(int(tx.data.NID.Value)) {
+			return InvalidFormat.New("NotBelongToCurrentNetwork")
+		}
 		if !data[0].IsConflictWith(data[1]) || dsc.AddressOf(data[0].Signer())==nil {
 			return InvalidFormat.New("InvalidDoubleSignReport")
 		}
@@ -193,12 +200,14 @@ func (tx *doubleSignReportTx) IsSkippable() bool {
 	return false
 }
 
-func NewDoubleSignReportTx(data []module.DoubleSignData, context module.DoubleSignContext, ts int64) Transaction {
+func NewDoubleSignReportTx(data []module.DoubleSignData, context module.DoubleSignContext, nid int, ts int64) Transaction {
 	tx := new(doubleSignReportTx)
-	tx.data.DataType = contract.DataTypeDSR
+	tx.data.Version.Value = Version3
+	tx.data.NID.Value = int64(nid)
 	tx.data.Timestamp.Value = ts
+	tx.data.DataType = contract.DataTypeDSR
 	tx.data.Data = contract.NewDoubleSignReport(data, context)
-	return tx
+	return Wrap(tx)
 }
 
 type dsrTxHandler struct {
@@ -208,10 +217,7 @@ type dsrTxHandler struct {
 }
 
 func (th *dsrTxHandler) Prepare(ctx contract.Context) (state.WorldContext, error) {
-	lq := []state.LockRequest{
-		{ state.WorldIDStr, state.AccountWriteLock },
-	}
-	return ctx.GetFuture(lq), nil
+	return th.handler.Prepare(ctx)
 }
 
 func (th *dsrTxHandler) Execute(ctx contract.Context, wcs state.WorldSnapshot, estimate bool) (txresult.Receipt, error) {

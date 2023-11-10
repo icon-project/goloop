@@ -21,6 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/icon/blockv0"
 )
@@ -30,4 +32,25 @@ func TestBlockVote_NewBlockVote(t *testing.T) {
 	bv := blockv0.NewBlockVote(w, 1, 0, []byte{0}, 0)
 	err := bv.Verify()
 	assert.NoError(t, err)
+}
+
+func FuzzNewBlockVotesFromBytes(f *testing.F) {
+	cases := [][]byte{
+		[]byte("\xc6\xc0\xc2\xc0\xc000"),
+		[]byte("\xc4\xc0\xc1\xc00"),
+		[]byte("\xce\xc0\xc4\u0081\xc0\xc000000000"),
+	}
+	for _, c := range cases {
+		f.Add(c)
+	}
+	f.Fuzz(func(t *testing.T, bs []byte) {
+		bvl, err := blockv0.NewBlockVotesFromBytes(bs)
+		if errors.Is(err, codec.ErrPanicInCustom) {
+			t.Errorf("panic in custom %+v", err)
+		}
+		if err == nil {
+			_, err := bvl.MarshalJSON()
+			assert.NoError(t, err)
+		}
+	})
 }

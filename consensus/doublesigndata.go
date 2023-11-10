@@ -25,6 +25,13 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+func matchNID(nid1, nid2 uint32) bool {
+	if nid1 == 0 || nid2 == 0 {
+		return true
+	}
+	return nid1 == nid2
+}
+
 type dsVote struct {
 	msg *VoteMessage
 }
@@ -45,6 +52,10 @@ func (v *dsVote) Signer() []byte {
 	return v.msg.address().ID()
 }
 
+func (v *dsVote) ValidateNetwork(nid int) bool {
+	return true
+}
+
 func (v *dsVote) IsConflictWith(other module.DoubleSignData) bool {
 	v2, ok := other.(*dsVote)
 	if !ok {
@@ -53,7 +64,11 @@ func (v *dsVote) IsConflictWith(other module.DoubleSignData) bool {
 	if v == nil || v2 == nil {
 		return false
 	}
-
+	nid1, _ := v.msg.NID()
+	nid2, _ := v.msg.NID()
+	if !matchNID(nid1, nid2) {
+		return false
+	}
 	if (v2.msg.Type != v.msg.Type) ||
 		v2.msg.Height != v.msg.Height ||
 		v2.msg.Round != v.msg.Round ||
@@ -89,6 +104,10 @@ func (d *dsProposal) Signer() []byte {
 	return d.msg.address().ID()
 }
 
+func (v *dsProposal) ValidateNetwork(nid int) bool {
+	return true
+}
+
 func (d *dsProposal) Bytes() []byte {
 	return codec.MustMarshalToBytes(d.msg)
 }
@@ -99,6 +118,9 @@ func (d *dsProposal) IsConflictWith(other module.DoubleSignData) bool {
 		return false
 	}
 	if d == nil || d2 == nil {
+		return false
+	}
+	if !matchNID(d.msg.NID, d2.msg.NID) {
 		return false
 	}
 	if d.msg.Height != d2.msg.Height ||
@@ -126,7 +148,7 @@ func DecodeDoubleSignData(t string, d []byte) (module.DoubleSignData, error) {
 		if err != nil {
 			return nil, errors.IllegalArgumentError.Wrapf(err, "InvalidVoteMessage")
 		}
-		if ds, err :=  newDoubleSignDataWithVoteMessage(msg); err != nil {
+		if ds, err := newDoubleSignDataWithVoteMessage(msg); err != nil {
 			return nil, errors.IllegalArgumentError.Wrapf(err, "InvalidVoteMessage")
 		} else {
 			return ds, nil
@@ -137,7 +159,7 @@ func DecodeDoubleSignData(t string, d []byte) (module.DoubleSignData, error) {
 		if err != nil {
 			return nil, errors.IllegalArgumentError.Wrapf(err, "InvalidVoteMessage")
 		}
-		if ds, err :=  newDoubleSignDataWithProposalMessage(msg); err != nil {
+		if ds, err := newDoubleSignDataWithProposalMessage(msg); err != nil {
 			return nil, errors.IllegalArgumentError.Wrapf(err, "InvalidVoteMessage")
 		} else {
 			return ds, nil

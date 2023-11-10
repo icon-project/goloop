@@ -338,7 +338,6 @@ func (tp *TransactionPool) dropTransactions(txs []*txElement) {
 
 func (tp *TransactionPool) FilterTransactions(bloom *TxBloom, max int) []module.Transaction {
 	txs := make([]module.Transaction, 0, max)
-	var invalids []*txElement
 
 	lock := common.Lock(&tp.mutex)
 	defer lock.Unlock()
@@ -360,13 +359,10 @@ func (tp *TransactionPool) FilterTransactions(bloom *TxBloom, max int) []module.
 		id := tx.ID()
 		if !bloom.Contains(id) {
 			if has, err := tp.tim.HasRecent(tx.Group(), id, tx.Timestamp()); err == nil && has {
-				e.err = errors.InvalidStateError.New("Already processed")
-				invalids = append(invalids, e)
 				continue
 			}
 			txs = append(txs, tx)
 		}
 	}
-	go tp.dropTransactions(invalids)
 	return txs
 }

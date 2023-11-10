@@ -368,6 +368,9 @@ type ServiceManager interface {
 	// GetNextBlockVersion returns version of next block
 	GetNextBlockVersion(result []byte) int
 
+	// GetRevision returns revision
+	GetRevision(result []byte) Revision
+
 	// BTPSectionFromResult returns BTPSection for the result
 	BTPSectionFromResult(result []byte) (BTPSection, error)
 

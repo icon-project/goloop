@@ -1137,6 +1137,11 @@ func (txInfo *transactionInfo) GetReceipt() (module.Receipt, error) {
 }
 
 func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) {
+	loc, err := m.getTransactionLocator(id)
+	if err != nil {
+		return nil, err
+	}
+
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -1144,7 +1149,7 @@ func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) 
 		return nil, errors.New("not running")
 	}
 
-	return m.getTransactionInfo(id)
+	return m.makeTransactionInfo(loc)
 }
 
 func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) {
@@ -1152,6 +1157,10 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	if err != nil {
 		return nil, err
 	}
+	return m.makeTransactionInfo(loc)
+}
+
+func (m *manager) makeTransactionInfo(loc *module.TransactionLocator) (module.TransactionInfo, error) {
 	block, err := m.getBlockByHeight(loc.BlockHeight)
 	if err != nil {
 		return nil, errors.InvalidStateError.Wrapf(err, "block h=%d not found", loc.BlockHeight)
@@ -1190,13 +1199,6 @@ func (m *manager) getTransactionLocator(id []byte) (*module.TransactionLocator, 
 }
 
 func (m *manager) SendTransactionAndWait(result []byte, height int64, txi interface{}) ([]byte, <-chan interface{}, error) {
-	m.syncer.begin()
-	defer m.syncer.end()
-
-	if !m.running {
-		return nil, nil, errors.New("not running")
-	}
-
 	id, rc, err := m.sm.SendTransactionAndWait(result, height, txi)
 	if err == nil {
 		return id, rc, nil
@@ -1206,24 +1208,30 @@ func (m *manager) SendTransactionAndWait(result []byte, height int64, txi interf
 		return nil, nil, err
 	}
 
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	if !m.running {
+		return nil, nil, errors.New("not running")
+	}
 	c, err := m.waitTransactionResult(id)
 	return id, c, err
 }
 
 func (m *manager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
-	m.syncer.begin()
-	defer m.syncer.end()
-
-	if !m.running {
-		return nil, errors.New("not running")
-	}
-
 	ch, err := m.sm.WaitTransactionResult(id)
 	if err == nil {
 		return ch, nil
 	}
 	if err != service.ErrCommittedTransaction {
 		return nil, err
+	}
+
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	if !m.running {
+		return nil, errors.New("not running")
 	}
 	return m.waitTransactionResult(id)
 }

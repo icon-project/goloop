@@ -28,45 +28,49 @@ var (
 
 type TransactionReactor struct {
 	nm         module.NetworkManager
-	membership module.ProtocolHandler
+	membership module.AsyncProtocolHandler
 	tm         *TransactionManager
 	log        log.Logger
 	ts         *TransactionShare
 }
 
+func (r *TransactionReactor) handleTransactionInBackground(buf []byte, peerId module.PeerID, propagate bool) (bool, error){
+	onResult, err := r.membership.HandleInBackground()
+	if err != network.ErrInProgress {
+		return false, err
+	}
+	go func() {
+		tx, err := transaction.NewTransaction(buf)
+		if err != nil {
+			r.log.Warnf("InvalidPacket from=%s", peerId.String())
+			r.log.Debugf("Failed to unmarshal transaction. buf=%x, err=%+v", buf, err)
+			onResult(false, err)
+			return
+		}
+
+		if err := r.tm.Add(tx, false, false); err != nil {
+			onResult(false, err)
+			return
+		}
+		if propagate {
+			if err := r.PropagateTransaction(tx); err != nil {
+				if !network.NotAvailableError.Equals(err) {
+					r.log.Debugf("Fail to propagate transaction err=%+v", err)
+				}
+			}
+		}
+		onResult(true, nil)
+		return
+	}()
+	return false, network.ErrInProgress
+}
+
 func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, peerId module.PeerID) (bool, error) {
 	switch subProtocol {
 	case protoPropagateTransaction:
-		tx, err := transaction.NewTransaction(buf)
-		if err != nil {
-			r.log.Warnf("InvalidPacket(PropagateTransaction) from=%s", peerId.String())
-			r.log.Debugf("Failed to unmarshal transaction. buf=%x, err=%+v", buf, err)
-			return false, err
-		}
-
-		if err := r.tm.Add(tx, false, false); err != nil {
-			return false, err
-		}
-		return true, nil
+		return r.handleTransactionInBackground(buf, peerId, false)
 	case protoResponseTransaction:
-		tx, err := transaction.NewTransaction(buf)
-		if err != nil {
-			r.log.Warnf("InvalidPacket(ResponseTransaction) from=%s", peerId.String())
-			r.log.Debugf("Failed to unmarshal transaction. buf=%x, err=%+v", buf, err)
-			return false, err
-		}
-
-		if err := r.tm.Add(tx, false, false); err != nil {
-			r.log.Debugf("Fail to add transaction id=%#x from=%s err=%+v",
-				tx.ID(), peerId.String(), err)
-			return false, err
-		}
-		if err := r.PropagateTransaction(tx); err != nil {
-			if !network.NotAvailableError.Equals(err) {
-				r.log.Debugf("Fail to propagate transaction err=%+v", err)
-			}
-		}
-		return false, nil
+		return r.handleTransactionInBackground(buf, peerId, true)
 	case protoRequestTransaction:
 		return r.ts.HandleRequestTransaction(buf, peerId)
 	}
@@ -89,7 +93,8 @@ func (r *TransactionReactor) OnLeave(id module.PeerID) {
 }
 
 func (r *TransactionReactor) Start(wallet module.Wallet) {
-	r.membership, _ = r.nm.RegisterReactor(ReactorName, module.ProtoTransaction, r, subProtocols, ReactorPriority, module.NotRegisteredProtocolPolicyClose)
+	ph, _ := r.nm.RegisterReactor(ReactorName, module.ProtoTransaction, r, subProtocols, ReactorPriority, module.NotRegisteredProtocolPolicyClose)
+	r.membership = ph.(module.AsyncProtocolHandler)
 	r.ts.Start(r.membership, wallet)
 	r.tm.SetPoolCapacityMonitor(r.ts)
 }

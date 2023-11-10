@@ -35,6 +35,8 @@ type Engine interface {
 	ReceiveBlockPartMessage(msg *BlockPartMessage, unicast bool) (int, error)
 	ReceiveVoteListMessage(msg *VoteListMessage, unicast bool) error
 	ReceiveBlock(br fastsync.BlockResult)
+
+	verifyContext
 }
 
 type Syncer interface {
@@ -315,7 +317,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 		return false, err
 	}
 	s.log.Debugf("OnReceive %v From:%v\n", msg, common.HexPre(id.Bytes()))
-	if err := msg.Verify(); err != nil {
+	if err := msg.Verify(s.engine); err != nil {
 		return false, err
 	}
 	var idx int

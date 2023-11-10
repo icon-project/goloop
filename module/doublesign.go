@@ -27,6 +27,7 @@ type DoubleSignData interface {
 	Height() int64
 	Signer() []byte
 	Bytes() []byte
+	ValidateNetwork(nid int) bool
 	IsConflictWith(other DoubleSignData) bool
 }
 
@@ -34,6 +35,11 @@ type DoubleSignContext interface {
 	AddressOf(signer []byte) Address
 	Hash() []byte
 	Bytes() []byte
+}
+
+type DoubleSignContextRoot interface {
+	Hash() []byte
+	ContextOf(tn string) (DoubleSignContext, error)
 }
 
 type DoubleSignDataDecoder func (t string, d []byte) (DoubleSignData, error)

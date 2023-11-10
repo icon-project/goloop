@@ -66,7 +66,7 @@ func (vl *VoteList) Get(i int) *VoteMessage {
 	return msg
 }
 
-func (vl *VoteList) Verify() error {
+func (vl *VoteList) Verify(ctx verifyContext) error {
 	for i := range vl.VoteItems {
 		pi := int(vl.VoteItems[i].PrototypeIndex)
 		if pi < 0 || pi >= len(vl.Prototypes) {
@@ -75,7 +75,7 @@ func (vl *VoteList) Verify() error {
 	}
 	for i := 0; i < vl.Len(); i++ {
 		v := vl.Get(i)
-		if err := v.Verify(); err != nil {
+		if err := v.Verify(ctx); err != nil {
 			return err
 		}
 	}

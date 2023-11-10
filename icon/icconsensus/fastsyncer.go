@@ -65,8 +65,8 @@ func newFastSyncer(
 		parent: parent,
 		bpp:    bpp,
 		log:    l,
-		r1:     consensusReactor{l},
-		r2:     consensusReactor{l},
+		r1:     consensusReactor{l, c.NID()},
+		r2:     consensusReactor{l, c.NID()},
 	}
 	return f
 }
@@ -238,6 +238,15 @@ func (f *fastSyncer) GetBTPBlockHeaderAndProof(blk module.Block, nid int64, flag
 
 type consensusReactor struct {
 	log log.Logger
+	nid int
+}
+
+func (r *consensusReactor) ValidNID(nid uint32) bool {
+	return r.nid == int(nid)
+}
+
+func (r *consensusReactor) NID() int {
+	return r.nid
 }
 
 func (r *consensusReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
@@ -247,7 +256,7 @@ func (r *consensusReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module
 		return false, err
 	}
 	r.log.Debugf("OnReceive(msg:%v, from:%v)\n", msg, common.HexPre(id.Bytes()))
-	if err = msg.Verify(); err != nil {
+	if err = msg.Verify(r); err != nil {
 		r.log.Warnf("consensus message verify failed: OnReceive(msg:%v, from:%v): %+v\n", msg, common.HexPre(id.Bytes()), err)
 		return false, err
 	}
