@@ -88,12 +88,16 @@ func (ci *CommissionInfo) ToJSON(jso map[string]interface{}) map[string]interfac
 
 func NewCommissionInfo(rate, maxRate, maxChangeRate icmodule.Rate) (*CommissionInfo, error) {
 	if !(rate.IsValid() && maxRate.IsValid() && maxChangeRate.IsValid()) {
-		return nil, scoreresult.InvalidParameterError.Errorf(
+		return nil, icmodule.IllegalArgumentError.Errorf(
 			"InvalidCommissionInfo(rate=%d,maxRate=%d,maxChangeRate=%d)", rate, maxRate, maxChangeRate)
 	}
 	if rate > maxRate || maxChangeRate > maxRate {
 		return nil, icmodule.IllegalArgumentError.Errorf(
 			"IllegalCommissionInfo(rate=%d,maxRate=%d,maxChangeRate=%d)", rate, maxRate, maxChangeRate)
+	}
+	if rate < maxRate && maxChangeRate == 0 {
+		return nil, icmodule.IllegalArgumentError.Errorf(
+			"InvalidMaxChangeRate(rate=%d,maxRate=%d,maxChangeRate=%d)", rate, maxRate, maxChangeRate)
 	}
 	return &CommissionInfo{
 		rate:          rate,
