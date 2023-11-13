@@ -19,6 +19,7 @@ public interface IExternalState {
 
     long REVISION_PURGE_ENUM_CACHE = 1 << 22;
     long REVISION_FIX_MAP_VALUES = 1 << 24;
+    long REVISION_FIX_JCL_STEPS = 1 << 26;
 
     /**
      *  Returns code ID
@@ -204,5 +205,9 @@ public interface IExternalState {
 
     default boolean fixMapValues() {
         return (getRevision() & REVISION_FIX_MAP_VALUES) != 0;
+    }
+
+    default boolean fixJCLSteps() {
+        return (getRevision() & REVISION_FIX_JCL_STEPS) != 0;
     }
 }

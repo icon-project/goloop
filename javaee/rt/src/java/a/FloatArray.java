@@ -43,7 +43,8 @@ public class FloatArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.FloatArray_avm_clone, length()));
+        EnergyCalculator.chargeEnergyClone(RuntimeMethodFeeSchedule.FloatArray_avm_clone,
+                length(), ArrayElement.FLOAT.getEnergy());
         lazyLoad();
         return new FloatArray(Arrays.copyOf(underlying, underlying.length));
     }
@@ -59,7 +60,7 @@ public class FloatArray extends Array {
     //========================================================
 
     public FloatArray(int c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.FloatArray_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.FloatArray_avm_constructor);
         this.underlying = new float[c];
     }
 

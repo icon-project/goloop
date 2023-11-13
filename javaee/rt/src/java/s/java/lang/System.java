@@ -20,7 +20,7 @@ public final class System extends Object{
                                      IObject dest, int destPos,
                                      int length)
     {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.System_avm_arraycopy, java.lang.Math.max(length, 0)));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.System_avm_arraycopy, java.lang.Math.max(length, 0));
         if(src == null || dest == null){
             throw new NullPointerException();
         } else if (!((src instanceof Array) && (dest instanceof Array))){

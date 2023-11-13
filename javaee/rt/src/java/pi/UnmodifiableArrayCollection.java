@@ -23,12 +23,12 @@ public class UnmodifiableArrayCollection<E extends IObject>
     }
 
     public boolean avm_contains(IObject o) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_contains, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_contains, data.length);
         return indexOf(o) >= 0;
     }
 
     public IObjectArray avm_toArray() {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_toArray, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayCollection_toArray, data.length);
         return ObjectArray.newWithCharge(data.clone());
     }
 

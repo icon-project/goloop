@@ -38,7 +38,7 @@ public class UnmodifiableArraySet<E extends IObject>
     }
 
     public int avm_hashCode() {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArraySet_hashCode, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArraySet_hashCode, data.length);
         int h = 0;
         for (var e : data) {
             if (e != null) {
