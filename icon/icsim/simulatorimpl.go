@@ -55,7 +55,7 @@ func (m mockStateContext) BlockHeight() int64 {
 	return m.blockHeight
 }
 
-func (m mockStateContext) Revision() int {
+func (m mockStateContext) RevisionValue() int {
 	return m.revision
 }
 

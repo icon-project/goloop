@@ -770,7 +770,7 @@ func (ps *PRepStatusState) onTermEnd(sc icmodule.StateContext, newGrade Grade, l
 	} else {
 		ps.grade = newGrade
 	}
-	if sc.Revision() == icmodule.RevisionResetPenaltyMask {
+	if sc.RevisionValue() == icmodule.RevisionResetPenaltyMask {
 		ps.vPenaltyMask = 0
 	}
 	ps.setDirty()
@@ -819,7 +819,7 @@ func (ps *PRepStatusState) DisableAs(status Status) (Grade, error) {
 
 func (ps *PRepStatusState) GetStatsInJSON(sc icmodule.StateContext) map[string]interface{} {
 	jso := ps.prepStatusData.GetStatsInJSON(sc.BlockHeight())
-	if sc.Revision() >= icmodule.RevisionUpdatePRepStats {
+	if sc.RevisionValue() >= icmodule.RevisionUpdatePRepStats {
 		jso["address"] = ps.owner
 	}
 	return jso

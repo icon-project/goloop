@@ -83,7 +83,7 @@ func (p *PRep) IsElectable(sc icmodule.StateContext) bool {
 		return false
 	}
 
-	rev := sc.Revision()
+	rev := sc.RevisionValue()
 	if rev >= icmodule.RevisionBTP2 {
 		if !p.HasPubKey(sc.GetActiveDSAMask()) {
 			return false
@@ -187,7 +187,7 @@ func (p *prepSetImpl) ToPRepSnapshots(br icmodule.Rate) PRepSnapshots {
 // PRepCount parameters are the metrics in configuration file
 // Ex) mainPRepCount(22), subPRepCount(78), extraMainPRepCount(3)
 func (p *prepSetImpl) init(sc icmodule.StateContext, cfg PRepCountConfig) {
-	rev := sc.Revision()
+	rev := sc.RevisionValue()
 	if rev < icmodule.RevisionBTP2 {
 		p.sortBeforeRevBTP2(sc, cfg)
 	} else {
@@ -244,7 +244,7 @@ func (p *prepSetImpl) sortBeforeRevBTP2(sc icmodule.StateContext, cfg PRepCountC
 	electedPRepCount := icutils.Min(size, cfg.ElectedPReps())
 	extraMainPRepCount := icutils.Min(cfg.ExtraMainPReps(), electedPRepCount-mainPRepCount)
 
-	if sc.Revision() < icmodule.RevisionExtraMainPReps || extraMainPRepCount <= 0 {
+	if sc.RevisionValue() < icmodule.RevisionExtraMainPReps || extraMainPRepCount <= 0 {
 		// No need to find extraMainPReps
 		p.classifyPReps(mainPRepCount, electedPRepCount)
 		return
@@ -405,7 +405,7 @@ func lessByLRU(sc icmodule.StateContext, p0, p1 *PRep) bool {
 // SortByPower sorts given preps to classify active PReps into 3 grades; main, sub, candidate
 func SortByPower(sc icmodule.StateContext, preps []*PRep) {
 	var cmp func(i, j *PRep, dsaMask int64) int
-	if sc.Revision() >= icmodule.RevisionBTP2 {
+	if sc.RevisionValue() >= icmodule.RevisionBTP2 {
 		cmp = cmpByValidatorElectable
 	}
 	// Priority: hasPubKey, JailInfoElectable, high power, high delegated, high address

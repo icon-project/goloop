@@ -991,7 +991,7 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 	sc icmodule.StateContext, preps icstate.PRepSet, totalSupply *big.Int) error {
 
 	// Create a new term
-	revision := sc.Revision()
+	revision := sc.RevisionValue()
 	nextTerm := icstate.NewNextTerm(es.State, totalSupply, revision)
 
 	// Valid preps means that decentralization is activated
@@ -1162,7 +1162,7 @@ type scForGetPRepTerm struct {
 }
 
 func (sc *scForGetPRepTerm) GetActiveDSAMask() int64 {
-	if sc.Revision() < icmodule.RevisionIISS4R0 {
+	if sc.RevisionValue() < icmodule.RevisionIISS4R0 {
 		return 0
 	}
 	return sc.StateContext.GetActiveDSAMask()
@@ -1984,7 +1984,7 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 	}
 	EmitPenaltyImposedEvent(cc, ps, pt)
 
-	rate, err := es.State.GetSlashingRate(sc.Revision(), pt)
+	rate, err := es.State.GetSlashingRate(sc.RevisionValue(), pt)
 	if err != nil {
 		return err
 	}

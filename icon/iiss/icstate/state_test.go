@@ -43,7 +43,7 @@ func (m *mockStateContext) BlockHeight() int64 {
 	return m.blockHeight
 }
 
-func (m *mockStateContext) Revision() int {
+func (m *mockStateContext) RevisionValue() int {
 	return m.revision
 }
 
@@ -564,8 +564,8 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 			assert.Equal(t, GradeSub, ps.Grade())
 
 			termRev := sc.TermRevision()
-			if sc.Revision() < termRev {
-				termRev = sc.Revision()
+			if sc.RevisionValue() < termRev {
+				termRev = sc.RevisionValue()
 			}
 
 			sc.IncreaseBlockHeightBy(1)

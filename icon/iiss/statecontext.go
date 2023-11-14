@@ -41,7 +41,7 @@ func NewStateContext(wc icmodule.WorldContext, es *ExtensionStateImpl) icmodule.
 	}
 }
 
-func (sc *stateContext) Revision() int {
+func (sc *stateContext) RevisionValue() int {
 	return sc.WorldContext.Revision().Value()
 }
 
