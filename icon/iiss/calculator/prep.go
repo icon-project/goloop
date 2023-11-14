@@ -379,14 +379,16 @@ func (p *PRepInfo) ApplyVote(vType VoteType, votes icstage.VoteList, offset int)
 
 // UpdateAccumulatedPower update accumulatedPower of elected PRep and totalAccumulatedPower of PRepInfo.
 func (p *PRepInfo) UpdateAccumulatedPower() {
+	totalAccumulatedPower := new(big.Int)
 	for i, prep := range p.rank {
 		if i >= p.electedPRepCount {
 			break
 		}
 		power := prep.UpdateAccumulatedPower(p.bondRequirement)
-		p.totalAccumulatedPower = new(big.Int).Add(p.totalAccumulatedPower, power)
-		p.log.Debugf("[%d] totalAccumulatedPower %d = old + %d by %s", i, p.totalAccumulatedPower, power, prep.owner)
+		totalAccumulatedPower.Add(totalAccumulatedPower, power)
+		p.log.Debugf("[%d] totalAccumulatedPower %d = old + %d by %s", i, totalAccumulatedPower, power, prep.owner)
 	}
+	p.totalAccumulatedPower = totalAccumulatedPower
 }
 
 func fundToPeriodIScore(reward *big.Int, period int64) *big.Int {
@@ -400,8 +402,8 @@ func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) 
 	tReward := fundToPeriodIScore(totalReward, p.GetTermPeriod())
 	minWage := fundToPeriodIScore(totalMinWage, p.GetTermPeriod())
 	p.log.Debugf("RewardFund: PRep: %d, wage: %d", tReward, minWage)
-	minWage.Div(minWage, big.NewInt(int64(p.electedPRepCount)))
-	p.log.Debugf("wage to a prep: %d", minWage)
+	minWagePerPRep := new(big.Int).Div(minWage, big.NewInt(int64(p.electedPRepCount)))
+	p.log.Debugf("wage to a prep: %d", minWagePerPRep)
 	p.log.Debugf("TotalAccumulatedPower: %d", p.totalAccumulatedPower)
 	for i, prep := range p.rank {
 		if i >= p.electedPRepCount {
@@ -410,7 +412,7 @@ func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) 
 		if !prep.IsRewardable(p.electedPRepCount) {
 			continue
 		}
-		prep.CalculateReward(tReward, p.totalAccumulatedPower, minBond, minWage)
+		prep.CalculateReward(tReward, p.totalAccumulatedPower, minBond, minWagePerPRep)
 
 		p.log.Debugf("rank#%d: %+v", i, prep)
 	}
@@ -431,7 +433,7 @@ func (p *PRepInfo) UpdateVoted(writer RewardWriter) error {
 func NewPRepInfo(bondRequirement icmodule.Rate, electedPRepCount, offsetLimit int, logger log.Logger) *PRepInfo {
 	return &PRepInfo{
 		preps:                 make(map[string]*PRep),
-		totalAccumulatedPower: new(big.Int),
+		totalAccumulatedPower: icmodule.BigIntZero,
 		electedPRepCount:      electedPRepCount,
 		bondRequirement:       bondRequirement,
 		offsetLimit:           offsetLimit,

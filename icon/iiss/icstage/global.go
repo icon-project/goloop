@@ -597,6 +597,9 @@ func NewGlobalV3(
 	iissVersion int, startHeight int64, revision int, offsetLimit, electedPRepCount int,
 	bondRequirement icmodule.Rate, rFund *icstate.RewardFund, minBond *big.Int,
 ) *GlobalV3 {
+	if minBond == nil {
+		minBond = icmodule.BigIntZero
+	}
 	g := &GlobalV3{
 		globalBase: globalBase{
 			iissVersion:      iissVersion,

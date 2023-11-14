@@ -169,7 +169,7 @@ func (v *Voter) applyVoting(voting icstate.Voting, period *big.Int) {
 	key := icutils.ToKey(voting.To())
 	amount := new(big.Int).Mul(voting.Amount(), period)
 	if value, ok := v.accumulatedVotes[key]; ok {
-		value.Add(value, amount)
+		v.accumulatedVotes[key] = new(big.Int).Add(value, amount)
 	} else {
 		v.accumulatedVotes[key] = amount
 	}

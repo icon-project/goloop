@@ -47,13 +47,11 @@ func (s *Stats) Voting() *big.Int {
 }
 
 func (s *Stats) IncreaseReward(t RewardType, amount *big.Int) {
-	n := new(big.Int)
 	if v, ok := s.value[t]; ok {
-		n.Add(v, amount)
+		s.value[t] = new(big.Int).Add(v, amount)
 	} else {
-		n.Set(amount)
+		s.value[t] = amount
 	}
-	s.value[t] = n
 }
 
 func (s *Stats) Total() *big.Int {

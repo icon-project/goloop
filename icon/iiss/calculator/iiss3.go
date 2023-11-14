@@ -706,7 +706,7 @@ func (r *iiss3Reward) processVotingEvent(
 			// update Bonding or Delegating
 			votes := events[to]
 			if err = voting.ApplyVotes(votes); err != nil {
-				errors.Wrapf(err, "Failed to apply vote of %s, offset=%d, votes=%+v", addr, to, votes)
+				err = errors.Wrapf(err, "Failed to apply vote of %s, offset=%d, votes=%+v", addr, to, votes)
 				return err
 			}
 

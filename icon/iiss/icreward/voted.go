@@ -119,7 +119,7 @@ func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
 		v.bondedDelegation = new(big.Int)
 		_, err = decoder.DecodeMulti(&v.status, &v.delegated, &v.bonded, &v.commissionRate)
 	default:
-		return errors.IllegalArgumentError.Errorf("illegal Voted version %d", v.version)
+		return errors.IllegalArgumentError.Errorf("Illegal Voted version %d", v.version)
 	}
 	return err
 }
@@ -131,7 +131,7 @@ func (v *Voted) RLPEncodeFields(encoder codec.Encoder) error {
 	case VotedVersion2:
 		return encoder.EncodeMulti(v.status, v.delegated, v.bonded, v.commissionRate)
 	default:
-		return errors.IllegalArgumentError.Errorf("illegal Voted version %d", v.version)
+		return errors.IllegalArgumentError.Errorf("Illegal Voted version %d", v.version)
 	}
 }
 

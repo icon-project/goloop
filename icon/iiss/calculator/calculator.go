@@ -179,7 +179,7 @@ func (c *calculator) run() (ret error) {
 			return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
 		}
 	default:
-		return icmodule.CalculationFailedError.New("invalid IISS version")
+		return icmodule.CalculationFailedError.New("Invalid IISS version")
 	}
 	if err = r.Calculate(); err != nil {
 		return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
