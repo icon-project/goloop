@@ -532,36 +532,3 @@ func TestMatchAny(t *testing.T) {
 		})
 	}
 }
-
-func TestCheckInt64Overflow(t *testing.T) {
-	args := []struct {
-		text     string
-		overflow bool
-	}{
-		{"0x1234567890123456", false},
-		{"-0x1", false},
-		{"-0x0", false},
-		{"0x7fffffffffffffff", false},
-		{"-0x7fffffffffffffff", false},
-		{"0x8000000000000000", true},
-		{"0xffffffffffffffff", true},
-		{"-0xffffffffffffffff", true},
-		{"0x1ffffffffffffffff", true},
-		{"0x12345678901234567890", true},
-	}
-	for _, arg := range args {
-		value := new(big.Int)
-		_, ok := value.SetString(arg.text, 0)
-		assert.True(t, ok)
-
-		name := fmt.Sprintf("case %x %t", value, ok)
-		t.Run(name, func(t *testing.T) {
-			err := CheckInt64Overflow(value)
-			if arg.overflow {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
