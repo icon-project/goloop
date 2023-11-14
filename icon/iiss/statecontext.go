@@ -46,7 +46,7 @@ func (sc *stateContext) RevisionValue() int {
 }
 
 // TermRevision returns revision stored in TermSnapshot
-func (sc *stateContext) TermRevision() int {
+func (sc *stateContext) TermRevisionValue() int {
 	if term := sc.getTermSnapshot(); term != nil {
 		return term.Revision()
 	}

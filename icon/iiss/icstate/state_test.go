@@ -51,7 +51,7 @@ func (m *mockStateContext) SetRevision(revision int) {
 	m.revision = revision
 }
 
-func (m *mockStateContext) TermRevision() int {
+func (m *mockStateContext) TermRevisionValue() int {
 	return m.termRevision
 }
 
@@ -563,7 +563,7 @@ func TestState_OnMainPRepReplaced(t *testing.T) {
 			ps = state.GetPRepStatusByOwner(owners[1], false)
 			assert.Equal(t, GradeSub, ps.Grade())
 
-			termRev := sc.TermRevision()
+			termRev := sc.TermRevisionValue()
 			if sc.RevisionValue() < termRev {
 				termRev = sc.RevisionValue()
 			}

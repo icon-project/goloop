@@ -59,7 +59,7 @@ func (m mockStateContext) RevisionValue() int {
 	return m.revision
 }
 
-func (m mockStateContext) TermRevision() int {
+func (m mockStateContext) TermRevisionValue() int {
 	return m.termRevision
 }
 

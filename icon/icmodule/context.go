@@ -44,7 +44,7 @@ type CallContext interface {
 type StateContext interface {
 	BlockHeight() int64
 	RevisionValue() int
-	TermRevision() int
+	TermRevisionValue() int
 	TermIISSVersion() int
 	GetActiveDSAMask() int64
 	GetBondRequirement() Rate
