@@ -926,13 +926,10 @@ func (s *chainScore) Ex_setMinimumBond(nBond *big.Int) error {
 		return scoreresult.InvalidParameterError.New("NegativeMinimumBond")
 	}
 	oBond := es.State.GetMinimumBond()
-	if oBond == nil {
-		return icmodule.NotFoundError.New("MinimumBondNotFound")
-	}
 	if oBond.Cmp(nBond) == 0 {
 		return nil
 	}
-	if err = es.State.SetMinimumBond(new(big.Int).Set(nBond)); err != nil {
+	if err = es.State.SetMinimumBond(nBond); err != nil {
 		return scoreresult.InvalidParameterError.Wrapf(
 			err,
 			"Failed to set minimum bond: bond=%d",
