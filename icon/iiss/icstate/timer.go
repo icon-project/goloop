@@ -37,8 +37,6 @@ var networkScoreTimerDictPrefix = containerdb.ToKey(
 	containerdb.HashBuilder, scoredb.DictDBPrefix, "timer_network",
 )
 
-type addresses []*common.Address
-
 const timerVersion = iota + 1
 
 const (

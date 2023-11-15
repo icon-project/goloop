@@ -1444,7 +1444,7 @@ func (es *ExtensionStateImpl) GetIScore(from module.Address, revision int, txID 
 		// replay ICON1's queryIScore behavior
 		if revision < icmodule.RevisionFixClaimIScore && i == 0 && len(txID) != 0 {
 			if claimed, ok := es.claimed[icutils.ToKey(from)]; ok {
-				if bytes.Compare(claimed.ID(), txID) == 0 {
+				if bytes.Equal(claimed.ID(), txID) {
 					// Subtract claimed amount only when claimIScore and queryIScore are in the same TX
 					// Reverted claimIScore works the same
 					iScore.Sub(iScore, claimed.Amount())

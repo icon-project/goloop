@@ -43,8 +43,6 @@ func (c *PRepBaseCache) Get(owner module.Address, createIfNotExist bool) *PRepBa
 		if createIfNotExist {
 			base = NewPRepBaseState()
 			c.bases[key] = base
-		} else {
-			// return nil
 		}
 	} else {
 		ps := ToPRepBase(o.Object())
@@ -126,8 +124,6 @@ func (c *PRepStatusCache) Get(owner module.Address, createIfNotExist bool) *PRep
 		if createIfNotExist {
 			status = NewPRepStatus(owner)
 			c.statuses[key] = status
-		} else {
-			// return nil
 		}
 	} else {
 		snapshot := ToPRepStatus(o.Object())

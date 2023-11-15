@@ -30,6 +30,7 @@ func NodeFinalizeMerkle(n* test.Node) *hexary.MerkleHeader {
 	temp, err := n.Chain.Database().GetBucket("temp")
 	assert.NoError(t, err)
 	mkl, err := n.Chain.Database().GetBucket(icdb.BlockMerkle)
+	assert.NoError(t, err)
 	ac, err := hexary.NewAccumulator(mkl, temp, "")
 	for i:=int64(0); i<=n.LastBlock.Height(); i++ {
 		blk , err := n.BM.GetBlockByHeight(i)

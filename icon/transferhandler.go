@@ -85,7 +85,7 @@ func (h *TransferHandler) DoExecuteSync(cc contract.CallContext) (err error, ro 
 	as2.SetBalance(new(big.Int).Add(bal2, h.Value))
 
 	if h.From.IsContract() && h.Value.Sign() > 0 {
-		indexed := make([][]byte, 4, 4)
+		indexed := make([][]byte, 4)
 		indexed[0] = []byte(txresult.EventLogICXTransfer)
 		indexed[1] = h.From.Bytes()
 		indexed[2] = h.To.Bytes()

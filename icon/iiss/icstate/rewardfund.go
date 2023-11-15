@@ -67,10 +67,10 @@ type RFundKey string
 
 const (
 	KeyIprep  RFundKey = "iprep"
-	KeyIwage           = "iwage"
-	KeyIcps            = "icps"
-	KeyIrelay          = "irelay"
-	KeyIvoter          = "ivoter"
+	KeyIwage  RFundKey = "iwage"
+	KeyIcps   RFundKey = "icps"
+	KeyIrelay RFundKey = "irelay"
+	KeyIvoter RFundKey = "ivoter"
 )
 
 var rFundKeys = map[int][]RFundKey{

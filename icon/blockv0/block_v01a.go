@@ -77,7 +77,7 @@ func (b *BlockV01aJSON) CalcHash() []byte {
 }
 
 func (b *BlockV01a) Verify(prev Block) error {
-	if hash := b.CalcHash(); bytes.Compare(hash, b.BlockHash) != 0 {
+	if hash := b.CalcHash(); !bytes.Equal(hash, b.BlockHash) {
 		return errors.CriticalFormatError.Errorf(
 			"IncorrectID(exp=%#x,calc=%#x", b.BlockHash, hash)
 	}
@@ -108,7 +108,7 @@ func (b *BlockV01a) Verify(prev Block) error {
 
 	transactionList := transaction.NewTransactionListV1FromSlice(b.txs)
 	mrh := transactionList.Hash()
-	if bytes.Compare(b.MerkleTreeRootHash, mrh) != 0 {
+	if !bytes.Equal(b.MerkleTreeRootHash, mrh) {
 		return errors.CriticalFormatError.Errorf(
 			"InvalidTransactionMerkleRoot(exp=%#x,calc=%#x)",
 			[]byte(b.MerkleTreeRootHash), mrh)

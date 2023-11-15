@@ -147,7 +147,7 @@ func TestValidatorsState_Set(t *testing.T) {
 	assert.False(t, vs.IsDirty())
 
 	for i := 0; i < size; i++ {
-		node := vs.Get(i).(module.Address)
+		node := vs.Get(i)
 		assert.NotNil(t, node)
 		vs.Set(bh, i, nextPssIdx, node)
 		assert.False(t, vs.IsDirty())
@@ -155,12 +155,12 @@ func TestValidatorsState_Set(t *testing.T) {
 
 	for i := 0; i < size; i++ {
 		newNode := newDummyAddress(999 + i)
-		oldNode := vs.Get(i).(module.Address)
+		oldNode := vs.Get(i)
 		assert.False(t, oldNode.Equal(newNode))
 
 		vs.Set(bh, i, -1, newNode)
 		assert.True(t, vs.IsDirty())
-		assert.True(t, vs.Get(i).(module.Address).Equal(newNode))
+		assert.True(t, vs.Get(i).Equal(newNode))
 
 		vss2 := vs.GetSnapshot()
 		assert.True(t, vss2.IsUpdated(bh))

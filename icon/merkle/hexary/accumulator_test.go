@@ -119,6 +119,7 @@ func TestAccumulator_Finalize(t *testing.T) {
 		assert.Equal(t, merkleUpTo(i+1), hd.RootHash, "at %d", i)
 		assert.EqualValues(t, i+1, hd.Leaves)
 		hd2, err := hac.Finalize()
+		assert.NoError(t, err)
 		assert.Equal(t, hd, hd2)
 		hd3 := hac.GetMerkleHeader()
 		assert.Equal(t, hd, hd3)

@@ -483,6 +483,7 @@ func TestExtensionStateImpl_SetCommissionRate(t *testing.T) {
 
 		pb = es.State.GetPRepBaseByOwner(owner, false)
 		cr, err = es.Front.GetCommissionRate(owner)
+		assert.NoError(t, err)
 		if cr != nil {
 			rateInFront = cr.Value()
 		}
@@ -562,6 +563,7 @@ func TestExtensionStateImpl_SetSlashingRates(t *testing.T) {
 			if !arg.success {
 				assert.Error(t, err)
 				jso, err = es.GetSlashingRates(cc)
+				assert.NoError(t, err)
 				assert.Equal(t, oldRates, jso)
 				return
 			}

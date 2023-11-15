@@ -429,7 +429,7 @@ func (s *chainScore) Ex_claimIScore() error {
 		return err
 	}
 	cc := s.newCallContext(s.cc)
-	if bytes.Compare(cc.TransactionID(), skippedClaimTX) == 0 {
+	if bytes.Equal(cc.TransactionID(), skippedClaimTX) {
 		// Skip this TX like ICON1 mainnet.
 		iiss.EmitIScoreClaimEvent(cc, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
@@ -869,6 +869,9 @@ func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
 	rates := make(map[string]icmodule.Rate)
 	for _, v := range values {
 		pair, ok := v.(map[string]interface{})
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidElementType")
+		}
 		name, ok := pair["name"].(string)
 		if !ok {
 			return scoreresult.InvalidParameterError.New("InvalidNameType")
@@ -1016,6 +1019,9 @@ func (s *chainScore) Ex_setPRepCountConfig(values []interface{}) error {
 	counts := make(map[string]int64)
 	for _, v := range values {
 		pair, ok := v.(map[string]interface{})
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidElementType")
+		}
 		name, ok := pair["name"].(string)
 		if !ok {
 			return scoreresult.InvalidParameterError.New("InvalidNameType")

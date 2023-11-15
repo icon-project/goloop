@@ -89,10 +89,6 @@ func (s *chainScore) Ex_enableScore(address module.Address) error {
 	return nil
 }
 
-func (s *chainScore) fromGovernance() bool {
-	return s.cc.Governance().Equal(s.from)
-}
-
 func (s *chainScore) blockAccounts() {
 	for target, _ := range icmodule.BlockedAccount {
 		addr := common.MustNewAddressFromString(target)
