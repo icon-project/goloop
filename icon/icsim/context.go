@@ -216,6 +216,10 @@ func (ctx *worldContext) GetActiveDSAMask() int64 {
 	return 0
 }
 
+func (ctx *worldContext) Governance() module.Address {
+	return common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
+}
+
 func NewWorldContext(
 	ws state.WorldState, blockHeight int64, revision module.Revision,
 	csi module.ConsensusInfo, stepPrice *big.Int,
@@ -284,10 +288,6 @@ func (ctx *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
 
 func (ctx *callContext) CallOnTimer(to module.Address, params []byte) error {
 	return nil
-}
-
-func (ctx *callContext) Governance() module.Address {
-	return ctx.Governance()
 }
 
 func (ctx *callContext) FrameLogger() *trace.Logger {
