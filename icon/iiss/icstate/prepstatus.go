@@ -328,11 +328,11 @@ func (ps *prepStatusData) getPenaltyTypeV1() icmodule.PenaltyType {
 	if ps.status == Disqualified {
 		return icmodule.PenaltyPRepDisqualification
 	}
-	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleSign) {
+	if icutils.ContainsAll(ps.ji.Flags(), JFlagDoubleSign) {
 		return icmodule.PenaltyDoubleSign
 	}
 	if (ps.vPenaltyMask & 1) != 0 {
-		if icutils.MatchAll(ps.ji.Flags(), JFlagAccumulatedValidationFailure) {
+		if icutils.ContainsAll(ps.ji.Flags(), JFlagAccumulatedValidationFailure) {
 			return icmodule.PenaltyAccumulatedValidationFailure
 		}
 		return icmodule.PenaltyValidationFailure
@@ -456,7 +456,7 @@ func (ps *prepStatusData) IsDoubleSignReportable(sc icmodule.StateContext, dsBlo
 	if !ps.IsActive() {
 		return false
 	}
-	if icutils.MatchAll(ps.ji.Flags(), JFlagDoubleSign) {
+	if icutils.ContainsAll(ps.ji.Flags(), JFlagDoubleSign) {
 		// Already in Jail due to DoubleSignReport
 		return false
 	}

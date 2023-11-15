@@ -28,11 +28,11 @@ func (ji *JailInfo) Flags() int {
 }
 
 func (ji *JailInfo) IsInJail() bool {
-	return icutils.MatchAll(ji.flags, JFlagInJail)
+	return icutils.ContainsAll(ji.flags, JFlagInJail)
 }
 
 func (ji *JailInfo) IsUnjailing() bool {
-	return icutils.MatchAll(ji.flags, JFlagUnjailing)
+	return icutils.ContainsAll(ji.flags, JFlagUnjailing)
 }
 
 func (ji *JailInfo) IsUnjailable() bool {
@@ -113,11 +113,11 @@ func (ji *JailInfo) OnMainPRepIn(sc icmodule.StateContext) error {
 	if sc.TermIISSVersion() < IISSVersion4 {
 		return nil
 	}
-	if icutils.MatchAll(ji.flags, JFlagInJail) {
-		if !icutils.MatchAll(ji.flags, JFlagUnjailing) {
+	if icutils.ContainsAll(ji.flags, JFlagInJail) {
+		if !icutils.ContainsAll(ji.flags, JFlagUnjailing) {
 			return icmodule.InvalidStateError.Errorf("InvalidJailFlags(%d)", ji.flags)
 		}
-		if icutils.MatchAll(ji.flags, JFlagDoubleSign) {
+		if icutils.ContainsAll(ji.flags, JFlagDoubleSign) {
 			ji.minDoubleSignHeight = sc.BlockHeight()
 		}
 		ji.flags = 0

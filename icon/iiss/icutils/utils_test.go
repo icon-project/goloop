@@ -504,7 +504,7 @@ func TestMatchAll(t *testing.T) {
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, arg.success, MatchAll(arg.flags, arg.flag))
+			assert.Equal(t, arg.success, ContainsAll(arg.flags, arg.flag))
 		})
 	}
 }
@@ -528,7 +528,7 @@ func TestMatchAny(t *testing.T) {
 	for i, arg := range args {
 		name := fmt.Sprintf("name-%02d", i)
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, arg.success, MatchAny(arg.flags, arg.flag))
+			assert.Equal(t, arg.success, ContainsAny(arg.flags, arg.flag))
 		})
 	}
 }

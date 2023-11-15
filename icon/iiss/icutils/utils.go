@@ -255,10 +255,10 @@ func CalcPower(br icmodule.Rate, bonded, voted *big.Int) *big.Int {
 	return MinBigInt(power, voted)
 }
 
-func MatchAll(flags, flag int) bool {
+func ContainsAll(flags, flag int) bool {
 	return flags&flag == flag
 }
 
-func MatchAny(flags, flag int) bool {
+func ContainsAny(flags, flag int) bool {
 	return flags&flag != 0
 }
