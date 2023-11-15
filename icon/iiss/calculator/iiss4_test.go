@@ -320,12 +320,9 @@ func TestReward(t *testing.T) {
 	t.Run("loadPRepInfo-InitAccumulated", func(t *testing.T) {
 		for k, p := range r.pi.preps {
 			if p.Rank() <= r.pi.ElectedPRepCount() {
-				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(r.pi.GetTermPeriod()))
-				assert.Equal(t, bonded, p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
 				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(r.pi.GetTermPeriod()))
 				assert.Equal(t, voted, p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
 			} else {
-				assert.Equal(t, new(big.Int), p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
 				assert.Equal(t, new(big.Int), p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
 			}
 		}
@@ -567,9 +564,9 @@ func TestReward(t *testing.T) {
 	err = r.processPrepReward()
 	assert.NoError(t, err)
 
-	for _, p := range r.pi.preps {
+	for _, p := range r.pi.rank {
 		t.Run(fmt.Sprintf("processPrepReward-%s", p.Owner()), func(t *testing.T) {
-			rewardable := p.Rank() <= r.pi.ElectedPRepCount() && p.Status() == icmodule.ESEnable && p.AccumulatedPower().Sign() == 1
+			rewardable := p.IsRewardable(r.pi.ElectedPRepCount())
 			if p.CommissionRate() == 0 {
 				assert.Equal(t, 0, p.Commission().Sign())
 			} else {

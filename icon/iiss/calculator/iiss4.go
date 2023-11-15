@@ -141,7 +141,7 @@ func (r *iiss4Reward) processEvents() error {
 			ve.AddEvent(vType, obj.From(), obj.Votes(), keyOffset)
 		}
 	}
-	r.pi.UpdateAccumulatedPower()
+	r.pi.UpdateTotalAccumulatedPower()
 	r.ve = ve
 
 	return r.UpdateVoteInfo()

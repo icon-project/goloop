@@ -41,7 +41,8 @@ type prep struct {
 }
 
 func newTestPRep(p prep) *PRep {
-	return NewPRep(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
+	tp := NewPRep(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
+	return tp
 }
 
 func TestPRep_InitAccumulated(t *testing.T) {
@@ -50,18 +51,21 @@ func TestPRep_InitAccumulated(t *testing.T) {
 	delegate := int64(50)
 
 	type want struct {
-		accBonded, accVoted int64
+		accBonded, accVoted, accPower int64
 	}
 	tests := []struct {
 		name       string
 		termPeriod int64
+		br         int
 		want       want
 	}{
 		{
 			"Init",
 			100,
+			500,
 			want{
 				bond * 100,
+				(bond + delegate) * 100,
 				(bond + delegate) * 100,
 			},
 		},
@@ -69,11 +73,12 @@ func TestPRep_InitAccumulated(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := newTestPRep(prep{a1, icmodule.ESEnable, bond, delegate, true, 0})
+			p.power = p.calcPower(icmodule.Rate(tt.br))
 
 			p.InitAccumulated(tt.termPeriod)
 
-			assert.Equal(t, tt.want.accBonded, p.AccumulatedBonded().Int64())
 			assert.Equal(t, tt.want.accVoted, p.AccumulatedVoted().Int64())
+			assert.Equal(t, tt.want.accPower, p.AccumulatedPower().Int64())
 		})
 	}
 }
@@ -84,13 +89,14 @@ func TestPRep_ApplyVote(t *testing.T) {
 	delegate := int64(0)
 
 	type want struct {
-		bonded, delegated, accBonded, accVoted int64
+		bonded, delegated, accVoted, accPower int64
 	}
 	tests := []struct {
 		name   string
 		vType  VoteType
 		amount int64
 		period int
+		br     int
 		want   want
 	}{
 		{
@@ -98,11 +104,12 @@ func TestPRep_ApplyVote(t *testing.T) {
 			vtBond,
 			20,
 			200,
+			100,
 			want{
 				bond + 20,
 				delegate,
 				20 * 200,
-				20 * 200,
+				(bond + 20 + delegate) * 200,
 			},
 		},
 		{
@@ -110,11 +117,12 @@ func TestPRep_ApplyVote(t *testing.T) {
 			vtDelegate,
 			20,
 			200,
+			500,
 			want{
 				bond,
 				delegate + 20,
-				0,
 				20 * 200,
+				(bond + delegate + 20) * 200,
 			},
 		},
 	}
@@ -122,12 +130,12 @@ func TestPRep_ApplyVote(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := newTestPRep(prep{a1, icmodule.ESEnable, bond, delegate, true, 0})
 
-			p.ApplyVote(tt.vType, big.NewInt(tt.amount), tt.period)
+			p.ApplyVote(tt.vType, big.NewInt(tt.amount), tt.period, icmodule.Rate(tt.br))
 
 			assert.Equal(t, tt.want.bonded, p.Bonded().Int64())
 			assert.Equal(t, tt.want.delegated, p.Delegated().Int64())
-			assert.Equal(t, tt.want.accBonded, p.AccumulatedBonded().Int64())
 			assert.Equal(t, tt.want.accVoted, p.AccumulatedVoted().Int64())
+			assert.Equal(t, tt.want.accPower, p.AccumulatedPower().Int64())
 		})
 	}
 }
@@ -254,12 +262,9 @@ func TestPRepInfo(t *testing.T) {
 	for i, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
 		if p.rank < pInfo.ElectedPRepCount() && p.IsElectable() {
-			accBonded := new(big.Int).Mul(p.Bonded(), big.NewInt(pInfo.GetTermPeriod()))
 			accVoted := new(big.Int).Mul(new(big.Int).Add(p.Bonded(), p.Delegated()), big.NewInt(pInfo.GetTermPeriod()))
-			assert.Equal(t, accBonded, p.AccumulatedBonded(), i)
 			assert.Equal(t, accVoted, p.AccumulatedVoted(), i)
 		} else {
-			assert.Equal(t, 0, p.AccumulatedBonded().Sign())
 			assert.Equal(t, 0, p.AccumulatedVoted().Sign())
 		}
 	}
@@ -307,7 +312,7 @@ func TestPRepInfo(t *testing.T) {
 			k := icutils.ToKey(v.To())
 			p := pInfo.GetPRep(k)
 			if p == nil {
-				continue
+				prev[k] = NewPRep(v.To(), icmodule.ESDisablePermanent, new(big.Int), new(big.Int), 0, false)
 			} else {
 				prev[k] = p.Clone()
 			}
@@ -326,16 +331,14 @@ func TestPRepInfo(t *testing.T) {
 			if vote.vType == vtBond {
 				e := new(big.Int).Add(prev[k].Bonded(), v.Amount())
 				assert.Equal(t, e, p.Bonded())
-				e = new(big.Int).Add(prev[k].AccumulatedBonded(), accuAmount)
-				assert.Equal(t, e, p.AccumulatedBonded())
-				e = new(big.Int).Add(prev[k].AccumulatedVoted(), accuAmount)
-				assert.Equal(t, e, p.AccumulatedVoted())
 			} else if vote.vType == vtDelegate {
 				e := new(big.Int).Add(prev[k].Delegated(), v.Amount())
 				assert.Equal(t, e, p.Delegated())
-				e = new(big.Int).Add(prev[k].AccumulatedVoted(), accuAmount)
-				assert.Equal(t, e, p.AccumulatedVoted())
 			}
+			assert.Equal(t, new(big.Int).Add(prev[k].AccumulatedVoted(), accuAmount), p.AccumulatedVoted())
+			powerDiff := new(big.Int).Sub(p.Power(), prev[k].Power())
+			accumPower := new(big.Int).Mul(powerDiff, period)
+			assert.Equal(t, new(big.Int).Add(prev[k].AccumulatedPower(), accumPower), p.AccumulatedPower())
 		}
 	}
 
@@ -357,18 +360,16 @@ func TestPRepInfo(t *testing.T) {
 			bigZero := new(big.Int)
 			assert.Equal(t, bigZero, p.Bonded())
 			assert.Equal(t, bigZero, p.Delegated())
-			assert.Equal(t, bigZero, p.Power())
+			assert.Equal(t, bigZero, p.power)
 			assert.False(t, p.Pubkey())
 		}
 	}
 
-	pInfo.UpdateAccumulatedPower()
+	pInfo.UpdateTotalAccumulatedPower()
 	totalPower := new(big.Int)
 	for _, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
 		if p.rank < pInfo.ElectedPRepCount() {
-			power := icutils.CalcPower(pInfo.BondRequirement(), p.AccumulatedBonded(), p.AccumulatedVoted())
-			assert.Equal(t, power, p.AccumulatedPower())
 			totalPower.Add(totalPower, p.AccumulatedPower())
 		}
 	}
