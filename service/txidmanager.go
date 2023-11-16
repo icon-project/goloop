@@ -78,7 +78,7 @@ func (mg *txIDManager) CheckTXForAdd(tx transaction.Transaction) error {
 	if has, err := mg.lm.Has(txg, id, ts) ; err != nil {
 		return err
 	} else if has {
-		return CommittedTransactionError.Errorf("AlreadyCommitted(id=%#x)", id)
+		return ErrCommittedTransaction
 	}
 	return nil
 }

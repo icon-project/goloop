@@ -49,6 +49,7 @@ func TestSimulatorImpl_SetPRepCountConfig(t *testing.T) {
 
 	// T(0)
 	jso, err := sim.GetPRepCountConfig()
+	assert.NoError(t, err)
 	assert.Equal(t, cfg.MainPRepCount, jso["main"].(int64))
 	assert.Equal(t, cfg.SubPRepCount, jso["sub"].(int64))
 	assert.Equal(t, cfg.ExtraMainPRepCount, jso["extra"].(int64))
@@ -67,6 +68,7 @@ func TestSimulatorImpl_SetPRepCountConfig(t *testing.T) {
 
 	// T(1)
 	jso, err = sim.GetPRepCountConfig()
+	assert.NoError(t, err)
 	assert.Equal(t, newMainPRepCount, jso["main"].(int64))
 	assert.Equal(t, newSubPRepCount, jso["sub"].(int64))
 	assert.Equal(t, newExtraMainPRepCount, jso["extra"].(int64))

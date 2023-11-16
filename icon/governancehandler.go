@@ -33,8 +33,6 @@ import (
 
 type governanceHandler struct {
 	ch    contract.ContractHandler
-	ctype int
-	call  *contract.DataCallJSON
 	log   *trace.Logger
 }
 

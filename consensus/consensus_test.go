@@ -1347,3 +1347,62 @@ func TestConsensus_BPMBuffer2(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 	}
 }
+
+type serviceManager struct {
+	module.ServiceManager
+	OnSendDoubleSignReport func(result []byte, vh []byte, data []module.DoubleSignData) error
+}
+
+func wrapServiceManager(sm module.ServiceManager) *serviceManager {
+	return &serviceManager{
+		ServiceManager: sm,
+	}
+}
+
+func (sm *serviceManager) SendDoubleSignReport(result []byte, vh []byte, data []module.DoubleSignData) error {
+	return sm.OnSendDoubleSignReport(result, vh, data)
+}
+
+func useWrappedSM(t *testing.T) test.FixtureOption {
+	return test.UseSMFactory(func(ctx *test.NodeContext) module.ServiceManager {
+		defCf := test.NewFixtureConfig(t)
+		sm := defCf.NewSM(ctx)
+		return wrapServiceManager(sm)
+	})
+}
+
+func TestConsensus_DSR(t *testing.T) {
+	assert := assert.New(t)
+	f := test.NewFixture(
+		t, test.AddDefaultNode(false), test.AddValidatorNodes(4),
+		useWrappedSM(t),
+	)
+	defer f.Close()
+
+	var reported bool
+	f.SM.(*serviceManager).OnSendDoubleSignReport = func(result []byte, vh []byte, data []module.DoubleSignData) error {
+		reported = true
+		return nil
+	}
+
+	blk := f.Nodes[1].ProposeBlock(consensus.NewEmptyCommitVoteList())
+	pmBytes, bpmBytes, bps := f.Nodes[1].ProposalBytesFor(blk, 0)
+
+	peer := peerID(make([]byte, 4))
+	cs, ok := f.CS.(ConsensusInternal)
+	assert.True(ok)
+	assert.NoError(cs.Start())
+
+	_, _ = cs.OnReceive(consensus.ProtoProposal, pmBytes, peer)
+	_, _ = cs.OnReceive(consensus.ProtoBlockPart, bpmBytes, peer)
+
+	pc1 := f.Nodes[1].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	pc2 := f.Nodes[2].VoteFor(consensus.VoteTypePrecommit, blk, bps.ID(), 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc2), peer)
+	assert.False(reported)
+
+	pc1 = f.Nodes[1].NilVoteFor(consensus.VoteTypePrecommit, blk, 0)
+	_, _ = cs.OnReceive(consensus.ProtoVote, codec.MustMarshalToBytes(pc1), peer)
+	assert.True(reported)
+}

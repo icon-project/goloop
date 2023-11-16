@@ -50,8 +50,7 @@ var (
 )
 
 type State struct {
-	validatorToIdx map[string]int
-	store          *icobject.ObjectStoreState
+	store *icobject.ObjectStoreState
 }
 
 func (s *State) GetSnapshot() *Snapshot {

@@ -80,3 +80,7 @@ func UseBMFactory(f func(ctx *NodeContext) module.BlockManager) FixtureOption {
 func SetTimeoutPropose(to time.Duration) FixtureOption {
 	return UseConfig(&FixtureConfig{TimeoutPropose: to})
 }
+
+func UseSMFactory(f func(ctx *NodeContext) module.ServiceManager) FixtureOption {
+	return UseConfig(&FixtureConfig{NewSM: f})
+}

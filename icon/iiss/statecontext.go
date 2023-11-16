@@ -41,12 +41,12 @@ func NewStateContext(wc icmodule.WorldContext, es *ExtensionStateImpl) icmodule.
 	}
 }
 
-func (sc *stateContext) Revision() int {
+func (sc *stateContext) RevisionValue() int {
 	return sc.WorldContext.Revision().Value()
 }
 
 // TermRevision returns revision stored in TermSnapshot
-func (sc *stateContext) TermRevision() int {
+func (sc *stateContext) TermRevisionValue() int {
 	if term := sc.getTermSnapshot(); term != nil {
 		return term.Revision()
 	}

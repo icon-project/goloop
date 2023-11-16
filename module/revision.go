@@ -38,6 +38,8 @@ const (
 	FixMapValues
 	ReportDoubleSign
 	LastRevisionBit
+
+	UseNIDInConsensusMessage = ReportDoubleSign
 )
 
 const (

@@ -27,6 +27,7 @@ type WorldContext interface {
 	SetScoreOwner(from module.Address, score module.Address, owner module.Address) error
 	GetBTPContext() state.BTPContext
 	GetActiveDSAMask() int64
+	Governance() module.Address
 }
 
 type CallContext interface {
@@ -36,15 +37,14 @@ type CallContext interface {
 	SumOfStepUsed() *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	CallOnTimer(to module.Address, params []byte) error
-	Governance() module.Address
 	FrameLogger() *trace.Logger
 	TransactionInfo() *state.TransactionInfo
 }
 
 type StateContext interface {
 	BlockHeight() int64
-	Revision() int
-	TermRevision() int
+	RevisionValue() int
+	TermRevisionValue() int
 	TermIISSVersion() int
 	GetActiveDSAMask() int64
 	GetBondRequirement() Rate

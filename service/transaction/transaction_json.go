@@ -51,11 +51,15 @@ func calcHashOfTransactionJSON(bs []byte, version int) ([]byte, error) {
 	if err = json.Unmarshal(bs, &data); err != nil {
 		return nil, err
 	}
+	return calcHashOfTransactionJSMap(data, version)
+}
+
+func calcHashOfTransactionJSMap(data map[string]any, version int) ([]byte, error) {
 	fields, ok := transactionFields[version]
 	if !ok {
 		return nil, errors.IllegalArgumentError.Errorf("InvalidVersion(version=%d)", version)
 	}
-	bs, err = SerializeMap(data, fields.inclusion, fields.exclusion)
+	bs, err := SerializeMap(data, fields.inclusion, fields.exclusion)
 	if err != nil {
 		return nil, InvalidFormat.Wrapf(err, "Serialize FAILs(%s)", string(bs))
 	}

@@ -59,8 +59,7 @@ func (bvd *blockVotersData) equal(other *blockVotersData) bool {
 }
 
 func (bvd *blockVotersData) IndexOf(owner module.Address) int {
-	addr := owner.(module.Address)
-	if i, ok := bvd.voterMap[icutils.ToKey(addr)]; !ok {
+	if i, ok := bvd.voterMap[icutils.ToKey(owner)]; !ok {
 		return -1
 	} else {
 		return i

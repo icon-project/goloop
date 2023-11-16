@@ -70,7 +70,7 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 	// Check the status of prep0
 	prep = sim.GetPRep(prep0)
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
-	assert.True(t, icutils.MatchAll(prep.JailFlags(), icstate.JFlagInJail|icstate.JFlagDoubleSign))
+	assert.True(t, icutils.ContainsAll(prep.JailFlags(), icstate.JFlagInJail|icstate.JFlagDoubleSign))
 	assert.Zero(t, prep.MinDoubleSignHeight())
 	// Check the status of prep0Sub(prep25)
 	prep = sim.GetPRep(prep0Sub)
@@ -97,7 +97,7 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
 	prep = sim.GetPRep(prep0)
-	assert.True(t, icutils.MatchAll(
+	assert.True(t, icutils.ContainsAll(
 		prep.JailFlags(), icstate.JFlagUnjailing|icstate.JFlagDoubleSign|icstate.JFlagInJail))
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 	assert.True(t, prep.IsJailInfoElectable())
@@ -180,7 +180,7 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	// Check the status of prep0
 	prep = sim.GetPRep(prep0)
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
-	assert.True(t, icutils.MatchAll(prep.JailFlags(), icstate.JFlagInJail|icstate.JFlagDoubleSign))
+	assert.True(t, icutils.ContainsAll(prep.JailFlags(), icstate.JFlagInJail|icstate.JFlagDoubleSign))
 	assert.Zero(t, prep.MinDoubleSignHeight())
 	// Check the status of prep0Sub(prep25)
 	prep = sim.GetPRep(prep0Sub)

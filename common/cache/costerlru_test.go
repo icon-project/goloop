@@ -28,37 +28,45 @@ func (v value) Cost() int {
 	return int(v)
 }
 
-func assertGetEqual[K comparable, V Coster](t assert.TestingT, exp1 V, exp2 bool, sc *CosterLRU[K, V], key K) {
+type getter[K comparable, V Coster] interface {
+	Get(K) (val V, ok bool)
+}
+
+func assertGetEqualGeneric[K comparable, V Coster](t assert.TestingT, exp1 V, exp2 bool, sc getter[K, V], key K) {
 	val, ok := sc.Get(key)
 	assert.Equal(t, exp1, val)
 	assert.Equal(t, exp2, ok)
 }
 
+func assertGetEqual(t assert.TestingT, exp1 value, exp2 bool, sc getter[string, value], key string) {
+	assertGetEqualGeneric[string, value](t, exp1, exp2, sc, key)
+}
+
 func TestCosterLRU_Basics(t *testing.T) {
 	c := NewCosterLRU[string, value](10)
 
-	assertGetEqual(t, 0, false, c, "k0")
+	assertGetEqual(t, value(0), false, c, "k0")
 
 	c.Put("k0", 3)
-	assertGetEqual(t, 3, true, c, "k0")
+	assertGetEqual(t, value(3), true, c, "k0")
 
 	c.Put("k1", 4)
-	assertGetEqual(t, 3, true, c, "k0")
-	assertGetEqual(t, 4, true, c, "k1")
+	assertGetEqual(t, value(3), true, c, "k0")
+	assertGetEqual(t, value(4), true, c, "k1")
 
 	c.Put("k2", 5)
-	assertGetEqual(t, 0, false, c, "k0")
-	assertGetEqual(t, 4, true, c, "k1")
-	assertGetEqual(t, 5, true, c, "k2")
+	assertGetEqual(t, value(0), false, c, "k0")
+	assertGetEqual(t, value(4), true, c, "k1")
+	assertGetEqual(t, value(5), true, c, "k2")
 }
 
 func TestCosterLRU_RejectTooHeavyValue(t *testing.T) {
 	c := NewCosterLRU[string, value](10)
 	c.Put("k0", 11)
-	assertGetEqual(t, 0, false, c, "k0")
+	assertGetEqual(t, value(0), false, c, "k0")
 
 	c.Put("k0", 10)
-	assertGetEqual(t, 10, true, c, "k0")
+	assertGetEqual(t, value(10), true, c, "k0")
 }
 
 func TestCosterLRU_Update(t *testing.T) {
@@ -67,28 +75,28 @@ func TestCosterLRU_Update(t *testing.T) {
 	c.Put("k0", 3)
 	c.Put("k1", 3)
 	c.Put("k2", 3)
-	assertGetEqual(t, 3, true, c, "k0")
-	assertGetEqual(t, 3, true, c, "k1")
-	assertGetEqual(t, 3, true, c, "k2")
+	assertGetEqual(t, value(3), true, c, "k0")
+	assertGetEqual(t, value(3), true, c, "k1")
+	assertGetEqual(t, value(3), true, c, "k2")
 
 	c.Put("k2", 4)
-	assertGetEqual(t, 3, true, c, "k0")
-	assertGetEqual(t, 3, true, c, "k1")
-	assertGetEqual(t, 4, true, c, "k2")
+	assertGetEqual(t, value(3), true, c, "k0")
+	assertGetEqual(t, value(3), true, c, "k1")
+	assertGetEqual(t, value(4), true, c, "k2")
 
 	c.Put("k2", 5)
-	assertGetEqual(t, 0, false, c, "k0")
-	assertGetEqual(t, 3, true, c, "k1")
-	assertGetEqual(t, 5, true, c, "k2")
+	assertGetEqual(t, value(0), false, c, "k0")
+	assertGetEqual(t, value(3), true, c, "k1")
+	assertGetEqual(t, value(5), true, c, "k2")
 
 	c.Put("k0", 11)
-	assertGetEqual(t, 0, false, c, "k0")
-	assertGetEqual(t, 3, true, c, "k1")
-	assertGetEqual(t, 5, true, c, "k2")
+	assertGetEqual(t, value(0), false, c, "k0")
+	assertGetEqual(t, value(3), true, c, "k1")
+	assertGetEqual(t, value(5), true, c, "k2")
 }
 
 func TestMakeCosterLRU(t *testing.T) {
 	c := MakeCosterLRU[string, value](10)
 	c.Put("k0", 3)
-	assertGetEqual(t, 3, true, &c, "k0")
+	assertGetEqual(t, value(3), true, &c, "k0")
 }

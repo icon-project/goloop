@@ -141,6 +141,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	voted[0] = false
 	csi = NewConsensusInfo(sim.Database(), vl, voted)
 	err = sim.Go(csi, 2)
+	assert.NoError(t, err)
 
 	// T(2)
 	blockHeight = sim.BlockHeight()

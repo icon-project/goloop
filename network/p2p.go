@@ -21,7 +21,7 @@ const (
 const (
 	DefaultTransportNet         = "tcp4"
 	DefaultDialTimeout          = 5 * time.Second
-	DefaultReceiveQueueSize     = 1000
+	DefaultReceiveQueueSize     = 4096
 	DefaultPacketBufferSize     = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPayloadMax     = 1024 * 1024
 	DefaultPacketPoolNumBucket  = 20

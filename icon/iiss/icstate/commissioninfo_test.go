@@ -47,6 +47,8 @@ func TestNewCommissionInfo(t *testing.T) {
 		{2000, 10001, 100, false},
 		{0, 10000, 10001, false},
 		{5000, 4000, 10001, false},
+		{0, 10000, 0, false},
+		{500, 500, 0, true},
 	}
 	for i, arg := range args {
 		name := fmt.Sprintf("test-%02d", i)

@@ -214,6 +214,7 @@ func TestReward_NewReward(t *testing.T) {
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
 	g, err := tc.GetGlobalFromBack()
+	assert.NoError(t, err)
 	assert.Equal(t, g, r.g)
 }
 
@@ -309,14 +310,14 @@ func TestReward(t *testing.T) {
 	}
 
 	// check sort
-	t.Run(fmt.Sprintf("loadPRepInfo-Sort"), func(t *testing.T) {
+	t.Run("loadPRepInfo-Sort", func(t *testing.T) {
 		for i, p := range r.pi.rank {
 			assert.Equal(t, i, p.Rank())
 		}
 	})
 
 	// check initAccumulated
-	t.Run(fmt.Sprintf("loadPRepInfo-InitAccumulated"), func(t *testing.T) {
+	t.Run("loadPRepInfo-InitAccumulated", func(t *testing.T) {
 		for k, p := range r.pi.preps {
 			if p.Rank() <= r.pi.ElectedPRepCount() {
 				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(r.pi.GetTermPeriod()))
@@ -519,7 +520,7 @@ func TestReward(t *testing.T) {
 	// UpdateVoteInfo()
 	err = r.UpdateVoteInfo()
 	assert.NoError(t, err)
-	t.Run(fmt.Sprintf("UpdateVoteInfo-PrepInfo"), func(t *testing.T) {
+	t.Run("UpdateVoteInfo-PrepInfo", func(t *testing.T) {
 		for _, a := range addrs {
 			key := icutils.ToKey(a)
 			p := r.pi.GetPRep(key)
@@ -530,7 +531,7 @@ func TestReward(t *testing.T) {
 		}
 	})
 
-	t.Run(fmt.Sprintf("UpdateVoteInfo-VoteEvents"), func(t *testing.T) {
+	t.Run("UpdateVoteInfo-VoteEvents", func(t *testing.T) {
 		for _, a := range addrs {
 			delegating := false
 			bonding := false

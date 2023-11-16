@@ -282,6 +282,7 @@ func TestDecreaseUnstake_single(t *testing.T) {
 
 	// remove unstake
 	_, err = us.decreaseUnstake(u0.GetValue(), u0.GetExpire(), revision)
+	assert.NoError(t, err)
 	assert.Equal(t, 0, len(us))
 }
 

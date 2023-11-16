@@ -21,6 +21,8 @@ import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BlockNotification {
     private final RpcObject properties;
@@ -84,5 +86,21 @@ public class BlockNotification {
 
     public static BigInteger asInteger(RpcItem item) {
         return item != null ? item.asInteger() : null;
+    }
+
+    public List<TransactionResult.EventLog> getLogs() {
+        RpcItem item = properties.getItem("logs");
+        List<TransactionResult.EventLog> eventLogs = new ArrayList<>();
+        if (item != null) {
+            for (RpcItem rpcItem : item.asArray()) {
+                eventLogs.add(new TransactionResult.EventLog(rpcItem.asObject()));
+            }
+        }
+        return eventLogs;
+    }
+
+    @Override
+    public String toString() {
+        return "BlockNotification{Properties="+properties+"}";
     }
 }

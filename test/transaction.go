@@ -344,7 +344,7 @@ func checkJSONTX(tx map[string]interface{}) bool {
 	return ok && val == "test"
 }
 
-func parseJSONTX(js []byte, raw bool) (transaction.Transaction, error) {
+func parseJSONTX(js []byte, jsm map[string]interface{}, raw bool) (transaction.Transaction, error) {
 	t := &Transaction{}
 	if err := json.Unmarshal(js, &t.json); err != nil {
 		return nil, err

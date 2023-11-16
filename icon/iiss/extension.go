@@ -991,7 +991,7 @@ func (es *ExtensionStateImpl) moveOnToNextTerm(
 	sc icmodule.StateContext, preps icstate.PRepSet, totalSupply *big.Int) error {
 
 	// Create a new term
-	revision := sc.Revision()
+	revision := sc.RevisionValue()
 	nextTerm := icstate.NewNextTerm(es.State, totalSupply, revision)
 
 	// Valid preps means that decentralization is activated
@@ -1157,13 +1157,24 @@ func (es *ExtensionStateImpl) updateValidators(wc icmodule.WorldContext, isTermE
 	return err
 }
 
+type scForGetPRepTerm struct {
+	icmodule.StateContext
+}
+
+func (sc *scForGetPRepTerm) GetActiveDSAMask() int64 {
+	if sc.RevisionValue() < icmodule.RevisionIISS4R0 {
+		return 0
+	}
+	return sc.StateContext.GetActiveDSAMask()
+}
+
 func (es *ExtensionStateImpl) GetPRepTermInJSON(cc icmodule.CallContext) (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	if term == nil {
 		err := errors.Errorf("Term is nil")
 		return nil, err
 	}
-	sc := NewStateContext(cc, es)
+	sc := &scForGetPRepTerm{NewStateContext(cc, es)}
 	jso := term.ToJSON(sc, es.State)
 	jso["blockHeight"] = cc.BlockHeight()
 	return jso, nil
@@ -1433,7 +1444,7 @@ func (es *ExtensionStateImpl) GetIScore(from module.Address, revision int, txID 
 		// replay ICON1's queryIScore behavior
 		if revision < icmodule.RevisionFixClaimIScore && i == 0 && len(txID) != 0 {
 			if claimed, ok := es.claimed[icutils.ToKey(from)]; ok {
-				if bytes.Compare(claimed.ID(), txID) == 0 {
+				if bytes.Equal(claimed.ID(), txID) {
 					// Subtract claimed amount only when claimIScore and queryIScore are in the same TX
 					// Reverted claimIScore works the same
 					iScore.Sub(iScore, claimed.Amount())
@@ -1973,7 +1984,7 @@ func (es *ExtensionStateImpl) HandleDoubleSignReport(
 	}
 	EmitPenaltyImposedEvent(cc, ps, pt)
 
-	rate, err := es.State.GetSlashingRate(sc.Revision(), pt)
+	rate, err := es.State.GetSlashingRate(sc.RevisionValue(), pt)
 	if err != nil {
 		return err
 	}

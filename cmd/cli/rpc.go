@@ -1021,7 +1021,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	MarkAnnotationRequired(callFlags, "to", "method")
 
 	deployCmd := &cobra.Command{
-		Use:   "deploy SCORE_ZIP_FILE",
+		Use: "deploy SCORE_FILE",
 		Short: "Deploy Transaction",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -1043,21 +1043,31 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				param.ToAddress = jsonrpc.Address(to)
 			}
 			dataM := make(map[string]interface{})
-			dataM["contentType"] = cmd.Flag("content_type").Value.String()
 			isDir, err := IsDirectory(args[0])
 			if err != nil {
 				return err
 			}
+			var contentType string
 			var b []byte
 			if isDir {
 				if b, err = ZipDirectory(args[0], "__pycache__"); err != nil {
 					return fmt.Errorf("fail to zip with directory %s err:%+v", args[0], err)
 				}
+				contentType = "application/zip"
 			} else {
+				contentType = cmd.Flag("content_type").Value.String()
+				if contentType == "" {
+					if strings.HasSuffix(strings.ToLower(args[0]), ".jar") {
+						contentType = "application/java"
+					} else {
+						contentType = "application/zip"
+					}
+				}
 				if b, err = readFile(args[0]); err != nil {
 					return fmt.Errorf("fail to read %s err:%+v", args[0], err)
 				}
 			}
+			dataM["contentType"] = contentType
 			dataM["content"] = "0x" + hex.EncodeToString(b)
 			if dataParams, err := getParamsFromFlags(cmd.Flags()); err != nil {
 				return err
@@ -1078,13 +1088,11 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rootCmd.AddCommand(deployCmd)
 	deployFlags := deployCmd.Flags()
 	deployFlags.String("to", "cx0000000000000000000000000000000000000000", "ToAddress")
-	deployFlags.String("content_type", "application/zip",
-		"Mime-type of the content")
+	deployFlags.String("content_type", "", "Mime-type of the content")
 	deployFlags.String("params", "",
 		"raw json string or '@<json file>' or '-' for stdin for parameter JSON")
 	deployFlags.StringToString("param", nil,
 		"key=value, Function parameters will be delivered to on_install() or on_update()")
-	MarkAnnotationHidden(deployFlags, "content-type")
 	return rootCmd
 }
 
@@ -1132,7 +1140,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				param.EventFilters = append(param.EventFilters, ef)
 			}
 			OnInterrupt(rpcClient.Cleanup)
-			err = rpcClient.MonitorBlock(param, func(v *server.BlockNotification) {
+			err = rpcClient.MonitorBlock(param, func(v *client.BlockNotification) {
 				JsonPrettyPrintln(os.Stdout, v)
 			}, nil)
 			if err != nil {
@@ -1206,7 +1214,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				}
 			}
 			OnInterrupt(rpcClient.Cleanup)
-			err := rpcClient.MonitorEvent(param, func(v *server.EventNotification) {
+			err := rpcClient.MonitorEvent(param, func(v *client.EventNotification) {
 				JsonPrettyPrintln(os.Stdout, v)
 			}, nil)
 			if err != nil {

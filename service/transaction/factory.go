@@ -26,7 +26,7 @@ import (
 type Factory struct {
 	Priority    int
 	CheckJSON   func(jso map[string]interface{}) bool
-	ParseJSON   func(js []byte, raw bool) (Transaction, error)
+	ParseJSON   func(js []byte, jsm map[string]interface{}, raw bool) (Transaction, error)
 	CheckBinary func(bs []byte) bool
 	ParseBinary func(bs []byte) (Transaction, error)
 }
@@ -56,7 +56,7 @@ func newTransactionFromJSON(js []byte, raw bool) (Transaction, error) {
 	}
 	for _, factory := range factories {
 		if factory.CheckJSON != nil && factory.CheckJSON(jso) {
-			return factory.ParseJSON(js, raw)
+			return factory.ParseJSON(js, jso, raw)
 		}
 	}
 	return nil, InvalidFormat.New("UnknownJSON")

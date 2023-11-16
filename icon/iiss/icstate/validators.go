@@ -160,10 +160,10 @@ func (vd *validatorsData) Format(f fmt.State, verb rune) {
 				vd.nodeList, vd.nextPssIdx, vd.lastHeight,
 			)
 		} else {
-			_, _ = fmt.Fprintf(f, "{%v %v %v", vd.nodeList, vd.nextPssIdx, vd.lastHeight)
+			_, _ = fmt.Fprintf(f, "{%v %v %v}", vd.nodeList, vd.nextPssIdx, vd.lastHeight)
 		}
 	case 's':
-		_, _ = fmt.Fprintf(f, vd.String())
+		_, _ = fmt.Fprint(f, vd.String())
 	}
 }
 

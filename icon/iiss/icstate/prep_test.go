@@ -276,13 +276,13 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 					}
 
 					assert.True(t, prep.IsElectable(sc))
-					if sc.Revision() >= icmodule.RevisionExtraMainPReps {
+					if sc.RevisionValue() >= icmodule.RevisionExtraMainPReps {
 						assert.True(t, power.Sign() > 0)
 						if j > 0 {
 							assert.True(t, power.Cmp(prevPower) <= 0)
 						}
 					}
-					if sc.Revision() >= icmodule.RevisionBTP2 {
+					if sc.RevisionValue() >= icmodule.RevisionBTP2 {
 						assert.True(t, prep.HasPubKey(activeDSAMask))
 					}
 					prevPower = power
@@ -292,7 +292,7 @@ func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
 
 				if prep.Owner().Equal(prep0.Owner()) {
 					expGrade := GradeMain
-					rev := sc.Revision()
+					rev := sc.RevisionValue()
 					if rev >= icmodule.RevisionIISS4R1 {
 						expGrade = GradeCandidate
 					}
@@ -486,7 +486,7 @@ func TestCopyPReps(t *testing.T) {
 		}
 
 		t.Run(name, func(t *testing.T) {
-			copyPReps(srcPReps, dstPReps, excludeMap)
+			copyPReps(dstPReps, srcPReps, excludeMap)
 			nils := 0
 			for _, prep := range dstPReps {
 				if prep == nil {
@@ -500,33 +500,8 @@ func TestCopyPReps(t *testing.T) {
 	}
 }
 
-func TestClassifyPReps(t *testing.T) {
-	preps := newDummyPReps(10)
-	args := []struct {
-		main    int
-		elected int
-	}{
-		{10, 10},
-		{3, 7},
-		{3, 5},
-		{7, 7},
-	}
-
-	for i, arg := range args {
-		name := fmt.Sprintf("case-%02d", i)
-		main := arg.main
-		elected := arg.elected
-
-		t.Run(name, func(t *testing.T) {
-			mainPReps, subPReps := classifyPReps(preps, main, elected)
-			assert.Equal(t, main, len(mainPReps))
-			assert.Equal(t, elected-main, len(subPReps))
-		})
-	}
-}
-
 func checkPRepOrder(sc icmodule.StateContext, p0, p1 *PRep) bool {
-	rev := sc.Revision()
+	rev := sc.RevisionValue()
 	br := sc.GetBondRequirement()
 	activeDSAMask := sc.GetActiveDSAMask()
 
