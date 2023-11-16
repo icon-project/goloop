@@ -486,7 +486,7 @@ func TestCopyPReps(t *testing.T) {
 		}
 
 		t.Run(name, func(t *testing.T) {
-			copyPReps(srcPReps, dstPReps, excludeMap)
+			copyPReps(dstPReps, srcPReps, excludeMap)
 			nils := 0
 			for _, prep := range dstPReps {
 				if prep == nil {
@@ -496,31 +496,6 @@ func TestCopyPReps(t *testing.T) {
 				}
 			}
 			assert.Equal(t, nils, len(excludeMap))
-		})
-	}
-}
-
-func TestClassifyPReps(t *testing.T) {
-	preps := newDummyPReps(10)
-	args := []struct {
-		main    int
-		elected int
-	}{
-		{10, 10},
-		{3, 7},
-		{3, 5},
-		{7, 7},
-	}
-
-	for i, arg := range args {
-		name := fmt.Sprintf("case-%02d", i)
-		main := arg.main
-		elected := arg.elected
-
-		t.Run(name, func(t *testing.T) {
-			mainPReps, subPReps := classifyPReps(preps, main, elected)
-			assert.Equal(t, main, len(mainPReps))
-			assert.Equal(t, elected-main, len(subPReps))
 		})
 	}
 }

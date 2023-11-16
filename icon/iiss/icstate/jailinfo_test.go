@@ -36,10 +36,10 @@ func checkUnjailRequestHeight(t *testing.T, ji *JailInfo, unjailRequestHeight in
 }
 
 func newJailInfo(flags int, unjailRequestHeight, minDoubleSignHeight int64) *JailInfo {
-	if !icutils.MatchAll(flags, JFlagUnjailing) && unjailRequestHeight != 0 {
+	if !icutils.ContainsAll(flags, JFlagUnjailing) && unjailRequestHeight != 0 {
 		return nil
 	}
-	if icutils.MatchAny(flags, ^(JFlagMax - 1)) {
+	if icutils.ContainsAny(flags, ^(JFlagMax - 1)) {
 		return nil
 	}
 	return &JailInfo{flags, unjailRequestHeight, minDoubleSignHeight}
@@ -150,7 +150,7 @@ func TestJailInfo_OnPenaltyImposed(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			in := arg.in
 			out := arg.out
-			if icutils.MatchAll(in.flags, JFlagUnjailing) {
+			if icutils.ContainsAll(in.flags, JFlagUnjailing) {
 				unjailRequestHeight = int64(500)
 			} else {
 				unjailRequestHeight = int64(0)
@@ -404,7 +404,7 @@ func TestJailInfo_IsFunctions(t *testing.T) {
 			assert.Equal(t, arg.out.electable, ji.IsElectable())
 			assert.Equal(t, arg.out.inJail, ji.IsInJail())
 			assert.Equal(t, arg.out.unjailing, ji.IsUnjailing())
-			assert.Equal(t, arg.out.inDoubleSignPenalty, icutils.MatchAll(ji.Flags(), JFlagDoubleSign))
+			assert.Equal(t, arg.out.inDoubleSignPenalty, icutils.ContainsAll(ji.Flags(), JFlagDoubleSign))
 		})
 	}
 }
