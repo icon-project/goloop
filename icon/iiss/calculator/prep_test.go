@@ -131,8 +131,8 @@ func TestPRep_ApplyVote(t *testing.T) {
 
 			p.ApplyVote(tt.vType, big.NewInt(tt.amount), tt.period, icmodule.Rate(tt.br))
 
-			assert.Equal(t, tt.want.bonded, p.Bonded().Int64())
-			assert.Equal(t, tt.want.delegated, p.Delegated().Int64())
+			assert.Equal(t, tt.want.bonded, p.bonded.Int64())
+			assert.Equal(t, tt.want.delegated, p.delegated.Int64())
 			assert.Equal(t, tt.want.accVoted, p.AccumulatedVoted().Int64())
 			assert.Equal(t, tt.want.accPower, p.AccumulatedPower().Int64())
 		})
@@ -248,22 +248,24 @@ func TestPRepInfo(t *testing.T) {
 		r := pInfo.GetPRep(icutils.ToKey(e.Owner()))
 		assert.False(t, e.Equal(r))
 
-		e.UpdatePower(pInfo.BondRequirement())
+		e.UpdatePower(pInfo.bondRequirement)
 		assert.True(t, e.Equal(r))
 	}
 
 	pInfo.Sort()
 	for i, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
-		assert.Equal(t, i, p.Rank())
+		assert.Equal(t, i, p.rank)
 	}
 
 	pInfo.InitAccumulated()
 	for i, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
 		if p.rank < pInfo.ElectedPRepCount() && p.IsElectable() {
-			accVoted := new(big.Int).Mul(new(big.Int).Add(p.Bonded(), p.Delegated()), big.NewInt(pInfo.GetTermPeriod()))
+			accVoted := new(big.Int).Mul(p.GetVotedValue(), big.NewInt(pInfo.GetTermPeriod()))
 			assert.Equal(t, accVoted, p.AccumulatedVoted(), i)
+			accPower := new(big.Int).Mul(p.power, big.NewInt(pInfo.GetTermPeriod()))
+			assert.Equal(t, accPower, p.AccumulatedPower())
 		} else {
 			assert.Equal(t, 0, p.AccumulatedVoted().Sign())
 		}
@@ -327,14 +329,14 @@ func TestPRepInfo(t *testing.T) {
 			assert.NotNil(t, p)
 			accuAmount := new(big.Int).Mul(v.Amount(), period)
 			if vote.vType == vtBond {
-				e := new(big.Int).Add(prev[k].Bonded(), v.Amount())
-				assert.Equal(t, e, p.Bonded())
+				e := new(big.Int).Add(prev[k].bonded, v.Amount())
+				assert.Equal(t, e, p.bonded)
 			} else if vote.vType == vtDelegate {
-				e := new(big.Int).Add(prev[k].Delegated(), v.Amount())
-				assert.Equal(t, e, p.Delegated())
+				e := new(big.Int).Add(prev[k].delegated, v.Amount())
+				assert.Equal(t, e, p.delegated)
 			}
 			assert.Equal(t, new(big.Int).Add(prev[k].AccumulatedVoted(), accuAmount), p.AccumulatedVoted())
-			powerDiff := new(big.Int).Sub(p.Power(), prev[k].Power())
+			powerDiff := new(big.Int).Sub(p.power, prev[k].power)
 			accumPower := new(big.Int).Mul(powerDiff, period)
 			assert.Equal(t, new(big.Int).Add(prev[k].AccumulatedPower(), accumPower), p.AccumulatedPower())
 		}
@@ -357,10 +359,10 @@ func TestPRepInfo(t *testing.T) {
 		assert.Equal(t, s.es, p.Status())
 		if old == nil {
 			bigZero := new(big.Int)
-			assert.Equal(t, bigZero, p.Bonded())
-			assert.Equal(t, bigZero, p.Delegated())
+			assert.Equal(t, bigZero, p.bonded)
+			assert.Equal(t, bigZero, p.delegated)
 			assert.Equal(t, bigZero, p.power)
-			assert.False(t, p.Pubkey())
+			assert.False(t, p.pubkey)
 		}
 	}
 
@@ -372,7 +374,7 @@ func TestPRepInfo(t *testing.T) {
 			totalPower.Add(totalPower, p.AccumulatedPower())
 		}
 	}
-	assert.Equal(t, totalPower, pInfo.TotalAccumulatedPower())
+	assert.Equal(t, totalPower, pInfo.totalAccumulatedPower)
 
 	// CalculateReward
 	totalReward := int64(1_000_000_000)
@@ -381,8 +383,8 @@ func TestPRepInfo(t *testing.T) {
 	minWage = minWage / int64(pInfo.ElectedPRepCount())
 	minBond := int64(300)
 
-	p1Reward, p1Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a1)), totalReward, pInfo.TotalAccumulatedPower().Int64(), pInfo.OffsetLimit())
-	p3Reward, p3Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a3)), totalReward, pInfo.TotalAccumulatedPower().Int64(), pInfo.OffsetLimit())
+	p1Reward, p1Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a1)), totalReward, pInfo.totalAccumulatedPower.Int64(), pInfo.OffsetLimit())
+	p3Reward, p3Commission := prepReward(pInfo.GetPRep(icutils.ToKey(a3)), totalReward, pInfo.totalAccumulatedPower.Int64(), pInfo.OffsetLimit())
 
 	iScores := []struct {
 		target      module.Address
@@ -403,7 +405,7 @@ func TestPRepInfo(t *testing.T) {
 	assert.NoError(t, err)
 	for _, is := range iScores {
 		p := pInfo.GetPRep(icutils.ToKey(is.target))
-		assert.Equal(t, is.commission, p.Commission(), p)
+		assert.Equal(t, is.commission, p.commission, p)
 		assert.Equal(t, is.voterReward, p.VoterReward(), p)
 		assert.Equal(t, new(big.Int).Add(is.commission, is.minWage), p.GetReward(), p)
 	}
@@ -412,6 +414,6 @@ func TestPRepInfo(t *testing.T) {
 func prepReward(prep *PRep, totalReward, totalPower int64, offsetLimit int) (reward, commission int64) {
 	reward = totalReward * int64(offsetLimit+1) * icmodule.IScoreICXRatio / icmodule.MonthBlock
 	reward = reward * prep.AccumulatedPower().Int64() / totalPower
-	commission = prep.CommissionRate().MulInt64(reward)
+	commission = prep.commissionRate.MulInt64(reward)
 	return
 }

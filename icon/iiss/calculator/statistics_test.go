@@ -44,20 +44,9 @@ func TestStats_increase(t *testing.T) {
 	for _, tt := range tests {
 		var old, current *big.Int
 		value := big.NewInt(tt.value)
-		switch tt.rType {
-		case RTBlockProduce:
-			old = stats.BlockProduce()
-			stats.IncreaseReward(tt.rType, value)
-			current = stats.BlockProduce()
-		case RTPRep:
-			old = stats.Voted()
-			stats.IncreaseReward(tt.rType, value)
-			current = stats.Voted()
-		case RTVoter:
-			old = stats.Voting()
-			stats.IncreaseReward(tt.rType, value)
-			current = stats.Voting()
-		}
+		old = stats.GetValue(tt.rType)
+		stats.IncreaseReward(tt.rType, value)
+		current = stats.GetValue(tt.rType)
 		assert.Equal(t, value, new(big.Int).Sub(current, old))
 	}
 

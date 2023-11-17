@@ -63,19 +63,7 @@ func (p *PRep) SetStatus(status icmodule.EnableStatus) {
 	p.status = status
 }
 
-func (p *PRep) Bonded() *big.Int {
-	return p.bonded
-}
-
-func (p *PRep) Delegated() *big.Int {
-	return p.delegated
-}
-
-func (p *PRep) CommissionRate() icmodule.Rate {
-	return p.commissionRate
-}
-
-func (p *PRep) GetVoted() *big.Int {
+func (p *PRep) GetVotedValue() *big.Int {
 	return new(big.Int).Add(p.delegated, p.bonded)
 }
 
@@ -83,21 +71,9 @@ func (p *PRep) Owner() module.Address {
 	return p.owner
 }
 
-func (p *PRep) Power() *big.Int {
-	return p.power
-}
-
-func (p *PRep) Pubkey() bool {
-	return p.pubkey
-}
-
 func (p *PRep) UpdatePower(bondRequirement icmodule.Rate) *big.Int {
 	p.power = p.calcPower(bondRequirement)
 	return p.power
-}
-
-func (p *PRep) Rank() int {
-	return p.rank
 }
 
 func (p *PRep) SetRank(rank int) {
@@ -110,12 +86,12 @@ func (p *PRep) AccumulatedPower() *big.Int {
 
 func (p *PRep) InitAccumulated(termPeriod int64) {
 	period := big.NewInt(termPeriod)
-	p.accumulatedVoted = new(big.Int).Mul(p.GetVoted(), period)
+	p.accumulatedVoted = new(big.Int).Mul(p.GetVotedValue(), period)
 	p.accumulatedPower = new(big.Int).Mul(p.power, period)
 }
 
 func (p *PRep) calcPower(bondRequirement icmodule.Rate) *big.Int {
-	return icutils.CalcPower(bondRequirement, p.bonded, p.GetVoted())
+	return icutils.CalcPower(bondRequirement, p.bonded, p.GetVotedValue())
 }
 
 // ApplyVote applies vote value to PRep.
@@ -134,10 +110,6 @@ func (p *PRep) ApplyVote(vType VoteType, amount *big.Int, period int, bondRequir
 		p.power = power
 		p.accumulatedPower = new(big.Int).Add(p.accumulatedPower, new(big.Int).Mul(powerDiff, pr))
 	}
-}
-
-func (p *PRep) Commission() *big.Int {
-	return p.commission
 }
 
 func (p *PRep) VoterReward() *big.Int {
@@ -284,10 +256,6 @@ func (p *PRepInfo) GetPRep(key string) *PRep {
 	return prep
 }
 
-func (p *PRepInfo) TotalAccumulatedPower() *big.Int {
-	return p.totalAccumulatedPower
-}
-
 func (p *PRepInfo) ElectedPRepCount() int {
 	return p.electedPRepCount
 }
@@ -298,10 +266,6 @@ func (p *PRepInfo) OffsetLimit() int {
 
 func (p *PRepInfo) GetTermPeriod() int64 {
 	return int64(p.offsetLimit + 1)
-}
-
-func (p *PRepInfo) BondRequirement() icmodule.Rate {
-	return p.bondRequirement
 }
 
 func (p *PRepInfo) Add(target module.Address, status icmodule.EnableStatus, delegated, bonded *big.Int,

@@ -304,7 +304,7 @@ func TestReward(t *testing.T) {
 				assert.True(t, v.Equal(p.ToVoted()))
 
 				pubkey := pubkeys[key]
-				assert.Equal(t, pubkey == dsaIndex, p.Pubkey(), p)
+				assert.Equal(t, pubkey == dsaIndex, p.pubkey, p)
 			}
 		})
 	}
@@ -312,18 +312,18 @@ func TestReward(t *testing.T) {
 	// check sort
 	t.Run("loadPRepInfo-Sort", func(t *testing.T) {
 		for i, p := range r.pi.rank {
-			assert.Equal(t, i, p.Rank())
+			assert.Equal(t, i, p.rank)
 		}
 	})
 
 	// check initAccumulated
 	t.Run("loadPRepInfo-InitAccumulated", func(t *testing.T) {
 		for k, p := range r.pi.preps {
-			if p.Rank() <= r.pi.ElectedPRepCount() {
-				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(r.pi.GetTermPeriod()))
-				assert.Equal(t, voted, p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
+			if p.rank <= r.pi.ElectedPRepCount() {
+				voted := new(big.Int).Mul(p.GetVotedValue(), big.NewInt(r.pi.GetTermPeriod()))
+				assert.Equal(t, voted, p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.rank, common.MustNewAddress([]byte(k))))
 			} else {
-				assert.Equal(t, new(big.Int), p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
+				assert.Equal(t, new(big.Int), p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.rank, common.MustNewAddress([]byte(k))))
 			}
 		}
 	})
@@ -567,15 +567,15 @@ func TestReward(t *testing.T) {
 	for _, p := range r.pi.rank {
 		t.Run(fmt.Sprintf("processPrepReward-%s", p.Owner()), func(t *testing.T) {
 			rewardable := p.IsRewardable(r.pi.ElectedPRepCount())
-			if p.CommissionRate() == 0 {
-				assert.Equal(t, 0, p.Commission().Sign())
+			if p.commissionRate == 0 {
+				assert.Equal(t, 0, p.commission.Sign())
 			} else {
-				assert.Equal(t, rewardable, p.Commission().Sign() == 1, p)
+				assert.Equal(t, rewardable, p.commission.Sign() == 1, p)
 			}
 			assert.Equal(t, rewardable, p.VoterReward().Sign() == 1)
 			iScore, err := tc.GetIScoreFromTemp(p.Owner())
 			assert.NoError(t, err)
-			if rewardable && (p.CommissionRate() > 0 || p.Bonded().Cmp(r.g.GetV3().MinBond()) >= 0) {
+			if rewardable && (p.commissionRate > 0 || p.bonded.Cmp(r.g.GetV3().MinBond()) >= 0) {
 				assert.Equal(t, rewardable, iScore.Value().Sign() == 1)
 			} else {
 				assert.Nil(t, iScore)

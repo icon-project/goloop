@@ -34,18 +34,6 @@ func (s *Stats) GetValue(t RewardType) *big.Int {
 	}
 }
 
-func (s *Stats) BlockProduce() *big.Int {
-	return s.GetValue(RTBlockProduce)
-}
-
-func (s *Stats) Voted() *big.Int {
-	return s.GetValue(RTPRep)
-}
-
-func (s *Stats) Voting() *big.Int {
-	return s.GetValue(RTVoter)
-}
-
 func (s *Stats) IncreaseReward(t RewardType, amount *big.Int) {
 	if v, ok := s.value[t]; ok {
 		s.value[t] = new(big.Int).Add(v, amount)
