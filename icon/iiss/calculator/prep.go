@@ -36,16 +36,15 @@ type PRep struct {
 	bonded         *big.Int
 	commissionRate icmodule.Rate
 
-	owner             module.Address
-	power             *big.Int
-	pubkey            bool
-	rank              int
-	accumulatedBonded *big.Int
-	accumulatedVoted  *big.Int
-	accumulatedPower  *big.Int
-	commission        *big.Int // in IScore
-	voterReward       *big.Int // in IScore
-	wage              *big.Int // in IScore
+	owner            module.Address
+	power            *big.Int
+	pubkey           bool
+	rank             int
+	accumulatedVoted *big.Int
+	accumulatedPower *big.Int
+	commission       *big.Int // in IScore
+	voterReward      *big.Int // in IScore
+	wage             *big.Int // in IScore
 }
 
 func (p *PRep) IsElectable() bool {
@@ -92,12 +91,8 @@ func (p *PRep) Pubkey() bool {
 	return p.pubkey
 }
 
-func (p *PRep) GetPower(bondRequirement icmodule.Rate) *big.Int {
-	return icutils.CalcPower(bondRequirement, p.bonded, p.GetVoted())
-}
-
 func (p *PRep) UpdatePower(bondRequirement icmodule.Rate) *big.Int {
-	p.power = p.GetPower(bondRequirement)
+	p.power = p.calcPower(bondRequirement)
 	return p.power
 }
 
@@ -113,31 +108,32 @@ func (p *PRep) AccumulatedPower() *big.Int {
 	return p.accumulatedPower
 }
 
-func (p *PRep) GetAccumulatedPower(bondRequirement icmodule.Rate) *big.Int {
-	return icutils.CalcPower(bondRequirement, p.accumulatedBonded, p.accumulatedVoted)
-}
-
-func (p *PRep) UpdateAccumulatedPower(bondRequirement icmodule.Rate) *big.Int {
-	p.accumulatedPower = p.GetAccumulatedPower(bondRequirement)
-	return p.accumulatedPower
-}
-
 func (p *PRep) InitAccumulated(termPeriod int64) {
 	period := big.NewInt(termPeriod)
 	p.accumulatedVoted = new(big.Int).Mul(p.GetVoted(), period)
-	p.accumulatedBonded = new(big.Int).Mul(p.bonded, period)
+	p.accumulatedPower = new(big.Int).Mul(p.power, period)
 }
 
-func (p *PRep) ApplyVote(vType VoteType, amount *big.Int, period int) {
+func (p *PRep) calcPower(bondRequirement icmodule.Rate) *big.Int {
+	return icutils.CalcPower(bondRequirement, p.bonded, p.GetVoted())
+}
+
+// ApplyVote applies vote value to PRep.
+// Updates bonded, delegated, power, accumulatedBonded, accumulatedVoted and accumulatedPower
+func (p *PRep) ApplyVote(vType VoteType, amount *big.Int, period int, bondRequirement icmodule.Rate) {
 	pr := big.NewInt(int64(period))
-	accumulated := new(big.Int).Mul(amount, pr)
 	if vType == vtBond {
 		p.bonded = new(big.Int).Add(p.bonded, amount)
-		p.accumulatedBonded = new(big.Int).Add(p.accumulatedBonded, accumulated)
 	} else {
 		p.delegated = new(big.Int).Add(p.delegated, amount)
 	}
-	p.accumulatedVoted = new(big.Int).Add(p.accumulatedVoted, accumulated)
+	p.accumulatedVoted = new(big.Int).Add(p.accumulatedVoted, new(big.Int).Mul(amount, pr))
+	power := p.calcPower(bondRequirement)
+	if p.power.Cmp(power) != 0 {
+		powerDiff := new(big.Int).Sub(power, p.power)
+		p.power = power
+		p.accumulatedPower = new(big.Int).Add(p.accumulatedPower, new(big.Int).Mul(powerDiff, pr))
+	}
 }
 
 func (p *PRep) Commission() *big.Int {
@@ -148,16 +144,8 @@ func (p *PRep) VoterReward() *big.Int {
 	return p.voterReward
 }
 
-func (p *PRep) SetVoterReward(value *big.Int) {
-	p.voterReward = value
-}
-
 func (p *PRep) GetReward() *big.Int {
 	return new(big.Int).Add(p.commission, p.wage)
-}
-
-func (p *PRep) AccumulatedBonded() *big.Int {
-	return p.accumulatedBonded
 }
 
 func (p *PRep) AccumulatedVoted() *big.Int {
@@ -213,7 +201,6 @@ func (p *PRep) Equal(p1 *PRep) bool {
 		p.power.Cmp(p1.power) == 0 &&
 		p.pubkey == p1.pubkey &&
 		p.rank == p1.rank &&
-		p.accumulatedBonded.Cmp(p1.accumulatedBonded) == 0 &&
 		p.accumulatedVoted.Cmp(p1.accumulatedVoted) == 0 &&
 		p.accumulatedPower.Cmp(p1.accumulatedPower) == 0 &&
 		p.commission.Cmp(p1.commission) == 0 &&
@@ -223,19 +210,18 @@ func (p *PRep) Equal(p1 *PRep) bool {
 
 func (p *PRep) Clone() *PRep {
 	return &PRep{
-		owner:             p.owner,
-		status:            p.status,
-		delegated:         new(big.Int).Set(p.delegated),
-		bonded:            new(big.Int).Set(p.bonded),
-		commissionRate:    p.commissionRate,
-		pubkey:            p.pubkey,
-		power:             new(big.Int).Set(p.power),
-		accumulatedBonded: new(big.Int).Set(p.accumulatedBonded),
-		accumulatedVoted:  new(big.Int).Set(p.accumulatedVoted),
-		accumulatedPower:  new(big.Int).Set(p.accumulatedPower),
-		commission:        new(big.Int).Set(p.commission),
-		voterReward:       new(big.Int).Set(p.voterReward),
-		wage:              new(big.Int).Set(p.wage),
+		owner:            p.owner,
+		status:           p.status,
+		delegated:        new(big.Int).Set(p.delegated),
+		bonded:           new(big.Int).Set(p.bonded),
+		commissionRate:   p.commissionRate,
+		pubkey:           p.pubkey,
+		power:            new(big.Int).Set(p.power),
+		accumulatedVoted: new(big.Int).Set(p.accumulatedVoted),
+		accumulatedPower: new(big.Int).Set(p.accumulatedPower),
+		commission:       new(big.Int).Set(p.commission),
+		voterReward:      new(big.Int).Set(p.voterReward),
+		wage:             new(big.Int).Set(p.wage),
 	}
 }
 func (p *PRep) Format(f fmt.State, c rune) {
@@ -243,16 +229,16 @@ func (p *PRep) Format(f fmt.State, c rune) {
 	case 'v':
 		if f.Flag('+') {
 			fmt.Fprintf(f, "PRep{status=%s delegated=%d bonded=%d commissionRate=%d "+
-				"owner=%s power=%d pubkey=%v rank=%d accumulatedBonded=%d accumulatedVoted=%d accumulatedPower=%d "+
+				"owner=%s power=%d pubkey=%v rank=%d accumulatedVoted=%d accumulatedPower=%d "+
 				"commission=%d voterReward=%d wage=%d}",
 				p.status, p.delegated, p.bonded, p.commissionRate,
-				p.owner, p.power, p.pubkey, p.rank, p.accumulatedBonded, p.accumulatedVoted, p.accumulatedPower,
+				p.owner, p.power, p.pubkey, p.rank, p.accumulatedVoted, p.accumulatedPower,
 				p.commission, p.voterReward, p.wage,
 			)
 		} else {
-			fmt.Fprintf(f, "PRep{%s %d %d %d %s %d %v %d %d %d %d %d %d %d}",
+			fmt.Fprintf(f, "PRep{%s %d %d %d %s %d %v %d %d %d %d %d %d}",
 				p.status, p.delegated, p.bonded, p.commissionRate,
-				p.owner, p.power, p.pubkey, p.rank, p.accumulatedBonded, p.accumulatedVoted, p.accumulatedPower,
+				p.owner, p.power, p.pubkey, p.rank, p.accumulatedVoted, p.accumulatedPower,
 				p.commission, p.voterReward, p.wage,
 			)
 		}
@@ -262,19 +248,18 @@ func (p *PRep) Format(f fmt.State, c rune) {
 func NewPRep(owner module.Address, status icmodule.EnableStatus, delegated, bonded *big.Int,
 	commissionRate icmodule.Rate, pubkey bool) *PRep {
 	return &PRep{
-		owner:             owner,
-		status:            status,
-		delegated:         delegated,
-		bonded:            bonded,
-		commissionRate:    commissionRate,
-		pubkey:            pubkey,
-		power:             new(big.Int),
-		accumulatedBonded: new(big.Int),
-		accumulatedVoted:  new(big.Int),
-		accumulatedPower:  new(big.Int),
-		commission:        new(big.Int),
-		voterReward:       new(big.Int),
-		wage:              new(big.Int),
+		owner:            owner,
+		status:           status,
+		delegated:        delegated,
+		bonded:           bonded,
+		commissionRate:   commissionRate,
+		pubkey:           pubkey,
+		power:            new(big.Int),
+		accumulatedVoted: new(big.Int),
+		accumulatedPower: new(big.Int),
+		commission:       new(big.Int),
+		voterReward:      new(big.Int),
+		wage:             new(big.Int),
 	}
 }
 
@@ -320,10 +305,11 @@ func (p *PRepInfo) BondRequirement() icmodule.Rate {
 }
 
 func (p *PRepInfo) Add(target module.Address, status icmodule.EnableStatus, delegated, bonded *big.Int,
-	commissionRate icmodule.Rate, pubkey bool) {
+	commissionRate icmodule.Rate, pubkey bool) *PRep {
 	prep := NewPRep(target, status, delegated, bonded, commissionRate, pubkey)
 	prep.UpdatePower(p.bondRequirement)
 	p.preps[icutils.ToKey(target)] = prep
+	return prep
 }
 
 func (p *PRepInfo) SetStatus(target module.Address, status icmodule.EnableStatus) {
@@ -366,27 +352,26 @@ func (p *PRepInfo) InitAccumulated() {
 func (p *PRepInfo) ApplyVote(vType VoteType, votes icstage.VoteList, offset int) {
 	for _, vote := range votes {
 		key := icutils.ToKey(vote.To())
-		if prep, ok := p.preps[key]; !ok {
-			continue
-		} else {
-			prep.ApplyVote(vType, vote.Amount(), p.offsetLimit-offset)
-			p.log.Debugf("ApplyVote %+v: by %d, %d %+v, %d * %d",
-				prep, vType, offset, vote, vote.Amount(), p.offsetLimit-offset)
-			p.preps[key] = prep
+		prep, ok := p.preps[key]
+		if !ok {
+			prep = p.Add(vote.To(), icmodule.ESDisablePermanent, new(big.Int), new(big.Int), 0, false)
 		}
+		prep.ApplyVote(vType, vote.Amount(), p.offsetLimit-offset, p.bondRequirement)
+		p.log.Debugf("ApplyVote %+v: by %d, %d %+v, %d * %d",
+			prep, vType, offset, vote, vote.Amount(), p.offsetLimit-offset)
 	}
 }
 
-// UpdateAccumulatedPower update accumulatedPower of elected PRep and totalAccumulatedPower of PRepInfo.
-func (p *PRepInfo) UpdateAccumulatedPower() {
+// UpdateTotalAccumulatedPower updates totalAccumulatedPower of PRepInfo with accumulatedPower of elected preps
+func (p *PRepInfo) UpdateTotalAccumulatedPower() {
 	totalAccumulatedPower := new(big.Int)
 	for i, prep := range p.rank {
 		if i >= p.electedPRepCount {
 			break
 		}
-		power := prep.UpdateAccumulatedPower(p.bondRequirement)
-		totalAccumulatedPower.Add(totalAccumulatedPower, power)
-		p.log.Debugf("[%d] totalAccumulatedPower %d = old + %d by %s", i, totalAccumulatedPower, power, prep.owner)
+		accumPower := prep.AccumulatedPower()
+		totalAccumulatedPower.Add(totalAccumulatedPower, accumPower)
+		p.log.Debugf("[%d] totalAccumulatedPower %d = old + %d by %s", i, totalAccumulatedPower, accumPower, prep.owner)
 	}
 	p.totalAccumulatedPower = totalAccumulatedPower
 }

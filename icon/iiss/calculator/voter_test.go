@@ -368,12 +368,13 @@ func TestVoter(t *testing.T) {
 		{a4, icmodule.ESDisablePermanent, 400_000, 400_000, 0},
 	}
 	pInfo := NewPRepInfo(5, 3, 100, log.New())
-	for _, p := range preps {
+	for i, p := range preps {
 		k := icutils.ToKey(p.owner)
 		np := NewPRep(p.owner, p.status, new(big.Int), new(big.Int), 0, true)
+		np.rank = i
 		np.accumulatedVoted = big.NewInt(p.accVoted)
 		np.accumulatedPower = big.NewInt(p.accPower)
-		np.SetVoterReward(big.NewInt(p.voterReward))
+		np.voterReward = big.NewInt(p.voterReward)
 		pInfo.preps[k] = np
 	}
 
