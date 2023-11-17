@@ -14,45 +14,33 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
-	"math/big"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
-	"github.com/icon-project/goloop/module"
 )
 
-type reward struct {
-	c  rc.Calculator
+type iiss4Reward struct {
+	Context
 	g  icstage.Global
 	pi *PRepInfo
 	ve *VoteEvents
 }
 
-func NewReward(c rc.Calculator) (rc.Reward, error) {
-	global, err := c.Back().GetGlobal()
-	if err != nil {
-		return nil, err
-	}
-	return &reward{c: c, g: global}, nil
-}
+func (r *iiss4Reward) Calculate() error {
+	r.Logger().Infof("Start calculation %d", r.g.GetStartHeight())
+	r.Logger().Infof("Global Option: %+v", r.g)
 
-func (r *reward) Logger() log.Logger {
-	return r.c.Logger()
-}
-
-func (r *reward) Calculate() error {
 	var err error
+	if err = processClaim(r); err != nil {
+		return err
+	}
 
 	if err = r.loadPRepInfo(); err != nil {
 		return err
@@ -62,15 +50,19 @@ func (r *reward) Calculate() error {
 		return err
 	}
 
-	if err = r.write(); err != nil {
+	if err = r.processPrepReward(); err != nil {
 		return err
 	}
 
-	if err = r.prepReward(); err != nil {
+	if err = r.processVoterReward(); err != nil {
 		return err
 	}
 
-	if err = r.voterReward(); err != nil {
+	if err = processBTP(r); err != nil {
+		return err
+	}
+
+	if err = processCommissionRate(r); err != nil {
 		return err
 	}
 
@@ -78,10 +70,10 @@ func (r *reward) Calculate() error {
 }
 
 // loadPRepInfo make new PRepInfo and load data from base.VotedV1
-func (r *reward) loadPRepInfo() error {
+func (r *iiss4Reward) loadPRepInfo() error {
 	var err error
 	var dsa *icreward.DSA
-	base := r.c.Base()
+	base := r.Base()
 
 	if dsa, err = base.GetDSA(); err != nil {
 		return err
@@ -118,9 +110,9 @@ func (r *reward) loadPRepInfo() error {
 	return nil
 }
 
-func (r *reward) processEvents() error {
+func (r *iiss4Reward) processEvents() error {
 	ve := NewVoteEvents()
-	back := r.c.Back()
+	back := r.Back()
 	eventPrefix := icstage.EventKey.Build()
 	for iter := back.Filter(eventPrefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
@@ -151,51 +143,25 @@ func (r *reward) processEvents() error {
 	}
 	r.pi.UpdateAccumulatedPower()
 	r.ve = ve
-	return nil
+
+	return r.UpdateVoteInfo()
 }
 
-func (r *reward) UpdateIScore(addr module.Address, amount *big.Int, t rc.RewardType) error {
-	r.c.Logger().Debugf("Update IScore of %s, %d by %s", addr, amount, t.String())
-	if amount.Sign() == 0 {
-		return nil
-	}
-	temp := r.c.Temp()
-	iScore, err := temp.GetIScore(addr)
-	if err != nil {
+// UpdateVoteInfo writes Voted, Bonding and Delegating to temp
+func (r *iiss4Reward) UpdateVoteInfo() error {
+	base := r.Base()
+	temp := r.Temp()
+	if err := r.pi.UpdateVoted(temp); err != nil {
 		return err
 	}
-	nIScore := iScore.Added(amount)
-	if err = temp.SetIScore(addr, nIScore); err != nil {
-		return err
-	}
-
-	stats := r.c.Stats()
-	switch t {
-	case rc.RTPRep:
-		stats.IncreaseVoted(amount)
-	case rc.RTVoter:
-		stats.IncreaseVoting(amount)
-	default:
-		return errors.IllegalArgumentError.Errorf("wrong RewardType %d", t)
-	}
-	return nil
-}
-
-// write writes Voted, Delegating and Bonding to temp
-func (r *reward) write() error {
-	base := r.c.Base()
-	temp := r.c.Temp()
-	if err := r.pi.Write(temp); err != nil {
-		return err
-	}
-	if err := r.ve.Write(base, temp); err != nil {
+	if err := r.ve.UpdateVoting(base, temp); err != nil {
 		return err
 	}
 	return nil
 }
 
-// prepReward calculates commission and wage of PRep and writes to icreward.IScore.
-func (r *reward) prepReward() error {
+// processPrepReward calculates commission and wage of PRep and writes to icreward.IScore.
+func (r *iiss4Reward) processPrepReward() error {
 	global := r.g.GetV3()
 	err := r.pi.CalculateReward(
 		global.GetRewardFundAmountByKey(icstate.KeyIprep),
@@ -207,22 +173,26 @@ func (r *reward) prepReward() error {
 	}
 
 	for _, prep := range r.pi.PReps() {
-		if err = r.UpdateIScore(prep.Owner(), prep.GetReward(), rc.RTPRep); err != nil {
+		if err = r.UpdateIScore(prep.Owner(), prep.GetReward(), RTPRep); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// voterReward calculates voter reward of all ICONist who has bond or delegation and writes to icreward.IScore.
-func (r *reward) voterReward() error {
-	base := r.c.Base()
+// processVoterReward calculates voter reward of all ICONist who has bond or delegation and writes to icreward.IScore.
+func (r *iiss4Reward) processVoterReward() error {
+	base := r.Base()
 
 	prefix := icreward.DelegatingKey.Build()
 	for iter := base.Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
+		}
+		d := icreward.ToDelegating(o)
+		if d == nil || d.IsEmpty() {
+			continue
 		}
 		var keySplit [][]byte
 		keySplit, err = containerdb.SplitKeys(key)
@@ -234,27 +204,27 @@ func (r *reward) voterReward() error {
 		if err != nil {
 			return err
 		}
-		voter := NewVoter(addr, r.c.Logger())
-		voter.AddVoting(icreward.ToDelegating(o), r.pi.GetTermPeriod())
+		voter := NewVoter(addr, r.Logger())
+		voter.ApplyVoting(d, r.pi.GetTermPeriod())
 
 		b, err := base.GetBonding(addr)
 		if err != nil {
 			return err
 		}
 		if b != nil && b.IsEmpty() == false {
-			voter.AddVoting(b, r.pi.GetTermPeriod())
+			voter.ApplyVoting(b, r.pi.GetTermPeriod())
 		}
 
 		events := r.ve.Get(addr)
 		if events != nil {
 			for _, event := range events {
-				voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
+				voter.ApplyEvent(event, r.pi.OffsetLimit()-event.Offset())
 			}
 			r.ve.SetCalculated(addr)
 		}
 
 		iscore := voter.CalculateReward(r.pi)
-		if err = r.UpdateIScore(voter.Owner(), iscore, rc.RTVoter); err != nil {
+		if err = r.UpdateIScore(voter.Owner(), iscore, RTVoter); err != nil {
 			return err
 		}
 	}
@@ -264,6 +234,10 @@ func (r *reward) voterReward() error {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
+		}
+		b := icreward.ToBonding(o)
+		if b == nil || b.IsEmpty() {
+			continue
 		}
 		var keySplit [][]byte
 		keySplit, err = containerdb.SplitKeys(key)
@@ -284,19 +258,19 @@ func (r *reward) voterReward() error {
 			continue
 		}
 
-		voter := NewVoter(addr, r.c.Logger())
-		voter.AddVoting(icreward.ToBonding(o), r.pi.GetTermPeriod())
+		voter := NewVoter(addr, r.Logger())
+		voter.ApplyVoting(b, r.pi.GetTermPeriod())
 
 		events := r.ve.Get(addr)
 		if events != nil {
 			for _, event := range events {
-				voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
+				voter.ApplyEvent(event, r.pi.OffsetLimit()-event.Offset())
 			}
 			r.ve.SetCalculated(addr)
 		}
 
 		iscore := voter.CalculateReward(r.pi)
-		if err = r.UpdateIScore(voter.Owner(), iscore, rc.RTVoter); err != nil {
+		if err = r.UpdateIScore(voter.Owner(), iscore, RTVoter); err != nil {
 			return err
 		}
 	}
@@ -309,17 +283,25 @@ func (r *reward) voterReward() error {
 		if err != nil {
 			return err
 		}
-		voter := NewVoter(addr, r.c.Logger())
+		voter := NewVoter(addr, r.Logger())
 		for _, event := range events {
-			voter.AddEvent(event, r.pi.OffsetLimit()-event.Offset())
+			voter.ApplyEvent(event, r.pi.OffsetLimit()-event.Offset())
 		}
 		r.ve.SetCalculated(addr)
 
 		iscore := voter.CalculateReward(r.pi)
-		if err = r.UpdateIScore(voter.Owner(), iscore, rc.RTVoter); err != nil {
+		if err = r.UpdateIScore(voter.Owner(), iscore, RTVoter); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func NewIISS4Reward(c Context) (*iiss4Reward, error) {
+	global, err := c.Back().GetGlobal()
+	if err != nil {
+		return nil, err
+	}
+	return &iiss4Reward{Context: c, g: global}, nil
 }

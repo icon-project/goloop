@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"math/big"
@@ -247,13 +247,13 @@ func TestPRepInfo(t *testing.T) {
 	pInfo.Sort()
 	for i, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
-		assert.Equal(t, i+1, p.Rank())
+		assert.Equal(t, i, p.Rank())
 	}
 
 	pInfo.InitAccumulated()
 	for i, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
-		if p.rank <= pInfo.ElectedPRepCount() && p.Electable() {
+		if p.rank < pInfo.ElectedPRepCount() && p.IsElectable() {
 			accBonded := new(big.Int).Mul(p.Bonded(), big.NewInt(pInfo.GetTermPeriod()))
 			accVoted := new(big.Int).Mul(new(big.Int).Add(p.Bonded(), p.Delegated()), big.NewInt(pInfo.GetTermPeriod()))
 			assert.Equal(t, accBonded, p.AccumulatedBonded(), i)
@@ -366,7 +366,7 @@ func TestPRepInfo(t *testing.T) {
 	totalPower := new(big.Int)
 	for _, r := range ranks {
 		p := pInfo.GetPRep(icutils.ToKey(r))
-		if p.rank <= pInfo.ElectedPRepCount() {
+		if p.rank < pInfo.ElectedPRepCount() {
 			power := icutils.CalcPower(pInfo.BondRequirement(), p.AccumulatedBonded(), p.AccumulatedVoted())
 			assert.Equal(t, power, p.AccumulatedPower())
 			totalPower.Add(totalPower, p.AccumulatedPower())

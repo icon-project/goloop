@@ -47,15 +47,11 @@ func (v *Voted) Version() int {
 	return v.version
 }
 
-func (v *Voted) SetVersion(version int) {
-	v.version = version
-}
-
 func (v *Voted) Status() icmodule.EnableStatus {
 	return v.status
 }
 
-func (v *Voted) Enable() bool {
+func (v *Voted) IsEnabled() bool {
 	return v.status.IsEnabled()
 }
 
@@ -123,7 +119,7 @@ func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
 		v.bondedDelegation = new(big.Int)
 		_, err = decoder.DecodeMulti(&v.status, &v.delegated, &v.bonded, &v.commissionRate)
 	default:
-		return errors.IllegalArgumentError.Errorf("illegal Voted version %d", v.version)
+		return errors.IllegalArgumentError.Errorf("Illegal Voted version %d", v.version)
 	}
 	return err
 }
@@ -131,11 +127,11 @@ func (v *Voted) RLPDecodeFields(decoder codec.Decoder) error {
 func (v *Voted) RLPEncodeFields(encoder codec.Encoder) error {
 	switch v.version {
 	case VotedVersion1:
-		return encoder.EncodeMulti(v.Enable(), v.delegated, v.bonded, v.bondedDelegation)
+		return encoder.EncodeMulti(v.IsEnabled(), v.delegated, v.bonded, v.bondedDelegation)
 	case VotedVersion2:
 		return encoder.EncodeMulti(v.status, v.delegated, v.bonded, v.commissionRate)
 	default:
-		return errors.IllegalArgumentError.Errorf("illegal Voted version %d", v.version)
+		return errors.IllegalArgumentError.Errorf("Illegal Voted version %d", v.version)
 	}
 }
 
@@ -202,22 +198,23 @@ func (v *Voted) Format(f fmt.State, c rune) {
 }
 
 func newVoted(tag icobject.Tag) *Voted {
-	v := NewVoted()
-	v.version = tag.Version()
-	return v
+	return newVotedByVersion(tag.Version())
 }
 
 func NewVoted() *Voted {
+	return newVotedByVersion(VotedVersion1)
+}
+
+func NewVotedV2() *Voted {
+	return newVotedByVersion(VotedVersion2)
+}
+
+func newVotedByVersion(version int) *Voted {
 	return &Voted{
+		version:          version,
 		status:           icmodule.ESDisablePermanent,
 		delegated:        new(big.Int),
 		bonded:           new(big.Int),
 		bondedDelegation: new(big.Int),
 	}
-}
-
-func NewVotedV2() *Voted {
-	v := NewVoted()
-	v.SetVersion(VotedVersion2)
-	return v
 }

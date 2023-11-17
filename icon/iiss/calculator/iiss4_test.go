@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"fmt"
@@ -32,7 +32,6 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
-	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -44,7 +43,7 @@ type testCalculator struct {
 	back  *icstage.Snapshot
 	base  *icreward.Snapshot
 	temp  *icreward.State
-	stats *rc.Stats
+	stats *Stats
 }
 
 func (t *testCalculator) Back() *icstage.Snapshot {
@@ -59,12 +58,25 @@ func (t *testCalculator) Temp() *icreward.State {
 	return t.temp
 }
 
-func (t *testCalculator) Stats() *rc.Stats {
+func (t *testCalculator) Stats() *Stats {
 	return t.stats
 }
 
 func (t *testCalculator) Logger() log.Logger {
 	return t.log
+}
+
+func (t *testCalculator) UpdateIScore(addr module.Address, reward *big.Int, type_ RewardType) error {
+	iScore, err := t.temp.GetIScore(addr)
+	if err != nil {
+		return err
+	}
+	nIScore := iScore.Added(reward)
+	if err = t.temp.SetIScore(addr, nIScore); err != nil {
+		return err
+	}
+	t.stats.IncreaseReward(type_, reward)
+	return nil
 }
 
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
@@ -146,7 +158,7 @@ func (t *testCalculator) isVoterRewardable(addr module.Address, pi *PRepInfo) (b
 		for _, v := range d.Delegations {
 			k := icutils.ToKey(v.To())
 			p := pi.GetPRep(k)
-			if p.Rewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
+			if p.IsRewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
 				return true, nil
 			}
 		}
@@ -160,7 +172,7 @@ func (t *testCalculator) isVoterRewardable(addr module.Address, pi *PRepInfo) (b
 		for _, v := range b.Bonds {
 			k := icutils.ToKey(v.To())
 			p := pi.GetPRep(k)
-			if p.Rewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
+			if p.IsRewardable(pi.ElectedPRepCount()) && p.VoterReward().Sign() == 1 {
 				return true, nil
 			}
 		}
@@ -180,7 +192,7 @@ func newTestCalculator() *testCalculator {
 	tc := &testCalculator{
 		stage:  icstage.NewState(database),
 		reward: icreward.NewState(database, nil),
-		stats:  rc.NewStats(),
+		stats:  NewStats(),
 		log:    log.New(),
 	}
 	tc.Build()
@@ -191,21 +203,19 @@ func TestReward_NewReward(t *testing.T) {
 	tc := newTestCalculator()
 
 	tc.Build()
-	r, err := NewReward(tc)
+	r, err := NewIISS4Reward(tc)
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
-	rr := r.(*reward)
-	assert.Nil(t, rr.g)
+	assert.Nil(t, r.g)
 
 	tc.AddGlobal(0)
 	tc.Build()
-	r, err = NewReward(tc)
+	r, err = NewIISS4Reward(tc)
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
-	rr = r.(*reward)
 	g, err := tc.GetGlobalFromBack()
 	assert.NoError(t, err)
-	assert.Equal(t, g, rr.g)
+	assert.Equal(t, g, r.g)
 }
 
 func TestReward(t *testing.T) {
@@ -275,18 +285,17 @@ func TestReward(t *testing.T) {
 
 	tc.Build()
 
-	r, err := NewReward(tc)
+	r, err := NewIISS4Reward(tc)
 	assert.NoError(t, err)
 
 	// loadPRepInfo()
-	rr := r.(*reward)
-	err = rr.loadPRepInfo()
+	err = r.loadPRepInfo()
 	assert.NoError(t, err)
 
 	for _, a := range addrs {
 		t.Run(fmt.Sprintf("loadPRepInfo-voted-%s", a), func(t *testing.T) {
 			key := icutils.ToKey(a)
-			p := rr.pi.GetPRep(key)
+			p := r.pi.GetPRep(key)
 
 			v := voteds[key]
 			if v.IsEmpty() {
@@ -302,19 +311,18 @@ func TestReward(t *testing.T) {
 
 	// check sort
 	t.Run("loadPRepInfo-Sort", func(t *testing.T) {
-		for i, key := range rr.pi.rank {
-			p := rr.pi.GetPRep(key)
-			assert.Equal(t, i+1, p.Rank())
+		for i, p := range r.pi.rank {
+			assert.Equal(t, i, p.Rank())
 		}
 	})
 
 	// check initAccumulated
 	t.Run("loadPRepInfo-InitAccumulated", func(t *testing.T) {
-		for k, p := range rr.pi.preps {
-			if p.Rank() <= rr.pi.ElectedPRepCount() {
-				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(rr.pi.GetTermPeriod()))
+		for k, p := range r.pi.preps {
+			if p.Rank() <= r.pi.ElectedPRepCount() {
+				bonded := new(big.Int).Mul(p.Bonded(), big.NewInt(r.pi.GetTermPeriod()))
 				assert.Equal(t, bonded, p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
-				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(rr.pi.GetTermPeriod()))
+				voted := new(big.Int).Mul(p.GetVoted(), big.NewInt(r.pi.GetTermPeriod()))
 				assert.Equal(t, voted, p.AccumulatedVoted(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
 			} else {
 				assert.Equal(t, new(big.Int), p.AccumulatedBonded(), fmt.Sprintf("rank%d: %s", p.Rank(), common.MustNewAddress([]byte(k))))
@@ -417,7 +425,7 @@ func TestReward(t *testing.T) {
 
 	tc.Build()
 
-	err = rr.processEvents()
+	err = r.processEvents()
 	assert.NoError(t, err)
 
 	sExpects := []struct {
@@ -434,7 +442,7 @@ func TestReward(t *testing.T) {
 	for _, e := range sExpects {
 		t.Run(fmt.Sprintf("processEvent-Status:%s", e.name), func(t *testing.T) {
 			key := icutils.ToKey(e.addr)
-			p := rr.pi.GetPRep(key)
+			p := r.pi.GetPRep(key)
 			assert.Equal(t, e.status, p.Status())
 		})
 	}
@@ -501,7 +509,7 @@ func TestReward(t *testing.T) {
 	}
 	for _, e := range vExpects {
 		t.Run(fmt.Sprintf("processEvent-Voting-%s", e.addr), func(t *testing.T) {
-			events := rr.ve.Get(e.addr)
+			events := r.ve.Get(e.addr)
 			assert.Equal(t, len(e.events), len(events))
 			for i := 0; i < len(events); i++ {
 				assert.True(t, e.events[i].Equal(events[i]))
@@ -509,13 +517,13 @@ func TestReward(t *testing.T) {
 		})
 	}
 
-	// write()
-	err = rr.write()
+	// UpdateVoteInfo()
+	err = r.UpdateVoteInfo()
 	assert.NoError(t, err)
-	t.Run("write-PrepInfo", func(t *testing.T) {
+	t.Run("UpdateVoteInfo-PrepInfo", func(t *testing.T) {
 		for _, a := range addrs {
 			key := icutils.ToKey(a)
-			p := rr.pi.GetPRep(key)
+			p := r.pi.GetPRep(key)
 
 			voted, err := tc.GetVotedFromTemp(a)
 			assert.NoError(t, err)
@@ -523,7 +531,7 @@ func TestReward(t *testing.T) {
 		}
 	})
 
-	t.Run("write-VoteEvents", func(t *testing.T) {
+	t.Run("UpdateVoteInfo-VoteEvents", func(t *testing.T) {
 		for _, a := range addrs {
 			delegating := false
 			bonding := false
@@ -555,13 +563,13 @@ func TestReward(t *testing.T) {
 		}
 	})
 
-	// prepReward()
-	err = rr.prepReward()
+	// processPrepReward()
+	err = r.processPrepReward()
 	assert.NoError(t, err)
 
-	for _, p := range rr.pi.preps {
-		t.Run(fmt.Sprintf("prepReward-%s", p.Owner()), func(t *testing.T) {
-			rewardable := p.Rank() <= rr.pi.ElectedPRepCount() && p.Status() == icmodule.ESEnable && p.AccumulatedPower().Sign() == 1
+	for _, p := range r.pi.preps {
+		t.Run(fmt.Sprintf("processPrepReward-%s", p.Owner()), func(t *testing.T) {
+			rewardable := p.Rank() <= r.pi.ElectedPRepCount() && p.Status() == icmodule.ESEnable && p.AccumulatedPower().Sign() == 1
 			if p.CommissionRate() == 0 {
 				assert.Equal(t, 0, p.Commission().Sign())
 			} else {
@@ -570,7 +578,7 @@ func TestReward(t *testing.T) {
 			assert.Equal(t, rewardable, p.VoterReward().Sign() == 1)
 			iScore, err := tc.GetIScoreFromTemp(p.Owner())
 			assert.NoError(t, err)
-			if rewardable && (p.CommissionRate() > 0 || p.Bonded().Cmp(rr.g.GetV3().MinBond()) >= 0) {
+			if rewardable && (p.CommissionRate() > 0 || p.Bonded().Cmp(r.g.GetV3().MinBond()) >= 0) {
 				assert.Equal(t, rewardable, iScore.Value().Sign() == 1)
 			} else {
 				assert.Nil(t, iScore)
@@ -578,7 +586,7 @@ func TestReward(t *testing.T) {
 		})
 	}
 
-	// voterReward()
+	// processVoterReward()
 	oldIScore := make(map[string]*icreward.IScore)
 	for _, a := range addrs {
 		key := icutils.ToKey(a)
@@ -586,15 +594,15 @@ func TestReward(t *testing.T) {
 		assert.NoError(t, err)
 		oldIScore[key] = iScore
 	}
-	err = rr.voterReward()
+	err = r.processVoterReward()
 	assert.NoError(t, err)
 	for _, a := range addrs {
-		t.Run(fmt.Sprintf("voterReward-%s", a), func(t *testing.T) {
+		t.Run(fmt.Sprintf("processVoterReward-%s", a), func(t *testing.T) {
 			key := icutils.ToKey(a)
 			iScore, err := tc.GetIScoreFromTemp(a)
 			assert.NoError(t, err)
 
-			rewardable, err := tc.isVoterRewardable(a, rr.pi)
+			rewardable, err := tc.isVoterRewardable(a, r.pi)
 			assert.NoError(t, err)
 
 			ois := oldIScore[key]

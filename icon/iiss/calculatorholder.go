@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/icon/iiss/rewards"
+	"github.com/icon-project/goloop/icon/iiss/calculator"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -60,5 +60,5 @@ func updateCalculator(c Calculator, ess state.ExtensionSnapshot, logger log.Logg
 		}
 		c.Stop()
 	}
-	return rewards.NewCalculator(essi.DB(), back, reward, logger)
+	return calculator.New(essi.DB(), back, reward, logger)
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package rewards
+package calculator
 
 import (
 	"bytes"
@@ -31,11 +31,10 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icreward"
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
-	rc "github.com/icon-project/goloop/icon/iiss/rewards/common"
-	"github.com/icon-project/goloop/icon/iiss/rewards/iiss4"
+	"github.com/icon-project/goloop/module"
 )
 
-type Calculator struct {
+type calculator struct {
 	log log.Logger
 
 	startHeight int64
@@ -44,7 +43,7 @@ type Calculator struct {
 	base        *icreward.Snapshot
 	global      icstage.Global
 	temp        *icreward.State
-	stats       *rc.Stats
+	stats       *Stats
 
 	lock    sync.Mutex
 	waiters []*sync.Cond
@@ -52,35 +51,35 @@ type Calculator struct {
 	result  *icreward.Snapshot
 }
 
-func (c *Calculator) Result() *icreward.Snapshot {
+func (c *calculator) Result() *icreward.Snapshot {
 	return c.result
 }
 
-func (c *Calculator) StartHeight() int64 {
+func (c *calculator) StartHeight() int64 {
 	return c.startHeight
 }
 
-func (c *Calculator) TotalReward() *big.Int {
+func (c *calculator) TotalReward() *big.Int {
 	return c.stats.Total()
 }
 
-func (c *Calculator) Back() *icstage.Snapshot {
+func (c *calculator) Back() *icstage.Snapshot {
 	return c.back
 }
 
-func (c *Calculator) Base() *icreward.Snapshot {
+func (c *calculator) Base() *icreward.Snapshot {
 	return c.base
 }
 
-func (c *Calculator) Temp() *icreward.State {
+func (c *calculator) Temp() *icreward.State {
 	return c.temp
 }
 
-func (c *Calculator) Global() icstage.Global {
+func (c *calculator) Global() icstage.Global {
 	return c.global
 }
 
-func (c *Calculator) WaitResult(blockHeight int64) error {
+func (c *calculator) WaitResult(blockHeight int64) error {
 	if c.startHeight == InitBlockHeight {
 		return nil
 	}
@@ -99,7 +98,7 @@ func (c *Calculator) WaitResult(blockHeight int64) error {
 	return c.err
 }
 
-func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
+func (c *calculator) setResult(result *icreward.Snapshot, err error) {
 	if result == nil && err == nil {
 		c.log.Panicf("InvalidParameters(result=%+v, err=%+v)")
 	}
@@ -119,15 +118,15 @@ func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
 	c.waiters = nil
 }
 
-func (c *Calculator) Stats() *rc.Stats {
+func (c *calculator) Stats() *Stats {
 	return c.stats
 }
 
-func (c *Calculator) Logger() log.Logger {
+func (c *calculator) Logger() log.Logger {
 	return c.log
 }
 
-func (c *Calculator) Stop() {
+func (c *calculator) Stop() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -140,46 +139,50 @@ func (c *Calculator) Stop() {
 	}
 }
 
-func (c *Calculator) IsRunningFor(dbase db.Database, back, reward []byte) bool {
+func (c *calculator) IsRunningFor(dbase db.Database, back, reward []byte) bool {
 	return c.database == dbase &&
 		bytes.Equal(c.back.Bytes(), back) &&
 		bytes.Equal(c.base.Bytes(), reward)
 }
 
-func (c *Calculator) run() error {
-	var err error
+func (c *calculator) UpdateIScore(addr module.Address, reward *big.Int, t RewardType) error {
+	iScore, err := c.temp.GetIScore(addr)
+	if err != nil {
+		return err
+	}
+	nIScore := iScore.Added(reward)
+	if err = c.temp.SetIScore(addr, nIScore); err != nil {
+		return err
+	}
+	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
+	c.stats.IncreaseReward(t, reward)
+	return nil
+}
+
+func (c *calculator) run() (ret error) {
 	defer func() {
-		if err != nil {
-			c.setResult(nil, err)
+		if ret != nil {
+			c.setResult(nil, ret)
 		}
 	}()
 
-	if err = c.prepare(); err != nil {
-		return icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
-	}
-
+	var r RewardCalculator
+	var err error
 	iv := c.global.GetIISSVersion()
-	if iv <= icstate.IISSVersion3 {
-		if err = c.calculateRewardV3(); err != nil {
-			return err
+	switch iv {
+	case icstate.IISSVersion2, icstate.IISSVersion3:
+		if r, err = NewIISS3Reward(c); err != nil {
+			return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS3 reward")
 		}
-	} else {
-		var r rc.Reward
-		switch iv {
-		case icstate.IISSVersion4:
-			if r, err = iiss4.NewReward(c); err != nil {
-				return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
-			}
-		default:
-			return icmodule.CalculationFailedError.Wrapf(err, "invalid IISS version")
+	case icstate.IISSVersion4:
+		if r, err = NewIISS4Reward(c); err != nil {
+			return icmodule.CalculationFailedError.Wrapf(err, "Failed to init IISS4 reward")
 		}
-		if err = r.Calculate(); err != nil {
-			return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
-		}
+	default:
+		return icmodule.CalculationFailedError.New("Invalid IISS version")
 	}
-
-	if err = c.postWork(); err != nil {
-		return icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
+	if err = r.Calculate(); err != nil {
+		return icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate reward")
 	}
 
 	c.log.Infof("Calculation statistics: %s", c.stats)
@@ -187,25 +190,10 @@ func (c *Calculator) run() error {
 	return nil
 }
 
-func (c *Calculator) prepare() error {
-	var err error
-	c.log.Infof("Start calculation %d", c.startHeight)
-	c.log.Infof("Global Option: %+v", c.global)
-
-	// write claim data to temp
-	if err = c.processClaim(); err != nil {
-		return err
-	}
-
-	// replay BugDisabledPRep
-	if err = c.replayBugDisabledPRep(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Calculator) processClaim() error {
-	for iter := c.back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
+func processClaim(ctx Context) error {
+	back := ctx.Back()
+	temp := ctx.Temp()
+	for iter := back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
@@ -215,22 +203,22 @@ func (c *Calculator) processClaim() error {
 			claim := icstage.ToIScoreClaim(o)
 			keySplit, err := containerdb.SplitKeys(key)
 			if err != nil {
-				return nil
+				return err
 			}
 			addr, err := common.NewAddress(keySplit[1])
 			if err != nil {
-				return nil
+				return err
 			}
-			iScore, err := c.temp.GetIScore(addr)
+			iScore, err := temp.GetIScore(addr)
 			if err != nil {
-				return nil
+				return err
 			}
 			nIScore := iScore.Subtracted(claim.Value())
 			if nIScore.Value().Sign() == -1 {
 				return errors.Errorf("Invalid negative I-Score for %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
 			}
-			c.log.Tracef("Claim %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
-			if err = c.temp.SetIScore(addr, nIScore); err != nil {
+			ctx.Logger().Tracef("Claim %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
+			if err = temp.SetIScore(addr, nIScore); err != nil {
 				return err
 			}
 		}
@@ -238,20 +226,10 @@ func (c *Calculator) processClaim() error {
 	return nil
 }
 
-func (c *Calculator) postWork() (err error) {
-	// write BTP data to temp. Use BTP data in the next term
-	if err = c.processBTP(); err != nil {
-		return err
-	}
-	// update Voted.commissionRate of temp. Use updated commission rate in the next term
-	if err = c.processCommissionRate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Calculator) processBTP() error {
-	for iter := c.back.Filter(icstage.BTPKey.Build()); iter.Has(); iter.Next() {
+func processBTP(ctx Context) error {
+	back := ctx.Back()
+	temp := ctx.Temp()
+	for iter := back.Filter(icstage.BTPKey.Build()); iter.Has(); iter.Next() {
 		o, _, err := iter.Get()
 		if err != nil {
 			return err
@@ -260,22 +238,22 @@ func (c *Calculator) processBTP() error {
 		switch obj.Tag().Type() {
 		case icstage.TypeBTPDSA:
 			value := icstage.ToBTPDSA(o)
-			dsa, err := c.temp.GetDSA()
+			dsa, err := temp.GetDSA()
 			if err != nil {
 				return err
 			}
 			nDSA := dsa.Updated(value.Index())
-			if err = c.temp.SetDSA(nDSA); err != nil {
+			if err = temp.SetDSA(nDSA); err != nil {
 				return err
 			}
 		case icstage.TypeBTPPublicKey:
 			value := icstage.ToBTPPublicKey(o)
-			pubKey, err := c.temp.GetPublicKey(value.From())
+			pubKey, err := temp.GetPublicKey(value.From())
 			if err != nil {
-				return nil
+				return err
 			}
 			nPubKey := pubKey.Updated(value.Index())
-			if err = c.temp.SetPublicKey(value.From(), nPubKey); err != nil {
+			if err = temp.SetPublicKey(value.From(), nPubKey); err != nil {
 				return err
 			}
 		}
@@ -283,9 +261,11 @@ func (c *Calculator) processBTP() error {
 	return nil
 }
 
-func (c *Calculator) processCommissionRate() error {
+func processCommissionRate(ctx Context) error {
+	back := ctx.Back()
+	temp := ctx.Temp()
 	prefix := icstage.CommissionRateKey.Build()
-	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
+	for iter := back.Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
@@ -299,21 +279,21 @@ func (c *Calculator) processCommissionRate() error {
 			}
 			addr, err := common.NewAddress(keySplit[1])
 			if err != nil {
-				return nil
+				return err
 			}
 			cr := icstage.ToCommissionRate(o)
-			voted, err := c.temp.GetVoted(addr)
+			voted, err := temp.GetVoted(addr)
 			if err != nil {
-				return nil
+				return err
 			}
 			if voted == nil {
-				return nil
+				return icmodule.InvalidStateError.Errorf("Non PRep set the commission rate. %s", addr)
 			}
 			nVoted := voted.Clone()
 			nVoted.SetCommissionRate(cr.Value())
-			err = c.temp.SetVoted(addr, nVoted)
+			err = temp.SetVoted(addr, nVoted)
 			if err != nil {
-				return nil
+				return err
 			}
 		}
 	}
@@ -322,7 +302,7 @@ func (c *Calculator) processCommissionRate() error {
 
 const InitBlockHeight = -1
 
-func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
+func New(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *calculator {
 	var err error
 	var global icstage.Global
 	var startHeight int64
@@ -338,7 +318,7 @@ func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icrewar
 	} else {
 		startHeight = global.GetStartHeight()
 	}
-	c := &Calculator{
+	c := &calculator{
 		database:    database,
 		back:        back,
 		base:        reward,
@@ -346,7 +326,7 @@ func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icrewar
 		log:         logger,
 		global:      global,
 		startHeight: startHeight,
-		stats:       rc.NewStats(),
+		stats:       NewStats(),
 	}
 	if startHeight != InitBlockHeight {
 		go c.run()

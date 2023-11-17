@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package iiss4
+package calculator
 
 import (
 	"math/big"
@@ -97,7 +97,7 @@ func TestVotingEvents(t *testing.T) {
 		},
 	}
 
-	// Get(), AddEvent()
+	// Get(), ApplyEvent()
 	for _, e := range events {
 		es := ve.Get(e.from)
 		prevLen := len(es)
@@ -285,7 +285,7 @@ func TestVotingEvents_Write(t *testing.T) {
 		calculated: nil,
 	}
 
-	err := ve.Write(rw, rw)
+	err := ve.UpdateVoting(rw, rw)
 	assert.NoError(t, err)
 
 	expects := []struct {
@@ -380,7 +380,7 @@ func TestVoter(t *testing.T) {
 	voter := NewVoter(a1, log.New())
 	assert.Equal(t, a1, voter.Owner())
 
-	// AddVoting()
+	// ApplyVoting()
 	votings := []icreward.Voting{
 		&icreward.Bonding{
 			Bonds: icstate.Bonds{
@@ -404,14 +404,14 @@ func TestVoter(t *testing.T) {
 		icutils.ToKey(a4): big.NewInt(440 * pInfo.GetTermPeriod()),
 	}
 	for _, voting := range votings {
-		voter.AddVoting(voting, pInfo.GetTermPeriod())
+		voter.ApplyVoting(voting, pInfo.GetTermPeriod())
 	}
 	for key, amount := range voter.accumulatedVotes {
 		v, _ := expectVotes[key]
 		assert.Equal(t, v, amount, common.MustNewAddress([]byte(key)))
 	}
 
-	// AddEvent()
+	// ApplyEvent()
 	events := []*VoteEvent{
 		{
 			vtBond,
@@ -445,7 +445,7 @@ func TestVoter(t *testing.T) {
 		icutils.ToKey(a4): big.NewInt(440 * pInfo.GetTermPeriod()),
 	}
 	for _, event := range events {
-		voter.AddEvent(event, pInfo.OffsetLimit()-event.Offset())
+		voter.ApplyEvent(event, pInfo.OffsetLimit()-event.Offset())
 	}
 	for key, amount := range voter.accumulatedVotes {
 		v, _ := expectVotes[key]

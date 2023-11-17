@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package rewards
+package calculator
 
 import (
 	"math/big"
@@ -32,8 +32,8 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstage"
 )
 
-func MakeCalculator(database db.Database, back *icstage.Snapshot) *Calculator {
-	c := new(Calculator)
+func MakeCalculator(database db.Database, back *icstage.Snapshot) *calculator {
+	c := new(calculator)
 	c.back = back
 	c.base = icreward.NewSnapshot(database, nil)
 	c.temp = c.base.NewState()
@@ -94,7 +94,7 @@ func TestCalculator_processClaim(t *testing.T) {
 	}
 	c.back = front.GetSnapshot()
 
-	err := c.processClaim()
+	err := processClaim(c)
 	assert.NoError(t, err)
 
 	// check result
@@ -109,13 +109,13 @@ func TestCalculator_processClaim(t *testing.T) {
 }
 
 func TestCalculator_WaitResult(t *testing.T) {
-	c := &Calculator{
+	c := &calculator{
 		startHeight: InitBlockHeight,
 	}
 	err := c.WaitResult(1234)
 	assert.NoError(t, err)
 
-	c = &Calculator{
+	c = &calculator{
 		startHeight: 3414,
 	}
 	err = c.WaitResult(1234)
@@ -133,7 +133,7 @@ func TestCalculator_WaitResult(t *testing.T) {
 	c.setResult(nil, errors.ErrInvalidState)
 	assert.Equal(t, "done", <-toTC)
 
-	c = &Calculator{
+	c = &calculator{
 		startHeight: 3414,
 	}
 	go func() {
@@ -160,7 +160,6 @@ func TestCalculator_WaitResult(t *testing.T) {
 
 func TestCalculator_processCommissionRate(t *testing.T) {
 	database := db.NewMapDB()
-	front := icstage.NewState(database)
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
@@ -175,6 +174,7 @@ func TestCalculator_processCommissionRate(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
+		err  bool
 		want icmodule.Rate
 	}{
 		{
@@ -183,6 +183,7 @@ func TestCalculator_processCommissionRate(t *testing.T) {
 				addr1,
 				v1,
 			},
+			false,
 			v1,
 		},
 		{
@@ -191,6 +192,7 @@ func TestCalculator_processCommissionRate(t *testing.T) {
 				addr2,
 				v2,
 			},
+			true,
 			icmodule.Rate(-1),
 		},
 	}
@@ -203,25 +205,28 @@ func TestCalculator_processCommissionRate(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, tt := range tests {
+		front := icstage.NewState(database)
 		args := tt.args
 		err = front.AddCommissionRate(args.addr, args.value)
 		assert.NoError(t, err)
-	}
-	c.back = front.GetSnapshot()
+		c.back = front.GetSnapshot()
 
-	err = c.processCommissionRate()
-	assert.NoError(t, err)
+		err = processCommissionRate(c)
+		if tt.err {
+			assert.NotNil(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
 
-	// check result
-	for _, tt := range tests {
+		// check result
 		t.Run(tt.name, func(t *testing.T) {
 			args := tt.args
 			voted, err = c.temp.GetVoted(args.addr)
 			assert.NoError(t, err)
-			if tt.want != icmodule.Rate(-1) {
-				assert.Equal(t, tt.want, voted.CommissionRate())
-			} else {
+			if tt.err {
 				assert.Nil(t, voted)
+			} else {
+				assert.Equal(t, tt.want, voted.CommissionRate())
 			}
 		})
 	}

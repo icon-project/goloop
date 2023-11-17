@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package common
+package calculator
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type sValue struct {
@@ -46,15 +47,15 @@ func TestStats_increase(t *testing.T) {
 		switch tt.rType {
 		case RTBlockProduce:
 			old = stats.BlockProduce()
-			stats.IncreaseBlockProduce(value)
+			stats.IncreaseReward(tt.rType, value)
 			current = stats.BlockProduce()
 		case RTPRep:
 			old = stats.Voted()
-			stats.IncreaseVoted(value)
+			stats.IncreaseReward(tt.rType, value)
 			current = stats.Voted()
 		case RTVoter:
 			old = stats.Voting()
-			stats.IncreaseVoting(value)
+			stats.IncreaseReward(tt.rType, value)
 			current = stats.Voting()
 		}
 		assert.Equal(t, value, new(big.Int).Sub(current, old))
@@ -63,7 +64,7 @@ func TestStats_increase(t *testing.T) {
 	for _, tt := range tests {
 		old := stats.GetValue(tt.rType)
 		value := big.NewInt(tt.value)
-		stats.IncreaseValue(tt.rType, value)
+		stats.IncreaseReward(tt.rType, value)
 		current := stats.GetValue(tt.rType)
 		assert.Equal(t, value, new(big.Int).Sub(current, old))
 	}
@@ -126,7 +127,7 @@ func TestStats_Total(t *testing.T) {
 	for i, tt := range tests {
 		stats := NewStats()
 		for _, v := range tt.values {
-			stats.IncreaseValue(v.rType, big.NewInt(v.value))
+			stats.IncreaseReward(v.rType, big.NewInt(v.value))
 		}
 		assert.Equal(t, tt.want, stats.Total().Int64(), fmt.Sprintf("Index: %d", i))
 	}

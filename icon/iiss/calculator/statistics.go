@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package common
+package calculator
 
 import (
 	"fmt"
@@ -46,26 +46,12 @@ func (s *Stats) Voting() *big.Int {
 	return s.GetValue(RTVoter)
 }
 
-func (s *Stats) IncreaseValue(t RewardType, amount *big.Int) {
-	n := new(big.Int)
+func (s *Stats) IncreaseReward(t RewardType, amount *big.Int) {
 	if v, ok := s.value[t]; ok {
-		n.Add(v, amount)
+		s.value[t] = new(big.Int).Add(v, amount)
 	} else {
-		n.Set(amount)
+		s.value[t] = amount
 	}
-	s.value[t] = n
-}
-
-func (s *Stats) IncreaseBlockProduce(amount *big.Int) {
-	s.IncreaseValue(RTBlockProduce, amount)
-}
-
-func (s *Stats) IncreaseVoted(amount *big.Int) {
-	s.IncreaseValue(RTPRep, amount)
-}
-
-func (s *Stats) IncreaseVoting(amount *big.Int) {
-	s.IncreaseValue(RTVoter, amount)
 }
 
 func (s *Stats) Total() *big.Int {

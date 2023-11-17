@@ -99,6 +99,7 @@ func (g *globalBase) GetBondRequirement() icmodule.Rate {
 	return g.bondRequirement
 }
 
+// GlobalV1 global struct for icstate.IISSVersion2
 type GlobalV1 struct {
 	globalBase
 	irep          *big.Int
@@ -251,6 +252,7 @@ func NewGlobalV1(
 	}
 }
 
+// GlobalV2 global struct for icstate.IISSVersion3
 type GlobalV2 struct {
 	globalBase
 	iglobal *big.Int
@@ -444,6 +446,7 @@ func NewGlobalV2(
 	}
 }
 
+// GlobalV3 global struct for icstate.IISSVersion4
 type GlobalV3 struct {
 	globalBase
 	rFund   *icstate.RewardFund
@@ -594,6 +597,9 @@ func NewGlobalV3(
 	iissVersion int, startHeight int64, revision int, offsetLimit, electedPRepCount int,
 	bondRequirement icmodule.Rate, rFund *icstate.RewardFund, minBond *big.Int,
 ) *GlobalV3 {
+	if minBond == nil {
+		minBond = icmodule.BigIntZero
+	}
 	g := &GlobalV3{
 		globalBase: globalBase{
 			iissVersion:      iissVersion,
