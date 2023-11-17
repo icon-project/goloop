@@ -22,10 +22,6 @@ func (pss *PRepSnapshot) Owner() module.Address {
 	return pss.owner
 }
 
-func (pss *PRepSnapshot) BondedDelegation() *big.Int {
-	return pss.power
-}
-
 func (pss *PRepSnapshot) Power() *big.Int {
 	return pss.power
 }
@@ -39,13 +35,6 @@ func (pss *PRepSnapshot) Equal(other *PRepSnapshot) bool {
 	}
 	return pss.owner.Equal(other.owner) &&
 		pss.power.Cmp(other.power) == 0
-}
-
-func (pss *PRepSnapshot) Clone() *PRepSnapshot {
-	return &PRepSnapshot{
-		owner: pss.owner,
-		power: pss.power,
-	}
 }
 
 func (pss *PRepSnapshot) ToJSON() map[string]interface{} {
@@ -65,7 +54,7 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func (pss *PRepSnapshot) String() string {
-	return fmt.Sprintf("[%s, %v]", pss.owner, pss.Power())
+	return fmt.Sprintf("PRepSnapshot{owner=%s power=%d}", pss.owner, pss.Power())
 }
 
 func NewPRepSnapshot(owner module.Address, power *big.Int) *PRepSnapshot {
@@ -249,10 +238,6 @@ func (term *termData) TotalSupply() *big.Int {
 
 func (term *termData) IsDecentralized() bool {
 	return term.isDecentralized
-}
-
-func (term *termData) IsFirstBlockOnDecentralized(blockHeight int64) bool {
-	return term.isDecentralized && term.sequence == 0 && term.startHeight == blockHeight
 }
 
 func (term *termData) equal(other *termData) bool {
@@ -489,7 +474,7 @@ func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 			term.minimumBond,
 		)
 	default:
-		return errors.IllegalArgumentError.Errorf("illegal Term version %d", term.version)
+		return errors.IllegalArgumentError.Errorf("IllegalTermVersion(%d)", term.version)
 	}
 }
 
@@ -596,8 +581,8 @@ func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
 			period:          state.GetTermPeriod(),
 			irep:            state.GetIRep(),
 			rrep:            state.GetRRep(),
-			totalSupply:     new(big.Int),
-			totalDelegated:  new(big.Int),
+			totalSupply:     icmodule.BigIntZero,
+			totalDelegated:  icmodule.BigIntZero,
 			rewardFund:      state.GetRewardFundV1().Clone(),
 			bondRequirement: state.GetBondRequirement(),
 			revision:        revision,

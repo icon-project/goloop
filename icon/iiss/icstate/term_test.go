@@ -96,7 +96,7 @@ func TestPRepSnapshot_Equal(t *testing.T) {
 	}{
 		{nil, nil, true},
 		{p0, p0, true},
-		{p0, p0.Clone(), true},
+		{p0, NewPRepSnapshot(p0.Owner(), p0.Power()), true},
 		{p0, newPRepSnapshot(owner0, delegated, bond), true},
 		{nil, p0, false},
 		{p0, nil, false},
@@ -268,7 +268,7 @@ func TestTerm_TotalBondedDelegation(t *testing.T) {
 
 	totalPower := new(big.Int)
 	for _, snapshot := range prepSnapshots {
-		totalPower.Add(totalPower, snapshot.BondedDelegation())
+		totalPower.Add(totalPower, snapshot.Power())
 	}
 	assert.Zero(t, totalPower.Cmp(term.getTotalPower()))
 
