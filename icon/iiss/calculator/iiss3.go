@@ -86,14 +86,14 @@ func (r *iiss3Reward) Calculate() (err error) {
 	)
 
 	if err = processBTP(r); err != nil {
-		return err
+		return
 	}
 
 	if err = processCommissionRate(r); err != nil {
-		return err
+		return
 	}
 
-	return nil
+	return
 }
 
 // varForBlockProduceReward return variable for block produce reward
@@ -544,8 +544,7 @@ func (r *iiss3Reward) calculateVotingReward() error {
 		}
 	}
 	// add preprocessed data for BugDisabledPRep
-	r.addDataForBugDisabledPRep(prepInfo, multiplier, divider)
-	return nil
+	return r.addDataForBugDisabledPRep(prepInfo, multiplier, divider)
 }
 
 // processVoting calculator voting reward with delegating and bonding data.
@@ -719,7 +718,7 @@ func (r *iiss3Reward) processVotingEvent(
 		r.Logger().Tracef("VotingEvent %s last: %d, %d: %s", addr, from, offsetLimit, ret)
 
 		if err = r.writeVoting(addr, voting); err != nil {
-			return nil
+			return err
 		}
 		if err = r.UpdateIScore(addr, reward, RTVoter); err != nil {
 			return err
