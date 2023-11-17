@@ -925,7 +925,7 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 		return err
 	}
 	if err := s.handleRevisionChange(as, int(r), int(code.Int64())); err != nil {
-		return nil
+		return err
 	}
 	apiInfo := s.GetAPI()
 	if err := contract.CheckMethod(s, apiInfo); err != nil {
