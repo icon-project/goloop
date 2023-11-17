@@ -203,15 +203,15 @@ func processClaim(ctx Context) error {
 			claim := icstage.ToIScoreClaim(o)
 			keySplit, err := containerdb.SplitKeys(key)
 			if err != nil {
-				return nil
+				return err
 			}
 			addr, err := common.NewAddress(keySplit[1])
 			if err != nil {
-				return nil
+				return err
 			}
 			iScore, err := temp.GetIScore(addr)
 			if err != nil {
-				return nil
+				return err
 			}
 			nIScore := iScore.Subtracted(claim.Value())
 			if nIScore.Value().Sign() == -1 {
@@ -250,7 +250,7 @@ func processBTP(ctx Context) error {
 			value := icstage.ToBTPPublicKey(o)
 			pubKey, err := temp.GetPublicKey(value.From())
 			if err != nil {
-				return nil
+				return err
 			}
 			nPubKey := pubKey.Updated(value.Index())
 			if err = temp.SetPublicKey(value.From(), nPubKey); err != nil {
@@ -279,21 +279,21 @@ func processCommissionRate(ctx Context) error {
 			}
 			addr, err := common.NewAddress(keySplit[1])
 			if err != nil {
-				return nil
+				return err
 			}
 			cr := icstage.ToCommissionRate(o)
 			voted, err := temp.GetVoted(addr)
 			if err != nil {
-				return nil
+				return err
 			}
 			if voted == nil {
-				return nil
+				return icmodule.InvalidStateError.Errorf("Non PRep set the commission rate. %s", addr)
 			}
 			nVoted := voted.Clone()
 			nVoted.SetCommissionRate(cr.Value())
 			err = temp.SetVoted(addr, nVoted)
 			if err != nil {
-				return nil
+				return err
 			}
 		}
 	}
