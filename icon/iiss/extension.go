@@ -247,15 +247,16 @@ func (es *ExtensionStateImpl) setNewFront() (err error) {
 			return
 		}
 	case icstate.IISSVersion3:
+		rf := term.RewardFund()
 		if err = es.Front.AddGlobalV2(
 			term.Revision(),
 			term.StartHeight(),
 			int(term.Period()-1),
-			term.Iglobal(),
-			term.Iprep(),
-			term.Ivoter(),
-			term.Icps(),
-			term.Irelay(),
+			rf.IGlobal(),
+			rf.IPrep(),
+			rf.IVoter(),
+			rf.ICps(),
+			rf.IRelay(),
 			term.GetElectedPRepCount(),
 			term.BondRequirement(),
 		); err != nil {

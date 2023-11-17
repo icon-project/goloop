@@ -66,21 +66,32 @@ func newTestRewardFundV2() *RewardFund {
 func newTermState(version, sequence int, period int64) *TermState {
 	var rf *RewardFund
 	var mb *big.Int
-	if version == termVersion1 {
+	switch version {
+	case termVersion1:
 		rf = newTestRewardFundV1()
-	} else {
+	case termVersion2:
 		rf = newTestRewardFundV2()
 		mb = icmodule.BigIntZero
+	default:
+		return nil
 	}
-	return &TermState{
+	ts := &TermState{
 		termData: termData{
-			version:     version,
-			sequence:    sequence,
-			period:      period,
-			rewardFund:  rf,
-			minimumBond: mb,
+			termDataCommon: termDataCommon{
+				version:     version,
+				sequence:    sequence,
+				period:      period,
+				rewardFund:  rf,
+			},
 		},
 	}
+	switch version {
+	case termVersion1:
+		ts.termDataExtV1 = newTermDataExtV1(icmodule.BigIntZero, icmodule.BigIntZero)
+	case termVersion2:
+		ts.termDataExtV2 = newTermDataExtV2(mb)
+	}
+	return ts
 }
 
 func TestPRepSnapshot_Equal(t *testing.T) {
@@ -306,21 +317,26 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 		}
 		termState := &TermState{
 			termData: termData{
-				version:         version,
-				sequence:        sequence,
-				startHeight:     startHeight,
-				period:          termPeriod,
-				irep:            irep,
-				rrep:            rrep,
-				totalSupply:     totalSupply,
-				totalDelegated:  totalDelegated,
-				rewardFund:      rf,
-				bondRequirement: br,
-				revision:        revision,
-				prepSnapshots:   prepSnapshots.Clone(),
-				isDecentralized: isDecentralized,
-				minimumBond:     mb,
+				termDataCommon: termDataCommon{
+					version:         version,
+					sequence:        sequence,
+					startHeight:     startHeight,
+					period:          termPeriod,
+					totalSupply:     totalSupply,
+					totalDelegated:  totalDelegated,
+					rewardFund:      rf,
+					bondRequirement: br,
+					revision:        revision,
+					prepSnapshots:   prepSnapshots.Clone(),
+					isDecentralized: isDecentralized,
+				},
 			},
+		}
+		switch version {
+		case termVersion1:
+			termState.termDataExtV1 = newTermDataExtV1(irep, rrep)
+		case termVersion2:
+			termState.termDataExtV2 = newTermDataExtV2(mb)
 		}
 
 		termSnapshot := termState.GetSnapshot()
@@ -373,7 +389,11 @@ func TestTermData_GetIISSVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("Revision%d", tt.revision), func(t *testing.T) {
-			term := termData{revision: tt.revision}
+			term := termData{
+				termDataCommon: termDataCommon{
+					revision: tt.revision,
+				},
+			}
 			assert.Equal(t, tt.want, term.GetIISSVersion())
 			assert.Equal(t, tt.revision, term.Revision())
 		})

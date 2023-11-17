@@ -112,101 +112,66 @@ const (
 	termVersionReserved
 )
 
-type termData struct {
+type termDataCommon struct {
 	version         int
 	sequence        int
 	startHeight     int64
 	period          int64
 	revision        int
 	isDecentralized bool
-	irep            *big.Int
-	rrep            *big.Int
 	totalSupply     *big.Int
-	totalDelegated  *big.Int // total delegated amount of all active P-Reps. Set with PRepManager.totalDelegated
+	totalDelegated  *big.Int // total delegated amount of all active P-Reps
 	rewardFund      *RewardFund
 	bondRequirement icmodule.Rate
 	mainPRepCount   int
 	// If the length of prepSnapshots is 0, prepSnapshots should be nil
 	prepSnapshots PRepSnapshots
-	minimumBond   *big.Int
 }
 
-func (term *termData) Version() int {
+func (term *termDataCommon) Version() int {
 	return term.version
 }
 
-func (term *termData) Sequence() int {
+func (term *termDataCommon) Sequence() int {
 	return term.sequence
 }
 
-func (term *termData) StartHeight() int64 {
+func (term *termDataCommon) StartHeight() int64 {
 	return term.startHeight
 }
 
-func (term *termData) Period() int64 {
+func (term *termDataCommon) Period() int64 {
 	return term.period
 }
 
-func (term *termData) Irep() *big.Int {
-	return term.irep
-}
-
-func (term *termData) Rrep() *big.Int {
-	return term.rrep
-}
-
-func (term *termData) MainPRepCount() int {
+func (term *termDataCommon) MainPRepCount() int {
 	return term.mainPRepCount
 }
 
-func (term *termData) GetElectedPRepCount() int {
+func (term *termDataCommon) GetElectedPRepCount() int {
 	return len(term.prepSnapshots)
 }
 
-func (term *termData) RewardFund() *RewardFund {
+func (term *termDataCommon) RewardFund() *RewardFund {
 	return term.rewardFund
 }
 
-func (term *termData) Iglobal() *big.Int {
-	return term.RewardFund().IGlobal()
-}
-
-func (term *termData) Iprep() icmodule.Rate {
-	return term.RewardFund().IPrep()
-}
-
-func (term *termData) Icps() icmodule.Rate {
-	return term.RewardFund().ICps()
-}
-
-func (term *termData) Irelay() icmodule.Rate {
-	return term.RewardFund().IRelay()
-}
-
-func (term *termData) Ivoter() icmodule.Rate {
-	return term.RewardFund().IVoter()
-}
-
-func (term *termData) BondRequirement() icmodule.Rate {
+func (term *termDataCommon) BondRequirement() icmodule.Rate {
 	return term.bondRequirement
 }
 
-func (term *termData) Revision() int {
+func (term *termDataCommon) Revision() int {
 	return term.revision
 }
 
-func (term *termData) MinimumBond() *big.Int {
-	return term.minimumBond
-}
-
-func (term *termData) GetEndHeight() int64 {
+func (term *termDataCommon) GetEndHeight() int64 {
 	if term == nil {
 		return -1
 	}
 	return term.startHeight + term.period - 1
 }
 
-func (term *termData) GetIISSVersion() int {
+func (term *termDataCommon) GetIISSVersion() int {
 	if term.revision >= icmodule.RevisionIISS4R1 {
 		return IISSVersion4
 	} else if term.revision >= icmodule.RevisionEnableIISS3 {
@@ -215,7 +180,7 @@ func (term *termData) GetIISSVersion() int {
 	return IISSVersion2
 }
 
-func (term *termData) GetVoteStartHeight() int64 {
+func (term *termDataCommon) GetVoteStartHeight() int64 {
 	if term.sequence == 0 {
 		// If either of initial validators are not registered as PReps
 		// when it's decentralized, system will fail
@@ -224,36 +189,33 @@ func (term *termData) GetVoteStartHeight() int64 {
 	return -1
 }
 
-func (term *termData) GetPRepSnapshotCount() int {
+func (term *termDataCommon) GetPRepSnapshotCount() int {
 	return len(term.prepSnapshots)
 }
 
-func (term *termData) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
+func (term *termDataCommon) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
 	return term.prepSnapshots[index]
 }
 
-func (term *termData) TotalSupply() *big.Int {
+func (term *termDataCommon) TotalSupply() *big.Int {
 	return term.totalSupply
 }
 
-func (term *termData) IsDecentralized() bool {
+func (term *termDataCommon) IsDecentralized() bool {
 	return term.isDecentralized
 }
 
-func (term *termData) equal(other *termData) bool {
+func (term *termDataCommon) equal(other *termDataCommon) bool {
 	if term == other {
 		return true
 	}
 	if term == nil || other == nil {
 		return false
 	}
-
 	return term.version == other.version &&
 		term.sequence == other.sequence &&
 		term.startHeight == other.startHeight &&
 		term.period == other.period &&
-		term.irep.Cmp(other.irep) == 0 &&
-		term.rrep.Cmp(other.rrep) == 0 &&
 		term.totalSupply.Cmp(other.totalSupply) == 0 &&
 		term.totalDelegated.Cmp(other.totalDelegated) == 0 &&
 		term.bondRequirement == other.bondRequirement &&
@@ -261,18 +223,15 @@ func (term *termData) equal(other *termData) bool {
 		term.isDecentralized == other.isDecentralized &&
 		term.mainPRepCount == other.mainPRepCount &&
 		term.rewardFund.Equal(other.rewardFund) &&
-		term.minimumBond.Cmp(other.minimumBond) == 0 &&
 		term.prepSnapshots.Equal(other.prepSnapshots)
 }
 
-func (term *termData) clone() termData {
-	return termData{
+func (term *termDataCommon) clone() termDataCommon {
+	return termDataCommon{
 		version:         term.version,
 		sequence:        term.sequence,
 		startHeight:     term.startHeight,
 		period:          term.period,
-		irep:            term.irep,
-		rrep:            term.rrep,
 		totalSupply:     term.totalSupply,
 		totalDelegated:  term.totalDelegated,
 		rewardFund:      term.rewardFund,
@@ -281,12 +240,11 @@ func (term *termData) clone() termData {
 		isDecentralized: term.isDecentralized,
 		mainPRepCount:   term.mainPRepCount,
 		prepSnapshots:   term.prepSnapshots.Clone(),
-		minimumBond:     term.minimumBond,
 	}
 }
 
-func (term *termData) ToJSON(sc icmodule.StateContext, state *State) map[string]interface{} {
-	jso := map[string]interface{}{
+func (term *termDataCommon) ToJSON(sc icmodule.StateContext, state *State) map[string]interface{} {
+	return map[string]interface{}{
 		"sequence":         term.sequence,
 		"startBlockHeight": term.startHeight,
 		"endBlockHeight":   term.GetEndHeight(),
@@ -302,17 +260,9 @@ func (term *termData) ToJSON(sc icmodule.StateContext, state *State) map[string]
 		"iissVersion":      term.GetIISSVersion(),
 		"preps":            term.prepsToJSON(sc, state),
 	}
-	switch term.version {
-	case termVersion1:
-		jso["irep"] = term.irep
-		jso["rrep"] = term.rrep
-	case termVersion2:
-		jso["minimumBond"] = term.minimumBond
-	}
-	return jso
 }
 
-func (term *termData) prepsToJSON(sc icmodule.StateContext, state *State) []interface{} {
+func (term *termDataCommon) prepsToJSON(sc icmodule.StateContext, state *State) []interface{} {
 	jso := make([]interface{}, 0, len(term.prepSnapshots))
 	for _, pss := range term.prepSnapshots {
 		prep := state.GetPRepByOwner(pss.Owner())
@@ -328,7 +278,7 @@ func (term *termData) prepsToJSON(sc icmodule.StateContext, state *State) []inte
 	return jso
 }
 
-func (term *termData) getTotalPower() *big.Int {
+func (term *termDataCommon) getTotalPower() *big.Int {
 	totalPower := new(big.Int)
 	for _, snapshot := range term.prepSnapshots {
 		totalPower.Add(totalPower, snapshot.Power())
@@ -336,9 +286,9 @@ func (term *termData) getTotalPower() *big.Int {
 	return totalPower
 }
 
-func (term *termData) String() string {
+func (term *termDataCommon) String() string {
 	return fmt.Sprintf(
-		"Term{ver:%d seq:%d start:%d end:%d period:%d ts:%s td:%s pss:%d irep:%s rrep:%s rf:%s revision:%d isDecentralized:%t mb:%d}",
+		"ver=%d seq=%d start=%d end=%d period=%d ts=%s td=%s pss=%d rf=%s rev=%d isDec=%t",
 		term.version,
 		term.sequence,
 		term.startHeight,
@@ -347,13 +297,155 @@ func (term *termData) String() string {
 		term.totalSupply,
 		term.totalDelegated,
 		len(term.prepSnapshots),
-		term.irep,
-		term.rrep,
 		term.rewardFund,
 		term.revision,
 		term.isDecentralized,
-		term.minimumBond,
 	)
+}
+
+// ========================================================
+
+type termDataExtV1 struct {
+	irep *big.Int
+	rrep *big.Int
+}
+
+func (tde *termDataExtV1) Irep() *big.Int {
+	if tde == nil {
+		return icmodule.BigIntZero
+	}
+	return tde.irep
+}
+
+func (tde *termDataExtV1) Rrep() *big.Int {
+	if tde == nil {
+		return icmodule.BigIntZero
+	}
+	return tde.rrep
+}
+
+func (tde *termDataExtV1) equal(other *termDataExtV1) bool {
+	if tde == other {
+		return true
+	}
+	if tde == nil || other == nil {
+		return false
+	}
+	return tde.irep.Cmp(other.irep) == 0 && tde.rrep.Cmp(other.rrep) == 0
+}
+
+func (tde *termDataExtV1) String() string {
+	return fmt.Sprintf("irep=%d rrep=%d", tde.Irep(), tde.Rrep())
+}
+
+func (tde *termDataExtV1) clone() *termDataExtV1 {
+	if tde == nil {
+		return nil
+	}
+	return newTermDataExtV1(tde.irep, tde.rrep)
+}
+
+func newTermDataExtV1(irep, rrep *big.Int) *termDataExtV1 {
+	return &termDataExtV1{irep, rrep}
+}
+
+// ========================================================
+
+type termDataExtV2 struct {
+	minimumBond *big.Int
+}
+
+func (tde *termDataExtV2) MinimumBond() *big.Int {
+	if tde == nil {
+		return icmodule.BigIntZero
+	}
+	return tde.minimumBond
+}
+
+func (tde *termDataExtV2) equal(other *termDataExtV2) bool {
+	if tde == other {
+		return true
+	}
+	if tde == nil || other == nil {
+		return false
+	}
+	return tde.minimumBond.Cmp(other.minimumBond) == 0
+}
+
+func (tde *termDataExtV2) String() string {
+	return fmt.Sprintf("minBond=%d", tde.MinimumBond())
+}
+
+func (tde *termDataExtV2) clone() *termDataExtV2 {
+	if tde == nil {
+		return nil
+	}
+	return &termDataExtV2{tde.minimumBond}
+}
+
+func newTermDataExtV2(minimumBond *big.Int) *termDataExtV2 {
+	return &termDataExtV2{minimumBond}
+}
+
+// ========================================================
+
+type termData struct {
+	termDataCommon
+	*termDataExtV1
+	*termDataExtV2
+}
+
+func (term *termData) equal(other *termData) bool {
+	if !term.termDataCommon.equal(&other.termDataCommon) {
+		return false
+	}
+	switch term.Version() {
+	case termVersion1:
+		return term.termDataExtV1.equal(other.termDataExtV1)
+	case termVersion2:
+		return term.termDataExtV2.equal(other.termDataExtV2)
+	}
+	return true
+}
+
+func (term *termData) clone() termData {
+	td := termData{
+		termDataCommon:	term.termDataCommon.clone(),
+	}
+	switch term.Version() {
+	case termVersion1:
+		td.termDataExtV1 = term.termDataExtV1.clone()
+	case termVersion2:
+		td.termDataExtV2 = term.termDataExtV2.clone()
+	}
+	return td
+}
+
+func (term *termData) ToJSON(sc icmodule.StateContext, state *State) map[string]interface{} {
+	jso := term.termDataCommon.ToJSON(sc, state)
+	switch term.Version() {
+	case termVersion1:
+		jso["irep"] = term.Irep()
+		jso["rrep"] = term.Rrep()
+	case termVersion2:
+		jso["minimumBond"] = term.MinimumBond()
+	}
+	return jso
+}
+
+func (term *termData) String() string {
+	sb := strings.Builder{}
+	sb.WriteString("Term{")
+	sb.WriteString(term.termDataCommon.String())
+	sb.WriteByte(' ')
+	switch term.Version() {
+	case termVersion1:
+		sb.WriteString(term.termDataExtV1.String())
+	case termVersion2:
+		sb.WriteString(term.termDataExtV2.String())
+	}
+	sb.WriteString("}")
+	return sb.String()
 }
 
 func (term *termData) Format(f fmt.State, c rune) {
@@ -361,8 +453,8 @@ func (term *termData) Format(f fmt.State, c rune) {
 	case 'v':
 		var format string
 		if f.Flag('+') {
-			format = "Term{ver:%d seq:%d start:%d end:%d period:%d totalSupply:%s totalDelegated:%s " +
-				"prepSnapshots:%d irep:%s rrep:%s rf:%+v revision:%d isDecentralized:%t minimumBond:%d}"
+			format = "Term{ver=%d seq=%d start=%d end=%d period=%d totalSupply=%s totalDelegated=%s " +
+				"prepSnapshots=%d irep=%s rrep=%s rf=%+v revision=%d isDecentralized=%t minimumBond=%d}"
 		} else {
 			format = "Term{%d %d %d %d %d %s %s %d %s %s %v %d %t %d}"
 		}
@@ -377,12 +469,12 @@ func (term *termData) Format(f fmt.State, c rune) {
 			term.totalSupply,
 			term.totalDelegated,
 			len(term.prepSnapshots),
-			term.irep,
-			term.rrep,
+			term.Irep(),
+			term.Rrep(),
 			term.rewardFund,
 			term.revision,
 			term.isDecentralized,
-			term.minimumBond,
+			term.MinimumBond(),
 		)
 	case 's':
 		_, _ = fmt.Fprint(f, term.String())
@@ -441,7 +533,7 @@ func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 }
 
 func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
-	switch term.version {
+	switch term.Version() {
 	case termVersion1:
 		return encoder.EncodeMulti(
 			term.sequence,
@@ -489,16 +581,20 @@ func (term *TermSnapshot) Equal(o icobject.Impl) bool {
 	return term.equal(&other.termData)
 }
 
-func (term *TermSnapshot) GetPRepSnapshotCount() int {
-	return len(term.prepSnapshots)
-}
-
 func NewTermWithTag(tag icobject.Tag) *TermSnapshot {
-	return &TermSnapshot{
+	version := tag.Version()
+	tss := &TermSnapshot{
 		termData: termData{
-			version: tag.Version(),
+			termDataCommon: termDataCommon{version: version},
 		},
 	}
+	switch version {
+	case termVersion1:
+		tss.termDataExtV1 = newTermDataExtV1(icmodule.BigIntZero, icmodule.BigIntZero)
+	case termVersion2:
+		tss.termDataExtV2 = newTermDataExtV2(icmodule.BigIntZero)
+	}
+	return tss
 }
 
 // ==================================================================
@@ -534,16 +630,20 @@ func (term *TermState) SetMainPRepCount(mainPRepCount int) {
 }
 
 func (term *TermState) SetIrep(irep *big.Int) {
-	term.irep = irep
+	if term.termDataExtV1 != nil {
+		term.irep = irep
+	}
 }
 
 func (term *TermState) SetRrep(rrep *big.Int) {
-	term.rrep = rrep
+	if term.termDataExtV1 != nil {
+		term.rrep = rrep
+	}
 }
 
 func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
-	ts := state.GetTermSnapshot()
-	if ts == nil {
+	tss := state.GetTermSnapshot()
+	if tss == nil {
 		return nil
 	}
 	var version int
@@ -553,40 +653,49 @@ func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 		version = termVersion2
 	}
 
-	return &TermState{
+	ts := &TermState{
 		termData: termData{
-			version:         version,
-			sequence:        ts.Sequence() + 1,
-			startHeight:     ts.GetEndHeight() + 1,
-			period:          state.GetTermPeriod(),
-			irep:            state.GetIRep(),
-			rrep:            state.GetRRep(),
-			totalSupply:     totalSupply,
-			totalDelegated:  state.GetTotalDelegation(),
-			rewardFund:      state.GetRewardFund(revision),
-			bondRequirement: state.GetBondRequirement(),
-			revision:        revision,
-			prepSnapshots:   ts.prepSnapshots.Clone(),
-			isDecentralized: ts.IsDecentralized(),
-			minimumBond:     state.GetMinimumBond(),
+			termDataCommon: termDataCommon{
+				version:         version,
+				sequence:        tss.Sequence() + 1,
+				startHeight:     tss.GetEndHeight() + 1,
+				period:          state.GetTermPeriod(),
+				totalSupply:     totalSupply,
+				totalDelegated:  state.GetTotalDelegation(),
+				rewardFund:      state.GetRewardFund(revision),
+				bondRequirement: state.GetBondRequirement(),
+				revision:        revision,
+				prepSnapshots:   tss.prepSnapshots.Clone(),
+				isDecentralized: tss.IsDecentralized(),
+			},
 		},
 	}
+	switch version {
+	case termVersion1:
+		ts.termDataExtV1 = newTermDataExtV1(state.GetIRep(), state.GetRRep())
+	case termVersion2:
+		ts.termDataExtV2 = newTermDataExtV2(state.GetMinimumBond())
+	}
+
+	return ts
 }
 
 func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
 	return &TermState{
 		termData: termData{
-			sequence:        0,
-			startHeight:     startHeight,
-			period:          state.GetTermPeriod(),
-			irep:            state.GetIRep(),
-			rrep:            state.GetRRep(),
-			totalSupply:     icmodule.BigIntZero,
-			totalDelegated:  icmodule.BigIntZero,
-			rewardFund:      state.GetRewardFundV1().Clone(),
-			bondRequirement: state.GetBondRequirement(),
-			revision:        revision,
-			isDecentralized: false,
+			termDataCommon: termDataCommon{
+				version:         termVersion1,
+				sequence:        0,
+				startHeight:     startHeight,
+				period:          state.GetTermPeriod(),
+				totalSupply:     icmodule.BigIntZero,
+				totalDelegated:  icmodule.BigIntZero,
+				rewardFund:      state.GetRewardFundV1().Clone(),
+				bondRequirement: state.GetBondRequirement(),
+				revision:        revision,
+				isDecentralized: false,
+			},
+			termDataExtV1: newTermDataExtV1(state.GetIRep(), state.GetRRep()),
 		},
 	}
 }
