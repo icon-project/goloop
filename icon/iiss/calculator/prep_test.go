@@ -41,8 +41,7 @@ type prep struct {
 }
 
 func newTestPRep(p prep) *PRep {
-	tp := NewPRep(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
-	return tp
+	return NewPRep(p.owner, p.status, big.NewInt(p.delegate), big.NewInt(p.bond), p.commissionRate, p.pubkey)
 }
 
 func TestPRep_InitAccumulated(t *testing.T) {
@@ -231,6 +230,7 @@ func TestPRepInfo(t *testing.T) {
 	a4, _ := common.NewAddressFromString("hx4")
 	a5, _ := common.NewAddressFromString("hx5")
 	a6, _ := common.NewAddressFromString("hx6")
+	a7, _ := common.NewAddressFromString("hx7")
 	preps := []prep{
 		{a1, icmodule.ESEnable, 100, 1000, true, 100},
 		{a2, icmodule.ESJail, 200, 2000, true, 200},
@@ -324,9 +324,7 @@ func TestPRepInfo(t *testing.T) {
 		for _, v := range vote.vl {
 			k := icutils.ToKey(v.To())
 			p := pInfo.GetPRep(k)
-			if p == nil {
-				continue
-			}
+			assert.NotNil(t, p)
 			accuAmount := new(big.Int).Mul(v.Amount(), period)
 			if vote.vType == vtBond {
 				e := new(big.Int).Add(prev[k].Bonded(), v.Amount())
@@ -349,7 +347,8 @@ func TestPRepInfo(t *testing.T) {
 		{a3, icmodule.ESEnable},
 		{a5, icmodule.ESJail},
 		{a4, icmodule.ESJail},
-		{a6, icmodule.ESEnable}, // will add new PRep
+		{a6, icmodule.ESEnable}, // will activate PRep
+		{a7, icmodule.ESEnable}, // will add new PRep
 	}
 	for _, s := range status {
 		old := pInfo.GetPRep(icutils.ToKey(s.target))
@@ -394,8 +393,10 @@ func TestPRepInfo(t *testing.T) {
 		{a1, big.NewInt(p1Commission), big.NewInt(0), big.NewInt(p1Reward - p1Commission)},
 		{a2, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
 		{a3, big.NewInt(p3Commission), big.NewInt(minWage), big.NewInt(p3Reward - p3Commission)},
-		{a4, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
-		{a5, big.NewInt(0), big.NewInt(0), big.NewInt(0)},
+		{a4, big.NewInt(0), big.NewInt(0), big.NewInt(0)}, // penalized
+		{a5, big.NewInt(0), big.NewInt(0), big.NewInt(0)}, // penalized
+		{a6, big.NewInt(0), big.NewInt(0), big.NewInt(0)}, // not elected P-Rep in this term
+		{a7, big.NewInt(0), big.NewInt(0), big.NewInt(0)}, // not elected P-Rep in this term
 	}
 
 	err := pInfo.CalculateReward(big.NewInt(totalReward), big.NewInt(totalMinWage), big.NewInt(minBond))
