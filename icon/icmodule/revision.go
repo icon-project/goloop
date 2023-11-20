@@ -108,6 +108,7 @@ const (
 	RevisionBTP2 = Revision21
 
 	RevisionUpdatePRepStats = Revision22
+	RevisionBlockAccountAPI = Revision22
 )
 
 var revisionFlags = []module.Revision{
