@@ -153,8 +153,8 @@ var chainMethods = []*chainMethod{
 		nil,
 	}, icmodule.RevisionBlockAccountAPI, 0},
 	{scoreapi.Method{
-		scoreapi.Function, "isBlockedAccount",
-		scoreapi.FlagExternal, 1,
+		scoreapi.Function, "isBlocked",
+		scoreapi.FlagReadOnly, 1,
 		[]scoreapi.Parameter{
 			{ "address", scoreapi.Address, nil, nil },
 		},
