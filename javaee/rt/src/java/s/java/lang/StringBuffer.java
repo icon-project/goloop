@@ -1,7 +1,11 @@
 package s.java.lang;
 
 import a.CharArray;
-import i.*;
+import i.CodecIdioms;
+import i.IInstrumentation;
+import i.IObject;
+import i.IObjectDeserializer;
+import i.IObjectSerializer;
 import org.aion.avm.EnergyCalculator;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.io.Serializable;
@@ -14,197 +18,195 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
     }
 
     public StringBuffer() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor);
         this.v = new java.lang.StringBuffer();
     }
 
     public StringBuffer(String str) {
-        int lengthForBilling = (null != str)
-                ? str.internalLength()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor_2, lengthForBilling));
+        int lengthForBilling = (null != str) ? str.internalLength() : 0;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor_2, lengthForBilling);
         this.v = new java.lang.StringBuffer(str.getUnderlying());
     }
 
     public StringBuffer(CharSequence seq) {
-        int lengthForBilling = (null != seq)
-                ? seq.avm_length()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor_3, lengthForBilling));
+        int lengthForBilling = (null != seq) ? seq.avm_length() : 0;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor_3, lengthForBilling);
         this.v = new java.lang.StringBuffer();
         internalAppend(seq);
     }
 
     public int avm_length() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_length);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_length);
         return internalLength();
     }
 
     public void avm_trimToSize() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_trimToSize, internalLength()));
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_trimToSize, internalLength());
         this.v.trimToSize();
     }
 
     public void avm_setLength(int newLength) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_setLength);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_setLength, 0, newLength);
         this.v.setLength(newLength);
     }
 
     public char avm_charAt(int index) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_charAt);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_charAt);
         return this.v.charAt(index);
     }
 
-    public void avm_getChars(int srcBegin, int srcEnd, CharArray dst,
-                             int dstBegin)
-    {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_getChars, java.lang.Math.max(srcEnd - srcBegin, 0)));
+    public void avm_getChars(int srcBegin, int srcEnd, CharArray dst, int dstBegin) {
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_getChars,
+                java.lang.Math.max(srcEnd - srcBegin, 0));
         this.v.getChars(srcBegin, srcEnd, dst.getUnderlying(), dstBegin);
     }
 
     public void avm_setCharAt(int index, char ch) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_setCharAt);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_setCharAt);
         this.v.setCharAt(index, ch);
     }
 
     public StringBuffer avm_append(IObject obj) {
         String str = String.internalValueOfObject(obj);
-        int lengthForBilling = (null != str)
-                ? str.internalLength()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append, lengthForBilling));
+        int strLen = (null != str) ? str.internalLength() : 0;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append, strLen, internalLength() + strLen);
         this.internalAppend(str);
         return this;
     }
 
     public StringBuffer avm_append(String str) {
-        int lengthForBilling = (null != str)
-                ? str.internalLength()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_1, lengthForBilling));
+        int strLen = (null != str) ? str.internalLength() : 0;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_1, strLen, internalLength() + strLen);
         this.internalAppend(str);
         return this;
     }
 
     public StringBuffer avm_append(StringBuffer sb) {
-        int lengthForBilling = (null != sb)
-                ? sb.internalLength()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_2, lengthForBilling));
+        int strLen = (null != sb) ? sb.internalLength() : 0;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_2, strLen, internalLength() + strLen);
         java.lang.StringBuffer underlying = (null != sb)
                 ? sb.getUnderlying()
                 : null;
-        this.v = this.v.append(underlying);
+        this.v.append(underlying);
         return this;
     }
 
-    public StringBuffer avm_append(CharSequence s){
-        int lengthForBilling = (null != s)
-                ? s.avm_length()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_3, lengthForBilling));
+    public StringBuffer avm_append(CharSequence s) {
+        int csLen = (null != s) ? s.avm_length() : 0;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_3, csLen, internalLength() + csLen);
         internalAppend(s);
         return this;
     }
 
-    public StringBuffer avm_append(CharSequence s, int start, int end){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_4, java.lang.Math.max(end - start, 0)));
+    public StringBuffer avm_append(CharSequence s, int start, int end) {
+        int csLen = java.lang.Math.max(end - start, 0);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_4, csLen, internalLength() + csLen);
         java.lang.String underlying = (null != s)
                 ? s.avm_toString().getUnderlying()
                 : null;
-        this.v = this.v.append(underlying, start, end);
+        this.v.append(underlying, start, end);
         return this;
     }
 
     public StringBuffer avm_append(CharArray str) {
-        int lengthForBilling = (null != str)
-                ? str.length()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_5, lengthForBilling));
-        // Note the underlying value is not used since this will actually throw NPE if given null.
+        int strLen = (null != str) ? str.length() : 0;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_5, strLen, internalLength() + strLen);
         this.v = this.v.append(str.getUnderlying());
         return this;
     }
 
     public StringBuffer avm_append(CharArray str, int offset, int len) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_6, (java.lang.Math.max(len, 0) + java.lang.Math.max(internalLength() - offset, 0))));
+        int oldLen = java.lang.Math.max(len, 0) + java.lang.Math.max(internalLength() - offset, 0);
+        int newLen = internalLength() + java.lang.Math.max(len, 0);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_6, oldLen, newLen);
         this.v = this.v.append(str.getUnderlying(), offset, len);
         return this;
     }
 
     public StringBuffer avm_append(boolean b) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_append_7);
-        this.v = this.v.append(b);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_7, 0, internalLength());
+        this.v.append(b);
         return this;
     }
 
     public StringBuffer avm_append(char c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_append_8);
-        this.v = this.v.append(c);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_8, 0, internalLength());
+        this.v.append(c);
         return this;
     }
 
     public StringBuffer avm_append(int i) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_append_9);
-        this.v = this.v.append(i);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_9, 0, internalLength());
+        this.v.append(i);
         return this;
     }
 
-    public StringBuffer avm_append(long lng) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_append_10);
-        this.v = this.v.append(lng);
+    public StringBuffer avm_append(long l) {
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_10, 0, internalLength());
+        this.v.append(l);
         return this;
     }
 
     public StringBuffer avm_append(float f) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_append_11);
-        this.v = this.v.append(f);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_11, 0, internalLength());
+        this.v.append(f);
         return this;
     }
 
     public StringBuffer avm_append(double d) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_append_12);
-        this.v = this.v.append(d);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_append_12, 0, internalLength());
+        this.v.append(d);
         return this;
     }
 
     public StringBuffer avm_delete(int start, int end) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_delete, java.lang.Math.max(internalLength() - start, 0)));
-        this.v = this.v.delete(start, end);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_delete,
+                java.lang.Math.max(internalLength() - start, 0));
+        this.v.delete(start, end);
         return this;
     }
 
     public StringBuffer avm_deleteCharAt(int index) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_deleteCharAt, java.lang.Math.max(internalLength() - index, 0)));
-        this.v = this.v.deleteCharAt(index);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_deleteCharAt,
+                java.lang.Math.max(internalLength() - index, 0));
+        this.v.deleteCharAt(index);
         return this;
     }
 
     public StringBuffer avm_replace(int start, int end, String str) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_replace, java.lang.Math.max(internalLength() - start, 0)));
-        this.v = this.v.replace(start, end, str.getUnderlying());
+        int strLen = (null != str) ? str.internalLength() : 0;
+        int oldLen = java.lang.Math.max(internalLength() - start, 0);
+        int newLen = internalLength() + strLen - java.lang.Math.max(end - start, 0);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_replace, oldLen, newLen);
+        java.lang.String underlying = (null != str)
+                ? str.getUnderlying()
+                : null;
+        this.v.replace(start, end, underlying);
         return this;
     }
 
     public String avm_substring(int start) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_substring, java.lang.Math.max(internalLength() - start, 0)));
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_substring,
+                java.lang.Math.max(internalLength() - start, 0));
         return new String(this.v.substring(start));
     }
 
-    public CharSequence avm_subSequence(int start, int end){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_subSequence, java.lang.Math.max(end - start, 0)));
+    public CharSequence avm_subSequence(int start, int end) {
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_subSequence,
+                java.lang.Math.max(end - start, 0));
         return new String(this.v.subSequence(start, end).toString());
     }
 
     public String avm_substring(int start, int end) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_substring_1, java.lang.Math.max(end - start, 0)));
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_substring_1,
+                java.lang.Math.max(end - start, 0));
         return new String(this.v.substring(start, end));
     }
 
-    public StringBuffer avm_insert(int index, CharArray str, int offset,
-                                            int len)
-    {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_insert, (java.lang.Math.max(len, 0) + java.lang.Math.max(internalLength() - index, 0))));
+    public StringBuffer avm_insert(int index, CharArray str, int offset, int len) {
+        int oldLen = java.lang.Math.max(len, 0) + java.lang.Math.max(internalLength() - index, 0);
+        int newLen = internalLength() + java.lang.Math.max(len, 0);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert, oldLen, newLen);
         this.v.insert(index, str.getUnderlying(), offset, len);
         return this;
     }
@@ -216,10 +218,10 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
     }
 
     public StringBuffer avm_insert(int offset, String str) {
-        int lengthForBilling = (null != str)
-                ? str.internalLength()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_2, (lengthForBilling + java.lang.Math.max(internalLength() - offset, 0))));
+        int strLen = (null != str) ? str.internalLength() : 0;
+        int oldLen = strLen + java.lang.Math.max(internalLength() - offset, 0);
+        int newLen = internalLength() + strLen;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_2, oldLen, newLen);
         java.lang.String underlying = (null != str)
                 ? str.getUnderlying()
                 : null;
@@ -228,20 +230,20 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
     }
 
     public StringBuffer avm_insert(int offset, CharArray str) {
-        int lengthForBilling = (null != str)
-                ? str.length()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_3, (lengthForBilling + java.lang.Math.max(internalLength() - offset, 0))));
+        int strLen = (null != str) ? str.length() : 0;
+        int oldLen = strLen + java.lang.Math.max(internalLength() - offset, 0);
+        int newLen = internalLength() + strLen;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_3, oldLen, newLen);
         // Note the underlying value is not used since this will actually throw NPE if given null.
         this.v.insert(offset, str.getUnderlying());
         return this;
     }
 
     public StringBuffer avm_insert(int dstOffset, CharSequence s){
-        int lengthForBilling = (null != s)
-                ? s.avm_length()
-                : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_4, (lengthForBilling + java.lang.Math.max(internalLength() - dstOffset, 0))));
+        int csLen = (null != s) ? s.avm_length() : 0;
+        int oldLen = csLen + java.lang.Math.max(internalLength() - dstOffset, 0);
+        int newLen = internalLength() + csLen;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_4, oldLen, newLen);
         java.lang.String underlying = (null != s)
                 ? s.avm_toString().getUnderlying()
                 : null;
@@ -250,78 +252,88 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
     }
 
     public StringBuffer avm_insert(int dstOffset, CharSequence s, int start, int end) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_5, (java.lang.Math.max(end - start, 0) + java.lang.Math.max(internalLength() - dstOffset, 0))));
+        int oldLen = java.lang.Math.max(end - start, 0) + java.lang.Math.max(internalLength() - dstOffset, 0);
+        int newLen = internalLength() + java.lang.Math.max(end - start, 0);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_5, oldLen, newLen);
         java.lang.String underlying = (null != s)
                 ? s.avm_toString().getUnderlying()
-                : "null";
-        this.v.insert(dstOffset, underlying.subSequence(start, end));
+                : null;
+        this.v.insert(dstOffset, underlying, start, end);
         return this;
     }
 
     public StringBuffer avm_insert(int offset, boolean b) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_6);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_6, 0, internalLength());
         this.v.insert(offset, b);
         return this;
     }
 
     public StringBuffer avm_insert(int offset, char c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_7);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_7, 0, internalLength());
         this.v.insert(offset, c);
         return this;
     }
 
     public StringBuffer avm_insert(int offset, int i) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_8);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_8, 0, internalLength());
         this.v.insert(offset, i);
         return this;
     }
 
     public StringBuffer avm_insert(int offset, long l) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_9);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_9, 0, internalLength());
         this.v.insert(offset, l);
         return this;
     }
 
     public StringBuffer avm_insert(int offset, float f) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_10);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_10, 0, internalLength());
         this.v.insert(offset, f);
         return this;
     }
 
     public StringBuffer avm_insert(int offset, double d) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_11);
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_insert_11, 0, internalLength());
         this.v.insert(offset, d);
         return this;
     }
 
     public int avm_indexOf(String str) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_indexOf, internalLength()));
+        int strLen = (null != str) ? str.internalLength() : 0;
+        EnergyCalculator.chargeEnergyForIndexOf(RuntimeMethodFeeSchedule.StringBuffer_avm_indexOf,
+                internalLength(), strLen, 0);
         return this.v.indexOf(str.getUnderlying());
     }
 
     public int avm_indexOf(String str, int fromIndex) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_indexOf_1, java.lang.Math.max(internalLength() - fromIndex, 0)));
+        int strLen = (null != str) ? str.internalLength() : 0;
+        EnergyCalculator.chargeEnergyForIndexOf(RuntimeMethodFeeSchedule.StringBuffer_avm_indexOf_1,
+                internalLength(), strLen, fromIndex);
         return this.v.indexOf(str.getUnderlying(), fromIndex);
     }
 
     public int avm_lastIndexOf(String str) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_lastIndexOf, internalLength()));
+        int strLen = (null != str) ? str.internalLength() : 0;
+        EnergyCalculator.chargeEnergyForLastIndexOf(RuntimeMethodFeeSchedule.StringBuffer_avm_lastIndexOf,
+                internalLength(), strLen);
         return this.v.lastIndexOf(str.getUnderlying());
     }
 
     public int avm_lastIndexOf(String str, int fromIndex) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_lastIndexOf_1, java.lang.Math.max(internalLength() - fromIndex, 0)));
+        int strLen = (null != str) ? str.internalLength() : 0;
+        EnergyCalculator.chargeEnergyForLastIndexOf(RuntimeMethodFeeSchedule.StringBuffer_avm_lastIndexOf_1,
+                internalLength(), strLen, fromIndex);
         return this.v.lastIndexOf(str.getUnderlying(), fromIndex);
     }
 
     public StringBuffer avm_reverse() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_reverse, internalLength()));
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_reverse, internalLength());
         this.v.reverse();
         return this;
     }
 
     public String avm_toString() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_toString, internalLength()));
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuffer_avm_toString, internalLength());
         return internalToString();
     }
 
@@ -375,13 +387,4 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
                 : null;
         this.v.append(underlying);
     }
-    //========================================================
-    // Methods below are deprecated
-    //========================================================
-
-
-
-    //========================================================
-    // Methods below are excluded from shadowing
-    //========================================================
 }

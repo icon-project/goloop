@@ -312,7 +312,7 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.ContractState) 
 func (h *CallHandler) ensureMethodAndParams(eeType state.EEType) error {
 	info, err := h.as.APIInfo()
 	if err != nil {
-		return nil
+		return err
 	}
 	if info == nil {
 		return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")

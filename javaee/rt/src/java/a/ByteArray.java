@@ -43,7 +43,8 @@ public class ByteArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.ByteArray_avm_clone, length()));
+        EnergyCalculator.chargeEnergyClone(RuntimeMethodFeeSchedule.ByteArray_avm_clone,
+                length(), ArrayElement.BYTE.getEnergy());
         lazyLoad();
         return new ByteArray(Arrays.copyOf(underlying, underlying.length));
     }
@@ -71,7 +72,7 @@ public class ByteArray extends Array {
     //========================================================
 
     public ByteArray(int c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ByteArray_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.ByteArray_avm_constructor);
         this.underlying = new byte[c];
     }
 
@@ -81,8 +82,8 @@ public class ByteArray extends Array {
     }
 
     public static ByteArray newWithCharge(byte[] underlying) {
-        chargeEnergyInitArray(underlying.length, ArrayElement.BYTE.getEnergy());
-        IInstrumentation.charge(RuntimeMethodFeeSchedule.ByteArray_avm_constructor);
+        EnergyCalculator.chargeEnergyMultiply(RuntimeMethodFeeSchedule.ByteArray_avm_constructor,
+                underlying.length, ArrayElement.BYTE.getEnergy());
         return new ByteArray(underlying);
     }
 

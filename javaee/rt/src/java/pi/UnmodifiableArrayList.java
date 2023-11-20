@@ -14,7 +14,7 @@ public class UnmodifiableArrayList<E extends IObject>
         implements List<E> {
     public UnmodifiableArrayList(IObject[] data) {
         super(data);
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_constructor, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayList_constructor, data.length);
     }
 
     public boolean avm_equals(IObject o) {
@@ -38,7 +38,7 @@ public class UnmodifiableArrayList<E extends IObject>
     }
 
     public int avm_hashCode() {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_hashCode, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayList_hashCode, data.length);
         return IObjects.hashCode(data);
     }
 
@@ -60,12 +60,12 @@ public class UnmodifiableArrayList<E extends IObject>
     }
 
     public int avm_indexOf(IObject o) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_indexOf, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayList_indexOf, data.length);
         return indexOf(o);
     }
 
     public int avm_lastIndexOf(IObject o) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_lastIndexOf, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayList_lastIndexOf, data.length);
         return lastIndexOf(o);
     }
 
@@ -80,7 +80,7 @@ public class UnmodifiableArrayList<E extends IObject>
     }
 
     public List<E> avm_subList(int fromIndex, int toIndex) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayList_subList, data.length));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayList_subList, data.length);
         return new UnmodifiableArrayList<>(
                 java.util.Arrays.copyOfRange(data, fromIndex, toIndex));
     }

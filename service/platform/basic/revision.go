@@ -57,7 +57,7 @@ var revisionFlags = []module.Revision{
 	// Revision 8
 	module.UseCompactAPIInfo,
 	// Revision 9
-	module.MultipleFeePayers,
+	module.MultipleFeePayers | module.FixJCLSteps,
 }
 
 func init() {

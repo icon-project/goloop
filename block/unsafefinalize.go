@@ -37,7 +37,7 @@ type finalizeRequest struct {
 func (r *finalizeRequest) finalize(blk module.BlockData) error {
 	ntr, err := r.sm.CreateTransition(r.syncTr, blk.NormalTransactions(), blk, nil, true)
 	if err != nil {
-		return nil
+		return err
 	}
 	if err = service.FinalizeTransition(ntr, module.FinalizeNormalTransaction, false); err != nil {
 		return err

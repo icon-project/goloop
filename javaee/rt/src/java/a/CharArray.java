@@ -43,7 +43,8 @@ public class CharArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.CharArray_avm_clone, length()));
+        EnergyCalculator.chargeEnergyClone(RuntimeMethodFeeSchedule.CharArray_avm_clone,
+                length(), ArrayElement.CHAR.getEnergy());
         lazyLoad();
         return new CharArray(Arrays.copyOf(underlying, underlying.length));
     }
@@ -59,7 +60,7 @@ public class CharArray extends Array {
     //========================================================
 
     public CharArray(int c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.CharArray_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.CharArray_avm_constructor);
         this.underlying = new char[c];
     }
 
