@@ -140,3 +140,47 @@ type NetworkError interface {
 	error
 	Temporary() bool // Is the error temporary?
 }
+
+type SeedRoleAuthorizationPolicy int
+
+const (
+	SeedRoleAuthorizationPolicyNone SeedRoleAuthorizationPolicy = 1 << iota
+	SeedRoleAuthorizationPolicyByState
+	SeedRoleAuthorizationPolicyByAuthorizer
+	SeedRoleAuthorizationPolicyByValidatorVotes
+)
+
+func (p *SeedRoleAuthorizationPolicy) Set(v SeedRoleAuthorizationPolicy, enable bool) {
+	if enable {
+		*p |= v
+	} else {
+		*p &= ^v
+	}
+}
+
+func (p SeedRoleAuthorizationPolicy) Enabled(v SeedRoleAuthorizationPolicy) bool {
+	return p&v == v
+}
+
+type SeedStateSupply interface {
+	SeedState(result []byte) SeedState
+}
+
+type SeedState interface {
+	AuthorizationPolicy() SeedRoleAuthorizationPolicy
+	// Seeds which has the authority of seed role by state.
+	//returns empty list if SeedRoleAuthorizationPolicyByState is not enabled
+	Seeds() []PeerID
+	// IsAuthorizer which has the permission of seed role authorization
+	//returns false if SeedRoleAuthorizationPolicyByAuthorizer is not enabled
+	IsAuthorizer(id PeerID) bool
+	// IsCandidate which is valid seed candidate
+	//returns false if both of SeedRoleAuthorizationPolicyByAuthorizer and SeedRoleAuthorizationPolicyByValidatorVotes is not enabled
+	IsCandidate(id PeerID) bool
+	// Term duration of seed role
+	Term() int64
+}
+
+type RouteResolver interface {
+	Resolve(id PeerID) (PeerID, int)
+}
