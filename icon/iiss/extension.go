@@ -1029,10 +1029,10 @@ func (es *ExtensionStateImpl) setIrepToTerm(revision int, preps icstate.PRepSet,
 	var irep *big.Int
 	if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionEnableIISS3 {
 		// disable IRep
-		irep = new(big.Int)
+		irep = icmodule.BigIntZero
 	} else if revision >= icmodule.RevisionSetIRepViaNetworkProposal {
 		// use network value IRep
-		irep = new(big.Int).Set(es.State.GetIRep())
+		irep = es.State.GetIRep()
 	} else {
 		irep = calculateIRep(preps)
 	}
@@ -1043,7 +1043,7 @@ func (es *ExtensionStateImpl) setRrepToTerm(revision int, totalSupply *big.Int, 
 	var rrep *big.Int
 	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionEnableIISS3 {
 		// disable Rrep
-		rrep = new(big.Int)
+		rrep = icmodule.BigIntZero
 	} else {
 		rrep = calculateRRep(totalSupply, es.State.GetTotalDelegation())
 	}
