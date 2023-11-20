@@ -156,7 +156,7 @@ var revisionFlags = []module.Revision{
 	// Revision21
 	module.MultipleFeePayers,
 	// Revision22
-	0,
+	module.FixJCLSteps,
 }
 
 func init() {
