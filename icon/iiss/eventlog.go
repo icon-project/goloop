@@ -27,6 +27,11 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+var (
+	trueBytes  = intconv.Int64ToBytes(1)
+	falseBytes = intconv.Int64ToBytes(0)
+)
+
 func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
 	if cc.Revision().Value() < icmodule.RevisionIISS4R0 {
 		var name string
@@ -318,5 +323,83 @@ func EmitPRepCountConfigSetEvent(cc icmodule.CallContext, main, sub, extra int64
 			intconv.Int64ToBytes(sub),
 			intconv.Int64ToBytes(extra),
 		},
+	)
+}
+
+func EmitStepPriceSetEvent(cc icmodule.CallContext, price *big.Int) {
+	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("StepPriceSet(int)")},
+		[][]byte{intconv.BigIntToBytes(price)},
+	)
+}
+
+func EmitStepCostSetEvent(cc icmodule.CallContext, type_ string, cost *big.Int) {
+	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("StepCostSet(str,int)"), []byte(type_)},
+		[][]byte{intconv.BigIntToBytes(cost)},
+	)
+}
+
+func EmitRevisionSetEvent(cc icmodule.CallContext, revision int64) {
+	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("RevisionSet(int)")},
+		[][]byte{intconv.Int64ToBytes(revision)},
+	)
+}
+
+func EmitContractBlockedSetEvent(cc icmodule.CallContext, address module.Address, yn bool) {
+	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	ynBytes := trueBytes
+	if !yn {
+		ynBytes = falseBytes
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("ContractBlockedSet(Address,bool)"), address.Bytes()},
+		[][]byte{ynBytes},
+	)
+}
+
+func EmitRewardFundSetEvent(cc icmodule.CallContext, value *big.Int) {
+	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("RewardFundSet(int)")},
+		[][]byte{intconv.BigIntToBytes(value)},
+	)
+}
+
+func EmitRewardFundAllocationSetEvent(cc icmodule.CallContext, type_ icstate.RFundKey, value icmodule.Rate) {
+	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("RewardFundAllocationSet(str,int)"), []byte(type_)},
+		[][]byte{intconv.Int64ToBytes(value.NumInt64())},
+	)
+}
+
+func EmitNetworkScoreSetEvent(cc icmodule.CallContext, role string, address module.Address) {
+	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	var addrBytes []byte
+	if address != nil {
+		addrBytes = address.Bytes()
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("NetworkScoreSet(str,Address)"), []byte(role)},
+		[][]byte{addrBytes},
 	)
 }

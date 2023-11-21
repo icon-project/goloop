@@ -671,15 +671,20 @@ func (s *chainScore) Ex_setRewardFund(iglobal *big.Int) error {
 	revision := s.cc.Revision().Value()
 	if revision <= icmodule.RevisionIISS4R0 {
 		rf := es.State.GetRewardFundV1()
-		rf.SetIGlobal(iglobal)
+		if err = rf.SetIGlobal(iglobal); err != nil {
+			return err
+		}
 		if err = es.State.SetRewardFund(rf); err != nil {
 			return err
 		}
 	}
 
 	if revision >= icmodule.RevisionIISS4R0 {
+		iiss.EmitRewardFundSetEvent(s.newCallContext(s.cc), iglobal)
 		rf := es.State.GetRewardFundV2()
-		rf.SetIGlobal(iglobal)
+		if err = rf.SetIGlobal(iglobal); err != nil {
+			return err
+		}
 		return es.State.SetRewardFund(rf)
 	}
 	return nil
@@ -720,8 +725,16 @@ func (s *chainScore) Ex_setRewardFundAllocation2(values []interface{}) error {
 		return err
 	}
 	rf := es.State.GetRewardFundV2()
-	rf.SetAllocation(alloc)
-	return es.State.SetRewardFund(rf)
+	if err = rf.SetAllocation(alloc); err != nil {
+		return err
+	}
+	if err = es.State.SetRewardFund(rf); err != nil {
+		return err
+	}
+	for k, v := range rf.Allocation() {
+		iiss.EmitRewardFundAllocationSetEvent(s.newCallContext(s.cc), k, v)
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_getScoreOwner(score module.Address) (module.Address, error) {
@@ -746,8 +759,8 @@ func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) err
 	if err != nil {
 		return err
 	}
+	cc := s.newCallContext(s.cc)
 	if address != nil {
-		cc := s.newCallContext(s.cc)
 		owner, err := cc.GetScoreOwner(address)
 		if err != nil {
 			return err
@@ -756,6 +769,7 @@ func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) err
 			return icmodule.IllegalArgumentError.Errorf("Only scores owned by governance can be designated")
 		}
 	}
+	iiss.EmitNetworkScoreSetEvent(cc, role, address)
 	return es.State.SetNetworkScore(role, address)
 }
 

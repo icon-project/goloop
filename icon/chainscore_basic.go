@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -111,7 +112,7 @@ func (s *chainScore) blockAccounts2() {
 
 // Ex_setRevision sets the system revision to the given number.
 // This can only be called by the governance SCORE.
-func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
+func (s *chainScore) Ex_setRevision(code *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -135,6 +136,7 @@ func (s *chainScore) Ex_setRevision(code *common.HexInt) error {
 	}
 	as.MigrateForRevision(s.cc.ToRevision(int(code.Int64())))
 	as.SetAPIInfo(s.GetAPI())
+	iiss.EmitRevisionSetEvent(s.newCallContext(s.cc), code.Int64())
 	return nil
 }
 
@@ -241,6 +243,7 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false && as.IsContract() {
 		as.SetBlock(true)
+		iiss.EmitContractBlockedSetEvent(s.newCallContext(s.cc), address, true)
 		// add to blocked score list
 		sas := s.cc.GetAccountState(state.SystemID)
 		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
@@ -264,6 +267,7 @@ func (s *chainScore) Ex_unblockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true && as.IsContract() {
 		as.SetBlock(false)
+		iiss.EmitContractBlockedSetEvent(s.newCallContext(s.cc), address, false)
 		// remove from blocked score list
 		sas := s.cc.GetAccountState(state.SystemID)
 		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
@@ -304,14 +308,14 @@ func (s *chainScore) emitAccountBlockedSet(address module.Address, yn bool) {
 	}
 	s.cc.OnEvent(
 		state.SystemAddress,
-		[][]byte {
+		[][]byte{
 			[]byte("AccountBlockedSet(Address,bool)"),
 			address.Bytes(),
 		},
 		[][]byte{
 			ynBytes,
 		},
-	);
+	)
 }
 
 func (s *chainScore) Ex_blockAccount(address module.Address) error {
@@ -364,15 +368,16 @@ func (s *chainScore) Ex_isBlocked(address module.Address) (bool, error) {
 	return as.IsBlocked(), nil
 }
 
-func (s *chainScore) Ex_setStepPrice(price *common.HexInt) error {
+func (s *chainScore) Ex_setStepPrice(price *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
 	as := s.cc.GetAccountState(state.SystemID)
+	iiss.EmitStepPriceSetEvent(s.newCallContext(s.cc), price)
 	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
 }
 
-func (s *chainScore) Ex_setStepCost(costType string, cost *common.HexInt) error {
+func (s *chainScore) Ex_setStepCost(costType string, cost *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -388,6 +393,7 @@ func (s *chainScore) Ex_setStepCost(costType string, cost *common.HexInt) error 
 			return err
 		}
 	}
+	iiss.EmitStepCostSetEvent(s.newCallContext(s.cc), costType, cost)
 	if costZero {
 		// remove the step type and cost
 		for i := 0; i < stepTypes.Size(); i++ {

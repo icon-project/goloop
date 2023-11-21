@@ -18,6 +18,7 @@ package iiss
 
 import (
 	"bytes"
+	"math/big"
 	"strings"
 	"testing"
 
@@ -209,7 +210,7 @@ func TestEmitIScoreClaimEvent(t *testing.T) {
 	icx := icutils.ToLoop(1)
 	claim := icutils.ICXToIScore(icx)
 
-	for _, rev := range []int{icmodule.RevisionIISS2-1, icmodule.RevisionIISS4R0} {
+	for _, rev := range []int{icmodule.RevisionIISS2 - 1, icmodule.RevisionIISS4R0} {
 		revision := icmodule.ValueToRevision(rev)
 		cc.SetRevision(revision)
 		EmitIScoreClaimEvent(cc, claim, icx)
@@ -226,10 +227,10 @@ func TestEmitPRepIssuedEvent(t *testing.T) {
 	})
 
 	prep := &IssuePRepJSON{
-		IRep: common.NewHexInt(0),
-		RRep: common.NewHexInt(0),
+		IRep:            common.NewHexInt(0),
+		RRep:            common.NewHexInt(0),
 		TotalDelegation: common.NewHexInt(1000),
-		Value: common.NewHexInt(100),
+		Value:           common.NewHexInt(100),
 	}
 
 	EmitPRepIssuedEvent(cc, prep)
@@ -244,9 +245,9 @@ func TestEmitICXIssuedEvent(t *testing.T) {
 	})
 
 	result := &IssueResultJSON{
-		ByFee: common.NewHexInt(10),
+		ByFee:           common.NewHexInt(10),
 		ByOverIssuedICX: common.NewHexInt(100),
-		Issue: common.NewHexInt(1000),
+		Issue:           common.NewHexInt(1000),
 	}
 	issue := icstate.NewIssue()
 
@@ -450,7 +451,7 @@ func TestEmitBondSetEvent(t *testing.T) {
 	})
 	var bonds icstate.Bonds
 	for i := 0; i < 3; i++ {
-		addr := newDummyAddress(i+10)
+		addr := newDummyAddress(i + 10)
 		bond := icstate.NewBond(common.AddressToPtr(addr), icutils.ToLoop(i+1))
 		bonds = append(bonds, bond)
 	}
@@ -469,7 +470,7 @@ func TestEmitDelegationSetEvent(t *testing.T) {
 	})
 	var ds icstate.Delegations
 	for i := 0; i < 3; i++ {
-		addr := newDummyAddress(i+10)
+		addr := newDummyAddress(i + 10)
 		d := icstate.NewDelegation(common.AddressToPtr(addr), icutils.ToLoop(i+1))
 		ds = append(ds, d)
 	}
@@ -488,6 +489,76 @@ func TestEmitPRepCountConfigSetEvent(t *testing.T) {
 	})
 
 	EmitPRepCountConfigSetEvent(cc, 22, 78, 3)
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}
+
+func TestEmitStepPriceSetEvent(t *testing.T) {
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
+	})
+
+	EmitStepPriceSetEvent(cc, big.NewInt(1000))
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}
+
+func TestEmitStepCostSetEvent(t *testing.T) {
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
+	})
+
+	EmitStepCostSetEvent(cc, "contractCreate", big.NewInt(1000))
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}
+
+func TestEmitRevisionSetEvent(t *testing.T) {
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
+	})
+
+	EmitRevisionSetEvent(cc, int64(icmodule.RevisionIISS4R1+1))
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}
+
+func TestEmitContractBlockedSetEvent(t *testing.T) {
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
+	})
+
+	EmitContractBlockedSetEvent(cc, common.MustNewAddressFromString("cx123"), true)
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}
+
+func TestEmitRewardFundSetEvent(t *testing.T) {
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
+	})
+
+	EmitRewardFundSetEvent(cc, big.NewInt(1000))
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}
+
+func TestEmitRewardFundAllocationSetEvent(t *testing.T) {
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
+	})
+
+	EmitRewardFundAllocationSetEvent(cc, icstate.KeyIvoter, icmodule.Rate(1000))
+	scoreAddress, indexed, data := getParams(cc)
+	checkEventLogSignature(t, scoreAddress, indexed, data)
+}
+
+func TestEmitNetworkScoreSetEvent(t *testing.T) {
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
+	})
+
+	EmitNetworkScoreSetEvent(cc, icstate.CPSKey, common.MustNewAddressFromString("cx123"))
 	scoreAddress, indexed, data := getParams(cc)
 	checkEventLogSignature(t, scoreAddress, indexed, data)
 }

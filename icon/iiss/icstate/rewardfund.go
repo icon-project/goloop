@@ -113,6 +113,10 @@ func (r *RewardFund) IGlobal() *big.Int {
 	return r.iGlobal
 }
 
+func (r *RewardFund) Allocation() map[RFundKey]icmodule.Rate {
+	return r.allocation
+}
+
 func (r *RewardFund) SetIGlobal(value *big.Int) error {
 	if value.Sign() == -1 {
 		return scoreresult.InvalidParameterError.Errorf("InvalidIglobal(%d)", value)
