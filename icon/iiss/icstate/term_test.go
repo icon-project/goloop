@@ -316,7 +316,7 @@ func TestTerm_TotalBondedDelegation(t *testing.T) {
 	size := 100
 	term := newTermState(termVersion1, 0, 43120)
 	prepSnapshots := newDummyPRepSnapshots(size)
-	term.SetPRepSnapshots(prepSnapshots.Clone())
+	term.prepSnapshots = prepSnapshots.Clone()
 	assert.Equal(t, term.GetElectedPRepCount(), len(prepSnapshots))
 
 	totalPower := new(big.Int)

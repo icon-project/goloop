@@ -985,41 +985,25 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 		prepSet = nil
 	}
 
-	return es.moveOnToNextTerm(sc, prepSet, totalSupply)
-}
+	// Create a TermState for the next term
+	nextTerm := icstate.NewNextTerm(sc, es.State, totalSupply, prepSet)
+	if nextTerm == nil {
+		log.Panicf("NextTermIsNil(bh=%d,rev=%d)", wc.BlockHeight(), revision)
+	}
 
-func (es *ExtensionStateImpl) moveOnToNextTerm(
-	sc icmodule.StateContext, preps icstate.PRepSet, totalSupply *big.Int) error {
-
-	// Create a new term
-	revision := sc.RevisionValue()
-	nextTerm := icstate.NewNextTerm(es.State, totalSupply, revision)
-
+	// Calculate parameters used for IISS2 reward distribution
 	// Valid preps means that decentralization is activated
-	if preps != nil {
-		br := sc.GetBondRequirement()
-		mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
-		pss := preps.ToPRepSnapshots(br)
-
-		nextTerm.SetMainPRepCount(mainPRepCount)
-		nextTerm.SetPRepSnapshots(pss)
-		nextTerm.SetIsDecentralized(true)
-		es.setIrepToTerm(revision, preps, nextTerm)
+	if nextTerm.IsDecentralized() {
+		es.setIrepToTerm(revision, prepSet, nextTerm)
 
 		// Record new validator list for the next term to State
-		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(pss, es.State, mainPRepCount)
-		if err := es.State.SetValidatorsSnapshot(vss); err != nil {
+		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(
+			nextTerm.PRepSnapshots(), es.State, nextTerm.MainPRepCount())
+		if err = es.State.SetValidatorsSnapshot(vss); err != nil {
 			return err
 		}
 	}
-
 	es.setRrepToTerm(revision, totalSupply, nextTerm)
-
-	term := es.State.GetTermSnapshot()
-	if !term.IsDecentralized() && nextTerm.IsDecentralized() {
-		// reset sequence when network is decentralized
-		nextTerm.ResetSequence()
-	}
 
 	es.logger.Debugf(nextTerm.String())
 	return es.State.SetTermSnapshot(nextTerm.GetSnapshot())

@@ -117,16 +117,6 @@ const (
 	termVersionReserved
 )
 
-func BigIntEqual(v0, v1 *big.Int) bool {
-	if v0 == v1 {
-		return true
-	}
-	if v0 == nil || v1 == nil {
-		return false
-	}
-	return v0.Cmp(v1) == 0
-}
-
 type termDataCommon struct {
 	version         int
 	sequence        int
@@ -210,6 +200,10 @@ func (term *termDataCommon) GetPRepSnapshotCount() int {
 
 func (term *termDataCommon) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
 	return term.prepSnapshots[index]
+}
+
+func (term *termDataCommon) PRepSnapshots() PRepSnapshots {
+	return term.prepSnapshots
 }
 
 func (term *termDataCommon) TotalSupply() *big.Int {
@@ -628,22 +622,6 @@ func (term *TermState) GetSnapshot() *TermSnapshot {
 	return term.snapshot
 }
 
-func (term *TermState) ResetSequence() {
-	term.sequence = 0
-}
-
-func (term *TermState) SetIsDecentralized(value bool) {
-	term.isDecentralized = value
-}
-
-func (term *TermState) SetPRepSnapshots(prepSnapshots PRepSnapshots) {
-	term.prepSnapshots = prepSnapshots.Clone()
-}
-
-func (term *TermState) SetMainPRepCount(mainPRepCount int) {
-	term.mainPRepCount = mainPRepCount
-}
-
 func (term *TermState) SetIrep(irep *big.Int) {
 	if term.termDataExtV1 != nil {
 		term.irep = irep
@@ -658,43 +636,58 @@ func (term *TermState) SetRrep(rrep *big.Int) {
 
 // NewNextTerm returns the next term
 // It assumes that state and totalSupply are not nil.
-func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
+func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, preps PRepSet) *TermState {
+	rev := sc.RevisionValue()
+	// Previous term
 	tss := state.GetTermSnapshot()
 	if tss == nil {
 		return nil
 	}
 	var version int
-	if revision < icmodule.RevisionIISS4R1 {
+	if rev < icmodule.RevisionIISS4R1 {
 		version = termVersion1
 	} else {
 		version = termVersion2
 	}
 
-	ts := &TermState{
+	isDecentralized := preps != nil
+	sequence := tss.Sequence() + 1
+	if !tss.IsDecentralized() && isDecentralized {
+		// When decentralization begins, reset sequence to 0
+		sequence = 0
+	}
+
+	// New a TermState instance for the next term
+	termState := &TermState{
 		termData: termData{
 			termDataCommon: termDataCommon{
 				version:         version,
-				sequence:        tss.Sequence() + 1,
+				sequence:        sequence,
 				startHeight:     tss.GetEndHeight() + 1,
 				period:          state.GetTermPeriod(),
 				totalSupply:     totalSupply,
 				totalDelegated:  state.GetTotalDelegation(),
-				rewardFund:      state.GetRewardFund(revision),
+				rewardFund:      state.GetRewardFund(rev),
 				bondRequirement: state.GetBondRequirement(),
-				revision:        revision,
-				prepSnapshots:   tss.prepSnapshots.Clone(),
-				isDecentralized: tss.IsDecentralized(),
+				revision:        rev,
+				isDecentralized: isDecentralized,
 			},
 		},
 	}
 	switch version {
 	case termVersion1:
-		ts.termDataExtV1 = newTermDataExtV1(state.GetIRep(), state.GetRRep())
+		termState.termDataExtV1 = newTermDataExtV1(state.GetIRep(), state.GetRRep())
 	case termVersion2:
-		ts.termDataExtV2 = newTermDataExtV2(state.GetMinimumBond())
+		termState.termDataExtV2 = newTermDataExtV2(state.GetMinimumBond())
 	}
 
-	return ts
+	// Update PRepSnapshots
+	if isDecentralized {
+		termState.mainPRepCount = preps.GetPRepSize(GradeMain)
+		termState.prepSnapshots = preps.ToPRepSnapshots(sc.GetBondRequirement())
+	}
+
+	return termState
 }
 
 func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
