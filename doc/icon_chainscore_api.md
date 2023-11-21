@@ -1,5 +1,12 @@
 # ICON Chain SCORE API
 
+- [Governance](#governance)
+  * ReadOnly APIs
+    + [getBlockedScores](#getblockedscores)
+    + [isBlocked](#isblocked)
+  * Writable APIs
+    + [blockAccount](#blockaccount)
+    + [unblockAccount](#unblockaccount)
 - [IISS](#iiss)
   * ReadOnly APIs
     + [getStake](#getstake)
@@ -35,6 +42,82 @@
   * [Vote](#vote)
   * [Unbond](#unbond)
   * [PRep](#prep)
+
+# Governance
+
+## ReadOnly APIs
+
+### getBlockedScores
+
+Returns a list of the blocked contracts.
+
+```python
+def getBlockedScores() -> list:
+```
+
+*Returns:* a list of the addresses of the contracts
+
+*Revision:* 9 ~
+
+### isBlocked
+
+Returns whether it's blocked or not
+
+```python
+def isBlocked(address: Address) -> bool:
+```
+
+*Parameters:*
+
+| Name    | Type    | Description                             |
+|:--------|:--------|:----------------------------------------|
+| address | Address | address of the account or the contract  |
+
+*Returns:* `True` if it's blocked.
+
+*Revision:* 22 ~
+
+## Writable APIs
+
+### blockAccount
+
+It blocks the account (EoA).
+If it's already blocked, then it ignores silently.
+Otherwise, it emit the event `AccountBlockedSet(addres:Address,yn:bool)`.
+
+```python
+def blockAccount(address: Address) -> None:
+```
+
+*Parameters:*
+
+| Name    | Type    | Description                     |
+|:--------|:--------|:--------------------------------|
+| address | Address | address of the account to block |
+
+*Revision:* 22 ~
+
+*Permission:* Governance Contract Only
+
+### unblockAccount
+
+It unblocks the account (EoA).
+If it's already unblocked, then it silently ignores.
+Otherwise, it emit the event `AccountBlockedSet(address:Address,yn:bool)`.
+
+```python
+def unblockAccount(address: Address) -> None:
+```
+
+*Parameters:*
+
+| Name    | Type    | Description                     |
+|:--------|:--------|:--------------------------------|
+| address | Address | address of the account to block |
+
+*Revision:* 22 ~
+
+*Permission:* Governance Contract Only
 
 # IISS
 
