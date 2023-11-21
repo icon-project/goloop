@@ -12,6 +12,10 @@ The API end point is `http://<host>:<port>/api/v3/<channel>`
 
 If there is one channel or there is a default channel then you may skip channel name. Channel name of the chain will be set on configuring the channel. It may use hexadecimal string of NID if it's not specified (ex: `a34` for 0xa34). For ICON networks, they uses `icon_dex` as channel name.
 
+Refer following documents for extended APIs
+* [BTP Extension](btp_extension.md) for Websocket, ICON Block
+* [BTP2 Extension](btp2_extension.md) for BTP Block
+
 ## Value Types
 
 Basically, every VALUE in JSON-RPC message is string.
