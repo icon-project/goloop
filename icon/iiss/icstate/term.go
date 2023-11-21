@@ -97,11 +97,16 @@ func (p PRepSnapshots) Clone() PRepSnapshots {
 }
 
 func (p PRepSnapshots) String() string {
-	data := make([]string, len(p))
-	for i := 0; i < len(data); i++ {
-		data[i] = p[i].String()
+	var sb strings.Builder
+	sb.WriteString("PRepSnapshots{")
+	for i, pss := range p {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(pss.String())
 	}
-	return strings.Join(data, ", ")
+	sb.WriteByte('}')
+	return sb.String()
 }
 
 // =============================================================================
@@ -112,6 +117,16 @@ const (
 	termVersionReserved
 )
 
+func BigIntEqual(v0, v1 *big.Int) bool {
+	if v0 == v1 {
+		return true
+	}
+	if v0 == nil || v1 == nil {
+		return false
+	}
+	return v0.Cmp(v1) == 0
+}
+
 type termDataCommon struct {
 	version         int
 	sequence        int
@@ -119,9 +134,9 @@ type termDataCommon struct {
 	period          int64
 	revision        int
 	isDecentralized bool
-	totalSupply     *big.Int
-	totalDelegated  *big.Int // total delegated amount of all active P-Reps
-	rewardFund      *RewardFund
+	totalSupply     *big.Int // not nil
+	totalDelegated  *big.Int // total delegated amount of all active P-Reps. not nil
+	rewardFund      *RewardFund // not nil
 	bondRequirement icmodule.Rate
 	mainPRepCount   int
 	// If the length of prepSnapshots is 0, prepSnapshots should be nil
@@ -306,8 +321,8 @@ func (term *termDataCommon) String() string {
 // ========================================================
 
 type termDataExtV1 struct {
-	irep *big.Int
-	rrep *big.Int
+	irep *big.Int // not nil
+	rrep *big.Int // not nil
 }
 
 func (tde *termDataExtV1) Irep() *big.Int {
@@ -352,7 +367,7 @@ func newTermDataExtV1(irep, rrep *big.Int) *termDataExtV1 {
 // ========================================================
 
 type termDataExtV2 struct {
-	minimumBond *big.Int
+	minimumBond *big.Int // not nil
 }
 
 func (tde *termDataExtV2) MinimumBond() *big.Int {
@@ -444,7 +459,7 @@ func (term *termData) String() string {
 	case termVersion2:
 		sb.WriteString(term.termDataExtV2.String())
 	}
-	sb.WriteString("}")
+	sb.WriteByte('}')
 	return sb.String()
 }
 
@@ -453,10 +468,10 @@ func (term *termData) Format(f fmt.State, c rune) {
 	case 'v':
 		var format string
 		if f.Flag('+') {
-			format = "Term{ver=%d seq=%d start=%d end=%d period=%d totalSupply=%s totalDelegated=%s " +
-				"prepSnapshots=%d irep=%s rrep=%s rf=%+v revision=%d isDecentralized=%t minimumBond=%d}"
+			format = "Term{ver=%d seq=%d start=%d end=%d period=%d ts=%d td=%d " +
+				"pss=%d irep=%s rrep=%s rf=%+v rev=%d isDec=%t minBond=%d}"
 		} else {
-			format = "Term{%d %d %d %d %d %s %s %d %s %s %v %d %t %d}"
+			format = "Term{%d %d %d %d %d %d %d %d %s %s %v %d %t %d}"
 		}
 		_, _ = fmt.Fprintf(
 			f,
@@ -641,6 +656,8 @@ func (term *TermState) SetRrep(rrep *big.Int) {
 	}
 }
 
+// NewNextTerm returns the next term
+// It assumes that state and totalSupply are not nil.
 func NewNextTerm(state *State, totalSupply *big.Int, revision int) *TermState {
 	tss := state.GetTermSnapshot()
 	if tss == nil {

@@ -21,7 +21,7 @@ func newPRepSnapshot(owner module.Address, delegated int64, bond int64) *PRepSna
 	status.SetDelegated(big.NewInt(delegated))
 	status.SetBonded(big.NewInt(bond))
 
-	return NewPRepSnapshot(owner, status.GetBondedDelegation(5))
+	return NewPRepSnapshot(owner, status.GetPower(5))
 }
 
 func newDummyPRepSnapshots(size int) PRepSnapshots {
@@ -39,27 +39,27 @@ func newDummyPRepSnapshots(size int) PRepSnapshots {
 
 func newTestRewardFundV1() *RewardFund {
 	rf := NewRewardFund(RFVersion1)
-	rf.SetIGlobal(big.NewInt(3_000_000))
+	_ = rf.SetIGlobal(big.NewInt(3_000_000))
 	allocation := map[RFundKey]icmodule.Rate{
 		KeyIprep:  icmodule.ToRate(13),
 		KeyIcps:   icmodule.ToRate(10),
 		KeyIrelay: icmodule.ToRate(0),
 		KeyIvoter: icmodule.ToRate(77),
 	}
-	rf.SetAllocation(allocation)
+	_ = rf.SetAllocation(allocation)
 	return rf
 }
 
 func newTestRewardFundV2() *RewardFund {
 	rf := NewRewardFund(RFVersion2)
-	rf.SetIGlobal(big.NewInt(1_000_000))
+	_ = rf.SetIGlobal(big.NewInt(1_000_000))
 	allocation := map[RFundKey]icmodule.Rate{
 		KeyIprep:  icmodule.ToRate(77),
 		KeyIwage:  icmodule.ToRate(10),
 		KeyIcps:   icmodule.ToRate(10),
 		KeyIrelay: icmodule.ToRate(3),
 	}
-	rf.SetAllocation(allocation)
+	_ = rf.SetAllocation(allocation)
 	return rf
 }
 
@@ -93,6 +93,10 @@ func newTermState(version, sequence int, period int64) *TermState {
 	}
 	return ts
 }
+
+// =============================================================================
+// PRepSnapshot
+// =============================================================================
 
 func TestPRepSnapshot_Equal(t *testing.T) {
 	owner0 := newDummyAddress(0)
@@ -135,6 +139,27 @@ func TestPRepSnapshot_Bytes(t *testing.T) {
 
 	assert.True(t, snapshot.Equal(&ps2))
 }
+
+func TestPRepSnapshot_ToJSON(t *testing.T) {
+	owner := newDummyAddress(1)
+	power := big.NewInt(1000)
+	pss := NewPRepSnapshot(owner, power)
+	jso := pss.ToJSON()
+	assert.True(t, owner.Equal(jso["address"].(module.Address)))
+	assert.True(t, power.Cmp(jso["power"].(*big.Int)) == 0)
+}
+
+func TestPRepSnapshot_String(t *testing.T) {
+	owner := newDummyAddress(1)
+	power := big.NewInt(1000)
+	pss := NewPRepSnapshot(owner, power)
+	exp := fmt.Sprintf("PRepSnapshot{owner=%s power=%d}", owner, power)
+	assert.Equal(t, exp, pss.String())
+}
+
+// =============================================================================
+// PRepSnapshots
+// =============================================================================
 
 func TestPRepSnapshots_Equal(t *testing.T) {
 	size := 150
@@ -236,6 +261,23 @@ func TestPRepSnapshots_RLP(t *testing.T) {
 	assert.True(t, pss0.Equal(pss1))
 }
 
+func TestPRepSnapshots_String(t *testing.T) {
+	owners := newDummyAddresses(2)
+	powers := []int64{100, 200}
+
+	var p PRepSnapshots
+	for i, owner := range owners {
+		pss := NewPRepSnapshot(owner, big.NewInt(powers[i]))
+		p = append(p, pss)
+	}
+	exp := fmt.Sprintf("PRepSnapshots{%s, %s}", p[0], p[1])
+	assert.Equal(t, exp, p.String())
+}
+
+// =============================================================================
+// Term
+// =============================================================================
+
 func TestTerm_Bytes(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
@@ -309,11 +351,12 @@ func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
 		rf := rf1
 		var irep, rrep, mb *big.Int
 		if version == termVersion1 {
-			irep = icmodule.BigIntZero
-			rrep = icmodule.BigIntZero
+			irep = big.NewInt(100)
+			rrep = big.NewInt(200)
 		} else {
 			rf = rf2
-			mb = icmodule.BigIntZero
+			mb = big.NewInt(10_000)
+			mb.Mul(mb, icmodule.BigIntICX)
 		}
 		termState := &TermState{
 			termData: termData{
@@ -398,4 +441,48 @@ func TestTermData_GetIISSVersion(t *testing.T) {
 			assert.Equal(t, tt.revision, term.Revision())
 		})
 	}
+}
+
+func TestGenesisTerm(t *testing.T) {
+	var err error
+	revision := icmodule.RevisionIISS
+	start := int64(1000)
+	tp := int64(icmodule.DefaultTermPeriod)
+	br := icmodule.ToRate(5)
+	irep := big.NewInt(1000)
+	rrep := big.NewInt(2000)
+	rf, err := NewSafeRewardFundV1(
+		big.NewInt(3_000_000),
+		icmodule.ToRate(13),
+		icmodule.ToRate(10),
+		icmodule.ToRate(0),
+		icmodule.ToRate(77),
+	)
+	assert.NoError(t, err)
+
+	state := newDummyState(false)
+
+	assert.NoError(t, state.SetTermPeriod(tp))
+	assert.NoError(t, state.SetBondRequirement(br))
+	assert.NoError(t, state.SetIRep(irep))
+	assert.NoError(t, state.SetRRep(rrep))
+	assert.NoError(t, state.SetRewardFund(rf))
+
+	termState := GenesisTerm(state, start, revision)
+	assert.Zero(t, termState.Sequence())
+	assert.Equal(t, start, termState.StartHeight())
+	assert.Equal(t, start+tp-1, termState.GetEndHeight())
+	assert.Zero(t, irep.Cmp(termState.Irep()))
+	assert.Zero(t, rrep.Cmp(termState.Rrep()))
+	assert.Zero(t, termState.MinimumBond().Sign())
+	assert.Equal(t, termVersion1, termState.Version())
+	assert.Equal(t, revision, termState.Revision())
+	assert.Equal(t, tp, termState.Period())
+	assert.Equal(t, br, termState.BondRequirement())
+	assert.False(t, termState.IsDecentralized())
+	assert.Zero(t, termState.GetPRepSnapshotCount())
+	assert.Equal(t, IISSVersion2, termState.GetIISSVersion())
+	assert.Equal(t, start+1, termState.GetVoteStartHeight())
+	assert.True(t, termState.RewardFund().Equal(rf))
+	assert.Zero(t, termState.MainPRepCount())
 }
