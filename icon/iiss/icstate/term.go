@@ -194,14 +194,6 @@ func (term *termDataCommon) GetVoteStartHeight() int64 {
 	return -1
 }
 
-func (term *termDataCommon) GetPRepSnapshotCount() int {
-	return len(term.prepSnapshots)
-}
-
-func (term *termDataCommon) GetPRepSnapshotByIndex(index int) *PRepSnapshot {
-	return term.prepSnapshots[index]
-}
-
 func (term *termDataCommon) PRepSnapshots() PRepSnapshots {
 	return term.prepSnapshots
 }

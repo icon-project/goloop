@@ -306,14 +306,12 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 		return nil, err
 	}
 
-	pssCount := term.GetPRepSnapshotCount()
 	mainPRepCount := term.MainPRepCount()
 	jso := make(map[string]interface{})
 	preps := make([]interface{}, 0, mainPRepCount)
 	sum := new(big.Int)
 
-	for i := 0; i < pssCount; i++ {
-		pss := term.GetPRepSnapshotByIndex(i)
+	for _, pss := range term.PRepSnapshots() {
 		ps := es.State.GetPRepStatusByOwner(pss.Owner(), false)
 		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 
@@ -338,20 +336,17 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	if term == nil {
-		err := errors.Errorf("Term is nil")
-		return nil, err
+		return nil, errors.Errorf("Term is nil")
 	}
 
-	pssCount := term.GetPRepSnapshotCount()
+	pssList := term.PRepSnapshots()
 	mainPRepCount := term.MainPRepCount()
-	subPRepCount := term.GetElectedPRepCount() - mainPRepCount
 
 	jso := make(map[string]interface{})
-	preps := make([]interface{}, 0, subPRepCount)
+	preps := make([]interface{}, 0, len(pssList)-mainPRepCount)
 	sum := new(big.Int)
 
-	for i := mainPRepCount; i < pssCount; i++ {
-		pss := term.GetPRepSnapshotByIndex(i)
+	for _, pss := range pssList[mainPRepCount:] {
 		ps := es.State.GetPRepStatusByOwner(pss.Owner(), false)
 		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 

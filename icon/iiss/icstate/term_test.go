@@ -324,11 +324,7 @@ func TestTerm_TotalBondedDelegation(t *testing.T) {
 		totalPower.Add(totalPower, snapshot.Power())
 	}
 	assert.Zero(t, totalPower.Cmp(term.getTotalPower()))
-
-	for i := 0; i < size; i++ {
-		ps := term.GetPRepSnapshotByIndex(i)
-		assert.Equal(t, ps, prepSnapshots[i])
-	}
+	assert.True(t, term.PRepSnapshots().Equal(prepSnapshots))
 }
 
 func TestTermSnapshot_RLPDecodeFields(t *testing.T) {
@@ -480,9 +476,9 @@ func TestGenesisTerm(t *testing.T) {
 	assert.Equal(t, tp, termState.Period())
 	assert.Equal(t, br, termState.BondRequirement())
 	assert.False(t, termState.IsDecentralized())
-	assert.Zero(t, termState.GetPRepSnapshotCount())
 	assert.Equal(t, IISSVersion2, termState.GetIISSVersion())
 	assert.Equal(t, start+1, termState.GetVoteStartHeight())
 	assert.True(t, termState.RewardFund().Equal(rf))
 	assert.Zero(t, termState.MainPRepCount())
+	assert.Zero(t, termState.GetElectedPRepCount())
 }
