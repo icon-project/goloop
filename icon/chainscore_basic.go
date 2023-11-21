@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -292,6 +293,75 @@ func (s *chainScore) Ex_getBlockedScores() ([]interface{}, error) {
 		scores[i] = db.Get(i).Address()
 	}
 	return scores, nil
+}
+
+func (s *chainScore) emitAccountBlockedSet(address module.Address, yn bool) {
+	var ynBytes []byte
+	if yn == true {
+		ynBytes = intconv.Int64ToBytes(1)
+	} else {
+		ynBytes = intconv.Int64ToBytes(0)
+	}
+	s.cc.OnEvent(
+		state.SystemAddress,
+		[][]byte {
+			[]byte("AccountBlockedSet(Address,bool)"),
+			address.Bytes(),
+		},
+		[][]byte{
+			ynBytes,
+		},
+	);
+}
+
+func (s *chainScore) Ex_blockAccount(address module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	if address == nil || address.IsContract() {
+		return scoreresult.ErrInvalidParameter
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if address.IsContract() != as.IsContract() {
+		return scoreresult.InvalidParameterError.New("AddressTypeIsMismatch")
+	}
+	if as.IsBlocked() == false {
+		as.SetBlock(true)
+		s.emitAccountBlockedSet(address, true)
+	}
+	return nil
+}
+
+func (s *chainScore) Ex_unblockAccount(address module.Address) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	if address == nil || address.IsContract() {
+		return scoreresult.ErrInvalidParameter
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if address.IsContract() != as.IsContract() {
+		return scoreresult.InvalidParameterError.New("AddressTypeIsMismatch")
+	}
+	if as.IsBlocked() == true {
+		as.SetBlock(false)
+		s.emitAccountBlockedSet(address, false)
+	}
+	return nil
+}
+
+func (s *chainScore) Ex_isBlocked(address module.Address) (bool, error) {
+	if err := s.tryChargeCall(false); err != nil {
+		return false, err
+	}
+	if address == nil {
+		return false, scoreresult.ErrInvalidParameter
+	}
+	as := s.cc.GetAccountState(address.ID())
+	if address.IsContract() != as.IsContract() {
+		return false, scoreresult.InvalidParameterError.New("AddressTypeIsMismatch")
+	}
+	return as.IsBlocked(), nil
 }
 
 func (s *chainScore) Ex_setStepPrice(price *common.HexInt) error {

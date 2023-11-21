@@ -26,17 +26,17 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
     }
 
     public boolean avm_containsKey(IObject key) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_containsKey, data.length / 2));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_containsKey, data.length / 2);
         return indexOf(key, 0, 2) >= 0;
     }
 
     public boolean avm_containsValue(IObject value) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_containsValue, data.length / 2));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_containsValue, data.length / 2);
         return indexOf(value, 1, 2) >= 0;
     }
 
     public V avm_get(IObject key) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_get, data.length / 2));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_get, data.length / 2);
         var index = indexOf(key, 0, 2);
         if (index < 0) {
             return null;
@@ -90,7 +90,7 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
     }
 
     public boolean avm_equals(IObject o) {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_equals, data.length / 2));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_equals, data.length / 2);
         if (o == this) {
             return true;
         }
@@ -122,7 +122,7 @@ public class UnmodifiableArrayMap<K extends IObject, V extends IObject>
     }
 
     public int avm_hashCode() {
-        IInstrumentation.charge(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_hashCode, data.length / 2));
+        EnergyCalculator.chargeEnergyLevel1(RuntimeMethodFeeSchedule.UnmodifiableArrayMap_hashCode, data.length / 2);
         int hash = 0;
         for (int i = 0; i < data.length; ) {
             var kh = IObjects.hashCode(data[i++]);

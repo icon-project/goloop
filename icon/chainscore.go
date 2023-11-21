@@ -137,6 +137,32 @@ var chainMethods = []*chainMethod{
 		},
 	}, icmodule.Revision9, 0},
 	{scoreapi.Method{
+		scoreapi.Function, "blockAccount",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{ "address", scoreapi.Address, nil, nil },
+		},
+		nil,
+	}, icmodule.RevisionBlockAccountAPI, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "unblockAccount",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{ "address", scoreapi.Address, nil, nil },
+		},
+		nil,
+	}, icmodule.RevisionBlockAccountAPI, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "isBlocked",
+		scoreapi.FlagReadOnly, 1,
+		[]scoreapi.Parameter{
+			{ "address", scoreapi.Address, nil, nil },
+		},
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
+	}, icmodule.RevisionBlockAccountAPI, 0},
+	{scoreapi.Method{
 		scoreapi.Function, "setRevision",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{

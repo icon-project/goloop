@@ -43,7 +43,8 @@ public class BooleanArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.ByteArray_avm_clone, length()));
+        EnergyCalculator.chargeEnergyClone(RuntimeMethodFeeSchedule.ByteArray_avm_clone,
+                length(), ArrayElement.BYTE.getEnergy());
         lazyLoad();
         return new BooleanArray(Arrays.copyOf(underlying, underlying.length));
     }
@@ -71,7 +72,7 @@ public class BooleanArray extends Array {
     //========================================================
 
     public BooleanArray(int c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ByteArray_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.ByteArray_avm_constructor);
         this.underlying = new boolean[c];
     }
 

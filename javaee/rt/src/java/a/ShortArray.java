@@ -49,7 +49,8 @@ public class ShortArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.ShortArray_avm_clone, length()));
+        EnergyCalculator.chargeEnergyClone(RuntimeMethodFeeSchedule.ShortArray_avm_clone,
+                length(), ArrayElement.SHORT.getEnergy());
         lazyLoad();
         return new ShortArray(Arrays.copyOf(underlying, underlying.length));
     }
@@ -59,7 +60,7 @@ public class ShortArray extends Array {
     //========================================================
 
     public ShortArray(int c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ShortArray_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.ShortArray_avm_constructor);
         this.underlying = new short[c];
     }
 

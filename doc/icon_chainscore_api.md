@@ -14,6 +14,8 @@
             + [getScoreStatus](#getscorestatus)
             + [getBlockedScores](#getblockedscores)
             + [getScoreOwner](#getscoreowner)
+            + [blockAccount](#blockaccount)
+            + [unblockAccount](#unblockaccount)
         * Writable APIs
             + [setRevision](#setrevision)
             + [setStepPrice](#setstepprice)
@@ -25,7 +27,9 @@
             + [unblockScore](#unblockscore)
             + [burn](#burn)
             + [setScoreOwner](#setscoreowner)
-    - [IISS](#iiss)
+            + [getBlockedScores](#getblockedscores)
+            + [isBlocked](#isblocked)
+     - [IISS](#iiss)
         * ReadOnly APIs
             + [getStake](#getstake)
             + [getDelegation](#getdelegation)
@@ -243,6 +247,24 @@ def getScoreOwner(address: Address) -> Address:
 
 *Revision:* 17 ~
 
+### isBlocked
+
+Returns whether it's blocked or not
+
+```python
+def isBlocked(address: Address) -> bool:
+```
+
+*Parameters:*
+
+| Name    | Type    | Description                             |
+|:--------|:--------|:----------------------------------------|
+| address | Address | address of the account or the contract  |
+
+*Returns:* `True` if it's blocked.
+
+*Revision:* 22 ~
+
 ## Writable APIs
 
 ### setRevision
@@ -416,6 +438,56 @@ def setScoreOwner(score: Address, owner: Address) -> None:
 | owner | Address | address of new owner |
 
 *Revision:* 17 ~
+
+### blockAccount
+
+It blocks the account (EoA). It's only for governance.
+If it's already blocked, then it ignores silently.
+Otherwise, it emit the event.
+
+```python
+def blockAccount(address: Address) -> None:
+```
+
+*Parameters:*
+
+| Name    | Type    | Description                     |
+|:--------|:--------|:--------------------------------|
+| address | Address | address of the account to block |
+
+*Event Log:*
+
+```python
+@eventlog(indexed=1)
+def AccountBlockedSet(address: Address, yn: bool) -> None:
+```
+
+*Revision:* 22 ~
+
+### unblockAccount
+
+It unblocks the account (EoA). It's only for governance.
+If it's already unblocked, then it silently ignores.
+Otherwise, it emit the event.
+
+```python
+def unblockAccount(address: Address) -> None:
+```
+
+*Parameters:*
+
+| Name    | Type    | Description                     |
+|:--------|:--------|:--------------------------------|
+| address | Address | address of the account to block |
+
+*Event Log:*
+
+```python
+@eventlog(indexed=1)
+def AccountBlockedSet(address: Address, yn: bool) -> None:
+```
+
+*Revision:* 22 ~
 
 # IISS
 

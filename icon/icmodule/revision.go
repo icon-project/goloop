@@ -43,6 +43,7 @@ const (
 	Revision22
 	Revision23
 	Revision24
+	Revision25
 	RevisionReserved
 )
 
@@ -112,11 +113,12 @@ const (
 	RevisionBlockAccounts2 = Revision21
 
 	RevisionUpdatePRepStats = Revision22
+	RevisionBlockAccountAPI = Revision22
 
-	RevisionIISS4R0 = Revision23
+	RevisionIISS4R0 = Revision24
 
-	RevisionIISS4R1      = Revision24
-	RevisionVoteEventLog = Revision24
+	RevisionIISS4R1      = Revision25
+	RevisionVoteEventLog = Revision25
 )
 
 var revisionFlags = []module.Revision{
@@ -167,8 +169,10 @@ var revisionFlags = []module.Revision{
 	// Revision22
 	0,
 	// Revision23
-	0,
+	module.FixJCLSteps,
 	// Revision24
+	0,
+	// Revision25
 	module.ReportDoubleSign,
 }
 

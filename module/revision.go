@@ -37,6 +37,7 @@ const (
 	ContractSetEvent
 	FixMapValues
 	ReportDoubleSign
+	FixJCLSteps
 	LastRevisionBit
 
 	UseNIDInConsensusMessage = ReportDoubleSign

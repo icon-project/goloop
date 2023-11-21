@@ -43,7 +43,8 @@ public class LongArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.LongArray_avm_clone, length()));
+        EnergyCalculator.chargeEnergyClone(RuntimeMethodFeeSchedule.LongArray_avm_clone,
+                length(), ArrayElement.LONG.getEnergy());
         lazyLoad();
         return new LongArray(Arrays.copyOf(underlying, underlying.length));
     }
@@ -59,7 +60,7 @@ public class LongArray extends Array {
     //========================================================
 
     public LongArray(int c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.LongArray_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.LongArray_avm_constructor);
         this.underlying = new long[c];
     }
 

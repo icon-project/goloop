@@ -50,14 +50,15 @@ public class ObjectArray extends Array implements IObjectArray {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.ObjectArray_avm_clone, length()));
+        EnergyCalculator.chargeEnergyClone(RuntimeMethodFeeSchedule.ObjectArray_avm_clone,
+                length(), ArrayElement.REF.getEnergy());
         lazyLoad();
         return new ObjectArray(Arrays.copyOf(underlying, underlying.length));
     }
 
     public static ObjectArray newWithCharge(Object[] src) {
-        chargeEnergyInitArray(src.length, ArrayElement.REF.getEnergy());
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor);
+        EnergyCalculator.chargeEnergyMultiply(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor,
+                src.length, ArrayElement.REF.getEnergy());
         return new ObjectArray(src);
     }
 
@@ -72,13 +73,13 @@ public class ObjectArray extends Array implements IObjectArray {
     //========================================================
 
     public ObjectArray(int c) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor);
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor);
         this.underlying = new Object[c];
     }
 
-    public ObjectArray(){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor_1);
-    };
+    public ObjectArray() {
+        EnergyCalculator.chargeEnergy(RuntimeMethodFeeSchedule.ObjectArray_avm_constructor_1);
+    }
 
     public ObjectArray(Object[] underlying) {
         RuntimeAssertionError.assertTrue(null != underlying);
