@@ -14,8 +14,7 @@
             + [getScoreStatus](#getscorestatus)
             + [getBlockedScores](#getblockedscores)
             + [getScoreOwner](#getscoreowner)
-            + [blockAccount](#blockaccount)
-            + [unblockAccount](#unblockaccount)
+            + [isBlocked](#isblocked)
         * Writable APIs
             + [setRevision](#setrevision)
             + [setStepPrice](#setstepprice)
@@ -27,8 +26,8 @@
             + [unblockScore](#unblockscore)
             + [burn](#burn)
             + [setScoreOwner](#setscoreowner)
-            + [getBlockedScores](#getblockedscores)
-            + [isBlocked](#isblocked)
+            + [blockAccount](#blockaccount)
+            + [unblockAccount](#unblockaccount)
      - [IISS](#iiss)
         * ReadOnly APIs
             + [getStake](#getstake)
@@ -717,9 +716,9 @@ def getPRepTerm() -> dict:
 | isDecentralized  | bool                                  | `true` if network is decentralized                          |
 | mainPRepCount    | int                                   | Main P-Reps count for the term                              |
 | iissVersion      | int                                   | IISS version for the term                                   |
-| irep             | int                                   | (Optional. revision < 24) Irep for the term                 |
-| rrep             | int                                   | (Optional. revision < 24) Rrep for the term                 |
-| minimumBond      | int                                   | (Optional. revision >= 24) minimum bond amount for the term |
+| irep             | int                                   | (Optional. revision < 25) Irep for the term                  |
+| rrep             | int                                   | (Optional. revision < 25) Rrep for the term                 |
+| minimumBond      | int                                   | (Optional. revision >= 25) minimum bond amount for the term |
 
 *Revision:* 5 ~
 
@@ -852,7 +851,7 @@ def getSlashingRates(names: List[str]) -> dict:
 |:--------------------------------|:-----|:-------------------------------------|
 | ${[PENALTY_TYPE](#penaltytype)} | int  | slashing rate value from 0 to 10,000 |
 
-*Revision:* 23 ~
+*Revision:* 24 ~
 
 ### getMinimumBond
 
@@ -866,7 +865,7 @@ def getMinimumBond() -> int:
 
 * the minimum bond amount
 
-*Revision:* 23 ~
+*Revision:* 24 ~
 
 ## Writable APIs
 
@@ -905,7 +904,7 @@ def setDelegation(delegations: List[Vote]) -> None:
 | delegations | List\[[Vote](#vote)\] | list of delegation information |
 
 *Event Log:*
-- from revison 24
+- from revison 25
 ```python
 @eventlog(indexed=1)
 def DelegationSet(address: Address, delegations: bytes) -> None:
@@ -937,7 +936,7 @@ def setBond(bonds: List[Vote]) -> None:
 | bonds | List\[[Vote](#vote)\] | list of bond information |
 
 *Event Log:*
-- from revison 24
+- from revison 25
 ```python
 @eventlog(indexed=1)
 def BondSet(address: Address, bonds: bytes) -> None:
@@ -1139,7 +1138,7 @@ def setRewardFundAllocation(iprep: int, icsp: int, irelay: int, ivoter: int) -> 
 | irelay | int  | percentage allocated to the BTP relay reward |
 | ivoter | int  | percentage allocated to the Voter reward     |
 
-*Revision:* 13 ~ 23
+*Revision:* 13 ~ 24
 
 ### penalizeNonvoters
 
@@ -1193,7 +1192,7 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 |:-------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------|
 | values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)<br>sum of values must be 10,000 |
 
-*Revision:* 23 ~
+*Revision:* 24 ~
 
 ### setMinimumBond
 
@@ -1220,7 +1219,7 @@ def MinimumBondChanged(bond: int) -> None:
 |:-----|:-----|:--------------------|
 | bond | int  | minimum bond amount |
 
-*Revision:* 23 ~
+*Revision:* 24 ~
 
 ### initCommissionRate
 
@@ -1253,7 +1252,7 @@ def CommissionRateInitialized(address: Address, rate: int, maxRate: int, maxChan
 | maxRate       | int  | maximum commission rate that P-Rep can configure          |
 | maxChangeRate | int  | maximum rate of change of `commission rate` in one `Term` |
 
-*Revision:* 23 ~
+*Revision:* 24 ~
 
 ### setCommissionRate
 
@@ -1280,7 +1279,7 @@ def CommissionRateChanged(address: Address, rate: int) -> None:
 |:-----|:-----|:----------------|
 | rate | int  | commission rate |
 
-*Revision:* 23 ~
+*Revision:* 24 ~
 
 ### setSlashingRates
 
@@ -1308,7 +1307,7 @@ def SlashingRateChangedV2(type: str, rate: int) -> None:
 | type | str  | penalty type  |
 | rate | int  | slashing rate |
 
-*Revision:* 23 ~
+*Revision:* 24 ~
 
 ### requestUnjail
 
@@ -1318,7 +1317,7 @@ Requests unjail
 def requestUnjail() -> None:
 ```
 
-*Revision:* 24 ~
+*Revision:* 25 ~
 
 # BTP
 
@@ -1651,7 +1650,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 | KEY                                                       | VALUE type | Description                                                                                   |
 |:----------------------------------------------------------|:-----------|:----------------------------------------------------------------------------------------------|
 | Iglobal                                                   | int        | Iglobal amount                                                                                |
-| ${[REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)} | int        | allocation rate.<br>sum of all rates is 10,000 if revision is less than 24, and 100 otherwise |
+| ${[REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)} | int        | allocation rate.<br>sum of all rates is 10,000 if revision is less than 25, and 100 otherwise |
 
 ## NamedValue
 
@@ -1685,7 +1684,7 @@ def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
 | "accumulatedValidationFailure" | 6 ~      | accumulated block validation failure penalty   |
 | "validationFailure"            | 6 ~      | block validation failure penalty               |
 | "missedNetworkProposalVote"    | 6 ~      | missed Network Proposal vote penalty           |
-| "doubleVote"                   | 24 ~     | submit multiple votes to same height and round |
+| "doubleVote"                   | 25 ~     | submit multiple votes to same height and round |
 
 ## NETWORK_SCORE_TYPE
 
