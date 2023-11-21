@@ -78,10 +78,10 @@ func newTermState(version, sequence int, period int64) *TermState {
 	ts := &TermState{
 		termData: termData{
 			termDataCommon: termDataCommon{
-				version:     version,
-				sequence:    sequence,
-				period:      period,
-				rewardFund:  rf,
+				version:    version,
+				sequence:   sequence,
+				period:     period,
+				rewardFund: rf,
 			},
 		},
 	}
@@ -153,7 +153,7 @@ func TestPRepSnapshot_String(t *testing.T) {
 	owner := newDummyAddress(1)
 	power := big.NewInt(1000)
 	pss := NewPRepSnapshot(owner, power)
-	exp := fmt.Sprintf("PRepSnapshot{owner=%s power=%d}", owner, power)
+	exp := fmt.Sprintf("PRepSnapshot{%s %d}", owner, power)
 	assert.Equal(t, exp, pss.String())
 }
 
@@ -166,8 +166,8 @@ func TestPRepSnapshots_Equal(t *testing.T) {
 	br := icmodule.ToRate(5)
 	cfg := NewPRepCountConfig(22, 78, 3)
 	sc := newMockStateContext(map[string]interface{}{
-		"bh": int64(1000),
-		"rev": icmodule.RevisionBTP2-1,
+		"bh":  int64(1000),
+		"rev": icmodule.RevisionBTP2 - 1,
 	})
 
 	preps := newDummyPReps(size)
@@ -272,6 +272,153 @@ func TestPRepSnapshots_String(t *testing.T) {
 	}
 	exp := fmt.Sprintf("PRepSnapshots{%s, %s}", p[0], p[1])
 	assert.Equal(t, exp, p.String())
+}
+
+// =============================================================================
+// termDataExtV1
+// =============================================================================
+
+func TestTermDataExtV1_String(t *testing.T) {
+	args := []struct {
+		isNil bool
+		irep  int64
+		rrep  int64
+		exp   string
+	}{
+		{true, 10, 20, "irep=0 rrep=0"},
+		{false, 0, 0, "irep=0 rrep=0"},
+		{false, 100, 200, "irep=100 rrep=200"},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			var tde *termDataExtV1
+			irep := arg.irep
+			rrep := arg.rrep
+
+			if !arg.isNil {
+				tde = newTermDataExtV1(big.NewInt(irep), big.NewInt(rrep))
+			}
+			assert.Equal(t, arg.exp, tde.String())
+		})
+	}
+}
+
+func TestTermDataExtV1_clone(t *testing.T) {
+	args := []*termDataExtV1{
+		nil,
+		newTermDataExtV1(big.NewInt(10), big.NewInt(20)),
+	}
+	for i, ext := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			clone := ext.clone()
+			assert.True(t, ext.equal(clone))
+			if ext == nil {
+				assert.Nil(t, clone)
+				assert.Zero(t, ext.Irep().Sign())
+				assert.Zero(t, ext.Rrep().Sign())
+			} else {
+				assert.Zero(t, ext.Irep().Cmp(clone.Irep()))
+				assert.Zero(t, ext.Rrep().Cmp(clone.Rrep()))
+			}
+		})
+	}
+}
+
+func TestTermDataExt1_equal(t *testing.T) {
+	v0 := big.NewInt(10)
+	v1 := big.NewInt(20)
+	args := []struct {
+		ext0, ext1 *termDataExtV1
+		isEqual    bool
+	}{
+		{nil, nil, true},
+		{newTermDataExtV1(v0, v1), nil, false},
+		{nil, newTermDataExtV1(v0, v1), false},
+		{newTermDataExtV1(v0, v1), newTermDataExtV1(v1, v0), false},
+		{newTermDataExtV1(v0, v1), newTermDataExtV1(v0, v1), true},
+	}
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			ext0 := arg.ext0
+			ext1 := arg.ext1
+			assert.Equal(t, arg.isEqual, ext0.equal(ext1))
+			assert.Equal(t, arg.isEqual, ext1.equal(ext0))
+		})
+	}
+}
+
+// =============================================================================
+// termDataExtV2
+// =============================================================================
+
+func TestTermDataExtV2_String(t *testing.T) {
+	args := []struct {
+		isNil   bool
+		minBond int64
+		exp     string
+	}{
+		{true, 100, "minBond=0"},
+		{false, 0, "minBond=0"},
+		{false, 100, "minBond=100"},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			var tde *termDataExtV2
+			if !arg.isNil {
+				tde = newTermDataExtV2(big.NewInt(arg.minBond))
+			}
+			assert.Equal(t, arg.exp, tde.String())
+		})
+	}
+}
+
+func TestTermDataExtV2_clone(t *testing.T) {
+	args := []*termDataExtV2{
+		nil,
+		newTermDataExtV2(big.NewInt(1)),
+	}
+	for i, ext := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			clone := ext.clone()
+			assert.True(t, ext.equal(clone))
+			if ext == nil {
+				assert.Nil(t, clone)
+				assert.Zero(t, ext.MinimumBond().Sign())
+			} else {
+				assert.Zero(t, ext.MinimumBond().Cmp(clone.MinimumBond()))
+			}
+		})
+	}
+}
+
+func TestTermDataExt2_equal(t *testing.T) {
+	args := []struct {
+		ext0, ext1 *termDataExtV2
+		isEqual    bool
+	}{
+		{nil, nil, true},
+		{newTermDataExtV2(big.NewInt(1)), nil, false},
+		{nil, newTermDataExtV2(big.NewInt(1)), false},
+		{newTermDataExtV2(big.NewInt(1)), newTermDataExtV2(big.NewInt(2)), false},
+		{newTermDataExtV2(big.NewInt(2)), newTermDataExtV2(big.NewInt(1)), false},
+		{newTermDataExtV2(big.NewInt(1)), newTermDataExtV2(big.NewInt(1)), true},
+	}
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			ext0 := arg.ext0
+			ext1 := arg.ext1
+			assert.Equal(t, arg.isEqual, ext0.equal(ext1))
+			assert.Equal(t, arg.isEqual, ext1.equal(ext0))
+		})
+	}
 }
 
 // =============================================================================
@@ -481,4 +628,126 @@ func TestGenesisTerm(t *testing.T) {
 	assert.True(t, termState.RewardFund().Equal(rf))
 	assert.Zero(t, termState.MainPRepCount())
 	assert.Zero(t, termState.GetElectedPRepCount())
+	assert.Zero(t, termState.TotalSupply().Sign())
+}
+
+func TestNewNextTerm(t *testing.T) {
+	var err error
+	start := int64(1000)
+	tp := int64(icmodule.DefaultTermPeriod)
+	br := icmodule.ToRate(5)
+	irep := big.NewInt(1000)
+	rrep := big.NewInt(2000)
+	totalSupply := big.NewInt(1_000_000_000)
+	cfg := NewPRepCountConfig(22, 78, 0)
+
+	rf, err := NewSafeRewardFundV1(
+		big.NewInt(3_000_000),
+		icmodule.ToRate(13),
+		icmodule.ToRate(10),
+		icmodule.ToRate(0),
+		icmodule.ToRate(77),
+	)
+	assert.NoError(t, err)
+
+	// Initialize State
+	state := newDummyState(false)
+	assert.NoError(t, state.SetTermPeriod(tp))
+	assert.NoError(t, state.SetBondRequirement(br))
+	assert.NoError(t, state.SetIRep(irep))
+	assert.NoError(t, state.SetRRep(rrep))
+	assert.NoError(t, state.SetRewardFund(rf))
+
+	termState0 := GenesisTerm(state, start, icmodule.RevisionIISS)
+	assert.NoError(t, state.SetTermSnapshot(termState0.GetSnapshot()))
+
+	// Initialize PRepSet
+	sc := newMockStateContext(map[string]interface{}{
+		"rev": icmodule.RevisionDecentralize,
+		"bh":  termState0.GetEndHeight(),
+	})
+
+	activePReps := newDummyPReps(90)
+	prepSet := NewPRepSet(sc, activePReps, cfg)
+
+	// -------------------------------------------------------------
+	// Centralized -> Decentralized
+	// -------------------------------------------------------------
+	start = termState0.StartHeight() + tp
+	expElectedPRepCount := icutils.Min(cfg.ElectedPReps(), len(activePReps))
+	termState1 := NewNextTerm(sc, state, totalSupply, prepSet)
+	assert.NotNil(t, termState1)
+	assert.Zero(t, termState1.Sequence())
+	assert.Equal(t, start, termState1.StartHeight())
+	assert.Equal(t, start+tp-1, termState1.GetEndHeight())
+	assert.Zero(t, irep.Cmp(termState1.Irep()))
+	assert.Zero(t, rrep.Cmp(termState1.Rrep()))
+	assert.Zero(t, termState1.MinimumBond().Sign())
+	assert.Equal(t, termVersion1, termState1.Version())
+	assert.Equal(t, sc.RevisionValue(), termState1.Revision())
+	assert.Equal(t, tp, termState1.Period())
+	assert.Equal(t, br, termState1.BondRequirement())
+	assert.True(t, termState1.IsDecentralized())
+	assert.Equal(t, IISSVersion2, termState1.GetIISSVersion())
+	assert.Equal(t, start+1, termState1.GetVoteStartHeight())
+	assert.True(t, termState1.RewardFund().Equal(rf))
+	assert.Equal(t, cfg.MainPReps(), termState1.MainPRepCount())
+	assert.Equal(t, expElectedPRepCount, termState1.GetElectedPRepCount())
+	assert.Equal(t, expElectedPRepCount, len(termState1.PRepSnapshots()))
+	assert.Zero(t, totalSupply.Cmp(termState1.TotalSupply()))
+	assert.NoError(t, state.SetTermSnapshot(termState1.GetSnapshot()))
+
+	irep = big.NewInt(1234)
+	termState1.SetIrep(irep)
+	assert.Zero(t, irep.Cmp(termState1.Irep()))
+	irep = big.NewInt(5678)
+	termState1.SetRrep(rrep)
+	assert.Zero(t, rrep.Cmp(termState1.Rrep()))
+
+	// -------------------------------------------------------------
+	// Revision: IISS -> IISS4R1
+	// -------------------------------------------------------------
+	minBond := big.NewInt(10_000)
+	assert.NoError(t, state.SetMinimumBond(minBond))
+
+	sc = newMockStateContext(map[string]interface{}{
+		"rev": icmodule.RevisionIISS4R1,
+		"bh":  termState1.GetEndHeight(),
+	})
+	start = termState1.StartHeight() + tp
+	r := state.GetRewardFundV1()
+	assert.NoError(t, state.SetRewardFund(r.ToRewardFundV2())) // onRevIISS4R0
+
+	termState2 := NewNextTerm(sc, state, totalSupply, prepSet)
+	assert.NotNil(t, termState2)
+	assert.Equal(t, termState1.Sequence()+1, termState2.Sequence())
+	assert.Equal(t, start, termState2.StartHeight())
+	assert.Equal(t, start+tp-1, termState2.GetEndHeight())
+	assert.Zero(t, termState2.Irep().Sign())
+	assert.Zero(t, termState2.Rrep().Sign())
+	assert.Zero(t, minBond.Cmp(termState2.MinimumBond()))
+	assert.Equal(t, termVersion2, termState2.Version())
+	assert.Equal(t, sc.RevisionValue(), termState2.Revision())
+	assert.Equal(t, tp, termState2.Period())
+	assert.Equal(t, br, termState2.BondRequirement())
+	assert.True(t, termState2.IsDecentralized())
+	assert.Equal(t, IISSVersion4, termState2.GetIISSVersion())
+	assert.Equal(t, int64(-1), termState2.GetVoteStartHeight())
+	assert.True(t, state.GetRewardFundV2().Equal(termState2.RewardFund()))
+	assert.Equal(t, cfg.MainPReps(), termState2.MainPRepCount())
+	assert.Equal(t, expElectedPRepCount, termState2.GetElectedPRepCount())
+	assert.Equal(t, expElectedPRepCount, len(termState2.PRepSnapshots()))
+	assert.Zero(t, totalSupply.Cmp(termState2.TotalSupply()))
+	assert.NoError(t, state.SetTermSnapshot(termState2.GetSnapshot()))
+
+	termState2.SetIrep(big.NewInt(1234))
+	assert.Zero(t, termState2.Irep().Sign())
+	termState2.SetRrep(big.NewInt(1234))
+	assert.Zero(t, termState2.Rrep().Sign())
+
+	// termDataExtV1 == nil, termDataExtV2 != nil
+	jso := termState2.ToJSON(sc, state)
+	assert.Nil(t, jso["irep"])
+	assert.Nil(t, jso["rrep"])
+	assert.Zero(t, minBond.Cmp(jso["minimumBond"].(*big.Int)))
 }

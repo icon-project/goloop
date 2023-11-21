@@ -54,7 +54,7 @@ func (pss *PRepSnapshot) RLPDecodeSelf(d codec.Decoder) error {
 }
 
 func (pss *PRepSnapshot) String() string {
-	return fmt.Sprintf("PRepSnapshot{owner=%s power=%d}", pss.owner, pss.Power())
+	return fmt.Sprintf("PRepSnapshot{%s %d}", pss.owner, pss.Power())
 }
 
 func NewPRepSnapshot(owner module.Address, power *big.Int) *PRepSnapshot {
