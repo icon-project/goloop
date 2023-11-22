@@ -122,7 +122,7 @@ func (s *chainScore) Ex_setRevision(code *big.Int) error {
 
 	as := s.cc.GetAccountState(state.SystemID)
 	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
-	if code.Int64() < r {
+	if code.Int64() <= r {
 		return scoreresult.Errorf(StatusIllegalArgument,
 			"IllegalArgument(current=%#x,new=%s)", r, code)
 	}
