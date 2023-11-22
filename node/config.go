@@ -111,6 +111,7 @@ type RuntimeConfig struct {
 	RPCDefaultChannel string `json:"rpcDefaultChannel"`
 	RPCIncludeDebug   bool   `json:"rpcIncludeDebug"`
 	RPCRosetta        bool   `json:"rpcRosetta"`
+	DisableRPC        bool   `json:"disableRPC"`
 	RPCBatchLimit     int    `json:"rpcBatchLimit"`
 	WSMaxSession      int    `json:"wsMaxSession"`
 

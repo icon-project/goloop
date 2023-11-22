@@ -41,6 +41,7 @@ type GoChainConfig struct {
 	RPCDump       bool   `json:"rpc_dump"`
 	RPCDebug      bool   `json:"rpc_debug"`
 	RPCRosetta    bool   `json:"rpc_rosetta"`
+	DisableRPC    bool   `json:"disable_rpc"`
 	RPCBatchLimit int    `json:"rpc_batch_limit,omitempty"`
 	EEInstances   int    `json:"ee_instances"`
 	Engines       string `json:"engines"`
@@ -117,6 +118,7 @@ func main() {
 	flag.BoolVar(&cfg.RPCDump, "rpc_dump", false, "JSON-RPC Request, Response Dump flag")
 	flag.BoolVar(&cfg.RPCDebug, "rpc_debug", false, "JSON-RPC Debug enable")
 	flag.BoolVar(&cfg.RPCRosetta, "rpc_rosetta", false, "JSON-RPC Rosetta enable")
+	flag.BoolVar(&cfg.DisableRPC, "disable_rpc", false, "disable JSON-RPC API")
 	flag.IntVar(&cfg.RPCBatchLimit, "rpc_batch_limit", 10, "JSON-RPC batch limit")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
 	flag.StringVar(&genesisStorage, "genesis_storage", "", "Genesis storage path")
@@ -498,6 +500,7 @@ func Execute(cmd *cobra.Command, args []string) {
 		JSONRPCIncludeDebug: cfg.RPCDebug,
 		JSONRPCRosetta:      cfg.RPCRosetta,
 		JSONRPCBatchLimit:   cfg.RPCBatchLimit,
+		DisableRPC:          cfg.DisableRPC,
 		WSMaxSession:        cfg.WSMaxSession,
 	}
 	srv := server.NewManager(config, wallet, logger)
