@@ -217,7 +217,7 @@ func (m *manager) GetPeersByRole(role module.Role) []module.PeerID {
 }
 
 func (m *manager) AddRole(role module.Role, peers ...module.PeerID) {
-	m.p2p.getAllowed(role).Merge(peers...)
+	m.p2p.getAllowed(role).Adds(peers...)
 }
 
 func (m *manager) RemoveRole(role module.Role, peers ...module.PeerID) {

@@ -528,6 +528,22 @@ func (s *PeerIDSet) _contains(v interface{}) (bool, module.PeerID) {
 	return false, nil
 }
 
+func (s *PeerIDSet) _add(id module.PeerID) bool {
+	if ok, _ := s._contains(id); !ok {
+		s.m[id] = 1
+		return true
+	}
+	return false
+}
+
+func (s *PeerIDSet) _remove(id module.PeerID) bool {
+	if ok, k := s._contains(id); ok {
+		delete(s.m, k)
+		return true
+	}
+	return false
+}
+
 func (s *PeerIDSet) Add(id module.PeerID) (r bool) {
 	s.mtx.Lock()
 	defer func() {
@@ -536,10 +552,7 @@ func (s *PeerIDSet) Add(id module.PeerID) (r bool) {
 			s._update()
 		}
 	}()
-	if ok, _ := s._contains(id); !ok {
-		s.Set.m[id] = 1
-		r = true
-	}
+	r = s._add(id)
 	return
 }
 
@@ -551,14 +564,11 @@ func (s *PeerIDSet) Remove(id module.PeerID) (r bool) {
 			s._update()
 		}
 	}()
-	if ok, k := s._contains(id); ok {
-		delete(s.Set.m, k)
-		r = true
-	}
+	r = s._remove(id)
 	return
 }
 
-func (s *PeerIDSet) Removes(args ...module.PeerID) {
+func (s *PeerIDSet) Removes(args ...module.PeerID) (r bool) {
 	s.mtx.Lock()
 	defer func() {
 		s.mtx.Unlock()
@@ -567,11 +577,11 @@ func (s *PeerIDSet) Removes(args ...module.PeerID) {
 		}
 	}()
 	for _, id := range args {
-		if ok, k := s._contains(id); ok {
-			delete(s.Set.m, k)
+		if s._remove(id) {
 			r = true
 		}
 	}
+	return
 }
 
 func (s *PeerIDSet) Contains(id module.PeerID) bool {
@@ -581,7 +591,7 @@ func (s *PeerIDSet) Contains(id module.PeerID) bool {
 	return ok
 }
 
-func (s *PeerIDSet) Merge(args ...module.PeerID) {
+func (s *PeerIDSet) Adds(args ...module.PeerID) (r bool) {
 	s.mtx.Lock()
 	defer func() {
 		s.mtx.Unlock()
@@ -590,11 +600,11 @@ func (s *PeerIDSet) Merge(args ...module.PeerID) {
 		}
 	}()
 	for _, id := range args {
-		if ok, _ := s._contains(id); !ok {
-			s.Set.m[id] = 1
+		if s._add(id) {
 			r = true
 		}
 	}
+	return
 }
 
 func (s *PeerIDSet) Array() []module.PeerID {
@@ -607,9 +617,31 @@ func (s *PeerIDSet) Array() []module.PeerID {
 	return arr
 }
 
-func (s *PeerIDSet) ClearAndAdd(args ...module.PeerID) {
-	s.Clear()
-	s.Merge(args...)
+func (s *PeerIDSet) ClearAndAdd(args ...module.PeerID) (r bool) {
+	s.mtx.Lock()
+	defer func() {
+		s.mtx.Unlock()
+		if r {
+			s._update()
+		}
+	}()
+	if s._len() != len(args) {
+		r = true
+	} else {
+		for _, v := range args {
+			if ok, _ := s._contains(v); !ok {
+				r = true
+				break
+			}
+		}
+	}
+	if r {
+		s._clear()
+		for _, id := range args {
+			s.m[id] = 1
+		}
+	}
+	return
 }
 
 func (s *PeerIDSet) Bytes() []byte {
@@ -623,6 +655,20 @@ func (s *PeerIDSet) Bytes() []byte {
 		b = b[peerIDSize:]
 	}
 	return arr[:]
+}
+
+func (s *PeerIDSet) Equal(t *PeerIDSet) bool {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	if s._len() != t.Len() {
+		return false
+	}
+	for k := range s.m {
+		if !t.Contains(k.(module.PeerID)) {
+			return false
+		}
+	}
+	return true
 }
 
 type _bytes struct {
