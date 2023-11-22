@@ -416,7 +416,7 @@ def blockScore(address: Address) -> None:
 - from revison 25
 ```python
 @eventlog(indexed=1)
-def ContractBlockedSet(address: Address, yn: bool) -> None:
+def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
 
 | Name     | Type    | Description          |
@@ -444,7 +444,7 @@ def unblockScore(address: Address) -> None:
 - from revison 25
 ```python
 @eventlog(indexed=1)
-def ContractBlockedSet(address: Address, yn: bool) -> None:
+def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
 
 | Name     | Type     | Description           |
