@@ -649,3 +649,74 @@ func TestState_SetMinimumBond(t *testing.T) {
 		})
 	}
 }
+
+func TestState_SetIISSVersion(t *testing.T) {
+	state := newDummyState(false)
+
+	for _, ver := range []int{IISSVersion2, IISSVersion3, IISSVersion4} {
+		assert.NoError(t, state.SetIISSVersion(ver))
+		assert.Equal(t, ver, state.GetIISSVersion())
+	}
+}
+
+func TestState_SetRRep(t *testing.T) {
+	rrep := big.NewInt(1000)
+	state := newDummyState(false)
+	assert.NoError(t, state.SetRRep(rrep))
+	assert.Zero(t, rrep.Cmp(state.GetRRep()))
+}
+
+func TestState_GetPRepCountConfig(t *testing.T) {
+	const (
+		main = 22
+		sub = 78
+		extra = 3
+	)
+	state := newDummyState(false)
+	assert.NoError(t, state.SetMainPRepCount(main))
+	assert.NoError(t, state.SetSubPRepCount(sub))
+	assert.NoError(t, state.SetExtraMainPRepCount(extra))
+
+	for _, rev := range []int{icmodule.RevisionExtraMainPReps - 1, icmodule.RevisionExtraMainPReps} {
+		cfg := state.GetPRepCountConfig(rev)
+		assert.Equal(t, main, cfg.MainPReps())
+		assert.Equal(t, sub, cfg.SubPReps())
+		assert.Equal(t, main+sub, cfg.ElectedPReps())
+		if rev < icmodule.RevisionExtraMainPReps {
+			assert.Zero(t, cfg.ExtraMainPReps())
+		} else {
+			assert.Equal(t, extra, cfg.ExtraMainPReps())
+		}
+	}
+}
+
+func TestState_GetNetworkInfoInJSON(t *testing.T) {
+	irep := big.NewInt(100)
+	rrep := big.NewInt(200)
+	minBond := big.NewInt(1234)
+
+	state := newDummyState(false)
+	assert.NoError(t, state.SetIRep(irep))
+	assert.NoError(t, state.SetRRep(rrep))
+	assert.NoError(t, state.SetMinimumBond(minBond))
+
+	for _, rev := range []int{icmodule.RevisionIISS4R0 - 1, icmodule.RevisionIISS4R0, icmodule.RevisionIISS4R1} {
+		jso, err := state.GetNetworkInfoInJSON(rev)
+		assert.NoError(t, err)
+		if rev < icmodule.RevisionIISS4R0 {
+			irep2 := jso["irep"].(*big.Int)
+			assert.Zero(t, irep.Cmp(irep2))
+			rrep2 := jso["rrep"].(*big.Int)
+			assert.Zero(t, rrep.Cmp(rrep2))
+			_, ok := jso["minimumBond"]
+			assert.False(t, ok)
+		} else {
+			_, ok := jso["irep"]
+			assert.False(t, ok)
+			_, ok = jso["rrep"]
+			assert.False(t, ok)
+			mb := jso["minimumBond"].(*big.Int)
+			assert.Zero(t, mb.Cmp(minBond))
+		}
+	}
+}
