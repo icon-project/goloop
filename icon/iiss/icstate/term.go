@@ -491,7 +491,7 @@ type TermSnapshot struct {
 
 func (term *TermSnapshot) RLPDecodeFields(decoder codec.Decoder) error {
 	var bondRequirement int64
-	switch term.version {
+	switch term.Version() {
 	case termVersion1:
 		if err := decoder.DecodeAll(
 			&term.sequence,
@@ -567,7 +567,7 @@ func (term *TermSnapshot) RLPEncodeFields(encoder codec.Encoder) error {
 			term.minimumBond,
 		)
 	default:
-		return errors.IllegalArgumentError.Errorf("IllegalTermVersion(%d)", term.version)
+		return errors.IllegalArgumentError.Errorf("IllegalTermVersion(%d)", term.Version())
 	}
 }
 
