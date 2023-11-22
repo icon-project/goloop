@@ -23,7 +23,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -136,8 +135,18 @@ func (s *chainScore) Ex_setRevision(code *big.Int) error {
 	}
 	as.MigrateForRevision(s.cc.ToRevision(int(code.Int64())))
 	as.SetAPIInfo(s.GetAPI())
-	iiss.EmitRevisionSetEvent(s.newCallContext(s.cc), code.Int64())
+	s.emitRevisionSetEvent(code.Int64())
 	return nil
+}
+
+func (s *chainScore) emitRevisionSetEvent(revision int64) {
+	if s.cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("RevisionSet(int)")},
+		[][]byte{intconv.Int64ToBytes(revision)},
+	)
 }
 
 func (s *chainScore) getScoreAddress(txHash []byte) module.Address {
@@ -243,7 +252,7 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false && as.IsContract() {
 		as.SetBlock(true)
-		iiss.EmitContractBlockedSetEvent(s.newCallContext(s.cc), address, true)
+		s.emitAccountBlockedSet(address, true)
 		// add to blocked score list
 		sas := s.cc.GetAccountState(state.SystemID)
 		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
@@ -267,7 +276,7 @@ func (s *chainScore) Ex_unblockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true && as.IsContract() {
 		as.SetBlock(false)
-		iiss.EmitContractBlockedSetEvent(s.newCallContext(s.cc), address, false)
+		s.emitAccountBlockedSet(address, false)
 		// remove from blocked score list
 		sas := s.cc.GetAccountState(state.SystemID)
 		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
@@ -372,9 +381,20 @@ func (s *chainScore) Ex_setStepPrice(price *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
+
+	s.emitStepPriceSetEvent(price)
 	as := s.cc.GetAccountState(state.SystemID)
-	iiss.EmitStepPriceSetEvent(s.newCallContext(s.cc), price)
 	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
+}
+
+func (s *chainScore) emitStepPriceSetEvent(price *big.Int) {
+	if s.cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("StepPriceSet(int)")},
+		[][]byte{intconv.BigIntToBytes(price)},
+	)
 }
 
 func (s *chainScore) Ex_setStepCost(costType string, cost *big.Int) error {
@@ -393,7 +413,7 @@ func (s *chainScore) Ex_setStepCost(costType string, cost *big.Int) error {
 			return err
 		}
 	}
-	iiss.EmitStepCostSetEvent(s.newCallContext(s.cc), costType, cost)
+	s.emitStepCostSetEvent(costType, cost)
 	if costZero {
 		// remove the step type and cost
 		for i := 0; i < stepTypes.Size(); i++ {
@@ -411,6 +431,16 @@ func (s *chainScore) Ex_setStepCost(costType string, cost *big.Int) error {
 	} else {
 		return stepCostDB.Set(costType, cost)
 	}
+}
+
+func (s *chainScore) emitStepCostSetEvent(type_ string, cost *big.Int) {
+	if s.cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+		return
+	}
+	s.cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("StepCostSet(str,int)"), []byte(type_)},
+		[][]byte{intconv.BigIntToBytes(cost)},
+	)
 }
 
 func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt) error {

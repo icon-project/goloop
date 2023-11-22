@@ -493,46 +493,6 @@ func TestEmitPRepCountConfigSetEvent(t *testing.T) {
 	checkEventLogSignature(t, scoreAddress, indexed, data)
 }
 
-func TestEmitStepPriceSetEvent(t *testing.T) {
-	cc := newMockCallContext(map[CallCtxOption]interface{}{
-		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
-	})
-
-	EmitStepPriceSetEvent(cc, big.NewInt(1000))
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
-}
-
-func TestEmitStepCostSetEvent(t *testing.T) {
-	cc := newMockCallContext(map[CallCtxOption]interface{}{
-		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
-	})
-
-	EmitStepCostSetEvent(cc, "contractCreate", big.NewInt(1000))
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
-}
-
-func TestEmitRevisionSetEvent(t *testing.T) {
-	cc := newMockCallContext(map[CallCtxOption]interface{}{
-		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
-	})
-
-	EmitRevisionSetEvent(cc, int64(icmodule.RevisionIISS4R1+1))
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
-}
-
-func TestEmitContractBlockedSetEvent(t *testing.T) {
-	cc := newMockCallContext(map[CallCtxOption]interface{}{
-		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
-	})
-
-	EmitContractBlockedSetEvent(cc, common.MustNewAddressFromString("cx123"), true)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
-}
-
 func TestEmitRewardFundSetEvent(t *testing.T) {
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
 		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
