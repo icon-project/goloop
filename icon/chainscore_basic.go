@@ -252,7 +252,7 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false && as.IsContract() {
 		as.SetBlock(true)
-		if s.cc.Revision().Value() >= icmodule.RevisionIISS4R1 {
+		if s.cc.Revision().Value() >= icmodule.RevisionNetworkProposalEventLog {
 			s.emitAccountBlockedSet(address, true)
 		}
 		// add to blocked score list
@@ -278,7 +278,7 @@ func (s *chainScore) Ex_unblockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true && as.IsContract() {
 		as.SetBlock(false)
-		if s.cc.Revision().Value() >= icmodule.RevisionIISS4R1 {
+		if s.cc.Revision().Value() >= icmodule.RevisionNetworkProposalEventLog {
 			s.emitAccountBlockedSet(address, false)
 		}
 		// remove from blocked score list
