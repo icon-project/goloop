@@ -252,7 +252,9 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false && as.IsContract() {
 		as.SetBlock(true)
-		s.emitAccountBlockedSet(address, true)
+		if s.cc.Revision().Value() >= icmodule.RevisionIISS4R1 {
+			s.emitAccountBlockedSet(address, true)
+		}
 		// add to blocked score list
 		sas := s.cc.GetAccountState(state.SystemID)
 		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
@@ -276,7 +278,9 @@ func (s *chainScore) Ex_unblockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true && as.IsContract() {
 		as.SetBlock(false)
-		s.emitAccountBlockedSet(address, false)
+		if s.cc.Revision().Value() >= icmodule.RevisionIISS4R1 {
+			s.emitAccountBlockedSet(address, false)
+		}
 		// remove from blocked score list
 		sas := s.cc.GetAccountState(state.SystemID)
 		db := scoredb.NewArrayDB(sas, state.VarBlockedScores)
