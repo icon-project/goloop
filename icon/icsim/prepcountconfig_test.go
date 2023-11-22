@@ -80,9 +80,8 @@ func TestSimulatorImpl_SetPRepCountConfig(t *testing.T) {
 	assert.Equal(t, int(newSubPRepCount-newExtraMainPRepCount), len(subPReps))
 
 	term := sim.TermSnapshot()
-	for i := 0; i < term.GetPRepSnapshotCount(); i++ {
-		prepSnapshot := term.GetPRepSnapshotByIndex(i)
-		prep := sim.GetPRep(prepSnapshot.Owner())
+	for i, pss := range term.PRepSnapshots() {
+		prep := sim.GetPRep(pss.Owner())
 		if i < int(newMainPRepCount+newExtraMainPRepCount) {
 			assert.Equal(t, icstate.GradeMain, prep.Grade())
 		} else {

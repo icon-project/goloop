@@ -276,9 +276,9 @@ func getIssueDataV1(
 func getIssueDataV2(issueInfo *icstate.Issue, term *icstate.TermSnapshot) *IssueResultJSON {
 	var reward, remains *big.Int
 	if term.Revision() < icmodule.RevisionFixIGlobal {
-		reward, remains = new(big.Int).DivMod(term.Iglobal(), big.NewInt(term.Period()), new(big.Int))
+		reward, remains = new(big.Int).DivMod(term.RewardFund().IGlobal(), big.NewInt(term.Period()), new(big.Int))
 	} else {
-		reward, remains = new(big.Int).DivMod(term.Iglobal(), big.NewInt(icmodule.MonthBlock), new(big.Int))
+		reward, remains = new(big.Int).DivMod(term.RewardFund().IGlobal(), big.NewInt(icmodule.MonthBlock), new(big.Int))
 	}
 	if remains.Sign() == 1 {
 		reward.Add(reward, intconv.BigIntOne)

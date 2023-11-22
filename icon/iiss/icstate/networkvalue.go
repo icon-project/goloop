@@ -147,7 +147,11 @@ func (s *State) SetTermPeriod(value int64) error {
 }
 
 func (s *State) GetIRep() *big.Int {
-	return getValue(s.store, VarIRep).BigInt()
+	ret := getValue(s.store, VarIRep).BigInt()
+	if ret == nil {
+		ret = icmodule.BigIntZero
+	}
+	return ret
 }
 
 func (s *State) SetIRep(value *big.Int) error {
@@ -155,7 +159,11 @@ func (s *State) SetIRep(value *big.Int) error {
 }
 
 func (s *State) GetRRep() *big.Int {
-	return getValue(s.store, VarRRep).BigInt()
+	ret := getValue(s.store, VarRRep).BigInt()
+	if ret == nil {
+		ret = icmodule.BigIntZero
+	}
+	return ret
 }
 
 func (s *State) SetRRep(value *big.Int) error {

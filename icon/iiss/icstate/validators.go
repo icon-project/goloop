@@ -335,12 +335,9 @@ func NewValidatorsStateWithSnapshot(vss *ValidatorsSnapshot) *ValidatorsState {
 
 func NewValidatorsSnapshotWithPRepSnapshot(
 	prepSnapshots PRepSnapshots, ownerToNodeMapper OwnerToNodeMappable, size int) *ValidatorsSnapshot {
-	vd := validatorsData{}
-	vd.init(prepSnapshots, ownerToNodeMapper, size)
-
-	return &ValidatorsSnapshot{
-		validatorsData: vd,
-	}
+	vss := &ValidatorsSnapshot{}
+	vss.validatorsData.init(prepSnapshots, ownerToNodeMapper, size)
+	return vss
 }
 
 // changeValidatorNodeAddress is called when a main prep wants to change its node address

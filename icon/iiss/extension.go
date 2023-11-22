@@ -247,15 +247,16 @@ func (es *ExtensionStateImpl) setNewFront() (err error) {
 			return
 		}
 	case icstate.IISSVersion3:
+		rf := term.RewardFund()
 		if err = es.Front.AddGlobalV2(
 			term.Revision(),
 			term.StartHeight(),
 			int(term.Period()-1),
-			term.Iglobal(),
-			term.Iprep(),
-			term.Ivoter(),
-			term.Icps(),
-			term.Irelay(),
+			rf.IGlobal(),
+			rf.IPrep(),
+			rf.IVoter(),
+			rf.ICps(),
+			rf.IRelay(),
 			term.GetElectedPRepCount(),
 			term.BondRequirement(),
 		); err != nil {
@@ -305,14 +306,12 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 		return nil, err
 	}
 
-	pssCount := term.GetPRepSnapshotCount()
 	mainPRepCount := term.MainPRepCount()
 	jso := make(map[string]interface{})
 	preps := make([]interface{}, 0, mainPRepCount)
 	sum := new(big.Int)
 
-	for i := 0; i < pssCount; i++ {
-		pss := term.GetPRepSnapshotByIndex(i)
+	for _, pss := range term.PRepSnapshots() {
 		ps := es.State.GetPRepStatusByOwner(pss.Owner(), false)
 		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 
@@ -337,20 +336,17 @@ func (es *ExtensionStateImpl) GetMainPRepsInJSON(blockHeight int64) (map[string]
 func (es *ExtensionStateImpl) GetSubPRepsInJSON(blockHeight int64) (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	if term == nil {
-		err := errors.Errorf("Term is nil")
-		return nil, err
+		return nil, errors.Errorf("Term is nil")
 	}
 
-	pssCount := term.GetPRepSnapshotCount()
+	pssList := term.PRepSnapshots()
 	mainPRepCount := term.MainPRepCount()
-	subPRepCount := term.GetElectedPRepCount() - mainPRepCount
 
 	jso := make(map[string]interface{})
-	preps := make([]interface{}, 0, subPRepCount)
+	preps := make([]interface{}, 0, len(pssList)-mainPRepCount)
 	sum := new(big.Int)
 
-	for i := mainPRepCount; i < pssCount; i++ {
-		pss := term.GetPRepSnapshotByIndex(i)
+	for _, pss := range pssList[mainPRepCount:] {
 		ps := es.State.GetPRepStatusByOwner(pss.Owner(), false)
 		pb := es.State.GetPRepBaseByOwner(pss.Owner(), false)
 
@@ -984,41 +980,25 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 		prepSet = nil
 	}
 
-	return es.moveOnToNextTerm(sc, prepSet, totalSupply)
-}
+	// Create a TermState for the next term
+	nextTerm := icstate.NewNextTerm(sc, es.State, totalSupply, prepSet)
+	if nextTerm == nil {
+		log.Panicf("NextTermIsNil(bh=%d,rev=%d)", wc.BlockHeight(), revision)
+	}
 
-func (es *ExtensionStateImpl) moveOnToNextTerm(
-	sc icmodule.StateContext, preps icstate.PRepSet, totalSupply *big.Int) error {
-
-	// Create a new term
-	revision := sc.RevisionValue()
-	nextTerm := icstate.NewNextTerm(es.State, totalSupply, revision)
-
+	// Calculate parameters used for IISS2 reward distribution
 	// Valid preps means that decentralization is activated
-	if preps != nil {
-		br := sc.GetBondRequirement()
-		mainPRepCount := preps.GetPRepSize(icstate.GradeMain)
-		pss := preps.ToPRepSnapshots(br)
-
-		nextTerm.SetMainPRepCount(mainPRepCount)
-		nextTerm.SetPRepSnapshots(pss)
-		nextTerm.SetIsDecentralized(true)
-		es.setIrepToTerm(revision, preps, nextTerm)
+	if nextTerm.IsDecentralized() {
+		es.setIrepToTerm(revision, prepSet, nextTerm)
 
 		// Record new validator list for the next term to State
-		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(pss, es.State, mainPRepCount)
-		if err := es.State.SetValidatorsSnapshot(vss); err != nil {
+		vss := icstate.NewValidatorsSnapshotWithPRepSnapshot(
+			nextTerm.PRepSnapshots(), es.State, nextTerm.MainPRepCount())
+		if err = es.State.SetValidatorsSnapshot(vss); err != nil {
 			return err
 		}
 	}
-
 	es.setRrepToTerm(revision, totalSupply, nextTerm)
-
-	term := es.State.GetTermSnapshot()
-	if !term.IsDecentralized() && nextTerm.IsDecentralized() {
-		// reset sequence when network is decentralized
-		nextTerm.ResetSequence()
-	}
 
 	es.logger.Debugf(nextTerm.String())
 	return es.State.SetTermSnapshot(nextTerm.GetSnapshot())
@@ -1028,10 +1008,10 @@ func (es *ExtensionStateImpl) setIrepToTerm(revision int, preps icstate.PRepSet,
 	var irep *big.Int
 	if revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionEnableIISS3 {
 		// disable IRep
-		irep = new(big.Int)
+		irep = icmodule.BigIntZero
 	} else if revision >= icmodule.RevisionSetIRepViaNetworkProposal {
 		// use network value IRep
-		irep = new(big.Int).Set(es.State.GetIRep())
+		irep = es.State.GetIRep()
 	} else {
 		irep = calculateIRep(preps)
 	}
@@ -1042,7 +1022,7 @@ func (es *ExtensionStateImpl) setRrepToTerm(revision int, totalSupply *big.Int, 
 	var rrep *big.Int
 	if revision < icmodule.RevisionIISS || revision >= icmodule.RevisionEnableIISS3 {
 		// disable Rrep
-		rrep = new(big.Int)
+		rrep = icmodule.BigIntZero
 	} else {
 		rrep = calculateRRep(totalSupply, es.State.GetTotalDelegation())
 	}

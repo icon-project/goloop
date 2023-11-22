@@ -108,7 +108,7 @@ func setTermPeriodTest(t *testing.T, s *State) {
 
 func setIRepTest(t *testing.T, s *State) {
 	actual := s.GetIRep()
-	assert.Nil(t, actual)
+	assert.Zero(t, actual.Sign())
 
 	irep := big.NewInt(10)
 	assert.NoError(t, s.SetIRep(irep))
@@ -118,7 +118,7 @@ func setIRepTest(t *testing.T, s *State) {
 
 func setRRepTest(t *testing.T, s *State) {
 	actual := s.GetRRep()
-	assert.Nil(t, actual)
+	assert.Zero(t, actual.Sign())
 
 	rrep := big.NewInt(10)
 	assert.NoError(t, s.SetIRep(rrep))
