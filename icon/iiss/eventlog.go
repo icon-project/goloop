@@ -291,7 +291,7 @@ func EmitDoubleSignReportedEvent(cc icmodule.CallContext, signer module.Address,
 }
 
 func EmitBondSetEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
-	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
+	if cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
@@ -301,7 +301,7 @@ func EmitBondSetEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
 }
 
 func EmitDelegationSetEvent(cc icmodule.CallContext, delegations icstate.Delegations) {
-	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
+	if cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
@@ -322,9 +322,6 @@ func EmitPRepCountConfigSetEvent(cc icmodule.CallContext, main, sub, extra int64
 }
 
 func EmitRewardFundSetEvent(cc icmodule.CallContext, value *big.Int) {
-	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
-		return
-	}
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("RewardFundSet(int)")},
 		[][]byte{intconv.BigIntToBytes(value)},
@@ -332,9 +329,6 @@ func EmitRewardFundSetEvent(cc icmodule.CallContext, value *big.Int) {
 }
 
 func EmitRewardFundAllocationSetEvent(cc icmodule.CallContext, type_ icstate.RFundKey, value icmodule.Rate) {
-	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
-		return
-	}
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte("RewardFundAllocationSet(str,int)"), []byte(type_)},
 		[][]byte{intconv.Int64ToBytes(value.NumInt64())},
@@ -342,7 +336,7 @@ func EmitRewardFundAllocationSetEvent(cc icmodule.CallContext, type_ icstate.RFu
 }
 
 func EmitNetworkScoreSetEvent(cc icmodule.CallContext, role string, address module.Address) {
-	if cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+	if cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	var addrBytes []byte

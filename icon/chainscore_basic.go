@@ -140,7 +140,7 @@ func (s *chainScore) Ex_setRevision(code *big.Int) error {
 }
 
 func (s *chainScore) emitRevisionSetEvent(revision int64) {
-	if s.cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+	if s.cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	s.cc.OnEvent(state.SystemAddress,
@@ -252,7 +252,7 @@ func (s *chainScore) Ex_blockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false && as.IsContract() {
 		as.SetBlock(true)
-		if s.cc.Revision().Value() >= icmodule.RevisionNetworkProposalEventLog {
+		if s.cc.Revision().Value() >= icmodule.RevisionChainScoreEventLog {
 			s.emitAccountBlockedSet(address, true)
 		}
 		// add to blocked score list
@@ -278,7 +278,7 @@ func (s *chainScore) Ex_unblockScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true && as.IsContract() {
 		as.SetBlock(false)
-		if s.cc.Revision().Value() >= icmodule.RevisionNetworkProposalEventLog {
+		if s.cc.Revision().Value() >= icmodule.RevisionChainScoreEventLog {
 			s.emitAccountBlockedSet(address, false)
 		}
 		// remove from blocked score list
@@ -392,7 +392,7 @@ func (s *chainScore) Ex_setStepPrice(price *big.Int) error {
 }
 
 func (s *chainScore) emitStepPriceSetEvent(price *big.Int) {
-	if s.cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+	if s.cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	s.cc.OnEvent(state.SystemAddress,
@@ -438,7 +438,7 @@ func (s *chainScore) Ex_setStepCost(costType string, cost *big.Int) error {
 }
 
 func (s *chainScore) emitStepCostSetEvent(type_ string, cost *big.Int) {
-	if s.cc.Revision().Value() < icmodule.RevisionNetworkProposalEventLog {
+	if s.cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	s.cc.OnEvent(state.SystemAddress,

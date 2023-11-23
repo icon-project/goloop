@@ -115,11 +115,10 @@ const (
 	RevisionUpdatePRepStats = Revision22
 	RevisionBlockAccountAPI = Revision22
 
-	RevisionIISS4R0 = Revision24
+	RevisionIISS4R0            = Revision24
+	RevisionChainScoreEventLog = Revision24
 
-	RevisionIISS4R1                 = Revision25
-	RevisionVoteEventLog            = Revision25
-	RevisionNetworkProposalEventLog = Revision25
+	RevisionIISS4R1 = Revision25
 )
 
 var revisionFlags = []module.Revision{

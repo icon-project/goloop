@@ -445,7 +445,7 @@ func TestEmitDoubleSignReportedEvent(t *testing.T) {
 func TestEmitBondSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
-		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionVoteEventLog),
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionChainScoreEventLog),
 		CallCtxOptionBlockHeight: int64(1000),
 		CallCtxOptionFrom:        from,
 	})
@@ -464,7 +464,7 @@ func TestEmitBondSetEvent(t *testing.T) {
 func TestEmitDelegationSetEvent(t *testing.T) {
 	from := newDummyAddress(1)
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
-		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionVoteEventLog),
+		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionChainScoreEventLog),
 		CallCtxOptionBlockHeight: int64(1000),
 		CallCtxOptionFrom:        from,
 	})

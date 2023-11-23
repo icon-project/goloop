@@ -281,7 +281,7 @@ def setRevision(code: int) -> None:
 | code | int  | revision of the network |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=0)
 def RevisionSet(code: int) -> None:
@@ -308,7 +308,7 @@ def setStepPrice(price: int) -> None:
 | price | int  | price of step in loop |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=0)
 def StepPriceSet(price: int) -> None:
@@ -336,7 +336,7 @@ def setStepCost(type: str, cost: int) -> None:
 | cost | int  | cost for step type                                   |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def StepCostSet(type: str, cost: int) -> None:
@@ -413,7 +413,7 @@ def blockScore(address: Address) -> None:
 | address | Address | address of the SCORE |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
@@ -441,7 +441,7 @@ def unblockScore(address: Address) -> None:
 | address | Address | address of the SCORE |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
@@ -962,7 +962,7 @@ def setDelegation(delegations: List[Vote]) -> None:
 | delegations | List\[[Vote](#vote)\] | list of delegation information |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def DelegationSet(address: Address, delegations: bytes) -> None:
@@ -994,7 +994,7 @@ def setBond(bonds: List[Vote]) -> None:
 | bonds | List\[[Vote](#vote)\] | list of bond information |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def BondSet(address: Address, bonds: bytes) -> None:
@@ -1176,7 +1176,7 @@ def setRewardFund(iglobal: int) -> None:
 | iglobal | int  | size of reward fund |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=0)
 def RewardFundSet(iglobal: int) -> None:
@@ -1246,7 +1246,7 @@ def setNetworkScore(role: str, address: Address) -> None:
 | address | List\[Address\] | (Optional from revision 17) address of Network SCORE. Do not pass `address` to clear Network SCORE |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def NetworkScoreSet(role: str, address: Address) -> None:
@@ -1274,7 +1274,7 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 | values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)<br>sum of values must be 10,000 |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=0)
 def RewardFundAllocationSet(type: str, value: int) -> None:
