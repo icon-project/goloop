@@ -170,9 +170,9 @@ func (s *State) SetRRep(value *big.Int) error {
 	return setValue(s.store, VarRRep, value)
 }
 
-// GetMainPRepCount returns the number of main preps including extra main preps
+// GetMainPRepCount returns the number of main preps excluding extra main preps
 // This value is the number of main preps as configuration
-// If you want to get the number of main preps in this term, use termData.MainPRepCount()
+// If you want to get the actual number of main preps in this term, use termData.MainPRepCount() instead.
 func (s *State) GetMainPRepCount() int64 {
 	return getValue(s.store, VarMainPRepCount).Int64()
 }
@@ -204,7 +204,7 @@ func (s *State) SetExtraMainPRepCount(value int64) error {
 	return setValue(s.store, VarExtraMainPRepCount, value)
 }
 
-// GetSubPRepCount returns the number of sub preps excluding extra main preps
+// GetSubPRepCount returns the number of sub preps including extra main preps
 func (s *State) GetSubPRepCount() int64 {
 	return getValue(s.store, VarSubPRepCount).Int64()
 }
