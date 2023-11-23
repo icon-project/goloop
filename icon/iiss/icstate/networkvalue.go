@@ -480,8 +480,6 @@ func (s *State) SetMinimumBond(bond *big.Int) error {
 func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	jso := make(map[string]interface{})
-	jso["irep"] = s.GetIRep()
-	jso["rrep"] = s.GetRRep()
 	jso["mainPRepCount"] = s.GetMainPRepCount()
 	jso["extraMainPRepCount"] = s.GetExtraMainPRepCount()
 	jso["subPRepCount"] = s.GetSubPRepCount()
@@ -493,6 +491,9 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund(revision).ToJSON()
 	if revision == icmodule.RevisionIISS4R0 {
+		// Under RevisionIISS4R0, RewardFundV1 and RewardFundV2 coexist
+		// jso["rewardFund"] contains RewardFundV1
+		// jso["rewardFund2"] contains RewardFundV2
 		jso["rewardFund2"] = s.GetRewardFundV2().ToJSON()
 	}
 	jso["unbondingMax"] = s.GetUnbondingMax()
@@ -510,7 +511,10 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	rate, _ = s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
 	jso["proposalNonVotePenaltySlashRatio"] = rate.Percent()
 
-	if revision >= icmodule.RevisionIISS4R0 {
+	if revision < icmodule.RevisionIISS4R0 {
+		jso["irep"] = s.GetIRep()
+		jso["rrep"] = s.GetRRep()
+	} else {
 		jso["minimumBond"] = s.GetMinimumBond()
 	}
 
