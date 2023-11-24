@@ -81,6 +81,7 @@ func (m mockStateContext) AddEventEnable(module.Address, icmodule.EnableStatus) 
 
 type transactionImpl struct {
 	txType TxType
+	from   module.Address
 	args   []interface{}
 }
 
@@ -88,12 +89,16 @@ func (t *transactionImpl) Type() TxType {
 	return t.txType
 }
 
+func (t *transactionImpl) From() module.Address {
+	return t.from
+}
+
 func (t *transactionImpl) Args() []interface{} {
 	return t.args
 }
 
-func NewTransaction(txType TxType, args ...interface{}) Transaction {
-	return &transactionImpl{txType, args}
+func NewTransaction(txType TxType, from module.Address, args ...interface{}) Transaction {
+	return &transactionImpl{txType, from, args}
 }
 
 func getExtensionState(ws state.WorldState) *iiss.ExtensionStateImpl {
@@ -207,12 +212,11 @@ func (sim *simulatorImpl) GoByTransfer(
 	return sim.goByOneTransaction(csi, TypeTransfer, from, to, amount)
 }
 
-func (sim *simulatorImpl) transfer(_ *iiss.ExtensionStateImpl, wc icmodule.WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) transfer(_ *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	to := args[1].(module.Address)
-	amount := args[2].(*big.Int)
-	return wc.Transfer(from, to, amount, module.Transfer)
+	to := args[0].(module.Address)
+	amount := args[1].(*big.Int)
+	return cc.Transfer(tx.From(), to, amount, module.Transfer)
 }
 
 func (sim *simulatorImpl) SetRevision(from module.Address, revision module.Revision) Transaction {
@@ -224,10 +228,9 @@ func (sim *simulatorImpl) GoBySetRevision(
 	return sim.goByOneTransaction(csi, TypeSetRevision, from, revision)
 }
 
-func (sim *simulatorImpl) setRevision(_ *iiss.ExtensionStateImpl, wc icmodule.WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setRevision(_ *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	//from := args[0].(module.Address)
-	revision := args[1].(module.Revision)
+	revision := args[0].(module.Revision)
 	curRev := sim.revision.Value()
 	newRev := revision.Value()
 
@@ -241,7 +244,7 @@ func (sim *simulatorImpl) setRevision(_ *iiss.ExtensionStateImpl, wc icmodule.Wo
 		return errors.Errorf("IllegalArgument(current=%d,new=%d)", curRev, newRev)
 	}
 
-	ws := wc.(state.WorldState)
+	ws := cc.GetWorldState()
 	err := sim.handleRevisionChange(ws, curRev, newRev)
 	return err
 }
@@ -264,11 +267,9 @@ func (sim *simulatorImpl) GoBySetStake(
 	return sim.goByOneTransaction(csi, TypeSetStake, from, amount)
 }
 
-func (sim *simulatorImpl) setStake(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setStake(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	amount := args[1].(*big.Int)
-	cc := NewCallContext(wc, from)
+	amount := args[0].(*big.Int)
 	return es.SetStake(cc, amount)
 }
 
@@ -346,9 +347,9 @@ func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, blk Block) ([]Rece
 
 		for i, tx := range blk.Txs() {
 			wss = ws.GetSnapshot()
-
-			err = sim.executeTx(wc, tx)
-			receipts[i] = NewReceipt(blockHeight, err)
+			cc := NewCallContext(wc, tx.From())
+			err = sim.executeTx(cc, tx)
+			receipts[i] = NewReceipt(blockHeight, err, cc.Events())
 
 			if err != nil {
 				if err = ws.Reset(wss); err != nil {
@@ -384,8 +385,8 @@ func (sim *simulatorImpl) GoByTransaction(csi module.ConsensusInfo, txs ...Trans
 }
 
 func (sim *simulatorImpl) goByOneTransaction(
-	csi module.ConsensusInfo, txType TxType, args ...interface{}) (Receipt, error) {
-	tx := NewTransaction(txType, args...)
+	csi module.ConsensusInfo, txType TxType, from module.Address, args ...interface{}) (Receipt, error) {
+	tx := NewTransaction(txType, from, args...)
 	if receipts, err := sim.GoByTransaction(csi, tx); err == nil {
 		return receipts[0], err
 	} else {
@@ -393,47 +394,47 @@ func (sim *simulatorImpl) goByOneTransaction(
 	}
 }
 
-func (sim *simulatorImpl) executeTx(wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) executeTx(cc *callContext, tx Transaction) error {
 	var err error
-	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	es := cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
 	switch tx.Type() {
 	case TypeTransfer:
-		err = sim.transfer(es, wc, tx)
+		err = sim.transfer(es, cc, tx)
 	case TypeSetStake:
-		err = sim.setStake(es, wc, tx)
+		err = sim.setStake(es, cc, tx)
 	case TypeSetDelegation:
-		err = sim.setDelegation(es, wc, tx)
+		err = sim.setDelegation(es, cc, tx)
 	case TypeSetBond:
-		err = sim.setBond(es, wc, tx)
+		err = sim.setBond(es, cc, tx)
 	case TypeSetBonderList:
-		err = sim.setBonderList(es, wc, tx)
+		err = sim.setBonderList(es, cc, tx)
 	case TypeRegisterPRep:
-		err = sim.registerPRep(es, wc, tx)
+		err = sim.registerPRep(es, cc, tx)
 	case TypeUnregisterPRep:
-		err = sim.unregisterPRep(es, wc, tx)
+		err = sim.unregisterPRep(es, cc, tx)
 	case TypeDisqualifyPRep:
-		err = sim.disqualifyPRep(es, wc, tx)
+		err = sim.disqualifyPRep(es, cc, tx)
 	case TypeSetPRep:
-		err = sim.setPRep(es, wc, tx)
+		err = sim.setPRep(es, cc, tx)
 	case TypeSetRevision:
-		err = sim.setRevision(es, wc, tx)
+		err = sim.setRevision(es, cc, tx)
 	case TypeClaimIScore:
-		err = sim.claimIScore(es, wc, tx)
+		err = sim.claimIScore(es, cc, tx)
 	case TypeSetSlashingRates:
-		err = sim.setSlashingRates(es, wc, tx)
+		err = sim.setSlashingRates(es, cc, tx)
 	case TypeSetMinimumBond:
-		err = sim.setMinimumBond(es, wc, tx)
+		err = sim.setMinimumBond(es, cc, tx)
 	case TypeInitCommissionRate:
-		err = sim.initCommissionRate(es, wc, tx)
+		err = sim.initCommissionRate(es, cc, tx)
 	case TypeSetCommissionRate:
-		err = sim.setCommissionRate(es, wc, tx)
+		err = sim.setCommissionRate(es, cc, tx)
 	case TypeRequestUnjail:
-		err = sim.requestUnjail(es, wc, tx)
+		err = sim.requestUnjail(es, cc, tx)
 	case TypeHandleDoubleSignReport:
-		err = sim.handleDoubleSignReport(es, wc, tx)
+		err = sim.handleDoubleSignReport(es, cc, tx)
 	case TypeSetPRepCountConfig:
-		err = sim.setPRepCountConfig(es, wc, tx)
+		err = sim.setPRepCountConfig(es, cc, tx)
 	default:
 		return errors.Errorf("Unexpected transaction: %v", tx.Type())
 	}
@@ -449,12 +450,10 @@ func (sim *simulatorImpl) GoByRegisterPRep(
 	return sim.goByOneTransaction(csi, TypeRegisterPRep, from, info)
 }
 
-func (sim *simulatorImpl) registerPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) registerPRep(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	info := args[1].(*icstate.PRepInfo)
-	cc := NewCallContext(wc, from)
-	if err := cc.Transfer(from, state.SystemAddress, icmodule.BigIntRegPRepFee, module.RegPRep); err != nil {
+	info := args[0].(*icstate.PRepInfo)
+	if err := cc.Transfer(tx.From(), state.SystemAddress, icmodule.BigIntRegPRepFee, module.RegPRep); err != nil {
 		return err
 	}
 	return es.RegisterPRep(cc, info)
@@ -469,10 +468,7 @@ func (sim *simulatorImpl) GoByUnregisterPRep(
 	return sim.goByOneTransaction(csi, TypeUnregisterPRep, from)
 }
 
-func (sim *simulatorImpl) unregisterPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
-	args := tx.Args()
-	from := args[0].(module.Address)
-	cc := NewCallContext(wc, from)
+func (sim *simulatorImpl) unregisterPRep(es *iiss.ExtensionStateImpl, cc *callContext, _ Transaction) error {
 	return es.UnregisterPRep(cc)
 }
 
@@ -484,11 +480,9 @@ func (sim *simulatorImpl) GoByDisqualifyPRep(csi module.ConsensusInfo, from, add
 	return sim.goByOneTransaction(csi, TypeDisqualifyPRep, from, address)
 }
 
-func (sim *simulatorImpl) disqualifyPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) disqualifyPRep(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	address := args[1].(module.Address)
-	cc := NewCallContext(wc, from)
+	address := args[0].(module.Address)
 	return es.DisqualifyPRep(cc, address)
 }
 
@@ -501,11 +495,9 @@ func (sim *simulatorImpl) GoBySetPRep(
 	return sim.goByOneTransaction(csi, TypeSetPRep, from, info)
 }
 
-func (sim *simulatorImpl) setPRep(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setPRep(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	info := args[1].(*icstate.PRepInfo)
-	cc := NewCallContext(wc, from)
+	info := args[0].(*icstate.PRepInfo)
 	return es.SetPRep(cc, info, false)
 }
 
@@ -524,11 +516,9 @@ func (sim *simulatorImpl) GoBySetDelegation(
 	return sim.goByOneTransaction(csi, TypeSetDelegation, from, ds)
 }
 
-func (sim *simulatorImpl) setDelegation(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setDelegation(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	ds := args[1].(icstate.Delegations)
-	cc := NewCallContext(wc, from)
+	ds := args[0].(icstate.Delegations)
 	return es.SetDelegation(cc, ds)
 }
 
@@ -547,11 +537,9 @@ func (sim *simulatorImpl) GoBySetBond(
 	return sim.goByOneTransaction(csi, TypeSetBond, from, bonds)
 }
 
-func (sim *simulatorImpl) setBond(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setBond(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	bonds := args[1].(icstate.Bonds)
-	cc := NewCallContext(wc, from)
+	bonds := args[0].(icstate.Bonds)
 	return es.SetBond(cc, bonds)
 }
 
@@ -576,11 +564,10 @@ func (sim *simulatorImpl) GoBySetBonderList(
 	return sim.goByOneTransaction(csi, TypeSetBonderList, from, bl)
 }
 
-func (sim *simulatorImpl) setBonderList(es *iiss.ExtensionStateImpl, _ WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setBonderList(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	bl := args[1].(icstate.BonderList)
-	return es.SetBonderList(from, bl)
+	bl := args[0].(icstate.BonderList)
+	return es.SetBonderList(cc.From(), bl)
 }
 
 func (sim *simulatorImpl) ClaimIScore(from module.Address) Transaction {
@@ -592,10 +579,7 @@ func (sim *simulatorImpl) GoByClaimIScore(
 	return sim.goByOneTransaction(csi, TypeClaimIScore, from)
 }
 
-func (sim *simulatorImpl) claimIScore(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
-	args := tx.Args()
-	from := args[0].(module.Address)
-	cc := NewCallContext(wc, from)
+func (sim *simulatorImpl) claimIScore(es *iiss.ExtensionStateImpl, cc *callContext, _ Transaction) error {
 	return es.ClaimIScore(cc)
 }
 
@@ -735,11 +719,9 @@ func (sim *simulatorImpl) GoBySetSlashingRates(
 	return sim.goByOneTransaction(csi, TypeSetSlashingRates, from, rates)
 }
 
-func (sim *simulatorImpl) setSlashingRates(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setSlashingRates(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	rates := args[1].(map[string]icmodule.Rate)
-	cc := NewCallContext(wc, from)
+	rates := args[0].(map[string]icmodule.Rate)
 	return es.SetSlashingRates(cc, rates)
 }
 
@@ -757,10 +739,9 @@ func (sim *simulatorImpl) GoBySetMinimumBond(
 	return sim.goByOneTransaction(csi, TypeSetMinimumBond, from, bond)
 }
 
-func (sim *simulatorImpl) setMinimumBond(es *iiss.ExtensionStateImpl, _ WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setMinimumBond(es *iiss.ExtensionStateImpl, _ *callContext, tx Transaction) error {
 	args := tx.Args()
-	//from := args[0].(module.Address)
-	bond := args[1].(*big.Int)
+	bond := args[0].(*big.Int)
 	return es.State.SetMinimumBond(bond)
 }
 
@@ -774,13 +755,11 @@ func (sim *simulatorImpl) GoByInitCommissionRate(
 	return sim.goByOneTransaction(csi, TypeInitCommissionRate, from, rate, maxRate, maxChangeRate)
 }
 
-func (sim *simulatorImpl) initCommissionRate(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) initCommissionRate(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	rate := args[1].(icmodule.Rate)
-	maxRate := args[2].(icmodule.Rate)
-	maxChangeRate := args[3].(icmodule.Rate)
-	cc := NewCallContext(wc, from)
+	rate := args[0].(icmodule.Rate)
+	maxRate := args[1].(icmodule.Rate)
+	maxChangeRate := args[2].(icmodule.Rate)
 	return es.InitCommissionInfo(cc, rate, maxRate, maxChangeRate)
 }
 
@@ -793,11 +772,9 @@ func (sim *simulatorImpl) GoBySetCommissionRate(
 	return sim.goByOneTransaction(csi, TypeSetCommissionRate, from, rate)
 }
 
-func (sim *simulatorImpl) setCommissionRate(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setCommissionRate(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	rate := args[1].(icmodule.Rate)
-	cc := NewCallContext(wc, from)
+	rate := args[0].(icmodule.Rate)
 	return es.SetCommissionRate(cc, rate)
 }
 
@@ -810,10 +787,7 @@ func (sim *simulatorImpl) GoByRequestUnjail(
 	return sim.goByOneTransaction(csi, TypeRequestUnjail, from)
 }
 
-func (sim *simulatorImpl) requestUnjail(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
-	args := tx.Args()
-	from := args[0].(module.Address)
-	cc := NewCallContext(wc, from)
+func (sim *simulatorImpl) requestUnjail(es *iiss.ExtensionStateImpl, cc *callContext, _ Transaction) error {
 	return es.RequestUnjail(cc)
 }
 
@@ -827,13 +801,11 @@ func (sim *simulatorImpl) GoByHandleDoubleSignReport(csi module.ConsensusInfo,
 	return sim.goByOneTransaction(csi, TypeHandleDoubleSignReport, from, dsType, dsBlockHeight, signer)
 }
 
-func (sim *simulatorImpl) handleDoubleSignReport(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) handleDoubleSignReport(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	dsType := args[1].(string)
-	dsBlockHeight := args[2].(int64)
-	signer := args[3].(module.Address)
-	cc := NewCallContext(wc, from)
+	dsType := args[0].(string)
+	dsBlockHeight := args[1].(int64)
+	signer := args[2].(module.Address)
 	return es.HandleDoubleSignReport(cc, dsType, dsBlockHeight, signer)
 }
 
@@ -851,11 +823,9 @@ func (sim *simulatorImpl) GoBySetPRepCountConfig(
 	return sim.goByOneTransaction(csi, TypeSetPRepCountConfig, from, counts)
 }
 
-func (sim *simulatorImpl) setPRepCountConfig(es *iiss.ExtensionStateImpl, wc WorldContext, tx Transaction) error {
+func (sim *simulatorImpl) setPRepCountConfig(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
-	from := args[0].(module.Address)
-	counts := args[1].(map[string]int64)
-	cc := NewCallContext(wc, from)
+	counts := args[0].(map[string]int64)
 	return es.SetPRepCountConfig(cc, counts)
 }
 

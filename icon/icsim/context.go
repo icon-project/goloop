@@ -237,6 +237,7 @@ func NewWorldContext(
 type callContext struct {
 	WorldContext
 	from module.Address
+	events []*Event
 }
 
 func (ctx *callContext) From() module.Address {
@@ -284,6 +285,12 @@ func (ctx *callContext) SumOfStepUsed() *big.Int {
 }
 
 func (ctx *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
+	e := NewEvent(addr, indexed, data)
+	ctx.events = append(ctx.events, e)
+}
+
+func (ctx *callContext) Events() []*Event {
+	return ctx.events
 }
 
 func (ctx *callContext) CallOnTimer(to module.Address, params []byte) error {
@@ -298,7 +305,11 @@ func (ctx *callContext) TransactionInfo() *state.TransactionInfo {
 	panic("implement me")
 }
 
-func NewCallContext(wc WorldContext, from module.Address) icmodule.CallContext {
+func (ctx *callContext) GetWorldState() state.WorldState {
+	return ctx.WorldContext.(state.WorldState)
+}
+
+func NewCallContext(wc WorldContext, from module.Address) *callContext {
 	return &callContext{
 		WorldContext: wc,
 		from:         from,

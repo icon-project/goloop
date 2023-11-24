@@ -25,12 +25,14 @@ type Receipt interface {
 	BlockHeight() int64
 	Status() int
 	Error() error
+	Events() []*Event
 }
 
 type receipt struct {
 	blockHeight int64
 	status int
 	err error
+	events []*Event
 }
 
 func (r *receipt) BlockHeight() int64 {
@@ -45,10 +47,19 @@ func (r *receipt) Error() error {
 	return r.err
 }
 
-func NewReceipt(blockHeight int64, err error) Receipt {
+func (r *receipt) Events() []*Event{
+	return r.events
+}
+
+func NewReceipt(blockHeight int64, err error, events []*Event) Receipt {
 	status := Success
 	if err != nil {
 		status = Failure
 	}
-	return &receipt{blockHeight: blockHeight, status: status, err: err}
+	return &receipt{
+		blockHeight: blockHeight,
+		status: status,
+		err: err,
+		events: events,
+	}
 }
