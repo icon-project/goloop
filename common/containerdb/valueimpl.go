@@ -110,3 +110,19 @@ func (e *writableValueImpl) Delete() (Value, error) {
 func NewWritableValue(vs ValueState) WritableValue {
 	return &writableValueImpl{valueImpl{vs}}
 }
+
+func BigIntSafe(v Value) *big.Int {
+	if v != nil {
+		return intconv.BigIntSafe(v.BigInt())
+	} else {
+		return intconv.BigIntZero
+	}
+}
+
+func Int64Safe(v Value) int64 {
+	if v != nil {
+		return v.Int64()
+	} else {
+		return 0
+	}
+}
