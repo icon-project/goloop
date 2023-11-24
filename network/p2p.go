@@ -101,6 +101,8 @@ type PeerToPeer struct {
 	cLimit    map[PeerConnectionType]int
 	cLimitMtx sync.RWMutex
 
+	rh *rttHandler
+
 	//monitor
 	mtr *metric.NetworkMetric
 
@@ -119,6 +121,7 @@ const (
 )
 
 func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
+	rh := newRTTHandler(l)
 	p2p := &PeerToPeer{
 		peerHandler: newPeerHandler(
 			self.ID(),
@@ -145,6 +148,8 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		allowedPeers: NewPeerIDSet(),
 		//
 		cLimit: make(map[PeerConnectionType]int),
+		//
+		rh: rh,
 		//
 		mtr: mtr,
 	}
@@ -544,20 +549,6 @@ func (p2p *PeerToPeer) NetAddress() NetAddress {
 	return p2p.self.NetAddress()
 }
 
-func (p2p *PeerToPeer) startRtt(p *Peer) {
-	p.rtt.StartWithAfterFunc(DefaultRttLogTimeout, func() {
-		p2p.logger.Warnln("RTT Timeout", DefaultRttLogTimeout, p)
-	})
-}
-
-func (p2p *PeerToPeer) stopRtt(p *Peer) time.Duration {
-	rttLast := p.rtt.Stop()
-	if rttLast >= DefaultRttLogThreshold {
-		p2p.logger.Warnln("RTT Threshold", DefaultRttLogThreshold, p)
-	}
-	return rttLast
-}
-
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.Role()}
 	pkt := newPacket(p2pProtoControl, p2pProtoQueryReq, p2p.encode(m), p2p.ID())
@@ -566,7 +557,7 @@ func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	if err != nil {
 		p2p.logger.Infoln("sendQuery", err, p)
 	} else {
-		p2p.startRtt(p)
+		p2p.rh.startRtt(p)
 		p2p.logger.Traceln("sendQuery", m, p)
 	}
 }
@@ -632,7 +623,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	if err != nil {
 		p2p.logger.Infoln("handleQuery", "sendQueryResult", err, p)
 	} else {
-		p2p.startRtt(p)
+		p2p.rh.startRtt(p)
 		p2p.logger.Traceln("handleQuery", "sendQueryResult", m, p)
 	}
 }
@@ -644,7 +635,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		p2p.logger.Infoln("handleQueryResult", err, p)
 		return
 	}
-	p2p.stopRtt(p)
+	p2p.rh.stopRtt(p)
 	if len(qrm.Roots) > DefaultQueryElementLength {
 		p2p.logger.Infoln("handleQueryResult", "invalid Roots Length:", len(qrm.Roots), p)
 		qrm.Roots = qrm.Roots[:DefaultQueryElementLength]
@@ -722,12 +713,8 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleRttRequest", rm, p)
-	rttLast := p2p.stopRtt(p)
-
-	df := rm.Last - rttLast
-	if df > DefaultRttAccuracy {
-		p2p.logger.Debugln("handleRttRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
-	}
+	p2p.rh.stopRtt(p)
+	p2p.rh.checkAccuracy(p, rm.Last)
 	last, avg := p.rtt.Value()
 	m := &RttMessage{Last: last, Average: avg}
 	rpkt := newPacket(p2pProtoControl, p2pProtoRttResp, p2p.encode(m), p2p.ID())
@@ -748,12 +735,7 @@ func (p2p *PeerToPeer) handleRttResponse(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleRttResponse", rm, p)
-
-	rttLast, _ := p.rtt.Value()
-	df := rm.Last - rttLast
-	if df > DefaultRttAccuracy {
-		p2p.logger.Debugln("handleRttResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy, p)
-	}
+	p2p.rh.checkAccuracy(p, rm.Last)
 }
 
 func (p2p *PeerToPeer) sendToPeers(ctx context.Context, connTypes ...PeerConnectionType) int {
