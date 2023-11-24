@@ -18,18 +18,6 @@ package icstate
 
 import "github.com/icon-project/goloop/module"
 
-type Arrayable interface {
-	IndexOf(value interface{}) int
-	Get(i int) interface{}
-	Len() int
-}
-
-type Mappable interface {
-	Has(key interface{}) bool
-	Get(key interface{}) interface{}
-	Len() int
-}
-
 type OwnerToNodeMappable interface {
 	GetNodeByOwner(owner module.Address) module.Address
 }
