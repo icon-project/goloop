@@ -203,39 +203,7 @@ func (m *manager) send(pkt *Packet) error {
 }
 
 func (m *manager) SetRole(version int64, role module.Role, peers ...module.PeerID) {
-	s := m.p2p.getAllowed(role)
-	if s.version < version {
-		s.version = version
-		s.ClearAndAdd(peers...)
-	} else {
-		m.logger.Debugln("SetRole", "ignore", version, "must greater than", s.version)
-	}
-}
-
-func (m *manager) GetPeersByRole(role module.Role) []module.PeerID {
-	return m.p2p.getAllowed(role).Array()
-}
-
-func (m *manager) AddRole(role module.Role, peers ...module.PeerID) {
-	m.p2p.getAllowed(role).Adds(peers...)
-}
-
-func (m *manager) RemoveRole(role module.Role, peers ...module.PeerID) {
-	m.p2p.getAllowed(role).Removes(peers...)
-}
-
-func (m *manager) HasRole(role module.Role, id module.PeerID) bool {
-	return m.p2p.getAllowed(role).Contains(id)
-}
-
-func (m *manager) Roles(id module.PeerID) []module.Role {
-	var roles []module.Role
-	for r := module.RoleNormal; r < module.RoleReserved; r++ {
-		if m.p2p.getAllowed(r).Contains(id) {
-			roles = append(roles, r)
-		}
-	}
-	return roles
+	m.p2p.updateAllowed(version, PeerRoleFlag(role), peers...)
 }
 
 func (m *manager) SetTrustSeeds(seeds string) {

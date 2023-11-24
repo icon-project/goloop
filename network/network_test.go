@@ -810,7 +810,7 @@ func Test_network_allowedPeer(t *testing.T) {
 	remove := allowed[testNumAllowedPeer-1]
 	go func() {
 		for _, r := range m[testAllowed] {
-			r.nm.RemoveRole(module.RoleNormal, remove)
+			r.nm.SetRole(2, module.RoleNormal, allowed...)
 		}
 	}()
 	evtMap, err = waitEvent(ch, n-1, 2*time.Second, p2pEventNotAllowed, remove)

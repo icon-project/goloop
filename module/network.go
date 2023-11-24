@@ -13,12 +13,6 @@ type NetworkManager interface {
 	UnregisterReactor(reactor Reactor) error
 
 	SetRole(version int64, role Role, peers ...PeerID)
-	GetPeersByRole(role Role) []PeerID
-	AddRole(role Role, peers ...PeerID)
-	RemoveRole(role Role, peers ...PeerID)
-	HasRole(role Role, id PeerID) bool
-	Roles(id PeerID) []Role
-
 	SetTrustSeeds(seeds string)
 	SetInitialRoles(roles ...Role)
 }

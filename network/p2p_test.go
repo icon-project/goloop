@@ -4,18 +4,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
 func Test_PeerToPeer_resolveConnection(t *testing.T) {
 	p2p := &PeerToPeer{
-		self:         &Peer{id: generatePeerID()},
-		trustSeeds:   NewNetAddressSet(),
-		seeds:        NewNetAddressSet(),
-		roots:        NewNetAddressSet(),
-		allowedRoots: NewPeerIDSet(),
-		allowedSeeds: NewPeerIDSet(),
-		allowedPeers: NewPeerIDSet(),
+		self:  &Peer{id: generatePeerID()},
+		seeds: NewNetAddressSet(),
+		roots: NewNetAddressSet(),
 	}
+	p2p.rr = newRoleResolver(p2p.self, log.GlobalLogger())
 	type reqGiven struct {
 		r  PeerRoleFlag
 		pr PeerRoleFlag
