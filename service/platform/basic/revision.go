@@ -53,7 +53,7 @@ var toggleFlagsOnRevision = []struct {
 	{Revision6, module.ExpandErrorCode},
 	{Revision7, module.UseChainID | module.UseMPTOnEvents},
 	{Revision8, module.UseCompactAPIInfo},
-	{Revision9, module.MultipleFeePayers | module.FixJCLSteps},
+	{Revision9, module.MultipleFeePayers | module.FixJCLSteps | module.ReportConfigureEvents},
 }
 
 func init() {
