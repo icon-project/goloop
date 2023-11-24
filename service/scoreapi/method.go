@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -285,6 +287,37 @@ func (t DataType) ConvertJSONToTypedObj(bs []byte, fields []Field, nullable bool
 	}
 
 	return t.Tag().ConvertJSONToTypedObj(bs, fields)
+}
+
+func (t DataType) ConvertBytesToAny(bs []byte) (any, error) {
+	if bs == nil {
+		return nil, nil
+	}
+	if t.ListDepth() > 0 {
+		return nil, errors.InvalidStateError.New("UnsupportedListType")
+	}
+	switch t.Tag() {
+	case TInteger:
+		return intconv.BigIntSetBytes(new(big.Int), bs), nil
+	case TString:
+		return string(bs), nil
+	case TBytes:
+		return bs, nil
+	case TBool:
+		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
+			return false, nil
+		} else {
+			return true, nil
+		}
+	case TAddress:
+		if addr, err := common.NewAddress(bs); err != nil {
+			return nil, errors.InvalidStateError.Wrapf(err, "InvalidAddressBytes(bs=%#x)", bs)
+		} else {
+			return addr, nil
+		}
+	default:
+		return nil, errors.InvalidStateError.Errorf("UnsupportedType(type=%s)", t.String())
+	}
 }
 
 // ConvertBytesToJSO convert default bytes and event bytes into JSON value type.
