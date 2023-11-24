@@ -115,6 +115,9 @@ func (s *chainScore) Ex_setRevision(code *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
+	if !code.IsInt64() {
+		return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", code)
+	}
 	if icmodule.MaxRevision < code.Int64() {
 		return scoreresult.Errorf(StatusIllegalArgument,
 			"IllegalArgument(max=%#x,new=%s)", icmodule.MaxRevision, code)
