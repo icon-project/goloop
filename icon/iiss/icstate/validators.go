@@ -103,21 +103,6 @@ func (vd *validatorsData) clone() validatorsData {
 	}
 }
 
-func (vd *validatorsData) set(other *validatorsData) {
-	size := len(other.nodeList)
-	nodeMap := make(map[string]int)
-	nodeList := make([]*common.Address, size)
-
-	for i, node := range other.nodeList {
-		nodeList[i] = node
-		nodeMap[icutils.ToKey(node)] = i
-	}
-	vd.nodeList = nodeList
-	vd.nodeMap = nodeMap
-	vd.nextPssIdx = other.nextPssIdx
-	vd.lastHeight = other.lastHeight
-}
-
 func (vd *validatorsData) IndexOf(node module.Address) int {
 	key := icutils.ToKey(node)
 	idx, ok := vd.nodeMap[key]
