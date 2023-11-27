@@ -27,8 +27,8 @@ func Inspect(c module.Chain, informal bool) map[string]interface{} {
 func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 	m := make(map[string]interface{})
 	m["self"] = peerToMap(mgr.p2p.self, informal)
-	m["seeds"] = mgr.p2p.seeds.Map()
-	m["roots"] = mgr.p2p.roots.Map()
+	m["seeds"] = mgr.p2p.as.m[p2pRoleSeed].Map()
+	m["roots"] = mgr.p2p.as.m[p2pRoleRoot].Map()
 	m["friends"] = peerArrayToMapArray(mgr.p2p.pm.findPeers(nil, p2pConnTypeFriend), informal)
 	var parent *Peer
 	parents := mgr.p2p.pm.findPeers(nil, p2pConnTypeParent)

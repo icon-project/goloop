@@ -79,16 +79,12 @@ type PeerToPeer struct {
 	packetPool      *PacketPool
 	dialer          *Dialer
 
-	//Topology with Connected Peers
 	self *Peer
-
-	//NetAddresses  //if value of map is duplicated, then old will be removed.
-	seeds *NetAddressSet //map[NetAddress]PeerID
-	roots *NetAddressSet //map[NetAddress]PeerID //Only for seed and root
 
 	rh *rttHandler
 	rr *roleResolver
 	pm *peerManager
+	as *addressSyncer
 
 	//monitor
 	mtr *metric.NetworkMetric
@@ -129,15 +125,13 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		//
 		self: self,
 		//
-		seeds: NewNetAddressSet(),
-		roots: NewNetAddressSet(),
-		//
 		rr: rr,
 		rh: rh,
 		//
 		mtr: mtr,
 	}
 	p2p.pm = newPeerManager(p2p, self, p2p.onEvent, p2p._onClose, l)
+	p2p.as = newAddressSyncer(d, p2p.pm, l)
 	return p2p
 }
 
@@ -294,12 +288,7 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 }
 
 func (p2p *PeerToPeer) _onClose(p *Peer, removed bool) {
-	if p.HasRole(p2pRoleRoot) {
-		p2p.roots.RemoveData(p.NetAddress())
-	}
-	if p.HasRole(p2pRoleSeed) {
-		p2p.seeds.RemoveData(p.NetAddress())
-	}
+	p2p.as.removeData(p)
 	p2p.rr.onClose(p)
 	if removed {
 		//clearPeerQueue
@@ -409,32 +398,6 @@ type RttMessage struct {
 	Average time.Duration
 }
 
-func (p2p *PeerToPeer) applyPeerRole(p *Peer) {
-	r := p.Role()
-	if r.Has(p2pRoleSeed) {
-		c, o := p2p.seeds.SetAndRemoveByData(p.NetAddress(), p.ID().String())
-		if o != "" {
-			p2p.logger.Debugln("applyPeerRole", "addSeed", "updated NetAddress old:", o, ", now:", p.NetAddress(), ",peerID:", p.ID())
-		}
-		if c != "" {
-			p2p.logger.Infoln("applyPeerRole", "addSeed", "conflict NetAddress", p.NetAddress(), "removed:", c, ",now:", p.ID())
-		}
-	} else {
-		p2p.seeds.Remove(p.NetAddress())
-	}
-	if r.Has(p2pRoleRoot) {
-		c, o := p2p.roots.SetAndRemoveByData(p.NetAddress(), p.ID().String())
-		if o != "" {
-			p2p.logger.Debugln("applyPeerRole", "addRoot", "updated NetAddress old:", o, ", now:", p.NetAddress(), ",peerID:", p.ID())
-		}
-		if c != "" {
-			p2p.logger.Infoln("applyPeerRole", "addRoot", "conflict NetAddress", p.NetAddress(), "removed:", c, ",now:", p.ID())
-		}
-	} else {
-		p2p.roots.Remove(p.NetAddress())
-	}
-}
-
 func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
 	rr := p2p.rr.resolveRole(r, p2p.ID(), false)
 	if rr != r {
@@ -443,7 +406,7 @@ func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
 	}
 	if !p2p.self.EqualsRole(rr) {
 		p2p.self.setRole(rr)
-		p2p.applyPeerRole(p2p.self)
+		p2p.as.applyPeerRole(p2p.self)
 	}
 }
 
@@ -474,7 +437,7 @@ func (p2p *PeerToPeer) onAllowedPeerIDSetUpdate(s *PeerIDSet, r PeerRoleFlag) {
 			} else {
 				p.addRole(r)
 			}
-			p2p.applyPeerRole(p)
+			p2p.as.applyPeerRole(p)
 		}
 		for _, p := range p2p.pm.findPeers(pp) {
 			h(p)
@@ -541,23 +504,18 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	p.setRecvRole(qm.Role)
 	if !p.EqualsRole(rr) {
 		p.setRole(rr)
-		p2p.applyPeerRole(p)
+		p2p.as.applyPeerRole(p)
 	}
 	if rr.Has(p2pRoleSeed) || rr.Has(p2pRoleRoot) {
-		m.Roots = p2p.roots.Array()
-		m.Seeds = p2p.seeds.Array()
+		m.Roots = p2p.as.getNetAddresses(p2pRoleRoot)
+		m.Seeds = p2p.as.getNetAddresses(p2pRoleSeed)
 	} else {
 		if r.Has(p2pRoleRoot) {
 			p2p.logger.Infoln("handleQuery", "not allowed connection", p)
 			p.Close("handleQuery not allowed connection")
 			return
 		}
-		m.Seeds = make([]NetAddress, 0)
-		for _, s := range p2p.seeds.Array() {
-			if !p2p.roots.Contains(s) {
-				m.Seeds = append(m.Seeds, s)
-			}
-		}
+		m.Seeds = p2p.as.getUniqueNetAddresses(p2pRoleSeed)
 	}
 
 	//prevent propagation of addresses via normal nodes
@@ -621,7 +579,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	p.setRecvRole(qrm.Role)
 	if !p.EqualsRole(rr) {
 		p.setRole(rr)
-		p2p.applyPeerRole(p)
+		p2p.as.applyPeerRole(p)
 	}
 	if !rr.Has(p2pRoleSeed) && !rr.Has(p2pRoleRoot) {
 		if !p2p.rr.isTrustSeed(p) {
@@ -633,21 +591,9 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 
 	r := p2p.Role()
 	if r.Has(p2pRoleSeed) || r.Has(p2pRoleRoot) {
-		roots := make([]NetAddress, 0)
-		for _, na := range qrm.Roots {
-			if d, ok := p2p.seeds.Data(na); !ok || len(d) == 0 {
-				roots = append(roots, na)
-			}
-		}
-		p2p.roots.Merge(roots...)
+		p2p.as.mergeNetAddresses(p2pRoleRoot, qrm.Roots)
 	}
-	seeds := make([]NetAddress, 0)
-	for _, na := range qrm.Seeds {
-		if d, ok := p2p.seeds.Data(na); !ok || len(d) == 0 {
-			seeds = append(seeds, na)
-		}
-	}
-	p2p.seeds.Merge(seeds...)
+	p2p.as.mergeNetAddresses(p2pRoleSeed, qrm.Seeds)
 
 	last, avg := p.rtt.Value()
 	m := &RttMessage{Last: last, Average: avg}
@@ -1064,23 +1010,14 @@ Loop:
 		case <-seedTicker.C:
 			r := p2p.Role()
 			if p2p.query(r) {
-				dialed := 0
-				for _, s := range p2p.seeds.Array() {
-					if !p2p.pm.hasNetAddress(s) {
-						p2p.logger.Debugln("discoverRoutine", "seedTicker", "dial to p2pRoleSeed", s)
-						if err := p2p.dial(s); err != nil {
-							p2p.seeds.Remove(s)
-						} else {
-							dialed++
-						}
-					}
-				}
+				dialed := p2p.as.dial(p2pRoleSeed)
 				if r.Has(p2pRoleSeed) || dialed == 0 {
+					//dial to trustSeeds
 					for na, d := range p2p.rr.getTrustSeedsMap() {
 						if len(d) != 0 {
 							na = NetAddress(d)
 						}
-						if !p2p.seeds.Contains(na) &&
+						if !p2p.as.contains(p2pRoleSeed, na) &&
 							!p2p.pm.hasNetAddress(na) {
 							p2p.logger.Debugln("discoverRoutine", "seedTicker", "dial to trustSeed", na)
 							p2p.dial(na)
@@ -1101,10 +1038,8 @@ Loop:
 				p2p.discoverFriends()
 			} else {
 				rr := p2pRoleSeed
-				s := p2p.seeds
 				if r == p2pRoleSeed {
 					rr = p2pRoleRoot
-					s = p2p.roots
 				}
 
 				for _, p := range p2p.pm.findPeers(nil, p2pConnTypeFriend) {
@@ -1116,14 +1051,7 @@ Loop:
 					complete = p2p.discoverUncles(rr)
 				}
 				if !complete {
-					for _, na := range s.Array() {
-						if !p2p.pm.hasNetAddress(na) {
-							p2p.logger.Debugln("discoverRoutine", "discoveryTicker", "dial to", rr, na)
-							if err := p2p.dial(na); err != nil {
-								s.Remove(na)
-							}
-						}
-					}
+					p2p.as.dial(rr)
 				}
 			}
 		}
@@ -1195,14 +1123,7 @@ func (p2p *PeerToPeer) discoverFriends() {
 		}
 	}
 
-	for _, na := range p2p.roots.Array() {
-		if !p2p.pm.hasNetAddress(na) {
-			p2p.logger.Debugln("discoverFriends", "dial to p2pRoleRoot", na)
-			if err := p2p.dial(na); err != nil {
-				p2p.roots.Remove(na)
-			}
-		}
-	}
+	p2p.as.dial(p2pRoleRoot)
 }
 
 func (p2p *PeerToPeer) setTrustSeeds(seeds []NetAddress) {

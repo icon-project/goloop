@@ -10,12 +10,11 @@ import (
 
 func Test_PeerToPeer_resolveConnection(t *testing.T) {
 	p2p := &PeerToPeer{
-		self:  &Peer{id: generatePeerID()},
-		seeds: NewNetAddressSet(),
-		roots: NewNetAddressSet(),
+		self: &Peer{id: generatePeerID()},
 	}
 	p2p.rr = newRoleResolver(p2p.self, log.GlobalLogger())
 	p2p.pm = &peerManager{self: p2p.self}
+	p2p.as = newAddressSyncer(nil, p2p.pm, log.GlobalLogger())
 	type reqGiven struct {
 		r  PeerRoleFlag
 		pr PeerRoleFlag
