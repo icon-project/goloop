@@ -1276,7 +1276,7 @@ func (s *ChainScore) Ex_getStepCost(t string) (*big.Int, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	return intconv.BigIntSafe(contract.GetStepCost(s.cc, t)), nil
+	return contract.GetStepCost(s.cc, t), nil
 }
 
 func (s *ChainScore) Ex_getStepCosts() (map[string]interface{}, error) {
@@ -1290,7 +1290,7 @@ func (s *ChainScore) Ex_getMaxStepLimit(contextType string) (*big.Int, error) {
 	if err := s.tryChargeCall(); err != nil {
 		return nil, err
 	}
-	return intconv.BigIntSafe(contract.GetMaxStepLimit(s.cc, contextType)), nil
+	return contract.GetMaxStepLimit(s.cc, contextType), nil
 }
 
 func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {

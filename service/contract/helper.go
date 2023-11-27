@@ -168,7 +168,7 @@ func SetStepCost(cc CallContext, name string, cost *big.Int, prune bool) (bool, 
 	if cc.Revision().Has(module.ReportConfigureEvents) {
 		cc.OnEvent(
 			state.SystemAddress,
-			[][]byte{[]byte("StepCostSet(str,int)")},
+			[][]byte{[]byte(EventStepCostSet)},
 			[][]byte{[]byte(name), intconv.BigIntToBytes(cost)},
 		)
 	}
@@ -226,7 +226,7 @@ func GetTimestampThreshold(cc CallContext) int64 {
 
 func SetTimestampThreshold(cc CallContext, value int64) (bool, error) {
 	if value < 0 {
-		return false, scoreresult.InvalidParameterError.Errorf("Negative threshold value=%d", value)
+		return false, scoreresult.InvalidParameterError.Errorf("InvalidTimestampThreshold(value=%d)", value)
 	}
 	as := cc.GetAccountState(state.SystemID)
 	db := scoredb.NewVarDB(as, state.VarTimestampThreshold)
