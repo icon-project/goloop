@@ -757,7 +757,7 @@ func (s *ChainScore) Install(param []byte) error {
 		if err := json.Unmarshal(*price.StepCosts, &stepTypesMap); err != nil {
 			return scoreresult.Errorf(module.StatusIllegalFormat, "Failed to unmarshal. err(%+v)\n", err)
 		}
-		for k, _ := range stepTypesMap {
+		for k := range stepTypesMap {
 			if !state.IsValidStepType(k) {
 				return scoreresult.IllegalFormatError.Errorf("InvalidStepType(%s)", k)
 			}
@@ -816,14 +816,18 @@ func (s *ChainScore) Install(param []byte) error {
 			if idx := vs.IndexOf(member); idx >= 0 {
 				vc += 1
 			}
-			members.Put(member)
+			if err := members.Put(member); err != nil {
+				return errors.CriticalUnknownError.AttachTo(err)
+			}
 		}
 		if vc != vs.Len() {
 			return errors.IllegalArgumentError.New(
 				"All Validators must be included in the members")
 		}
 	}
-	s.handleRevisionChange(as, Revision1, revision)
+	if err := s.handleRevisionChange(as, Revision1, revision); err != nil {
+		return errors.CriticalUnknownError.Wrap(err, "Failure in handleRevisionChange")
+	}
 	return nil
 }
 
