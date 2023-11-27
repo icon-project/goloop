@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -81,22 +80,15 @@ type PeerToPeer struct {
 	dialer          *Dialer
 
 	//Topology with Connected Peers
-	self       *Peer
-	m          map[PeerConnectionType]*PeerSet
-	transiting *PeerSet
-	reject     *PeerSet
-	connMtx    sync.RWMutex
+	self *Peer
 
 	//NetAddresses  //if value of map is duplicated, then old will be removed.
 	seeds *NetAddressSet //map[NetAddress]PeerID
 	roots *NetAddressSet //map[NetAddress]PeerID //Only for seed and root
 
-	//connection limit
-	cLimit    map[PeerConnectionType]int
-	cLimitMtx sync.RWMutex
-
 	rh *rttHandler
 	rr *roleResolver
+	pm *peerManager
 
 	//monitor
 	mtr *metric.NetworkMetric
@@ -115,6 +107,11 @@ const (
 	p2pEventNotAllowed = "not allowed"
 )
 
+type messageCodec interface {
+	encode(interface{}) []byte
+	decode([]byte, interface{}) error
+}
+
 func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
 	rr := newRoleResolver(self, l)
 	rh := newRTTHandler(l)
@@ -130,24 +127,17 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		packetPool:      NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
 		dialer:          d,
 		//
-		self:       self,
-		m:          make(map[PeerConnectionType]*PeerSet),
-		transiting: NewPeerSet(),
-		reject:     NewPeerSet(),
+		self: self,
 		//
 		seeds: NewNetAddressSet(),
 		roots: NewNetAddressSet(),
-		//
-		cLimit: make(map[PeerConnectionType]int),
 		//
 		rr: rr,
 		rh: rh,
 		//
 		mtr: mtr,
 	}
-	for connType := p2pConnTypeNone; connType < p2pConnTypeReserved; connType++ {
-		p2p.m[connType] = NewPeerSet()
-	}
+	p2p.pm = newPeerManager(p2p, self, p2p.onEvent, p2p._onClose, l)
 	return p2p
 }
 
@@ -271,16 +261,14 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		return
 	}
 	p2p.rr.onPeer(p)
+	if p2p.pm.onPeer(p) && !p.In() {
 		p2p.sendQuery(p)
 	}
 }
 
 func (p2p *PeerToPeer) onClose(p *Peer) {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
 	p2p.logger.Debugln("onClose", p.CloseInfo(), p)
-	p2p._onClose(p)
+	p2p.pm.onClose(p)
 }
 
 func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
@@ -304,7 +292,7 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 	p2p.logger.Debugln("onFailure", err, pkt, c)
 }
 
-func (p2p *PeerToPeer) _onClose(p *Peer) bool {
+func (p2p *PeerToPeer) _onClose(p *Peer, removed bool) {
 	if p.HasRole(p2pRoleRoot) {
 		p2p.roots.RemoveData(p.NetAddress())
 	}
@@ -312,10 +300,7 @@ func (p2p *PeerToPeer) _onClose(p *Peer) bool {
 		p2p.seeds.RemoveData(p.NetAddress())
 	}
 	p2p.rr.onClose(p)
-	if ok := p2p._removePeer(p); ok {
-		if p.ConnType() != p2pConnTypeNone {
-			p2p.onEvent(p2pEventLeave, p)
-		}
+	if removed {
 		//clearPeerQueue
 		p.WaitClose()
 		for ctx := p.q.Pop(); ctx != nil; ctx = p.q.Pop() {
@@ -326,9 +311,7 @@ func (p2p *PeerToPeer) _onClose(p *Peer) bool {
 				p2p.onFailure(ErrNotAvailable, pkt, c)
 			}
 		}
-		return true
 	}
-	return false
 }
 
 //callback from Peer.receiveRoutine
@@ -343,21 +326,20 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 	if pkt.protocol.ID() == p2pProtoControl.ID() {
 		switch pkt.protocol {
 		case p2pProtoControl:
-			switch pkt.subProtocol {
-			case p2pProtoQueryReq: //roots, seeds, children
-				p2p.handleQuery(pkt, p)
-			case p2pProtoQueryResp:
-				p2p.handleQueryResult(pkt, p)
-			case p2pProtoRttReq: //roots, seeds, children
-				p2p.handleRttRequest(pkt, p)
-			case p2pProtoRttResp:
-				p2p.handleRttResponse(pkt, p)
-			case p2pProtoConnReq:
-				p2p.handleP2PConnectionRequest(pkt, p)
-			case p2pProtoConnResp:
-				p2p.handleP2PConnectionResponse(pkt, p)
-			default:
-				p.CloseByError(ErrNotRegisteredProtocol)
+			handled := p2p.pm.onPacket(pkt, p)
+			if !handled {
+				switch pkt.subProtocol {
+				case p2pProtoQueryReq: //roots, seeds, children
+					p2p.handleQuery(pkt, p)
+				case p2pProtoQueryResp:
+					p2p.handleQueryResult(pkt, p)
+				case p2pProtoRttReq: //roots, seeds, children
+					p2p.handleRttRequest(pkt, p)
+				case p2pProtoRttResp:
+					p2p.handleRttResponse(pkt, p)
+				default:
+					p.CloseByError(ErrNotRegisteredProtocol)
+				}
 			}
 		default:
 			//cannot be reached
@@ -545,8 +527,8 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	r := p2p.Role()
 	m := &QueryResultMessage{
 		Role:     r,
-		Children: p2p.getNetAddresses(p2pConnTypeChildren),
-		Nephews:  p2p.getNetAddresses(p2pConnTypeNephew),
+		Children: p2p.pm.getNetAddresses(p2pConnTypeChildren),
+		Nephews:  p2p.pm.getNetAddresses(p2pConnTypeNephew),
 	}
 	rr := p2p.rr.resolveRole(qm.Role, p.ID(), true)
 	if rr != qm.Role {
@@ -830,25 +812,25 @@ Loop:
 							p2p.sendToFriends(ctx)
 						}
 						p2p.sendToPeers(ctx, p2pConnTypeChildren, p2pConnTypeOther)
-						c.alternate = p2p.lenPeersByProtocol(pkt.protocol, p2pConnTypeNephew)
+						c.alternate = p2p.pm.lenPeersByProtocol(pkt.protocol, p2pConnTypeNephew)
 					}
 				case p2pDestRoot:
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 					} else {
 						p2p.sendToPeers(ctx, p2pConnTypeParent)
-						c.alternate = p2p.lenPeersByProtocol(pkt.protocol, p2pConnTypeUncle)
+						c.alternate = p2p.pm.lenPeersByProtocol(pkt.protocol, p2pConnTypeUncle)
 					}
 				case p2pDestSeed:
 					if r.Has(p2pRoleRoot) {
 						p2p.sendToFriends(ctx)
 						if r == p2pRoleRoot {
 							p2p.sendToPeers(ctx, p2pConnTypeChildren)
-							c.alternate = p2p.lenPeersByProtocol(pkt.protocol, p2pConnTypeNephew)
+							c.alternate = p2p.pm.lenPeersByProtocol(pkt.protocol, p2pConnTypeNephew)
 						}
 					} else {
 						p2p.sendToPeers(ctx, p2pConnTypeParent)
-						c.alternate = p2p.lenPeersByProtocol(pkt.protocol, p2pConnTypeUncle)
+						c.alternate = p2p.pm.lenPeersByProtocol(pkt.protocol, p2pConnTypeUncle)
 					}
 				default:
 				}
@@ -1036,57 +1018,32 @@ func (p2p *PeerToPeer) getPeersByProtocol(pi module.ProtocolInfo) []*Peer {
 	}, joinPeerConnectionTypes...)
 }
 
-func (p2p *PeerToPeer) hasNetAddress(na NetAddress) bool {
-	p2p.mtx.RLock()
-	defer p2p.mtx.RUnlock()
-	if p2p.NetAddress() == na {
-		return true
-	}
-	for _, v := range p2p.m {
-		if v.HasNetAddress(na) {
-			return true
-		}
-	}
-	return false
-}
-
 func (p2p *PeerToPeer) available(pkt *Packet) bool {
 	r := p2p.Role()
+	var connTypes []PeerConnectionType
 	switch pkt.dest {
 	case p2pDestPeer:
-		if p := p2p.getPeerByProtocol(pkt.destPeer, pkt.protocol); p == nil {
-			return false
-		}
+		p := p2p.getPeerByProtocol(pkt.destPeer, pkt.protocol)
+		return p != nil
 	case p2pDestAny:
-		connTypes := []PeerConnectionType{
-			p2pConnTypeChildren, p2pConnTypeNephew, p2pConnTypeOther,
-		}
+		connTypes = []PeerConnectionType{p2pConnTypeChildren, p2pConnTypeNephew, p2pConnTypeOther}
 		if r.Has(p2pRoleRoot) {
 			connTypes = append(connTypes, p2pConnTypeFriend)
 		}
 		if pkt.ttl == byte(module.BroadcastNeighbor) {
 			connTypes = append(connTypes, p2pConnTypeParent, p2pConnTypeUncle)
 		}
-		if p2p.lenPeersByProtocol(pkt.protocol, connTypes...) < 1 {
-			return false
-		}
 	case p2pDestRoot:
-		var connTypes []PeerConnectionType
-		if p2p.Role().Has(p2pRoleRoot) {
+		if r.Has(p2pRoleRoot) {
 			connTypes = []PeerConnectionType{p2pConnTypeFriend}
 		} else {
 			connTypes = []PeerConnectionType{p2pConnTypeParent, p2pConnTypeUncle}
 		}
-		if p2p.lenPeersByProtocol(pkt.protocol, connTypes...) < 1 {
-			return false
-		}
 	//case p2pDestSeed:
 	default:
-		if p2p.lenPeersByProtocol(pkt.protocol, joinPeerConnectionTypes...) < 1 {
-			return false
-		}
+		connTypes = joinPeerConnectionTypes[:]
 	}
-	return true
+	return p2p.pm.lenPeersByProtocol(pkt.protocol, joinPeerConnectionTypes...) > 0
 }
 
 //Dial to seeds, roots, nodes and create p2p connection
@@ -1112,7 +1069,7 @@ Loop:
 			if p2p.query(r) {
 				dialed := 0
 				for _, s := range p2p.seeds.Array() {
-					if !p2p.hasNetAddress(s) {
+					if !p2p.pm.hasNetAddress(s) {
 						p2p.logger.Debugln("discoverRoutine", "seedTicker", "dial to p2pRoleSeed", s)
 						if err := p2p.dial(s); err != nil {
 							p2p.seeds.Remove(s)
@@ -1127,7 +1084,7 @@ Loop:
 							na = NetAddress(d)
 						}
 						if !p2p.seeds.Contains(na) &&
-							!p2p.hasNetAddress(na) {
+							!p2p.pm.hasNetAddress(na) {
 							p2p.logger.Debugln("discoverRoutine", "seedTicker", "dial to trustSeed", na)
 							p2p.dial(na)
 						}
@@ -1164,7 +1121,7 @@ Loop:
 				}
 				if !complete {
 					for _, na := range s.Array() {
-						if !p2p.hasNetAddress(na) {
+						if !p2p.pm.hasNetAddress(na) {
 							p2p.logger.Debugln("discoverRoutine", "discoveryTicker", "dial to", rr, na)
 							if err := p2p.dial(na); err != nil {
 								s.Remove(na)
@@ -1191,7 +1148,7 @@ func (p2p *PeerToPeer) query(r PeerRoleFlag) (needMoreSeeds bool) {
 		}, p2pConnTypeOther)...)
 
 		numOfFailureNode := (p2p.rr.getAllowed(p2pRoleRoot).Len() - 1) / 3
-		needMoreSeeds = (2*numOfFailureNode) > len(friends) || (p2p.lenPeers(p2pConnTypeChildren, p2pConnTypeNephew) < 1)
+		needMoreSeeds = (2*numOfFailureNode) > len(friends) || (p2p.pm.lenPeers(p2pConnTypeChildren, p2pConnTypeNephew) < 1)
 
 		if len(ps) < numOfFailureNode {
 			for _, p := range friends {
@@ -1213,8 +1170,8 @@ func (p2p *PeerToPeer) query(r PeerRoleFlag) (needMoreSeeds bool) {
 				return !p.In()
 			}, p2pConnTypeOther)...)
 		}
-		needMoreSeeds = p2p.lenPeers(p2pConnTypeParent) < p2p.getConnectionLimit(p2pConnTypeParent) ||
-			p2p.lenPeers(p2pConnTypeUncle) < p2p.getConnectionLimit(p2pConnTypeUncle)
+		needMoreSeeds = p2p.pm.getConnectionAvailable(p2pConnTypeParent) > 0 ||
+			p2p.pm.getConnectionAvailable(p2pConnTypeUncle) > 0
 	}
 
 	if needMoreSeeds {
@@ -1234,7 +1191,7 @@ func (p2p *PeerToPeer) discoverFriends() {
 	}, p2pConnTypeFriend)
 	for _, p := range ps {
 		if p.HasRole(p2pRoleSeed) {
-			if p2p.tryTransitPeerConnection(p, p2pConnTypeNone) {
+			if p2p.pm.tryTransitPeerConnection(p, p2pConnTypeNone) {
 				p2p.logger.Debugln("discoverFriends", "not allowed friend connection", p.id)
 			}
 		} else {
@@ -1247,13 +1204,13 @@ func (p2p *PeerToPeer) discoverFriends() {
 		return p.ConnType() != p2pConnTypeFriend && p.HasRole(p2pRoleRoot)
 	})
 	for _, p := range roots {
-		if p2p.tryTransitPeerConnection(p, p2pConnTypeFriend) {
+		if p2p.pm.tryTransitPeerConnection(p, p2pConnTypeFriend) {
 			p2p.logger.Debugln("discoverFriends", "try p2pConnTypeFriend", p.ID(), p.ConnType())
 		}
 	}
 
 	for _, na := range p2p.roots.Array() {
-		if !p2p.hasNetAddress(na) {
+		if !p2p.pm.hasNetAddress(na) {
 			p2p.logger.Debugln("discoverFriends", "dial to p2pRoleRoot", na)
 			if err := p2p.dial(na); err != nil {
 				p2p.roots.Remove(na)
@@ -1277,14 +1234,14 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 		}
 	}
 
-	n := p2p.getConnectionLimit(p2pConnTypeParent) - p2p.lenPeers(p2pConnTypeParent)
+	n := p2p.pm.getConnectionAvailable(p2pConnTypeParent)
 	if n < 1 {
 		p2p.logger.Traceln("discoverParents", "nothing to do")
 		return true
 	}
 
-	limit := p2p.getConnectionLimit(p2pConnTypeChildren)
 	var candidates []*Peer
+	limit := p2p.pm.getConnectionLimit(p2pConnTypeChildren)
 	if pr == p2pRoleSeed {
 		candidates = p2p.findPeers(func(p *Peer) bool {
 			return !p.In() && (p.HasRole(pr) || p2p.rr.isTrustSeed(p)) && p.children.Len() < limit
@@ -1310,14 +1267,14 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 			if try == n {
 				return false
 			}
-			if p2p.tryTransitPeerConnection(p, p2pConnTypeParent) {
+			if p2p.pm.tryTransitPeerConnection(p, p2pConnTypeParent) {
 				p2p.logger.Debugln("discoverParents", "try p2pConnTypeParent", p.ID(), p.ConnType())
 				try++
 			}
 		}
 	}
 	if try == 0 {
-		p2p.reject.Clear()
+		p2p.pm.clearReject()
 	}
 	return false
 }
@@ -1333,14 +1290,14 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 		}
 	}
 
-	n := p2p.getConnectionLimit(p2pConnTypeUncle) - p2p.lenPeers(p2pConnTypeUncle)
+	n := p2p.pm.getConnectionAvailable(p2pConnTypeUncle)
 	if n < 1 {
 		p2p.logger.Traceln("discoverUncles", "nothing to do")
 		return true
 	}
 
-	limit := p2p.getConnectionLimit(p2pConnTypeNephew)
 	var candidates []*Peer
+	limit := p2p.pm.getConnectionLimit(p2pConnTypeNephew)
 	if ur == p2pRoleSeed {
 		candidates = p2p.findPeers(func(p *Peer) bool {
 			return !p.In() && (p.HasRole(ur) || p2p.rr.isTrustSeed(p)) && p.nephews.Len() < limit
@@ -1366,7 +1323,7 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 			if try == n {
 				return false
 			}
-			if p2p.tryTransitPeerConnection(p, p2pConnTypeUncle) {
+			if p2p.pm.tryTransitPeerConnection(p, p2pConnTypeUncle) {
 				p2p.logger.Debugln("discoverUncles", "try p2pConnTypeUncle", p.ID(), p.ConnType())
 				try++
 			}
@@ -1374,573 +1331,19 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 	}
 
 	if try == 0 {
-		p2p.reject.Clear()
+		p2p.pm.clearReject()
 	}
 	return false
 }
 
 func (p2p *PeerToPeer) setConnectionLimit(connType PeerConnectionType, v int) {
-	p2p.cLimitMtx.Lock()
-	defer p2p.cLimitMtx.Unlock()
-
-	if connType < p2pConnTypeNone || connType > p2pConnTypeOther {
-		return
-	}
-	p2p.cLimit[connType] = v
-}
-
-func (p2p *PeerToPeer) getConnectionLimit(connType PeerConnectionType) int {
-	p2p.cLimitMtx.RLock()
-	defer p2p.cLimitMtx.RUnlock()
-	v, ok := p2p.cLimit[connType]
-	if !ok || v < 0 {
-		switch connType {
-		case p2pConnTypeParent:
-			return DefaultParentsLimit
-		case p2pConnTypeChildren:
-			return DefaultChildrenLimit
-		case p2pConnTypeUncle:
-			return DefaultUnclesLimit
-		case p2pConnTypeNephew:
-			return DefaultNephewsLimit
-		case p2pConnTypeOther:
-			return DefaultOthersLimit
-		default:
-			v = -1
-		}
-	}
-	return v
-}
-
-func (p2p *PeerToPeer) addPeer(p *Peer) bool {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
-	if p.IsClosed() {
-		return false
-	}
-
-	id := p.ID()
-	if dp := p2p._findPeer(func(p *Peer) bool {
-		return p.ID().Equal(id)
-	}); dp != nil {
-		p2p.onEvent(p2pEventDuplicate, p)
-
-		onCloseInLock := func(p *Peer) {
-			p2p.logger.Debugln("onClose", p.CloseInfo(), p)
-			p2p._onClose(p)
-		}
-
-		//'b' is higher (ex : 'b' > 'a'), disconnect lower.outgoing
-		higher := strings.Compare(p2p.ID().String(), p.ID().String()) > 0
-		diff := p.timestamp.Sub(dp.timestamp)
-
-		if diff < DefaultDuplicatedPeerTime && dp.In() != p.In() && higher == p.In() {
-			//close new which is lower outgoing
-			p.setCloseCbFunc(onCloseInLock)
-			p.CloseByError(ErrDuplicatedPeer)
-			p2p.logger.Infoln("Already exists connected Peer, close new", p, diff)
-			return false
-		}
-		//close old
-		dp.setCloseCbFunc(onCloseInLock)
-		dp.CloseByError(ErrDuplicatedPeer)
-		p2p.logger.Infoln("Already exists connected Peer, close old", dp, diff)
-	}
-
-	return p2p.m[p2pConnTypeNone].Add(p)
-}
-
-func (p2p *PeerToPeer) _removePeer(p *Peer) bool {
-	p2p.reject.Remove(p)
-	p2p.transiting.Remove(p)
-
-	if v, ok := p2p.m[p.ConnType()]; ok {
-		return v.Remove(p)
-	}
-	return false
+	p2p.pm.setConnectionLimit(connType, v)
 }
 
 func (p2p *PeerToPeer) findPeer(f PeerPredicate, connTypes ...PeerConnectionType) *Peer {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
-	return p2p._findPeer(f, connTypes...)
-}
-
-func (p2p *PeerToPeer) _findPeer(f PeerPredicate, connTypes ...PeerConnectionType) *Peer {
-	if len(connTypes) == 0 {
-		for _, v := range p2p.m {
-			if p := v.FindOne(f); p != nil {
-				return p
-			}
-		}
-	} else {
-		for _, k := range connTypes {
-			if v, ok := p2p.m[k]; ok {
-				if p := v.FindOne(f); p != nil {
-					return p
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (p2p *PeerToPeer) _findPeers(f func(s *PeerSet) []*Peer, connTypes []PeerConnectionType) []*Peer {
-	arr := make([]*Peer, 0)
-	if len(connTypes) == 0 {
-		for _, v := range p2p.m {
-			arr = append(arr, f(v)...)
-		}
-	} else {
-		for _, k := range connTypes {
-			if v, ok := p2p.m[k]; ok {
-				arr = append(arr, f(v)...)
-			}
-		}
-	}
-	return arr
+	return p2p.pm.findPeer(f, connTypes...)
 }
 
 func (p2p *PeerToPeer) findPeers(f PeerPredicate, connTypes ...PeerConnectionType) []*Peer {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
-	if f == nil {
-		return p2p._findPeers(func(s *PeerSet) []*Peer {
-			return s.Array()
-		}, connTypes)
-	} else {
-		return p2p._findPeers(func(s *PeerSet) []*Peer {
-			return s.Find(f)
-		}, connTypes)
-	}
-}
-
-func (p2p *PeerToPeer) _lenPeers(f func(s *PeerSet) int, connTypes []PeerConnectionType) int {
-	n := 0
-	if len(connTypes) == 0 {
-		for _, v := range p2p.m {
-			n += f(v)
-		}
-	} else {
-		for _, k := range connTypes {
-			if v, ok := p2p.m[k]; ok {
-				n += f(v)
-			}
-		}
-	}
-	return n
-}
-
-func (p2p *PeerToPeer) lenPeers(connTypes ...PeerConnectionType) int {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
-	return p2p._lenPeers(func(s *PeerSet) int {
-		return s.Len()
-	}, connTypes)
-}
-
-func (p2p *PeerToPeer) lenPeersByProtocol(pi module.ProtocolInfo, connTypes ...PeerConnectionType) int {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
-	return p2p._lenPeers(func(s *PeerSet) int {
-		return s.LenByProtocol(pi)
-	}, connTypes)
-}
-
-func (p2p *PeerToPeer) getNetAddresses(connType PeerConnectionType) []NetAddress {
-	p2p.mtx.RLock()
-	defer p2p.mtx.RUnlock()
-
-	return p2p.m[connType].NetAddresses()
-}
-
-func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnectionType) (updated bool) {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-
-	if p.IsClosed() {
-		return false
-	}
-	from := p.ConnType()
-	if connType < p2pConnTypeNone || connType > p2pConnTypeOther || connType == from {
-		return
-	}
-
-	t := p2p.m[connType]
-	l := p2p.getConnectionLimit(connType)
-	if l < 0 || l > t.Len() {
-		p2p._removePeer(p)
-		if updated = t.Add(p); !updated {
-			//unexpected failure
-			return
-		}
-		if l == t.Len() {
-			p2p.logger.Debugln("updatePeerConnectionType", "complete", strPeerConnectionType[connType])
-			if connType == p2pConnTypeParent || connType == p2pConnTypeUncle {
-				p2p.reject.Clear()
-			}
-		}
-		p.setConnType(connType)
-		if from == p2pConnTypeNone {
-			p2p.onEvent(p2pEventJoin, p)
-		}
-		if connType == p2pConnTypeNone {
-			p2p.onEvent(p2pEventLeave, p)
-		}
-	}
-	return
-}
-
-func (p2p *PeerToPeer) transitPeer(p *Peer, remove bool) bool {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-	if p.IsClosed() {
-		return false
-	}
-	if remove {
-		return p2p.transiting.Remove(p)
-	} else {
-		if !p2p.reject.Contains(p) && !p2p.transiting.Contains(p) {
-			return p2p.transiting.Add(p)
-		}
-	}
-	return false
-}
-
-func (p2p *PeerToPeer) rejectPeer(p *Peer) bool {
-	p2p.connMtx.Lock()
-	defer p2p.connMtx.Unlock()
-	if p.IsClosed() {
-		return false
-	}
-	return p2p.reject.Add(p)
-}
-
-func (p2p *PeerToPeer) tryTransitPeerConnection(p *Peer, connType PeerConnectionType) bool {
-	switch connType {
-	case p2pConnTypeNone:
-		p2p.updatePeerConnectionType(p, p2pConnTypeNone)
-		p2p.sendP2PConnectionRequest(p2pConnTypeNone, p)
-		return true
-	default:
-		if p.EqualsAttr(AttrSupportDefaultProtocols, false) {
-			return false
-		}
-		if p2p.transitPeer(p, false) {
-			p.PutAttr(AttrP2PConnectionRequest, connType)
-			p2p.sendP2PConnectionRequest(connType, p)
-			return true
-		}
-	}
-	return false
-}
-
-func (p2p *PeerToPeer) resolveConnectionRequest(pr PeerRoleFlag, connType PeerConnectionType) (rc PeerConnectionType, notAllowed, invalidReq bool) {
-	r := p2p.Role()
-	rc = p2pConnTypeNone
-	if r.Has(p2pRoleRoot) {
-		switch connType {
-		case p2pConnTypeFriend:
-			if pr.Has(p2pRoleRoot) {
-				rc = p2pConnTypeFriend
-			} else if pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeOther
-			} else {
-				notAllowed = true
-			}
-		case p2pConnTypeParent:
-			if pr.Has(p2pRoleRoot) {
-				rc = p2pConnTypeOther
-			} else if pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeChildren
-			} else {
-				notAllowed = true
-			}
-		case p2pConnTypeUncle:
-			if pr.Has(p2pRoleRoot) {
-				rc = p2pConnTypeOther
-			} else if pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeNephew
-			} else {
-				notAllowed = true
-			}
-		case p2pConnTypeNone:
-			rc = connType
-		default:
-			invalidReq = true
-		}
-	} else if r.Has(p2pRoleSeed) {
-		switch connType {
-		case p2pConnTypeFriend:
-			if pr.Has(p2pRoleRoot) {
-				rc = p2pConnTypeParent
-			} else if pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeOther
-			} else {
-				invalidReq = true
-			}
-		case p2pConnTypeParent:
-			if pr.Has(p2pRoleRoot) || pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeChildren
-			}
-		case p2pConnTypeUncle:
-			if pr.Has(p2pRoleRoot) || pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeNephew
-			}
-		case p2pConnTypeNone:
-			rc = connType
-		default:
-			invalidReq = true
-		}
-	} else {
-		switch connType {
-		case p2pConnTypeParent:
-			if pr.Has(p2pRoleRoot) {
-				rc = p2pConnTypeNone
-			} else if pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeChildren
-			}
-		case p2pConnTypeUncle:
-			if pr.Has(p2pRoleRoot) {
-				rc = p2pConnTypeNone
-			} else if pr.Has(p2pRoleSeed) {
-				rc = p2pConnTypeNone
-			} else {
-				rc = p2pConnTypeNephew
-			}
-		case p2pConnTypeNone:
-			rc = connType
-		default:
-			invalidReq = true
-		}
-	}
-	return
-}
-
-func (p2p *PeerToPeer) resolveConnectionResponse(prr PeerRoleFlag, reqConnType, respConnType PeerConnectionType) (rc PeerConnectionType, rejectResp, invalidResp bool) {
-	r := p2p.Role()
-	rc = p2pConnTypeNone
-	if r.Has(p2pRoleRoot) {
-		switch reqConnType {
-		case p2pConnTypeFriend:
-			switch respConnType {
-			case p2pConnTypeFriend:
-				rc = p2pConnTypeFriend
-			case p2pConnTypeOther, p2pConnTypeNone:
-				//in case of p2pConnTypeNone
-				// for legacy which p2p.others managed by discovery only,
-				// legacy ignore request of p2pConnTypeFriend and response p2pConnTypeNone
-				if prr.Has(p2pRoleRoot) {
-					rc = p2pConnTypeFriend
-				} else {
-					rc = p2pConnTypeOther
-				}
-			case p2pConnTypeParent, p2pConnTypeUncle:
-				rc = p2pConnTypeOther
-			default:
-				invalidResp = true
-			}
-		default:
-			invalidResp = true
-		}
-	} else if r.Has(p2pRoleSeed) {
-		switch reqConnType {
-		case p2pConnTypeParent:
-			switch respConnType {
-			case p2pConnTypeChildren, p2pConnTypeOther:
-				rc = p2pConnTypeParent
-			default:
-				rejectResp = true
-			}
-		case p2pConnTypeUncle:
-			switch respConnType {
-			case p2pConnTypeNephew, p2pConnTypeOther:
-				rc = p2pConnTypeUncle
-			default:
-				rejectResp = true
-			}
-		default:
-			invalidResp = true
-		}
-	} else {
-		switch reqConnType {
-		case p2pConnTypeParent:
-			switch respConnType {
-			case p2pConnTypeChildren:
-				rc = p2pConnTypeParent
-			case p2pConnTypeOther:
-				rc = p2pConnTypeOther
-			default:
-				rejectResp = true
-			}
-		case p2pConnTypeUncle:
-			switch respConnType {
-			case p2pConnTypeNephew:
-				rc = p2pConnTypeUncle
-			case p2pConnTypeOther:
-				rc = p2pConnTypeOther
-			default:
-				rejectResp = true
-			}
-		default:
-			invalidResp = true
-		}
-	}
-	return
-}
-
-type P2PConnectionRequest struct {
-	ConnType PeerConnectionType
-}
-
-type P2PConnectionResponse struct {
-	ReqConnType PeerConnectionType
-	ConnType    PeerConnectionType
-}
-
-func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
-	m := &P2PConnectionRequest{ConnType: connType}
-	pkt := newPacket(p2pProtoControl, p2pProtoConnReq, p2p.encode(m), p2p.ID())
-	pkt.destPeer = p.ID()
-	err := p.sendPacket(pkt)
-	if err != nil {
-		p2p.logger.Infoln("sendP2PConnectionRequest", err, p)
-	} else {
-		p2p.logger.Debugln("sendP2PConnectionRequest", m, p)
-	}
-}
-
-func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
-	req := &P2PConnectionRequest{}
-	err := p2p.decode(pkt.payload, req)
-	if err != nil {
-		p2p.logger.Infoln("handleP2PConnectionRequest", err, p)
-		return
-	}
-	p2p.logger.Debugln("handleP2PConnectionRequest", req, p)
-	p.setRecvConnType(req.ConnType)
-	rc, notAllowed, invalidReq := p2p.resolveConnectionRequest(p.Role(), req.ConnType)
-	if notAllowed {
-		p2p.logger.Infoln("handleP2PConnectionRequest", "not allowed reqConnType", req.ConnType, "from", p.ID(), p.ConnType())
-	} else if invalidReq {
-		p2p.logger.Infoln("handleP2PConnectionRequest", "invalid reqConnType", req.ConnType, "from", p.ID(), p.ConnType())
-	} else {
-		if rc != p2pConnTypeNone && !p.EqualsAttr(AttrSupportDefaultProtocols, true) {
-			rc = p2pConnTypeOther
-			p2p.logger.Debugln("handleP2PConnectionResponse", "not support defaultProtocols", p.ID())
-		}
-		switch rc {
-		case p2pConnTypeParent:
-			if !p2p.updatePeerConnectionType(p, p2pConnTypeParent) &&
-				!p2p.updatePeerConnectionType(p, p2pConnTypeUncle) {
-				p2p.logger.Infoln("handleP2PConnectionRequest",
-					"ignore p2pConnTypeFriend request, already has enough upstream connections", strPeerConnectionType[rc],
-					"from", p.ID(), p.ConnType())
-			}
-		case p2pConnTypeFriend, p2pConnTypeOther, p2pConnTypeNone:
-			p2p.updatePeerConnectionType(p, rc)
-		case p2pConnTypeChildren, p2pConnTypeNephew:
-			if !p2p.updatePeerConnectionType(p, rc) {
-				p2p.logger.Infoln("handleP2PConnectionRequest", "reject by limit", strPeerConnectionType[rc],
-					"from", p.ID(), p.ConnType())
-			}
-		}
-	}
-	m := &P2PConnectionResponse{ReqConnType: req.ConnType, ConnType: p.ConnType()}
-	if m.ConnType == p2pConnTypeOther {
-		//for legacy which is not supported p2pConnTypeOther response
-		if p.EqualsAttr(AttrP2PLegacy, true) {
-			switch req.ConnType {
-			case p2pConnTypeParent:
-				m.ConnType = p2pConnTypeChildren
-			case p2pConnTypeUncle:
-				m.ConnType = p2pConnTypeNephew
-			}
-		}
-	}
-	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, p2p.encode(m), p2p.ID())
-	rpkt.destPeer = p.ID()
-	err = p.sendPacket(rpkt)
-	if err != nil {
-		p2p.logger.Infoln("handleP2PConnectionRequest", "sendP2PConnectionResponse", err, p)
-	} else {
-		p2p.logger.Debugln("handleP2PConnectionRequest", "sendP2PConnectionResponse", m, p)
-	}
-}
-
-func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
-	resp := &P2PConnectionResponse{}
-	err := p2p.decode(pkt.payload, resp)
-	if err != nil {
-		p2p.logger.Infoln("handleP2PConnectionResponse", err, p)
-		return
-	}
-	p2p.logger.Debugln("handleP2PConnectionResponse", resp, p)
-	p.setRecvConnType(resp.ConnType)
-	if resp.ReqConnType == p2pConnTypeNone {
-		return
-	}
-	if !p2p.transitPeer(p, true) {
-		p2p.logger.Infoln("handleP2PConnectionResponse", "invalid peer", resp, p)
-		return
-	} else {
-		if !p.EqualsAttr(AttrP2PConnectionRequest, resp.ReqConnType) {
-			p2p.logger.Infoln("handleP2PConnectionResponse", "invalid ReqConnType", resp, p)
-			return
-		}
-		p.RemoveAttr(AttrP2PConnectionRequest)
-	}
-
-	rc, rejectResp, invalidResp := p2p.resolveConnectionResponse(p.RecvRole(), resp.ReqConnType, resp.ConnType)
-	if rejectResp {
-		p2p.rejectPeer(p)
-		p2p.logger.Infoln("handleP2PConnectionResponse", "rejected",
-			strPeerConnectionType[resp.ReqConnType], "resp", strPeerConnectionType[resp.ConnType],
-			"from", p.ID(), p.ConnType())
-	} else if invalidResp {
-		p2p.logger.Infoln("handleP2PConnectionResponse", "invalid ReqConnType", resp,
-			"from", p.ID(), p.ConnType())
-	} else {
-		p2p.logger.Debugln("handleP2PConnectionResponse", "resolvedConnType", strPeerConnectionType[resp.ConnType],
-			"from", p.ID(), p.ConnType())
-		if rc != p2pConnTypeNone && !p.EqualsAttr(AttrSupportDefaultProtocols, true) {
-			rc = p2pConnTypeOther
-			p2p.logger.Debugln("handleP2PConnectionResponse", "not support defaultProtocols", p.ID())
-		}
-		switch rc {
-		case p2pConnTypeFriend, p2pConnTypeOther, p2pConnTypeNone:
-			p2p.updatePeerConnectionType(p, rc)
-		case p2pConnTypeParent:
-			if !p2p.updatePeerConnectionType(p, p2pConnTypeParent) {
-				p2p.logger.Debugln("handleP2PConnectionResponse", "already p2pConnTypeParent", resp,
-					"from", p.ID(), p.ConnType())
-				if p2p.lenPeers(p2pConnTypeUncle) < p2p.getConnectionLimit(p2pConnTypeUncle) {
-					p2p.tryTransitPeerConnection(p, p2pConnTypeUncle)
-				} else {
-					p.Close("already has enough upstream connections")
-				}
-			}
-		case p2pConnTypeUncle:
-			if !p2p.updatePeerConnectionType(p, p2pConnTypeUncle) {
-				p2p.logger.Debugln("handleP2PConnectionResponse", "already p2pConnTypeUncle", resp,
-					"from", p.ID(), p.ConnType())
-				if p2p.lenPeers(p2pConnTypeParent) < p2p.getConnectionLimit(p2pConnTypeParent) {
-					p2p.tryTransitPeerConnection(p, p2pConnTypeParent)
-				} else {
-					p.Close("already has enough upstream connections")
-				}
-			}
-		}
-	}
+	return p2p.pm.findPeers(f, connTypes...)
 }
