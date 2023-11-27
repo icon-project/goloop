@@ -903,15 +903,15 @@ func (s *ChainScore) handleRevisionChange(as state.AccountState, r1, r2 int) err
 }
 
 // Governance functions : Functions which can be called by governance SCORE.
-func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
+func (s *ChainScore) Ex_setRevision(code int64) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	if !code.IsInt64() || MaxRevision < code.Int64() {
+	if MaxRevision < code {
 		return scoreresult.Errorf(StatusIllegalArgument,
-			"IllegalArgument(max=%d,new=%s)", MaxRevision, code)
+			"IllegalArgument(max=%d,new=%d)", MaxRevision, code)
 	}
-	rev := int(code.Int64())
+	rev := int(code)
 	old, err := contract.SetRevision(s.cc, rev, true)
 	if err != nil {
 		if scoreresult.InvalidParameterError.Equals(err) {

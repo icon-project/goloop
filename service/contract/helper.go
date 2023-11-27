@@ -78,14 +78,14 @@ func GetStepPrice(cc CallContext) *big.Int {
 }
 
 func SetStepPrice(cc CallContext, price *big.Int) (bool, error) {
-	as := cc.GetAccountState(state.SystemID)
-	vdb := scoredb.NewVarDB(as, state.VarStepPrice)
-	if v := vdb.BigInt() ; v != nil && v.Cmp(price) == 0 {
-		return false, nil
-	}
 	if price.Sign() < 0 {
 		return false, scoreresult.InvalidParameterError.Errorf(
 			"InvalidStepPrice(price=%s)", price)
+	}
+	as := cc.GetAccountState(state.SystemID)
+	vdb := scoredb.NewVarDB(as, state.VarStepPrice)
+	if intconv.BigIntSafe(vdb.BigInt()).Cmp(price) == 0 {
+		return false, nil
 	}
 	if err := vdb.Set(price); err != nil {
 		return false, err
@@ -225,10 +225,10 @@ func GetTimestampThreshold(cc CallContext) int64 {
 }
 
 func SetTimestampThreshold(cc CallContext, value int64) (bool, error) {
-	as := cc.GetAccountState(state.SystemID)
 	if value < 0 {
 		return false, scoreresult.InvalidParameterError.Errorf("Negative threshold value=%d", value)
 	}
+	as := cc.GetAccountState(state.SystemID)
 	db := scoredb.NewVarDB(as, state.VarTimestampThreshold)
 	if old := db.Int64(); old == value {
 		return false, nil
