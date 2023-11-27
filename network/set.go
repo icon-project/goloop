@@ -175,6 +175,24 @@ func (s *PeerSet) _shuffle() {
 
 type PeerPredicate func(*Peer) bool
 
+func (pp PeerPredicate) And(and PeerPredicate) PeerPredicate {
+	return func(p *Peer) bool {
+		return pp(p) && and(p)
+	}
+}
+
+func (pp PeerPredicate) Or(or PeerPredicate) PeerPredicate {
+	return func(p *Peer) bool {
+		return pp(p) || or(p)
+	}
+}
+
+func (pp PeerPredicate) Not() PeerPredicate {
+	return func(p *Peer) bool {
+		return !pp(p)
+	}
+}
+
 func (s *PeerSet) _add(p *Peer, f PeerPredicate) bool {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
@@ -263,53 +281,6 @@ func (s *PeerSet) Array() []*Peer {
 	return arr
 }
 
-func (s *PeerSet) GetByID(id module.PeerID) *Peer {
-	s.mtx.RLock()
-	defer s.mtx.RUnlock()
-	for _, p := range s.arr {
-		if p.ID().Equal(id) {
-			return p
-		}
-	}
-	return nil
-}
-
-func (s *PeerSet) GetByRole(r PeerRoleFlag, has bool) []*Peer {
-	s.mtx.RLock()
-	defer s.mtx.RUnlock()
-	l := make([]*Peer, 0, len(s.arr))
-	for _, p := range s.arr {
-		if has == p.HasRole(r) {
-			l = append(l, p)
-		}
-	}
-	return l
-}
-
-func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
-	s.mtx.RLock()
-	defer s.mtx.RUnlock()
-	l := make([]*Peer, 0, len(s.arr))
-	for _, p := range s.arr {
-		if p.In() == in && has == p.HasRole(role) {
-			l = append(l, p)
-		}
-	}
-	return l
-}
-
-func (s *PeerSet) GetByProtocol(pi module.ProtocolInfo) []*Peer {
-	s.mtx.RLock()
-	defer s.mtx.RUnlock()
-	l := make([]*Peer, 0, len(s.arr))
-	for _, p := range s.arr {
-		if p.ProtocolInfos().Exists(pi) {
-			l = append(l, p)
-		}
-	}
-	return l
-}
-
 func (s *PeerSet) NetAddresses() []NetAddress {
 	return s.addrs.Array()
 }
@@ -318,7 +289,7 @@ func (s *PeerSet) HasNetAddress(a NetAddress) bool {
 	return s.addrs.Contains(a)
 }
 
-func (s *PeerSet) Find(f func(p *Peer) bool) []*Peer {
+func (s *PeerSet) Find(f PeerPredicate) []*Peer {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	l := make([]*Peer, 0, len(s.arr))
@@ -351,8 +322,9 @@ func (s *PeerSet) LenByProtocol(pi module.ProtocolInfo) int {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	l := 0
+	pp := PeerPredicates.Protocol(pi)
 	for _, p := range s.arr {
-		if p.ProtocolInfos().Exists(pi) {
+		if pp(p) {
 			l++
 		}
 	}

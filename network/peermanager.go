@@ -8,6 +8,60 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+var (
+	PeerPredicates = struct {
+		ID            func(module.PeerID) PeerPredicate
+		Protocol      func(module.ProtocolInfo) PeerPredicate
+		In            func(bool) PeerPredicate
+		HasRole       func(PeerRoleFlag) PeerPredicate
+		ConnType      func(PeerConnectionType) PeerPredicate
+		IDAndProtocol func(module.PeerID, module.ProtocolInfo) PeerPredicate
+		InAndHasRole  func(bool, PeerRoleFlag) PeerPredicate
+		InAndRole     func(bool, PeerRoleFlag) PeerPredicate
+	}{
+		ID: func(id module.PeerID) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.ID().Equal(id)
+			}
+		},
+		Protocol: func(pi module.ProtocolInfo) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.ProtocolInfos().Exists(pi)
+			}
+		},
+		In: func(in bool) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.In() == in
+			}
+		},
+		HasRole: func(r PeerRoleFlag) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.HasRole(r)
+			}
+		},
+		ConnType: func(connType PeerConnectionType) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.ConnType() == connType
+			}
+		},
+		IDAndProtocol: func(id module.PeerID, pi module.ProtocolInfo) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.ID().Equal(id) && p.ProtocolInfos().Exists(pi)
+			}
+		},
+		InAndHasRole: func(in bool, r PeerRoleFlag) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.In() == in && p.HasRole(r)
+			}
+		},
+		InAndRole: func(in bool, r PeerRoleFlag) PeerPredicate {
+			return func(p *Peer) bool {
+				return p.In() == in && p.EqualsRole(r)
+			}
+		},
+	}
+)
+
 type peerManager struct {
 	mc         messageCodec
 	self       *Peer
@@ -155,9 +209,7 @@ func (pm *peerManager) onPeer(p *Peer) bool {
 	}
 
 	id := p.ID()
-	if dp := pm._findPeer(func(p *Peer) bool {
-		return p.ID().Equal(id)
-	}); dp != nil {
+	if dp := pm._findPeer(PeerPredicates.ID(id)); dp != nil {
 		pm.onEventCb(p2pEventDuplicate, p)
 
 		onCloseInLock := func(p *Peer) {
