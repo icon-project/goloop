@@ -435,8 +435,7 @@ func Execute(cmd *cobra.Command, args []string) {
 	}
 
 	if cfg.EESocket == "" {
-		cfg.EESocket = cfg.ResolveRelative(path.Join(".chain",
-			wallet.Address().String(), "ee.sock"))
+		cfg.EESocket = path.Join(cfg.BaseDir, "ee.sock")
 	}
 
 	if cpuProfile != "" {
