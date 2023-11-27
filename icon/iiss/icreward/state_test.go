@@ -36,7 +36,7 @@ func TestState_NewState(t *testing.T) {
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	iScore := NewIScore(big.NewInt(10))
-	s.SetIScore(addr1, iScore)
+	assert.NoError(t, s.SetIScore(addr1, iScore))
 
 	is, err := s.GetIScore(addr1)
 	assert.NoError(t, err)
@@ -92,7 +92,7 @@ func TestState_SetVoted(t *testing.T) {
 	assert.True(t, voted2.Equal(v2))
 
 	ss := s.GetSnapshot()
-	ss.Flush()
+	assert.NoError(t, ss.Flush())
 
 	prefix := VotedKey.Build()
 	for iter := ss.Filter(prefix); iter.Has(); iter.Next() {

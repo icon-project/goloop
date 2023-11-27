@@ -19,7 +19,7 @@ type dummyObjectStore struct {
 	containerdb.ObjectStoreState
 }
 
-func newDummyObjectStore(readonly bool) *dummyObjectStore {
+func newDummyObjectStore(_ bool) *dummyObjectStore {
 	dbase := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 	t := trie_manager.NewMutableForObject(dbase, nil, icobject.ObjectType)
 	os := icobject.NewObjectStoreState(t)
@@ -42,7 +42,7 @@ func (os *dummyObjectStore) flushAndNewStore() *dummyObjectStore {
 	}
 }
 
-func newDummyNodeOwnerCache(readonly bool) (*NodeOwnerCache, *dummyObjectStore) {
+func newDummyNodeOwnerCache(_ bool) (*NodeOwnerCache, *dummyObjectStore) {
 	store := newDummyObjectStore(false)
 	return newNodeOwnerCache(store), store
 }

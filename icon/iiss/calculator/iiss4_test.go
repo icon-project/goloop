@@ -81,14 +81,18 @@ func (t *testCalculator) UpdateIScore(addr module.Address, reward *big.Int, type
 
 func (t *testCalculator) AddGlobal(electedPRepCount int) error {
 	rFund := icstate.NewRewardFund(icstate.RFVersion2)
-	rFund.SetIGlobal(big.NewInt(1_000_000))
+	if err := rFund.SetIGlobal(big.NewInt(1_000_000)); err != nil {
+		return err
+	}
 	alloc := map[icstate.RFundKey]icmodule.Rate{
 		icstate.KeyIprep:  icmodule.ToRate(77),
 		icstate.KeyIwage:  icmodule.ToRate(13),
 		icstate.KeyIcps:   icmodule.ToRate(10),
 		icstate.KeyIrelay: icmodule.ToRate(0),
 	}
-	rFund.SetAllocation(alloc)
+	if err := rFund.SetAllocation(alloc); err != nil {
+		return err
+	}
 	return t.stage.AddGlobalV3(0, 0, 99, electedPRepCount, icmodule.ToRate(5),
 		rFund, big.NewInt(100))
 }
@@ -208,7 +212,7 @@ func TestReward_NewReward(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, r.g)
 
-	tc.AddGlobal(0)
+	assert.NoError(t, tc.AddGlobal(0))
 	tc.Build()
 	r, err = NewIISS4Reward(tc)
 	assert.NotNil(t, r)
@@ -262,10 +266,10 @@ func TestReward(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	tc.SetBonding(a1, &icreward.Bonding{Bonds: icstate.Bonds{icstate.NewBond(a1, big.NewInt(100))}})
-	tc.SetDelegating(a1, &icreward.Delegating{Delegations: icstate.Delegations{icstate.NewDelegation(a1, big.NewInt(100))}})
-	tc.SetDelegating(a2, &icreward.Delegating{Delegations: icstate.Delegations{icstate.NewDelegation(a2, big.NewInt(100))}})
-	tc.SetBonding(a3, &icreward.Bonding{Bonds: icstate.Bonds{icstate.NewBond(a3, big.NewInt(100))}})
+	assert.NoError(t, tc.SetBonding(a1, &icreward.Bonding{Bonds: icstate.Bonds{icstate.NewBond(a1, big.NewInt(100))}}))
+	assert.NoError(t, tc.SetDelegating(a1, &icreward.Delegating{Delegations: icstate.Delegations{icstate.NewDelegation(a1, big.NewInt(100))}}))
+	assert.NoError(t, tc.SetDelegating(a2, &icreward.Delegating{Delegations: icstate.Delegations{icstate.NewDelegation(a2, big.NewInt(100))}}))
+	assert.NoError(t, tc.SetBonding(a3, &icreward.Bonding{Bonds: icstate.Bonds{icstate.NewBond(a3, big.NewInt(100))}}))
 
 	dsaIndex := 1
 	pubkeys := map[string]int{

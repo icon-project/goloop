@@ -25,10 +25,10 @@ func TestAccountCache(t *testing.T) {
 	assert.Nil(t, account)
 
 	account = cache.Get(addr1, true)
-	account.SetStake(big.NewInt(int64(40)))
+	assert.NoError(t, account.SetStake(big.NewInt(int64(40))))
 
 	account = cache.Get(addr2, true)
-	account.SetStake(big.NewInt(int64(100)))
+	assert.NoError(t, account.SetStake(big.NewInt(int64(100))))
 
 	// flush to the database
 	cache.Flush()
@@ -54,7 +54,7 @@ func TestAccountCache(t *testing.T) {
 	ac1 := cache.Get(addr1, true)
 	ac2 := cache.Get(addr2, true)
 	assert.NotNil(t, ac1)
-	ac1.SetStake(big.NewInt(50))
+	assert.NoError(t, ac1.SetStake(big.NewInt(50)))
 	assert.Equal(t, 0, ac1.Stake().Cmp(big.NewInt(50)))
 	ac2.Clear()
 	assert.True(t, ac2.IsEmpty())

@@ -249,7 +249,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
-	s.AddGlobalV1(icmodule.RevisionIISS, 0, 4, nil, nil, 0, 0)
+	assert.NoError(t, s.AddGlobalV1(icmodule.RevisionIISS, 0, 4, nil, nil, 0, 0))
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")

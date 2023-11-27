@@ -479,7 +479,7 @@ func TestCalcPower(t *testing.T) {
 			bonded := big.NewInt(arg.bonded)
 			voted := big.NewInt(arg.voted)
 			expPower := big.NewInt(arg.power)
-			power := CalcPower(icmodule.Rate(arg.br), bonded, voted)
+			power := CalcPower(arg.br, bonded, voted)
 			assert.Zero(t, expPower.Cmp(power))
 		})
 	}
