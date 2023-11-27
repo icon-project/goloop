@@ -1348,7 +1348,7 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 	} else {
 		candidates = p2p.findPeers(func(p *Peer) bool {
 			return p.HasRole(ur) && p.nephews.Len() < limit
-		}, p2pConnTypeNone, p2pConnTypeUncle)
+		}, p2pConnTypeNone)
 	}
 	try := 0
 	if len(candidates) > 0 {
