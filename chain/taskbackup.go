@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"sort"
@@ -94,7 +93,7 @@ func (t *taskBackup) Start() (ret error) {
 		t.chain.releaseDatabase()
 		return nil
 	}
-	tmp, err := ioutil.TempFile(path.Dir(t.file), TemporalBackupFile)
+	tmp, err := os.CreateTemp(path.Dir(t.file), TemporalBackupFile)
 	if err != nil {
 		return errors.Wrap(err, "Fail to make temporal file")
 	}
