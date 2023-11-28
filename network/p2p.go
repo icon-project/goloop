@@ -132,6 +132,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 	}
 	p2p.pm = newPeerManager(p2p, self, p2p.onEvent, p2p._onClose, l)
 	p2p.as = newAddressSyncer(d, p2p.pm, l)
+	p2p.qh = newQueryHandler(p2p, self, p2p.pm, rr, p2p.as, rh, l)
 	return p2p
 }
 
@@ -319,18 +320,10 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		case p2pProtoControl:
 			handled := p2p.pm.onPacket(pkt, p)
 			if !handled {
-				switch pkt.subProtocol {
-				case p2pProtoQueryReq: //roots, seeds, children
-					p2p.handleQuery(pkt, p)
-				case p2pProtoQueryResp:
-					p2p.handleQueryResult(pkt, p)
-				case p2pProtoRttReq: //roots, seeds, children
-					p2p.handleRttRequest(pkt, p)
-				case p2pProtoRttResp:
-					p2p.handleRttResponse(pkt, p)
-				default:
-					p.CloseByError(ErrNotRegisteredProtocol)
-				}
+				handled = p2p.qh.onPacket(pkt, p)
+			}
+			if !handled {
+				p.CloseByError(ErrNotRegisteredProtocol)
 			}
 		default:
 			//cannot be reached
@@ -378,24 +371,6 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			p.CloseByError(ErrNotRegisteredProtocol)
 		}
 	}
-}
-
-type QueryMessage struct {
-	Role PeerRoleFlag
-}
-
-type QueryResultMessage struct {
-	Role     PeerRoleFlag
-	Seeds    []NetAddress
-	Roots    []NetAddress
-	Children []NetAddress
-	Nephews  []NetAddress
-	Message  string
-}
-
-type RttMessage struct {
-	Last    time.Duration
-	Average time.Duration
 }
 
 func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
@@ -469,175 +444,7 @@ func (p2p *PeerToPeer) NetAddress() NetAddress {
 }
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
-	m := &QueryMessage{Role: p2p.Role()}
-	pkt := newPacket(p2pProtoControl, p2pProtoQueryReq, p2p.encode(m), p2p.ID())
-	pkt.destPeer = p.ID()
-	err := p.sendPacket(pkt)
-	if err != nil {
-		p2p.logger.Infoln("sendQuery", err, p)
-	} else {
-		p2p.rh.startRtt(p)
-		p2p.logger.Traceln("sendQuery", m, p)
-	}
-}
-
-func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
-	qm := &QueryMessage{}
-	err := p2p.decode(pkt.payload, qm)
-	if err != nil {
-		p2p.logger.Infoln("handleQuery", err, p)
-		return
-	}
-	p2p.logger.Traceln("handleQuery", qm, p)
-
-	r := p2p.Role()
-	m := &QueryResultMessage{
-		Role:     r,
-		Children: p2p.pm.getNetAddresses(p2pConnTypeChildren),
-		Nephews:  p2p.pm.getNetAddresses(p2pConnTypeNephew),
-	}
-	rr := p2p.rr.resolveRole(qm.Role, p.ID(), true)
-	if rr != qm.Role {
-		m.Message = fmt.Sprintf("not equal resolved role %d, expected %d", rr, qm.Role)
-		p2p.logger.Infoln("handleQuery", m.Message, p)
-	}
-	p.setRecvRole(qm.Role)
-	if !p.EqualsRole(rr) {
-		p.setRole(rr)
-		p2p.as.applyPeerRole(p)
-	}
-	if rr.Has(p2pRoleSeed) || rr.Has(p2pRoleRoot) {
-		m.Roots = p2p.as.getNetAddresses(p2pRoleRoot)
-		m.Seeds = p2p.as.getNetAddresses(p2pRoleSeed)
-	} else {
-		if r.Has(p2pRoleRoot) {
-			p2p.logger.Infoln("handleQuery", "not allowed connection", p)
-			p.Close("handleQuery not allowed connection")
-			return
-		}
-		m.Seeds = p2p.as.getUniqueNetAddresses(p2pRoleSeed)
-	}
-
-	//prevent propagation of addresses via normal nodes
-	if r == p2pRoleNone {
-		m.Roots = m.Roots[:0]
-		m.Seeds = m.Seeds[:0]
-	}
-
-	if len(m.Roots) > DefaultQueryElementLength {
-		m.Roots = m.Roots[:DefaultQueryElementLength]
-	}
-	if len(m.Seeds) > DefaultQueryElementLength {
-		m.Seeds = m.Seeds[:DefaultQueryElementLength]
-	}
-
-	rpkt := newPacket(p2pProtoControl, p2pProtoQueryResp, p2p.encode(m), p2p.ID())
-	rpkt.destPeer = p.ID()
-	err = p.sendPacket(rpkt)
-	if err != nil {
-		p2p.logger.Infoln("handleQuery", "sendQueryResult", err, p)
-	} else {
-		p2p.rh.startRtt(p)
-		p2p.logger.Traceln("handleQuery", "sendQueryResult", m, p)
-	}
-}
-
-func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
-	qrm := &QueryResultMessage{}
-	err := p2p.decode(pkt.payload, qrm)
-	if err != nil {
-		p2p.logger.Infoln("handleQueryResult", err, p)
-		return
-	}
-	p2p.rh.stopRtt(p)
-	if len(qrm.Roots) > DefaultQueryElementLength {
-		p2p.logger.Infoln("handleQueryResult", "invalid Roots Length:", len(qrm.Roots), p)
-		qrm.Roots = qrm.Roots[:DefaultQueryElementLength]
-	}
-	if len(qrm.Seeds) > DefaultQueryElementLength {
-		p2p.logger.Infoln("handleQueryResult", "invalid Seeds Length:", len(qrm.Seeds), p)
-		qrm.Seeds = qrm.Seeds[:DefaultQueryElementLength]
-	}
-	if len(qrm.Children) > DefaultQueryElementLength {
-		p2p.logger.Infoln("handleQueryResult", "invalid Children Length:", len(qrm.Children), p)
-		qrm.Children = qrm.Children[:DefaultQueryElementLength]
-	}
-	if len(qrm.Nephews) > DefaultQueryElementLength {
-		p2p.logger.Infoln("handleQueryResult", "invalid Nephews Length:", len(qrm.Nephews), p)
-		qrm.Nephews = qrm.Nephews[:DefaultQueryElementLength]
-	}
-	p2p.logger.Traceln("handleQueryResult", qrm, p)
-
-	p.children.ClearAndAdd(qrm.Children...)
-	p.nephews.ClearAndAdd(qrm.Nephews...)
-
-	rr := p2p.rr.resolveRole(qrm.Role, p.ID(), true)
-	if rr != qrm.Role {
-		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, qrm.Role)
-		p2p.logger.Infoln("handleQueryResult", msg, p)
-	}
-	p.setRecvRole(qrm.Role)
-	if !p.EqualsRole(rr) {
-		p.setRole(rr)
-		p2p.as.applyPeerRole(p)
-	}
-	if !rr.Has(p2pRoleSeed) && !rr.Has(p2pRoleRoot) {
-		if !p2p.rr.isTrustSeed(p) {
-			p2p.logger.Infoln("handleQueryResult", "invalid query, not allowed connection", p)
-			p.CloseByError(fmt.Errorf("handleQueryResult invalid query, resolved role %d", rr))
-			return
-		}
-	}
-
-	r := p2p.Role()
-	if r.Has(p2pRoleSeed) || r.Has(p2pRoleRoot) {
-		p2p.as.mergeNetAddresses(p2pRoleRoot, qrm.Roots)
-	}
-	p2p.as.mergeNetAddresses(p2pRoleSeed, qrm.Seeds)
-
-	last, avg := p.rtt.Value()
-	m := &RttMessage{Last: last, Average: avg}
-	rpkt := newPacket(p2pProtoControl, p2pProtoRttReq, p2p.encode(m), p2p.ID())
-	rpkt.destPeer = p.ID()
-	err = p.sendPacket(rpkt)
-	if err != nil {
-		p2p.logger.Infoln("handleQueryResult", "sendRttRequest", err, p)
-	} else {
-		p2p.logger.Traceln("handleQueryResult", "sendRttRequest", m, p)
-	}
-}
-
-func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
-	rm := &RttMessage{}
-	err := p2p.decode(pkt.payload, rm)
-	if err != nil {
-		p2p.logger.Infoln("handleRttRequest", err, p)
-		return
-	}
-	p2p.logger.Traceln("handleRttRequest", rm, p)
-	p2p.rh.stopRtt(p)
-	p2p.rh.checkAccuracy(p, rm.Last)
-	last, avg := p.rtt.Value()
-	m := &RttMessage{Last: last, Average: avg}
-	rpkt := newPacket(p2pProtoControl, p2pProtoRttResp, p2p.encode(m), p2p.ID())
-	rpkt.destPeer = p.ID()
-	err = p.sendPacket(rpkt)
-	if err != nil {
-		p2p.logger.Infoln("handleRttRequest", "sendRttResponse", err, p)
-	} else {
-		p2p.logger.Traceln("handleRttRequest", "sendRttResponse", m, p)
-	}
-}
-
-func (p2p *PeerToPeer) handleRttResponse(pkt *Packet, p *Peer) {
-	rm := &RttMessage{}
-	err := p2p.decode(pkt.payload, rm)
-	if err != nil {
-		p2p.logger.Infoln("handleRttResponse", err, p)
-		return
-	}
-	p2p.logger.Traceln("handleRttResponse", rm, p)
-	p2p.rh.checkAccuracy(p, rm.Last)
+	p2p.qh.sendQuery(p)
 }
 
 func (p2p *PeerToPeer) sendToPeers(ctx context.Context, connTypes ...PeerConnectionType) int {
