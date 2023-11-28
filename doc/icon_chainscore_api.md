@@ -338,7 +338,7 @@ def setStepCost(type: str, cost: int) -> None:
 *Event Log:*
 - from revision 24
 ```python
-@eventlog(indexed=1)
+@eventlog(indexed=0)
 def StepCostSet(type: str, cost: int) -> None:
 ```
 
@@ -358,6 +358,18 @@ def setMaxStepLimit(contextType: str, limit: int) -> None:
 ```
 
 *Parameters:*
+
+| Name        | Type | Description                     |
+|:------------|:-----|:--------------------------------|
+| contextType | str  | context type. (invoke, query)   |
+| limit       | int  | max step limit for context type |
+
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def MaxStepLimitSet(contextType: str, limit: int) -> None:
+```
 
 | Name        | Type | Description                     |
 |:------------|:-----|:--------------------------------|
@@ -1248,7 +1260,7 @@ def setNetworkScore(role: str, address: Address) -> None:
 *Event Log:*
 - from revision 24
 ```python
-@eventlog(indexed=1)
+@eventlog(indexed=0)
 def NetworkScoreSet(role: str, address: Address) -> None:
 ```
 

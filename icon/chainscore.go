@@ -140,7 +140,7 @@ var chainMethods = []*chainMethod{
 		scoreapi.Function, "blockAccount",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
-			{ "address", scoreapi.Address, nil, nil },
+			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
 	}, icmodule.RevisionBlockAccountAPI, 0},
@@ -148,7 +148,7 @@ var chainMethods = []*chainMethod{
 		scoreapi.Function, "unblockAccount",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
-			{ "address", scoreapi.Address, nil, nil },
+			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
 	}, icmodule.RevisionBlockAccountAPI, 0},
@@ -156,7 +156,7 @@ var chainMethods = []*chainMethod{
 		scoreapi.Function, "isBlocked",
 		scoreapi.FlagReadOnly, 1,
 		[]scoreapi.Parameter{
-			{ "address", scoreapi.Address, nil, nil },
+			{"address", scoreapi.Address, nil, nil},
 		},
 		[]scoreapi.DataType{
 			scoreapi.Bool,
@@ -1363,9 +1363,7 @@ func (s *chainScore) Update(param []byte) error {
 }
 
 func (s *chainScore) GetAPI() *scoreapi.Info {
-	ass := s.cc.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
-	revision := int(scoredb.NewVarDB(as, state.VarRevision).Int64())
+	revision := contract.GetRevision(s.cc)
 	mLen := len(chainMethods)
 	methods := make([]*scoreapi.Method, mLen)
 	j := 0

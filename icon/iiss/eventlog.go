@@ -330,8 +330,8 @@ func EmitRewardFundSetEvent(cc icmodule.CallContext, value *big.Int) {
 
 func EmitRewardFundAllocationSetEvent(cc icmodule.CallContext, type_ icstate.RFundKey, value icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("RewardFundAllocationSet(str,int)"), []byte(type_)},
-		[][]byte{intconv.Int64ToBytes(value.NumInt64())},
+		[][]byte{[]byte("RewardFundAllocationSet(str,int)")},
+		[][]byte{[]byte(type_), intconv.Int64ToBytes(value.NumInt64())},
 	)
 }
 
@@ -344,7 +344,7 @@ func EmitNetworkScoreSetEvent(cc icmodule.CallContext, role string, address modu
 		addrBytes = address.Bytes()
 	}
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("NetworkScoreSet(str,Address)"), []byte(role)},
-		[][]byte{addrBytes},
+		[][]byte{[]byte("NetworkScoreSet(str,Address)")},
+		[][]byte{[]byte(role), addrBytes},
 	)
 }

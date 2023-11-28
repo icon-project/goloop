@@ -111,45 +111,31 @@ func (s *chainScore) blockAccounts2() {
 
 // Ex_setRevision sets the system revision to the given number.
 // This can only be called by the governance SCORE.
-func (s *chainScore) Ex_setRevision(code *big.Int) error {
+func (s *chainScore) Ex_setRevision(code int64) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	if !code.IsInt64() {
-		return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", code)
-	}
-	if icmodule.MaxRevision < code.Int64() {
+	if icmodule.MaxRevision < code {
 		return scoreresult.Errorf(StatusIllegalArgument,
-			"IllegalArgument(max=%#x,new=%s)", icmodule.MaxRevision, code)
+			"IllegalArgument(max=%d,new=%d)", icmodule.MaxRevision, code)
 	}
-
+	rev := int(code)
+	old, err := contract.SetRevision(s.cc, rev, false)
+	if err != nil {
+		if scoreresult.InvalidParameterError.Equals(err) {
+			return scoreresult.Wrapf(err, StatusIllegalArgument,
+				"IllegalArgument(current=%d,new=%d)", old, rev)
+		} else {
+			return err
+		}
+	}
+	if err = s.handleRevisionChange(old, rev); err != nil {
+		return err
+	}
 	as := s.cc.GetAccountState(state.SystemID)
-	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
-	if code.Int64() <= r {
-		return scoreresult.Errorf(StatusIllegalArgument,
-			"IllegalArgument(current=%#x,new=%s)", r, code)
-	}
-
-	if err := scoredb.NewVarDB(as, state.VarRevision).Set(code); err != nil {
-		return err
-	}
-	if err := s.handleRevisionChange(int(r), int(code.Int64())); err != nil {
-		return err
-	}
-	as.MigrateForRevision(s.cc.ToRevision(int(code.Int64())))
+	_ = as.MigrateForRevision(s.cc.ToRevision(rev))
 	as.SetAPIInfo(s.GetAPI())
-	s.emitRevisionSetEvent(code.Int64())
 	return nil
-}
-
-func (s *chainScore) emitRevisionSetEvent(revision int64) {
-	if s.cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
-		return
-	}
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("RevisionSet(int)")},
-		[][]byte{intconv.Int64ToBytes(revision)},
-	)
 }
 
 func (s *chainScore) getScoreAddress(txHash []byte) module.Address {
@@ -384,85 +370,35 @@ func (s *chainScore) Ex_isBlocked(address module.Address) (bool, error) {
 	return as.IsBlocked(), nil
 }
 
-func (s *chainScore) Ex_setStepPrice(price *big.Int) error {
+func (s *chainScore) Ex_setStepPrice(price *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
 
-	s.emitStepPriceSetEvent(price)
-	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
+	_, err := contract.SetStepPrice(s.cc, price.Value())
+	return err
 }
 
-func (s *chainScore) emitStepPriceSetEvent(price *big.Int) {
-	if s.cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
-		return
-	}
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("StepPriceSet(int)")},
-		[][]byte{intconv.BigIntToBytes(price)},
-	)
-}
-
-func (s *chainScore) Ex_setStepCost(costType string, cost *big.Int) error {
+func (s *chainScore) Ex_setStepCost(costType string, cost *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	if !state.IsValidStepType(costType) {
-		return scoreresult.IllegalFormatError.Errorf("InvalidStepType(%s)", costType)
-	}
-	costZero := cost.Sign() == 0
-	as := s.cc.GetAccountState(state.SystemID)
-	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
-	if stepCostDB.Get(costType) == nil && !costZero {
-		if err := stepTypes.Put(costType); err != nil {
+	if _, err := contract.SetStepCost(s.cc, costType, cost.Value(), true); err != nil {
+		if scoreresult.InvalidParameterError.Equals(err) {
+			return scoreresult.IllegalFormatError.Wrapf(err, "InvalidStepType(%s)", costType)
+		} else {
 			return err
 		}
 	}
-	s.emitStepCostSetEvent(costType, cost)
-	if costZero {
-		// remove the step type and cost
-		for i := 0; i < stepTypes.Size(); i++ {
-			if stepTypes.Get(i).String() == costType {
-				last := stepTypes.Pop().String()
-				if i < stepTypes.Size() {
-					if err := stepTypes.Set(i, last); err != nil {
-						return err
-					}
-				}
-				return stepCostDB.Delete(costType)
-			}
-		}
-		return nil
-	} else {
-		return stepCostDB.Set(costType, cost)
-	}
-}
-
-func (s *chainScore) emitStepCostSetEvent(type_ string, cost *big.Int) {
-	if s.cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
-		return
-	}
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("StepCostSet(str,int)"), []byte(type_)},
-		[][]byte{intconv.BigIntToBytes(cost)},
-	)
+	return nil
 }
 
 func (s *chainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
-	as := s.cc.GetAccountState(state.SystemID)
-	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	if stepLimitDB.Get(contextType) == nil {
-		stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
-		if err := stepLimitTypes.Put(contextType); err != nil {
-			return err
-		}
-	}
-	return stepLimitDB.Set(contextType, cost)
+	_, err := contract.SetMaxStepLimit(s.cc, contextType, cost.Value())
+	return err
 }
 
 func (s *chainScore) Ex_getRevision() (int64, error) {
@@ -473,53 +409,32 @@ func (s *chainScore) Ex_getRevision() (int64, error) {
 	return scoredb.NewVarDB(as, state.VarRevision).Int64(), nil
 }
 
-func (s *chainScore) Ex_getStepPrice() (int64, error) {
+func (s *chainScore) Ex_getStepPrice() (*big.Int, error) {
 	if err := s.tryChargeCall(false); err != nil {
-		return 0, err
+		return nil, err
 	}
-	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarStepPrice).Int64(), nil
+	return contract.GetStepPrice(s.cc), nil
 }
 
-func (s *chainScore) Ex_getStepCost(t string) (int64, error) {
+func (s *chainScore) Ex_getStepCost(t string) (*big.Int, error) {
 	if err := s.tryChargeCall(false); err != nil {
-		return 0, err
+		return nil, err
 	}
-	as := s.cc.GetAccountState(state.SystemID)
-	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	if v := stepCostDB.Get(t); v != nil {
-		return v.Int64(), nil
-	}
-	return 0, nil
+	return contract.GetStepCost(s.cc, t), nil
 }
 
 func (s *chainScore) Ex_getStepCosts() (map[string]interface{}, error) {
 	if err := s.tryChargeCall(false); err != nil {
 		return nil, err
 	}
-	as := s.cc.GetAccountState(state.SystemID)
-
-	stepCosts := make(map[string]interface{})
-	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
-	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	tcount := stepTypes.Size()
-	for i := 0; i < tcount; i++ {
-		tname := stepTypes.Get(i).String()
-		stepCosts[tname] = stepCostDB.Get(tname).Int64()
-	}
-	return stepCosts, nil
+	return contract.GetStepCosts(s.cc), nil
 }
 
-func (s *chainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
+func (s *chainScore) Ex_getMaxStepLimit(contextType string) (*big.Int, error) {
 	if err := s.tryChargeCall(false); err != nil {
-		return 0, err
+		return nil, err
 	}
-	as := s.cc.GetAccountState(state.SystemID)
-	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	if v := stepLimitDB.Get(contextType); v != nil {
-		return v.Int64(), nil
-	}
-	return 0, nil
+	return contract.GetMaxStepLimit(s.cc, contextType), nil
 }
 
 func (s *chainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {

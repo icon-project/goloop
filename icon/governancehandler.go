@@ -85,7 +85,7 @@ func applyGovernanceVariablesToSystem(cc contract.CallContext, govAs, sysAs cont
 		sysRev := scoredb.NewVarDB(sysAs, state.VarRevision)
 		if sysRev.Int64() < revision.Int64() {
 			chainSCORE, _ := newChainScore(cc, govAddress, new(big.Int))
-			if err := chainSCORE.(*chainScore).Ex_setRevision(big.NewInt(revision.Int64())); err != nil {
+			if err := chainSCORE.(*chainScore).Ex_setRevision(revision.Int64()); err != nil {
 				return err
 			}
 		}
