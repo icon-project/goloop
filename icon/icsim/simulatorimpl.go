@@ -101,8 +101,8 @@ func NewTransaction(txType TxType, from module.Address, args ...interface{}) Tra
 	return &transactionImpl{txType, from, args}
 }
 
-func getExtensionState(ws state.WorldState) *iiss.ExtensionStateImpl {
-	return ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+func getExtensionState(wc WorldContext) *iiss.ExtensionStateImpl {
+	return wc.GetExtensionState().(*iiss.ExtensionStateImpl)
 }
 
 type simulatorImpl struct {
@@ -146,7 +146,8 @@ func (sim *simulatorImpl) init(
 
 	// Initialize revision
 	rev := icutils.Min(revision.Value(), icmodule.Revision12)
-	if err = sim.handleRevisionChange(ws, 0, rev); err != nil {
+	wc := NewWorldContext(ws, 0, 0, nil, sim.stepPrice)
+	if err = sim.handleRevisionChange(wc, 0, rev); err != nil {
 		return err
 	}
 
@@ -161,8 +162,14 @@ func (sim *simulatorImpl) init(
 	return nil
 }
 
-func (sim *simulatorImpl) getExtensionState(readonly bool) *iiss.ExtensionStateImpl {
-	return getExtensionState(newWorldState(sim.wss, readonly))
+func (sim *simulatorImpl) getReadonlyExtensionStateAndCallContext() (*iiss.ExtensionStateImpl, *callContext) {
+	cc := sim.newReadonlyCallContext()
+	return getExtensionState(cc), cc
+}
+
+func (sim *simulatorImpl) getReadonlyExtensionState() *iiss.ExtensionStateImpl {
+	es, _ := sim.getReadonlyExtensionStateAndCallContext()
+	return es
 }
 
 func (sim *simulatorImpl) Database() db.Database {
@@ -178,12 +185,12 @@ func (sim *simulatorImpl) Revision() module.Revision {
 }
 
 func (sim *simulatorImpl) TotalBond() *big.Int {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	return es.State.GetTotalBond()
 }
 
 func (sim *simulatorImpl) TotalStake() *big.Int {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	return es.State.GetTotalStake()
 }
 
@@ -244,18 +251,17 @@ func (sim *simulatorImpl) setRevision(_ *iiss.ExtensionStateImpl, cc *callContex
 		return errors.Errorf("IllegalArgument(current=%d,new=%d)", curRev, newRev)
 	}
 
-	ws := cc.GetWorldState()
-	err := sim.handleRevisionChange(ws, curRev, newRev)
+	err := sim.handleRevisionChange(cc, curRev, newRev)
 	return err
 }
 
 func (sim *simulatorImpl) GetStakeInJSON(from module.Address) map[string]interface{} {
-	es := sim.getExtensionState(true)
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
 	ia := es.State.GetAccountSnapshot(from)
 	if ia == nil {
 		ia = icstate.GetEmptyAccountSnapshot()
 	}
-	return ia.GetStakeInJSON(sim.BlockHeight())
+	return ia.GetStakeInJSON(cc.BlockHeight())
 }
 
 func (sim *simulatorImpl) SetStake(from module.Address, amount *big.Int) Transaction {
@@ -318,10 +324,10 @@ func (sim *simulatorImpl) GoTo(csi module.ConsensusInfo, blockHeight int64) erro
 }
 
 func (sim *simulatorImpl) GoToTermEnd(csi module.ConsensusInfo) error {
-	es := sim.getExtensionState(true)
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
 	tss := es.State.GetTermSnapshot()
 
-	blocks := tss.GetEndHeight() - sim.blockHeight
+	blocks := tss.GetEndHeight() - cc.BlockHeight()
 	return sim.Go(csi, blocks)
 }
 
@@ -331,8 +337,7 @@ func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, blk Block) ([]Rece
 
 	wss := sim.wss
 	blockHeight := sim.blockHeight + 1
-	ws := newWorldState(wss, false)
-	wc := NewWorldContext(ws, blockHeight, sim.Revision(), csi, sim.stepPrice)
+	wc := NewWorldContext(newWorldState(wss, false), blockHeight, sim.Revision(), csi, sim.stepPrice)
 
 	if err = sim.onExecutionBegin(wc); err != nil {
 		return nil, err
@@ -346,13 +351,13 @@ func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, blk Block) ([]Rece
 		receipts = make([]Receipt, len(blk.Txs()))
 
 		for i, tx := range blk.Txs() {
-			wss = ws.GetSnapshot()
+			wss = wc.GetSnapshot()
 			cc := NewCallContext(wc, tx.From())
 			err = sim.executeTx(cc, tx)
 			receipts[i] = NewReceipt(blockHeight, err, cc.Events())
 
 			if err != nil {
-				if err = ws.Reset(wss); err != nil {
+				if err = wc.Reset(wss); err != nil {
 					return nil, err
 				}
 			}
@@ -363,7 +368,7 @@ func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, blk Block) ([]Rece
 		return receipts, err
 	}
 
-	wss = ws.GetSnapshot()
+	wss = wc.GetSnapshot()
 	if err = wss.Flush(); err != nil {
 		return receipts, err
 	}
@@ -502,7 +507,7 @@ func (sim *simulatorImpl) setPRep(es *iiss.ExtensionStateImpl, cc *callContext, 
 }
 
 func (sim *simulatorImpl) GetDelegationInJSON(from module.Address) map[string]interface{} {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	ia := es.State.GetAccountSnapshot(from)
 	return ia.GetDelegationInJSON()
 }
@@ -523,7 +528,7 @@ func (sim *simulatorImpl) setDelegation(es *iiss.ExtensionStateImpl, cc *callCon
 }
 
 func (sim *simulatorImpl) GetBondInJSON(address module.Address) map[string]interface{} {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	jso, _ := es.GetBond(address)
 	return jso
 }
@@ -544,13 +549,13 @@ func (sim *simulatorImpl) setBond(es *iiss.ExtensionStateImpl, cc *callContext, 
 }
 
 func (sim *simulatorImpl) GetBonderListInJSON(address module.Address) map[string]interface{} {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	jso, _ := es.GetBonderList(address)
 	return jso
 }
 
 func (sim *simulatorImpl) GetBonderList(address module.Address) icstate.BonderList {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	pb := es.State.GetPRepBaseByOwner(address, false)
 	return pb.BonderList()
 }
@@ -584,27 +589,27 @@ func (sim *simulatorImpl) claimIScore(es *iiss.ExtensionStateImpl, cc *callConte
 }
 
 func (sim *simulatorImpl) QueryIScore(address module.Address) *big.Int {
-	es := sim.getExtensionState(true)
-	iscore, _ := es.GetIScore(address, sim.revision.Value(), nil)
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
+	iscore, _ := es.GetIScore(address, cc.Revision().Value(), nil)
 	return iscore
 }
 
 func (sim *simulatorImpl) GetPRepTermInJSON() map[string]interface{} {
-	es := sim.getExtensionState(true)
-	jso, _ := es.GetPRepTermInJSON(sim.newCallContext())
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
+	jso, _ := es.GetPRepTermInJSON(cc)
 	return jso
 }
 
-func (sim *simulatorImpl) newCallContext() icmodule.CallContext {
+func (sim *simulatorImpl) newReadonlyCallContext() *callContext {
 	wss := sim.wss
-	ws := newWorldState(wss, false)
-	wc := NewWorldContext(ws, sim.blockHeight+1, sim.revision, nil, sim.stepPrice)
+	ws := newWorldState(wss, true)
+	wc := NewWorldContext(ws, sim.blockHeight, sim.revision, nil, sim.stepPrice)
 	return NewCallContext(wc, state.SystemAddress)
 }
 
 func (sim *simulatorImpl) GetPRepsInJSON() map[string]interface{} {
-	es := sim.getExtensionState(true)
-	jso, _ := es.GetPRepsInJSON(sim.newCallContext(), 0, 0)
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
+	jso, _ := es.GetPRepsInJSON(cc, 0, 0)
 	return jso
 }
 
@@ -626,32 +631,32 @@ func (sim *simulatorImpl) NewConsensusInfo(voted []bool) (module.ConsensusInfo, 
 }
 
 func (sim *simulatorImpl) GetMainPRepsInJSON() map[string]interface{} {
-	es := sim.getExtensionState(true)
-	jso, _ := es.GetMainPRepsInJSON(sim.BlockHeight())
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
+	jso, _ := es.GetMainPRepsInJSON(cc.BlockHeight())
 	return jso
 }
 
 func (sim *simulatorImpl) GetSubPRepsInJSON() map[string]interface{} {
-	es := sim.getExtensionState(true)
-	jso, _ := es.GetSubPRepsInJSON(sim.BlockHeight())
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
+	jso, _ := es.GetSubPRepsInJSON(cc.BlockHeight())
 	return jso
 }
 
 func (sim *simulatorImpl) GetPRep(address module.Address) *icstate.PRep {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	return es.State.GetPRepByOwner(address)
 }
 
 func (sim *simulatorImpl) GetPRepStatsInJSON(address module.Address) map[string]interface{} {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	ps := es.State.GetPRepStatusByOwner(address, false)
 	sc := sim.GetStateContext()
 	return ps.GetStatsInJSON(sc)
 }
 
 func (sim *simulatorImpl) GetNetworkInfoInJSON() map[string]interface{} {
-	es := sim.getExtensionState(true)
-	jso, err := es.State.GetNetworkInfoInJSON(sim.Revision().Value())
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
+	jso, err := es.State.GetNetworkInfoInJSON(cc.Revision().Value())
 	if err != nil {
 		return nil
 	}
@@ -659,13 +664,13 @@ func (sim *simulatorImpl) GetNetworkInfoInJSON() map[string]interface{} {
 }
 
 func (sim *simulatorImpl) TermSnapshot() *icstate.TermSnapshot {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	return es.State.GetTermSnapshot()
 }
 
 func (sim *simulatorImpl) GetPReps(grade icstate.Grade) []*icstate.PRep {
 	cfg := sim.config
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	activePReps := es.State.GetPReps(true)
 
 	preps := make([]*icstate.PRep, 0, cfg.SubPRepCount)
@@ -689,7 +694,7 @@ func (sim *simulatorImpl) ValidatorList() []module.Validator {
 }
 
 func (sim *simulatorImpl) GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	return es.State.GetAccountSnapshot(address)
 }
 
@@ -705,8 +710,7 @@ func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 }
 
 func (sim *simulatorImpl) GetSlashingRates() (map[string]interface{}, error) {
-	es := sim.getExtensionState(true)
-	cc := sim.newCallContext()
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
 	return es.GetSlashingRates(cc)
 }
 
@@ -726,7 +730,7 @@ func (sim *simulatorImpl) setSlashingRates(es *iiss.ExtensionStateImpl, cc *call
 }
 
 func (sim *simulatorImpl) GetMinimumBond() *big.Int {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	return es.State.GetMinimumBond()
 }
 
@@ -810,7 +814,7 @@ func (sim *simulatorImpl) handleDoubleSignReport(es *iiss.ExtensionStateImpl, cc
 }
 
 func (sim *simulatorImpl) GetPRepCountConfig() (map[string]interface{}, error) {
-	es := sim.getExtensionState(true)
+	es := sim.getReadonlyExtensionState()
 	return es.GetPRepCountConfig()
 }
 

@@ -20,6 +20,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -33,12 +34,17 @@ import (
 
 var (
 	treasury = common.MustNewAddressFromString("hx1000000000000000000000000000000000000000")
+	governance = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 )
 
 type WorldContext interface {
 	icmodule.WorldContext
 	GetExtensionState() state.ExtensionState
 	BlockTimeStamp() int64
+	Database() db.Database
+	GetAccountState(id []byte) state.AccountState
+	GetSnapshot() state.WorldSnapshot
+	Reset(snapshot state.WorldSnapshot) error
 }
 
 type worldContext struct {
@@ -217,7 +223,7 @@ func (ctx *worldContext) GetActiveDSAMask() int64 {
 }
 
 func (ctx *worldContext) Governance() module.Address {
-	return common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
+	return governance
 }
 
 func NewWorldContext(
@@ -303,10 +309,6 @@ func (ctx *callContext) FrameLogger() *trace.Logger {
 
 func (ctx *callContext) TransactionInfo() *state.TransactionInfo {
 	panic("implement me")
-}
-
-func (ctx *callContext) GetWorldState() state.WorldState {
-	return ctx.WorldContext.(state.WorldState)
 }
 
 func NewCallContext(wc WorldContext, from module.Address) *callContext {

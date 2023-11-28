@@ -12,7 +12,7 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-type RevHandler func(ws state.WorldState) error
+type RevHandler func(wc WorldContext) error
 
 func (sim *simulatorImpl) initRevHandler() {
 	sim.revHandlers = map[int]RevHandler{
@@ -27,13 +27,13 @@ func (sim *simulatorImpl) initRevHandler() {
 	}
 }
 
-func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, oldRev, newRev int) error {
+func (sim *simulatorImpl) handleRevisionChange(wc WorldContext, oldRev, newRev int) error {
 	if oldRev >= newRev {
 		return nil
 	}
 	for rev := oldRev + 1; rev <= newRev; rev++ {
 		if handler, ok := sim.revHandlers[rev]; ok {
-			if err := handler(ws); err != nil {
+			if err := handler(wc); err != nil {
 				return err
 			}
 		}
@@ -42,9 +42,9 @@ func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, oldRev, newR
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
+func (sim *simulatorImpl) handleRev5(wc WorldContext) error {
 	revision := icmodule.Revision5
-	as := ws.GetAccountState(state.SystemID)
+	as := wc.GetAccountState(state.SystemID)
 
 	// enable Fee sharing 2.0
 	systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
@@ -61,8 +61,8 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState) error {
 	}
 
 	cfg := sim.config
-	ws.GetExtensionState().Reset(iiss.NewExtensionSnapshot(ws.Database(), nil))
-	es := getExtensionState(ws)
+	wc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(wc.Database(), nil))
+	es := getExtensionState(wc)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion2); err != nil {
 		return err
@@ -146,8 +146,8 @@ func applyRewardFund(config *SimConfig, s *icstate.State) error {
 }
 
 // handleRev6: icmodule.RevisionDecentralize
-func (sim *simulatorImpl) handleRev6(ws state.WorldState) error {
-	es := getExtensionState(ws)
+func (sim *simulatorImpl) handleRev6(wc WorldContext) error {
+	es := getExtensionState(wc)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
 			return err
@@ -156,8 +156,8 @@ func (sim *simulatorImpl) handleRev6(ws state.WorldState) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev9(ws state.WorldState) error {
-	es := getExtensionState(ws)
+func (sim *simulatorImpl) handleRev9(wc WorldContext) error {
+	es := getExtensionState(wc)
 	if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
 		if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
 			return err
@@ -178,9 +178,9 @@ func (sim *simulatorImpl) handleRev9(ws state.WorldState) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev14(ws state.WorldState) error {
-	es := getExtensionState(ws)
-	as := ws.GetAccountState(state.SystemID)
+func (sim *simulatorImpl) handleRev14(wc WorldContext) error {
+	es := getExtensionState(wc)
+	as := wc.GetAccountState(state.SystemID)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion3); err != nil {
 		return err
@@ -204,8 +204,8 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev15(ws state.WorldState) error {
-	as := ws.GetAccountState(state.SystemID)
+func (sim *simulatorImpl) handleRev15(wc WorldContext) error {
+	as := wc.GetAccountState(state.SystemID)
 
 	if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(icon.EETypesJavaAndPython); err != nil {
 		return err
@@ -213,10 +213,10 @@ func (sim *simulatorImpl) handleRev15(ws state.WorldState) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev17(ws state.WorldState) error {
+func (sim *simulatorImpl) handleRev17(wc WorldContext) error {
 	revision := icmodule.Revision17
 	cfg := sim.config
-	es := getExtensionState(ws)
+	es := getExtensionState(wc)
 
 	// Set slashingRate for PenaltyAccumulatedValidationFailure
 	if err := es.State.SetSlashingRate(
@@ -239,15 +239,15 @@ func (sim *simulatorImpl) handleRev17(ws state.WorldState) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev23(ws state.WorldState) error {
-	es := getExtensionState(ws)
+func (sim *simulatorImpl) handleRev23(wc WorldContext) error {
+	es := getExtensionState(wc)
 
 	// RewardFundAllocation2
 	r := es.State.GetRewardFundV1()
 	return es.State.SetRewardFund(r.ToRewardFundV2())
 }
 
-func (sim *simulatorImpl) handleRev24(ws state.WorldState) error {
-	es := getExtensionState(ws)
+func (sim *simulatorImpl) handleRev24(wc WorldContext) error {
+	es := getExtensionState(wc)
 	return es.State.SetIISSVersion(icstate.IISSVersion4)
 }
