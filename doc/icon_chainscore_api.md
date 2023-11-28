@@ -1207,7 +1207,7 @@ Updates allocation of reward fund. Governance only.
 - Sum of all allocation rates must be 100
 
 ```python
-def setRewardFundAllocation(iprep: int, icsp: int, irelay: int, ivoter: int) -> None:
+def setRewardFundAllocation(iprep: int, icps: int, irelay: int, ivoter: int) -> None:
 ```
 
 *Parameters:*
@@ -1802,8 +1802,8 @@ def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
 
 | value    | revision | Description                                |
 |:---------|:---------|:-------------------------------------------|
-| "iprep"  | 13 ~     | key for P-Rep reward                       |
-| "ivoter" | 13 ~ 23  | key for Voter reward. Deprecated in IISS 4 |
-| "icps"   | 13 ~     | key for CPS reward                         |
-| "irelay" | 13 ~     | key for BTP relay reward                   |
-| "iwage"  | 23 ~     | key for P-Rep minimum wage                 |
+| "Iprep"  | 13 ~     | key for P-Rep reward                       |
+| "Ivoter" | 13 ~ 23  | key for Voter reward. Deprecated in IISS 4 |
+| "Icps"   | 13 ~     | key for CPS reward                         |
+| "Irelay" | 13 ~     | key for BTP relay reward                   |
+| "Iwage"  | 23 ~     | key for P-Rep minimum wage                 |

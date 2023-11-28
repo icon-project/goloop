@@ -66,11 +66,11 @@ func NewSafeRewardFundV2(iglobal *big.Int, iprep, iwage, icps, irelay icmodule.R
 type RFundKey string
 
 const (
-	KeyIprep  RFundKey = "iprep"
-	KeyIwage  RFundKey = "iwage"
-	KeyIcps   RFundKey = "icps"
-	KeyIrelay RFundKey = "irelay"
-	KeyIvoter RFundKey = "ivoter"
+	KeyIprep  RFundKey = "Iprep"
+	KeyIwage  RFundKey = "Iwage"
+	KeyIcps   RFundKey = "Icps"
+	KeyIrelay RFundKey = "Irelay"
+	KeyIvoter RFundKey = "Ivoter"
 )
 
 var rFundKeys = map[int][]RFundKey{
@@ -101,6 +101,8 @@ const (
 	RFVersion1 = iota
 	RFVersion2
 	RFVersionReserved
+
+	KeyIglobal = "Iglobal"
 )
 
 type RewardFund struct {
@@ -287,7 +289,7 @@ func (r *RewardFund) Clone() *RewardFund {
 
 func (r *RewardFund) ToJSON() map[string]interface{} {
 	jso := make(map[string]interface{})
-	jso["Iglobal"] = r.IGlobal()
+	jso[KeyIglobal] = r.IGlobal()
 	for k, v := range r.allocation {
 		if r.version == RFVersion1 {
 			jso[k.String()] = v.Percent()
@@ -310,7 +312,8 @@ func (r *RewardFund) string(withName bool) string {
 
 	sb.WriteByte(' ')
 	if withName {
-		sb.WriteString("iGlobal=")
+		sb.WriteString(KeyIglobal)
+		sb.WriteByte('=')
 	}
 	sb.WriteString(r.iGlobal.String())
 

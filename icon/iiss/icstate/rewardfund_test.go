@@ -511,8 +511,8 @@ func TestRewardFund_Format(t *testing.T) {
 	assert.Equal(t, exp, ret)
 
 	exp = fmt.Sprintf(
-		"RewardFund{version=%d iGlobal=%d icps=%d iprep=%d irelay=%d iwage=%d}",
-		RFVersion2, iglobal, icps, iprep, irelay, iwage)
+		"RewardFund{version=%d %s=%d %s=%d %s=%d %s=%d %s=%d}",
+		RFVersion2, KeyIglobal, iglobal, KeyIcps, icps, KeyIprep, iprep, KeyIrelay, irelay, KeyIwage, iwage)
 	assert.Equal(t, exp, fmt.Sprintf("%+v", rf))
 	assert.Equal(t, exp, fmt.Sprintf("%s", rf))
 
@@ -531,8 +531,8 @@ func TestRewardFund_Format(t *testing.T) {
 	assert.Equal(t, exp, ret)
 
 	exp = fmt.Sprintf(
-		"RewardFund{version=%d iGlobal=%d icps=%d iprep=%d iwage=%d}",
-		RFVersion2, iglobal, icps, iprep, iwage)
+		"RewardFund{version=%d %s=%d %s=%d %s=%d %s=%d}",
+		RFVersion2, KeyIglobal, iglobal, KeyIcps, icps, KeyIprep, iprep, KeyIwage, iwage)
 	assert.Equal(t, exp, fmt.Sprintf("%+v", rf))
 	assert.Equal(t, exp, fmt.Sprintf("%s", rf))
 }
