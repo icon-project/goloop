@@ -19,7 +19,8 @@ package basic
 import "github.com/icon-project/goloop/module"
 
 const (
-	Revision1 = iota + 1
+	Revision0 = iota
+	Revision1
 	Revision2
 	Revision3
 	Revision4
@@ -31,41 +32,41 @@ const (
 	RevisionReserved
 )
 
+// Remove warning for not using the constant.
+// It's not used in the platform, but pyee may use it.
+var _ = Revision2
+
 const (
 	DefaultRevision = Revision4
 	MaxRevision     = RevisionReserved - 1
 	LatestRevision  = Revision8
 )
 
-var revisionFlags = []module.Revision{
-	// Revision 0
-	module.FixLostFeeByDeposit | module.PurgeEnumCache | module.FixMapValues,
-	// Revision 1
-	0,
-	// Revision 2
-	0,
-	// Revision 3
-	module.InputCostingWithJSON,
-	// Revision 4
-	0,
-	// Revision 5
-	0,
-	// Revision 6
-	module.ExpandErrorCode,
-	// Revision 7
-	module.UseChainID | module.UseMPTOnEvents,
-	// Revision 8
-	module.UseCompactAPIInfo,
-	// Revision 9
-	module.MultipleFeePayers | module.FixJCLSteps,
+var revisionFlags []module.Revision
+
+var toggleFlagsOnRevision = []struct {
+	value int
+	flags module.Revision
+}{
+	{Revision0, module.FixLostFeeByDeposit | module.PurgeEnumCache | module.FixMapValues},
+	{Revision3, module.InputCostingWithJSON},
+	{Revision6, module.ExpandErrorCode},
+	{Revision7, module.UseChainID | module.UseMPTOnEvents},
+	{Revision8, module.UseCompactAPIInfo},
+	{Revision9, module.MultipleFeePayers | module.FixJCLSteps | module.ReportConfigureEvents},
 }
 
 func init() {
-	var revSum module.Revision
-	for idx, rev := range revisionFlags {
-		revSum |= rev
-		revisionFlags[idx] = revSum
+	flags := make([]module.Revision, MaxRevision+1)
+	for _, e := range toggleFlagsOnRevision {
+		flags[e.value] |= e.flags
 	}
+	var revSum module.Revision
+	for idx, rev := range flags {
+		revSum ^= rev
+		flags[idx] = revSum
+	}
+	revisionFlags = flags
 }
 
 func valueToRevision(v int) module.Revision {

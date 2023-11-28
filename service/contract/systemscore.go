@@ -82,6 +82,11 @@ func CheckType(t reflect.Type, mt scoreapi.DataType, fields []scoreapi.Field) er
 		if ptrOfBigIntType.AssignableTo(t) {
 			return nil
 		}
+		switch t.Kind() {
+		case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8,
+			reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+			return nil
+		}
 	case scoreapi.TString:
 		switch t.Kind() {
 		case reflect.String:
