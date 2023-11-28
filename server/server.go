@@ -27,6 +27,7 @@ type Config struct {
 	JSONRPCDump           bool
 	JSONRPCIncludeDebug   bool
 	JSONRPCRosetta        bool
+	DisableRPC            bool
 	JSONRPCDefaultChannel string
 	JSONRPCBatchLimit     int
 	WSMaxSession          int
@@ -44,6 +45,7 @@ type Manager struct {
 	jsonrpcRosetta        int32
 	jsonrpcIncludeDebug   int32
 	jsonrpcBatchLimit     int32
+	disableJSONRPC        int32
 	logger                log.Logger
 	metricsHandler        echo.HandlerFunc
 	mtr                   *metric.JsonrpcMetric
@@ -79,6 +81,7 @@ func NewManager(
 	m.SetMessageDump(config.JSONRPCDump)
 	m.SetIncludeDebug(config.JSONRPCIncludeDebug)
 	m.SetRosetta(config.JSONRPCRosetta)
+	m.SetDisableRPC(config.DisableRPC)
 	return m
 }
 
@@ -179,6 +182,14 @@ func (srv *Manager) SetWSMaxSession(limit int) {
 	srv.wssm.SetMaxSession(limit)
 }
 
+func (srv *Manager) SetDisableRPC(enable bool) {
+	atomicStore(&srv.disableJSONRPC, enable)
+}
+
+func (srv *Manager) DisableRPC() bool {
+	return atomicLoad(&srv.disableJSONRPC)
+}
+
 func (srv *Manager) Start() error {
 	srv.logger.Infoln("starting the server")
 	// CORS middleware
@@ -218,7 +229,7 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 	// v3 APIs
 	mr := v3.MethodRepository(srv.mtr)
 	v3api := rpc.Group("/v3")
-	v3api.Use(JsonRpc(), Chunk())
+	v3api.Use(srv.CheckRPC(), JsonRpc(), Chunk())
 	v3api.POST("", mr.Handle, ChainInjector(srv))
 	v3api.POST("/", mr.Handle, ChainInjector(srv))
 	v3api.POST("/:channel", mr.Handle, ChainInjector(srv))
@@ -240,6 +251,7 @@ func (srv *Manager) RegisterAPIHandler(g *echo.Group) {
 
 	// group for websocket
 	ws := g.Group("")
+	ws.Use(srv.CheckRPC())
 	ws.GET("/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
 	ws.GET("/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
 	ws.GET("/v3/:channel/btp", srv.wssm.RunBtpSession, ChainInjector(srv))
@@ -257,8 +269,8 @@ func (srv *Manager) RegisterMetricsHandler(g *echo.Group) {
 func (srv *Manager) CheckDebug() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
-			if !srv.IncludeDebug() {
-				return ctx.String(http.StatusNotFound, "rpc_debug is false")
+			if srv.DisableRPC() || !srv.IncludeDebug() {
+				return ctx.String(http.StatusNotFound, "debug API is disabled")
 			}
 			return next(ctx)
 		}
@@ -268,8 +280,19 @@ func (srv *Manager) CheckDebug() echo.MiddlewareFunc {
 func (srv *Manager) CheckRosetta() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
-			if !srv.Rosetta() {
-				return ctx.String(http.StatusNotFound, "rpc_rosetta is false")
+			if srv.DisableRPC() || !srv.Rosetta() {
+				return ctx.String(http.StatusNotFound, "rosetta API is disabled")
+			}
+			return next(ctx)
+		}
+	}
+}
+
+func (srv *Manager) CheckRPC() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			if srv.DisableRPC() {
+				return ctx.String(http.StatusNotFound, "icx API is disabled")
 			}
 			return next(ctx)
 		}

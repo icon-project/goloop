@@ -36,7 +36,7 @@ func ChainInjector(srv *Manager) echo.MiddlewareFunc {
 			channel := ctx.Param("channel")
 			c := srv.Chain(channel)
 			if c == nil {
-				return ctx.NoContent(http.StatusNotFound)
+				return ctx.String(http.StatusNotFound, "No channel")
 			}
 			ctx.Set("chain", c)
 			return next(ctx)

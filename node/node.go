@@ -879,6 +879,13 @@ func (n *Node) Configure(key string, value string) error {
 			n.rcfg.RPCRosetta = boolVal
 		}
 		n.srv.SetRosetta(n.rcfg.RPCRosetta)
+	case "disableRPC":
+		if boolVal, err := strconv.ParseBool(value); err != nil {
+			return errors.Wrapf(err, "invalid value type")
+		} else {
+			n.rcfg.DisableRPC = boolVal
+		}
+		n.srv.SetDisableRPC(n.rcfg.DisableRPC)
 	case "rpcBatchLimit":
 		if intVal, err := strconv.Atoi(value); err != nil {
 			return errors.Wrapf(err, "invalid value type")
@@ -929,6 +936,7 @@ func NewNode(
 		JSONRPCDump:           cfg.RPCDump,
 		JSONRPCIncludeDebug:   rcfg.RPCIncludeDebug,
 		JSONRPCRosetta:        rcfg.RPCRosetta,
+		DisableRPC:            rcfg.DisableRPC,
 		JSONRPCDefaultChannel: rcfg.RPCDefaultChannel,
 		JSONRPCBatchLimit:     rcfg.RPCBatchLimit,
 		WSMaxSession:          rcfg.WSMaxSession,
