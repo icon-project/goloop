@@ -19,7 +19,8 @@ package icmodule
 import "github.com/icon-project/goloop/module"
 
 const (
-	Revision1 = iota + 1
+	Revision0 = iota
+	Revision1
 	Revision2
 	Revision3
 	Revision4
@@ -121,67 +122,37 @@ const (
 	RevisionIISS4R1 = Revision25
 )
 
-var revisionFlags = []module.Revision{
-	// Revision0
-	module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.LegacyFeeCharge | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck | module.LegacyNoTimeout,
-	// Revision1
-	0,
-	// Revision2
-	module.AutoAcceptGovernance,
-	// Revision3
-	module.LegacyInputJSON | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck,
-	// Revision4
-	0,
-	// Revision5
-	0,
-	// Revision6
-	0,
-	// Revision7
-	0,
-	// Revision8
-	0,
-	// Revision9
-	0,
-	// Revision10
-	0,
-	// Revision11
-	0,
-	// Revision12
-	0,
-	// Revision13
-	module.LegacyFeeCharge | module.LegacyNoTimeout,
-	// Revision14
-	module.LegacyInputJSON | module.InputCostingWithJSON,
-	// Revision15
-	0,
-	// Revision16
-	0,
-	// Revision17
-	0,
-	// Revision18
-	module.FixLostFeeByDeposit,
-	// Revision19
-	module.PurgeEnumCache,
-	// Revision20
-	module.FixMapValues,
-	// Revision21
-	module.MultipleFeePayers,
-	// Revision22
-	0,
-	// Revision23
-	module.FixJCLSteps,
-	// Revision24
-	0,
-	// Revision25
-	module.ReportDoubleSign,
+var revisionFlags []module.Revision
+
+var toggleFlagsOnRevision = []struct {
+	value int
+	flags module.Revision
+}{
+	{Revision0, module.UseChainID | module.UseMPTOnEvents | module.UseCompactAPIInfo | module.LegacyFeeCharge | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck | module.LegacyNoTimeout},
+	{Revision2, module.AutoAcceptGovernance},
+	{Revision3, module.LegacyInputJSON | module.LegacyFallbackCheck | module.LegacyContentCount | module.LegacyBalanceCheck},
+	{Revision13, module.LegacyFeeCharge | module.LegacyNoTimeout},
+	{Revision14, module.LegacyInputJSON | module.InputCostingWithJSON},
+	{Revision18, module.FixLostFeeByDeposit},
+	{Revision19, module.PurgeEnumCache},
+	{Revision20, module.FixMapValues},
+	{Revision21, module.MultipleFeePayers},
+	{Revision23, module.FixJCLSteps},
+	{Revision24, module.ReportConfigureEvents},
+	{Revision25, module.ReportDoubleSign},
 }
 
 func init() {
-	var revSum module.Revision
-	for idx, rev := range revisionFlags {
-		revSum ^= rev
-		revisionFlags[idx] = revSum
+	flags := make([]module.Revision, MaxRevision+1)
+	for _, e := range toggleFlagsOnRevision {
+		flags[e.value] |= e.flags
 	}
+	var revSum module.Revision
+	for idx, rev := range flags {
+		revSum ^= rev
+		flags[idx] = revSum
+	}
+	revisionFlags = flags
 }
 
 func ValueToRevision(v int) module.Revision {
