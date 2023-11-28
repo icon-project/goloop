@@ -113,8 +113,15 @@ func (r *RewardFund) IGlobal() *big.Int {
 	return r.iGlobal
 }
 
-func (r *RewardFund) Allocation() map[RFundKey]icmodule.Rate {
-	return r.allocation
+func (r *RewardFund) GetOrderAllocationKeys() []RFundKey {
+	keys := make([]RFundKey, 0, len(r.allocation))
+	for k := range r.allocation {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
 }
 
 func (r *RewardFund) SetIGlobal(value *big.Int) error {
@@ -307,14 +314,7 @@ func (r *RewardFund) string(withName bool) string {
 	}
 	sb.WriteString(r.iGlobal.String())
 
-	keys := make([]RFundKey, 0, len(r.allocation))
-	for k := range r.allocation {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-	for _, k := range keys {
+	for _, k := range r.GetOrderAllocationKeys() {
 		sb.WriteByte(' ')
 		if withName {
 			sb.WriteString(string(k))

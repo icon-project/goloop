@@ -731,8 +731,8 @@ func (s *chainScore) Ex_setRewardFundAllocation2(values []interface{}) error {
 	if err = es.State.SetRewardFund(rf); err != nil {
 		return err
 	}
-	for k, v := range rf.Allocation() {
-		iiss.EmitRewardFundAllocationSetEvent(s.newCallContext(s.cc), k, v)
+	for _, k := range rf.GetOrderAllocationKeys() {
+		iiss.EmitRewardFundAllocationSetEvent(s.newCallContext(s.cc), k, rf.GetAllocationByKey(k))
 	}
 	return nil
 }
