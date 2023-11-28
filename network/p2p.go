@@ -955,7 +955,7 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 
 	limit := p2p.pm.getConnectionLimit(p2pConnTypeChildren)
 	pp := PeerPredicate(func(p *Peer) bool {
-		return p.children.Len() < limit
+		return p.Conns(p2pConnTypeChildren).Len() < limit
 	})
 	if pr == p2pRoleSeed {
 		pp = pp.And(PeerPredicates.In(false)).And(hasRole.Or(p2p.rr.isTrustSeed))
@@ -971,7 +971,7 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 			if avg1 < avg2 {
 				return true
 			} else if avg1 == avg2 {
-				return candidates[i].children.Len() < candidates[j].children.Len()
+				return candidates[i].Conns(p2pConnTypeChildren).Len() < candidates[j].Conns(p2pConnTypeChildren).Len()
 			}
 			return false
 		})
@@ -1009,7 +1009,7 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 
 	limit := p2p.pm.getConnectionLimit(p2pConnTypeNephew)
 	pp := PeerPredicate(func(p *Peer) bool {
-		return p.nephews.Len() < limit
+		return p.Conns(p2pConnTypeNephew).Len() < limit
 	})
 	if ur == p2pRoleSeed {
 		pp = pp.And(PeerPredicates.In(false)).And(hasRole.Or(p2p.rr.isTrustSeed))
@@ -1025,7 +1025,7 @@ func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 			if avg1 < avg2 {
 				return true
 			} else if avg1 == avg2 {
-				return candidates[i].nephews.Len() < candidates[j].nephews.Len()
+				return candidates[i].Conns(p2pConnTypeNephew).Len() < candidates[j].Conns(p2pConnTypeNephew).Len()
 			}
 			return false
 		})

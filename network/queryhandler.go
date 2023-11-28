@@ -170,8 +170,8 @@ func (h *queryHandler) handleQueryResult(pkt *Packet, p *Peer) {
 	}
 	h.l.Traceln("handleQueryResult", qrm, p)
 
-	p.children.ClearAndAdd(qrm.Children...)
-	p.nephews.ClearAndAdd(qrm.Nephews...)
+	p.ResetConnsByNetAddresses(p2pConnTypeChildren, qrm.Children)
+	p.ResetConnsByNetAddresses(p2pConnTypeChildren, qrm.Nephews)
 
 	rr := h.rr.resolveRole(qrm.Role, p.ID(), true)
 	if rr != qrm.Role {
