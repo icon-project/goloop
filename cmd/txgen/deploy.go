@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -24,7 +23,7 @@ const (
 
 func addDirectoryToZip(zipWriter *zip.Writer, base, uri string) error {
 	p := path.Join(base, uri)
-	entries, err := ioutil.ReadDir(p)
+	entries, err := os.ReadDir(p)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -75,7 +74,7 @@ func makeDeploy(nid int64, from module.Wallet, src string, params interface{}) (
 	content := ""
 	if strings.HasSuffix(src, ".jar") {
 		contentType = "application/java"
-		data, err := ioutil.ReadFile(src)
+		data, err := os.ReadFile(src)
 		if err != nil {
 			return nil, err
 		}

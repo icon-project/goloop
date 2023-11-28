@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -56,7 +55,7 @@ func main() {
 			log.Panic("KeyStore for base account isn't specified")
 		}
 
-		ks, err := ioutil.ReadFile(keyStoreFile)
+		ks, err := os.ReadFile(keyStoreFile)
 		if err != nil {
 			log.Panicf("Fail to read KeyStore file=%s err=%+v", keyStoreFile, err)
 		}

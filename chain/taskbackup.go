@@ -175,7 +175,7 @@ func zipWrite(writer *zip.Writer, p, n string, on func(int64) error) error {
 		return nil
 	}
 
-	fis, err := ioutil.ReadDir(p2)
+	fis, err := os.ReadDir(p2)
 	if err != nil {
 		return errors.Wrap(err, "writeToZip: FAIL on ReadDir")
 	}
@@ -201,7 +201,7 @@ func countFiles(p string) (int, error) {
 	if !st.IsDir() {
 		return 1, nil
 	}
-	fis, err := ioutil.ReadDir(p)
+	fis, err := os.ReadDir(p)
 	if err != nil {
 		return 0, err
 	}
@@ -213,7 +213,7 @@ func countFiles(p string) (int, error) {
 			} else {
 				cnt += c
 			}
-		} else if fi.Mode().IsRegular() {
+		} else if fi.Type().IsRegular() {
 			cnt += 1
 		}
 	}

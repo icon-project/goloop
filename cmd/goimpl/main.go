@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -58,7 +57,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 	}
 
-	err = ioutil.WriteFile(file, iout, 0644)
+	err = os.WriteFile(file, iout, 0644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 	}

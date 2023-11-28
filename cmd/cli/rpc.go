@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -52,9 +52,9 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 
 func readFile(s string) ([]byte, error) {
 	if s == "-" {
-		return ioutil.ReadAll(os.Stdin)
+		return io.ReadAll(os.Stdin)
 	} else {
-		return ioutil.ReadFile(s)
+		return os.ReadFile(s)
 	}
 }
 
@@ -65,9 +65,9 @@ func readJSONObject(s string) (map[string]interface{}, error) {
 	var bs []byte
 	var err error
 	if strings.HasPrefix(s, "@") {
-		bs, err = ioutil.ReadFile(s[1:])
+		bs, err = os.ReadFile(s[1:])
 	} else if strings.HasPrefix(s, "-") {
-		bs, err = ioutil.ReadAll(os.Stdin)
+		bs, err = io.ReadAll(os.Stdin)
 	} else {
 		bs = []byte(s)
 	}
@@ -681,14 +681,14 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		var kb, pb []byte
 		var err error
 		ksf := vc.GetString("key_store")
-		if kb, err = ioutil.ReadFile(ksf); err != nil {
+		if kb, err = os.ReadFile(ksf); err != nil {
 			return fmt.Errorf("fail to open KeyStore file=%s err=%+v", ksf, err)
 		}
 		//key_secret -> key_password
 		ksec := vc.GetString("key_secret")
 		kpass := vc.GetString("key_password")
 		if ksec != "" {
-			if pb, err = ioutil.ReadFile(ksec); err != nil {
+			if pb, err = os.ReadFile(ksec); err != nil {
 				return fmt.Errorf("fail to open KeySecret file=%s err=%+v", ksec, err)
 			}
 		} else if kpass != "" {

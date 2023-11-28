@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -123,7 +122,7 @@ func (c *RuntimeConfig) load() error {
 	if _, err := os.Stat(c.FilePath); err != nil {
 		return err
 	}
-	b, err := ioutil.ReadFile(c.FilePath)
+	b, err := os.ReadFile(c.FilePath)
 	if err != nil {
 		log.Printf("%T %+v", err, err)
 		return err
@@ -139,7 +138,7 @@ func (c *RuntimeConfig) save() error {
 	if err != nil {
 		return err
 	}
-	if err = ioutil.WriteFile(c.FilePath, b, 0644); err != nil {
+	if err = os.WriteFile(c.FilePath, b, 0644); err != nil {
 		return err
 	}
 	return err

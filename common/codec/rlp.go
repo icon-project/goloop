@@ -3,7 +3,6 @@ package codec
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"sync"
 
@@ -76,7 +75,7 @@ func LimitReader(r io.Reader, n int64) io.Reader {
 }
 
 func (r *rlpReader) skipN(sz int) error {
-	if _, err := io.CopyN(ioutil.Discard, r.reader, int64(sz)); err != nil {
+	if _, err := io.CopyN(io.Discard, r.reader, int64(sz)); err != nil {
 		if err == io.EOF {
 			return cerrors.Wrapf(ErrInvalidFormat, "InvalidFormat(expect=%d)", sz)
 		}
@@ -318,7 +317,7 @@ func (r *rlpReader) ReadValue(v reflect.Value) error {
 }
 
 func (r *rlpReader) Close() error {
-	_, err := io.Copy(ioutil.Discard, r.reader)
+	_, err := io.Copy(io.Discard, r.reader)
 	return err
 }
 
