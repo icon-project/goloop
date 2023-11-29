@@ -65,10 +65,6 @@ func ToPenaltyType(name string) PenaltyType {
 	return PenaltyNone
 }
 
-func PenaltyNames() []string {
-	return penaltyNames
-}
-
 func GetPenaltyTypes() []PenaltyType {
 	return penaltyTypes
 }

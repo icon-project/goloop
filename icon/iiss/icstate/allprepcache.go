@@ -36,7 +36,7 @@ type AllPRepCache struct {
 	arraydb *containerdb.ArrayDB
 }
 
-// Add add a new active PRep to State
+// Add adds a new active PRep to State
 // Duplicated address check MUST BE done before adding
 func (c *AllPRepCache) Add(owner module.Address) error {
 	if owner == nil {

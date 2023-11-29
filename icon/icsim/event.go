@@ -14,15 +14,34 @@
  * limitations under the License.
  */
 
-package icmodule
+package icsim
 
-type PRepEvent int
-
-const (
-	PRepEventBlockVote PRepEvent = iota
-	PRepEventImposePenalty
-	PRepEventMainIn
-	PRepEventRequestUnjail
-	PRepEventTermEnd
-	PRepEventValidatorOut
+import (
+	"github.com/icon-project/goloop/module"
 )
+
+type Event struct {
+	from    module.Address
+	indexed [][]byte
+	data [][]byte
+}
+
+func (e *Event) From() module.Address {
+	return e.from
+}
+
+func (e *Event) Signature() string {
+	return string(e.indexed[0])
+}
+
+func (e *Event) Indexed() [][]byte {
+	return e.indexed
+}
+
+func (e *Event) Data() [][]byte {
+	return e.data
+}
+
+func NewEvent(from module.Address, indexed, data [][]byte) *Event {
+	return &Event{from, indexed, data}
+}

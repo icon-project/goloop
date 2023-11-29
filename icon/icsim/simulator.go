@@ -51,6 +51,7 @@ const (
 
 type Transaction interface {
 	Type() TxType
+	From() module.Address
 	Args() []interface{}
 }
 

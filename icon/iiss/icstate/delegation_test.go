@@ -36,6 +36,80 @@ func TestDelegation(t *testing.T) {
 	assert.Equal(t, 0, d1.Amount().Cmp(d2.Amount()))
 }
 
+func TestDelegation_Equal(t *testing.T) {
+	addrs := newDummyAddresses(2)
+	values := []*big.Int{big.NewInt(100), big.NewInt(200)}
+
+	args := []struct {
+		d0, d1 *Delegation
+		equal  bool
+	}{
+		{
+			NewDelegation(common.AddressToPtr(addrs[0]), values[0]),
+			NewDelegation(common.AddressToPtr(addrs[0]), values[0]),
+			true,
+		},
+		{ nil, nil, true},
+		{
+			NewDelegation(common.AddressToPtr(addrs[0]), values[0]),
+			nil,
+			false,
+		},
+		{
+			nil,
+			NewDelegation(common.AddressToPtr(addrs[0]), values[0]),
+			false,
+		},
+		{
+			NewDelegation(common.AddressToPtr(addrs[0]), values[0]),
+			NewDelegation(common.AddressToPtr(addrs[1]), values[0]),
+			false,
+		},
+		{
+			NewDelegation(common.AddressToPtr(addrs[0]), values[0]),
+			NewDelegation(common.AddressToPtr(addrs[0]), values[1]),
+			false,
+		},
+		{
+			NewDelegation(common.AddressToPtr(addrs[0]), values[0]),
+			NewDelegation(common.AddressToPtr(addrs[1]), values[1]),
+			false,
+		},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T){
+			assert.Equal(t, arg.equal, arg.d0.Equal(arg.d1))
+		})
+	}
+}
+
+func TestDelegation_String(t *testing.T) {
+	addr := newDummyAddress(1)
+	value := big.NewInt(100)
+	d := NewDelegation(common.AddressToPtr(addr), value)
+	exp := fmt.Sprintf("{address=%s value=%d}", addr, value)
+	assert.Equal(t, exp, d.String())
+}
+
+func TestDelegation_Format(t *testing.T) {
+	addr := newDummyAddress(1)
+	value := big.NewInt(100)
+	d := NewDelegation(common.AddressToPtr(addr), value)
+
+	actual := fmt.Sprintf("%v", d)
+	exp := fmt.Sprintf("Delegation{%s %d}", addr, value)
+	assert.Equal(t, exp, actual)
+
+	actual = fmt.Sprintf("%+v", d)
+	exp = fmt.Sprintf("Delegation{address=%s value=%d}", addr, value)
+	assert.Equal(t, exp, actual)
+
+	actual = fmt.Sprintf("%s", d)
+	assert.Equal(t, d.String(), actual)
+}
+
 func TestDelegations(t *testing.T) {
 	addr1 := "hx1"
 	addr2 := "hx2"

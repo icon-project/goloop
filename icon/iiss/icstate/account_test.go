@@ -300,6 +300,7 @@ func equalTimerJobSlice(expected []TimerJobInfo, actual []TimerJobInfo) bool {
 }
 
 func TestAccountState_ReversedExpireHeight(t *testing.T) {
+	var err error
 	slotMax := 3
 	revision := icmodule.RevisionICON2R0
 	a := &AccountState{}
@@ -311,9 +312,12 @@ func TestAccountState_ReversedExpireHeight(t *testing.T) {
 	v2 := big.NewInt(15)
 	v3 := big.NewInt(20)
 	v4 := big.NewInt(30)
-	a.IncreaseUnstake(v1, eh1, slotMax, revision)
-	a.IncreaseUnstake(v2, eh2, slotMax, revision)
-	a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	_, err = a.IncreaseUnstake(v1, eh1, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v2, eh2, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	assert.NoError(t, err)
 
 	unstakes := a.unstakes
 	// [(v1, eh1), (v3, eh3), (v2, eh2)]
@@ -324,7 +328,8 @@ func TestAccountState_ReversedExpireHeight(t *testing.T) {
 	assert.Equal(t, eh3, unstakes[1].Expire)
 	assert.Equal(t, eh2, unstakes[2].Expire)
 
-	a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	_, err = a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	assert.NoError(t, err)
 	unstakes = a.unstakes
 	// [(v1, eh1), (v3, eh3), (v2 + v4, eh2)]
 	assert.Equal(t, v1, unstakes[0].Value)
@@ -336,6 +341,7 @@ func TestAccountState_ReversedExpireHeight(t *testing.T) {
 }
 
 func TestAccountState_OverlappedExpireHeight(t *testing.T) {
+	var err error
 	slotMax := 3
 	revision := icmodule.RevisionICON2R0
 	a := &AccountState{}
@@ -347,9 +353,12 @@ func TestAccountState_OverlappedExpireHeight(t *testing.T) {
 	v2 := big.NewInt(15)
 	v3 := big.NewInt(20)
 	v4 := big.NewInt(30)
-	a.IncreaseUnstake(v1, eh1, slotMax, revision)
-	a.IncreaseUnstake(v2, eh2, slotMax, revision)
-	a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	_, err = a.IncreaseUnstake(v1, eh1, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v2, eh2, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	assert.NoError(t, err)
 
 	unstakes := a.unstakes
 	// [(v1, eh1), (v2, eh2), (v3, eh3 = eh2)]
@@ -360,7 +369,8 @@ func TestAccountState_OverlappedExpireHeight(t *testing.T) {
 	assert.Equal(t, eh2, unstakes[1].Expire)
 	assert.Equal(t, eh3, unstakes[2].Expire)
 
-	a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	_, err = a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	assert.NoError(t, err)
 	unstakes = a.unstakes
 	// [(v1, eh1), (v2, eh2), (v3 + v4, eh3 = eh2)]
 	assert.Equal(t, v1, unstakes[0].Value)
@@ -370,7 +380,8 @@ func TestAccountState_OverlappedExpireHeight(t *testing.T) {
 	assert.Equal(t, eh2, unstakes[1].Expire)
 	assert.Equal(t, eh3, unstakes[2].Expire)
 
-	a.RemoveUnstake(eh2)
+	_, err = a.RemoveUnstake(eh2)
+	assert.NoError(t, err)
 	unstakes = a.unstakes
 	// [(v1, eh1)]
 	assert.Equal(t, 1, len(unstakes))

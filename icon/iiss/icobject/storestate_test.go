@@ -27,7 +27,7 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 )
 
-func testFactory(tag Tag) (Impl, error) {
+func testFactory(_ Tag) (Impl, error) {
 	return nil, errors.New("Unsupported")
 }
 
@@ -41,8 +41,8 @@ func TestNewObjectStoreState(t *testing.T) {
 	array := containerdb.NewArrayDB(oss, key)
 
 	assert.Zero(t, array.Size())
-	array.Put("Test")
-	array.Put(1)
+	assert.NoError(t, array.Put("Test"))
+	assert.NoError(t, array.Put(1))
 
 	// check stored value.
 	assert.Equal(t, 2, array.Size())
@@ -50,7 +50,7 @@ func TestNewObjectStoreState(t *testing.T) {
 	assert.Equal(t, int64(1), array.Get(1).Int64())
 
 	ss := tree.GetSnapshot()
-	ss.Flush()
+	assert.NoError(t, ss.Flush())
 
 	// check stored value with recovered mutable
 	tree2 := trie_manager.NewMutableForObject(database, ss.Hash(), ObjectType)

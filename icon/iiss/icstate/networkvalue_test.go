@@ -304,7 +304,7 @@ func TestState_SetNetworkScore(t *testing.T) {
 	cps := common.MustNewAddressFromString("cx2")
 	err := state.SetNetworkScore("cps", cps)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	scores = state.GetNetworkScores(cc)
@@ -318,7 +318,7 @@ func TestState_SetNetworkScore(t *testing.T) {
 	scores = state.GetNetworkScores(cc)
 	assert.False(t, scores[GovernanceKey].Equal(gov))
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	scores = state.GetNetworkScores(cc)
 	assert.False(t, scores[GovernanceKey].Equal(gov))
@@ -330,7 +330,7 @@ func TestState_SetNetworkScore(t *testing.T) {
 	scores = state.GetNetworkScores(cc)
 	assert.Nil(t, scores[invalidRole])
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	scores = state.GetNetworkScores(cc)
 	assert.Nil(t, scores[invalidRole])
@@ -350,7 +350,7 @@ func TestState_SetExtraMainPRepCount(t *testing.T) {
 	newCount := int64(5)
 	err = state.SetExtraMainPRepCount(newCount)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	count = state.GetExtraMainPRepCount()
@@ -368,7 +368,7 @@ func TestState_SetUnbondingMax(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, value, state.GetUnbondingMax())
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	assert.Equal(t, value, state.GetUnbondingMax())
 
@@ -377,7 +377,7 @@ func TestState_SetUnbondingMax(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, value, state.GetUnbondingMax())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, value, state.GetUnbondingMax())
 	}
@@ -390,7 +390,7 @@ func TestState_SetValidationPenaltyCondition(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 
@@ -399,7 +399,7 @@ func TestState_SetValidationPenaltyCondition(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 	}
@@ -414,7 +414,7 @@ func TestState_SetConsistentValidationPenaltyCondition(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, value, state.GetConsistentValidationPenaltyCondition())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, value, state.GetConsistentValidationPenaltyCondition())
 	}
@@ -425,7 +425,7 @@ func TestState_SetConsistentValidationPenaltyCondition(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyCondition())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyCondition())
 	}
@@ -440,7 +440,7 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int(mask), state.GetConsistentValidationPenaltyMask())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, int(mask), state.GetConsistentValidationPenaltyMask())
 	}
@@ -451,7 +451,7 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyMask())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyMask())
 	}
@@ -515,7 +515,7 @@ func TestState_SetDelegationSlotMax(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int(slot), state.GetDelegationSlotMax())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, int(slot), state.GetDelegationSlotMax())
 	}
@@ -538,7 +538,7 @@ func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
 			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)
 			assert.Equal(t, icmodule.Rate(0), slashingRate)
 
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 			assert.Equal(t, icmodule.Rate(0), state.getNonVotePenaltySlashRate())
 			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)
@@ -557,7 +557,7 @@ func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
 			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)
 			assert.Equal(t, rate, slashingRate)
 
-			state.Flush()
+			assert.NoError(t, state.Flush())
 			state.ClearCache()
 			assert.Equal(t, rate, state.getNonVotePenaltySlashRate())
 			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)

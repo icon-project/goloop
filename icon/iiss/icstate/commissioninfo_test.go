@@ -28,7 +28,7 @@ import (
 )
 
 func TestNewCommissionInfo(t *testing.T) {
-	args := []struct{
+	args := []struct {
 		rate,
 		maxRate,
 		maxChangeRate icmodule.Rate
@@ -47,6 +47,7 @@ func TestNewCommissionInfo(t *testing.T) {
 		{2000, 10001, 100, false},
 		{0, 10000, 10001, false},
 		{5000, 4000, 10001, false},
+		{0, 1000, 1001, false},
 		{0, 10000, 0, false},
 		{500, 500, 0, true},
 	}
@@ -68,8 +69,8 @@ func TestNewCommissionInfo(t *testing.T) {
 
 func TestCommissionInfo_RLPEncodeSelf(t *testing.T) {
 	const (
-		rate = icmodule.Rate(1000)
-		maxRate = icmodule.Rate(2000)
+		rate          = icmodule.Rate(1000)
+		maxRate       = icmodule.Rate(2000)
 		maxChangeRate = icmodule.Rate(100)
 	)
 	ci, err := NewCommissionInfo(rate, maxRate, maxChangeRate)
@@ -97,8 +98,8 @@ func TestCommissionInfo_RLPEncodeSelf(t *testing.T) {
 
 func TestCommissionInfo_SetRate(t *testing.T) {
 	const (
-		Rate = icmodule.Rate(1000)
-		MaxRate = icmodule.Rate(2000)
+		Rate          = icmodule.Rate(1000)
+		MaxRate       = icmodule.Rate(2000)
 		MaxChangeRate = icmodule.Rate(100)
 	)
 	ci, err := NewCommissionInfo(Rate, MaxRate, MaxChangeRate)
@@ -110,4 +111,47 @@ func TestCommissionInfo_SetRate(t *testing.T) {
 	assert.Equal(t, rate, ci.Rate())
 	assert.Equal(t, MaxRate, ci.MaxRate())
 	assert.Equal(t, MaxChangeRate, ci.maxChangeRate)
+}
+
+func TestCommissionInfo_String(t *testing.T) {
+	const (
+		Rate          = icmodule.Rate(1000)
+		MaxRate       = icmodule.Rate(2000)
+		MaxChangeRate = icmodule.Rate(100)
+	)
+	ci, err := NewCommissionInfo(Rate, MaxRate, MaxChangeRate)
+	assert.NoError(t, err)
+
+	exp := fmt.Sprintf("CommissionInfo{rate=%d maxRate=%d maxChangeRate=%d}", Rate, MaxRate, MaxChangeRate)
+	assert.Equal(t, exp, ci.String())
+}
+
+func TestCommissionInfo_ToJSON(t *testing.T) {
+	args := []struct {
+		jso map[string]interface{}
+	}{
+		{nil},
+		{make(map[string]interface{})},
+	}
+
+	const (
+		Rate          = icmodule.Rate(1000)
+		MaxRate       = icmodule.Rate(2000)
+		MaxChangeRate = icmodule.Rate(100)
+	)
+	ci, err := NewCommissionInfo(Rate, MaxRate, MaxChangeRate)
+	assert.NoError(t, err)
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			jso := arg.jso
+			jso = ci.ToJSON(jso)
+			assert.NotNil(t, jso)
+			assert.Equal(t, 3, len(jso))
+			assert.Equal(t, Rate.NumInt64(), jso["commissionRate"].(int64))
+			assert.Equal(t, MaxRate.NumInt64(), jso["maxCommissionRate"].(int64))
+			assert.Equal(t, MaxChangeRate.NumInt64(), jso["maxCommissionChangeRate"].(int64))
+		})
+	}
 }

@@ -18,7 +18,7 @@ func newDummyState(readonly bool) *State {
 	return NewStateFromSnapshot(NewSnapshot(database, nil), readonly, log.GlobalLogger())
 }
 
-func flushAndNewState(s *State, readonly bool) *State {
+func flushAndNewState(s *State, _ bool) *State {
 	ss := s.GetSnapshot()
 	ss.Flush()
 	return NewStateFromSnapshot(NewSnapshot(ss.store.Database(), ss.Bytes()), false, nil)
