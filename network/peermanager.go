@@ -88,16 +88,11 @@ func newPeerManager(
 	onEventCb func(evt string, p *Peer),
 	onCloseCb func(p *Peer, removed bool),
 	l log.Logger) *peerManager {
-	dm := map[PeerConnectionType]*DiffSet[PeerAddress]{
-		p2pConnTypeChildren: NewDiffSet[PeerAddress](DefaultDiffMaxHold),
-		p2pConnTypeNephew:   NewDiffSet[PeerAddress](DefaultDiffMaxHold),
-		p2pConnTypeOther:    NewDiffSet[PeerAddress](DefaultDiffMaxHold),
-	}
 	pm := &peerManager{
 		mc:         mc,
 		self:       self,
 		m:          make(map[PeerConnectionType]*PeerSet),
-		dm:         dm,
+		dm:         make(map[PeerConnectionType]*DiffSet[PeerAddress]),
 		transiting: NewPeerSet(),
 		reject:     NewPeerSet(),
 		//
@@ -110,6 +105,9 @@ func newPeerManager(
 	}
 	for connType := p2pConnTypeNone; connType < p2pConnTypeReserved; connType++ {
 		pm.m[connType] = NewPeerSet()
+	}
+	for _, connType := range queryItemToConnType {
+		pm.dm[connType] = NewDiffSet[PeerAddress](DefaultDiffMaxHold)
 	}
 	return pm
 }
@@ -396,7 +394,7 @@ func (pm *peerManager) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	} else {
 		if rc != p2pConnTypeNone && !p.EqualsAttr(AttrSupportDefaultProtocols, true) {
 			rc = p2pConnTypeOther
-			pm.l.Debugln("handleP2PConnectionResponse", "not support defaultProtocols", p.ID())
+			pm.l.Debugln("handleP2PConnectionRequest", "not support defaultProtocols", p.ID())
 		}
 		switch rc {
 		case p2pConnTypeParent:

@@ -75,12 +75,7 @@ type packetCbFunc func(pkt *Packet, p *Peer)
 type closeCbFunc func(p *Peer)
 
 func newPeer(conn net.Conn, in bool, dial NetAddress, l log.Logger) *Peer {
-	conns := map[PeerConnectionType]*GenericSet[PeerAddress]{
-		p2pConnTypeChildren: NewGenericSet[PeerAddress](),
-		p2pConnTypeNephew:   NewGenericSet[PeerAddress](),
-		p2pConnTypeOther:    NewGenericSet[PeerAddress](),
-	}
-	return &Peer{
+	p := &Peer{
 		conn:        conn,
 		reader:      NewPacketReader(conn),
 		writer:      NewPacketWriter(conn),
@@ -91,11 +86,15 @@ func newPeer(conn net.Conn, in bool, dial NetAddress, l log.Logger) *Peer {
 		close:       make(chan error),
 		closeReason: make([]string, 0),
 		closeErr:    make([]error, 0),
-		conns:       conns,
+		conns:       make(map[PeerConnectionType]*GenericSet[PeerAddress]),
 		attr:        make(map[string]interface{}),
 		dial:        dial,
 		logger:      l,
 	}
+	for _, connType := range queryItemToConnType {
+		p.conns[connType] = NewGenericSet[PeerAddress]()
+	}
+	return p
 }
 
 func (p *Peer) ResetConn(conn net.Conn) {
