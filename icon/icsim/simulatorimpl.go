@@ -114,13 +114,11 @@ type simulatorImpl struct {
 	revision    module.Revision
 	stepPrice   *big.Int
 	wss         state.WorldSnapshot
-	revHandlers map[int]RevHandler
 }
 
 func (sim *simulatorImpl) init(
 	revision module.Revision, validators []module.Validator, balances map[string]*big.Int) error {
 	dbase := db.NewMapDB()
-	sim.initRevHandler()
 
 	// Initialize WorldState with ValidatorList
 	vss, err := state.ValidatorSnapshotFromSlice(dbase, validators)
