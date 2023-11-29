@@ -50,3 +50,12 @@ func checkReceipts(receipts []Receipt) bool {
 	}
 	return true
 }
+
+func CheckReceiptSuccess(receipts ...Receipt) bool {
+	for _, rcpt := range receipts {
+		if rcpt.Status() != 1 {
+			return false
+		}
+	}
+	return true
+}

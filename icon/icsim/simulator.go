@@ -47,6 +47,7 @@ const (
 	TypeRequestUnjail
 	TypeHandleDoubleSignReport
 	TypeSetPRepCountConfig
+	TypeSetRewardFundAllocation2
 )
 
 type Transaction interface {
@@ -177,6 +178,11 @@ type Simulator interface {
 	GetPRepCountConfig() (map[string]interface{}, error)
 	SetPRepCountConfig(from module.Address, counts map[string]int64) Transaction
 	GoBySetPRepCountConfig(csi module.ConsensusInfo, from module.Address, counts map[string]int64) (Receipt, error)
+
+	GetRewardFundAllocation2() *icstate.RewardFund
+	SetRewardFundAllocation2(from module.Address, values map[icstate.RFundKey]icmodule.Rate) Transaction
+	GoBySetRewardFundAllocation2(
+		csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) (Receipt, error)
 }
 
 func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) module.ConsensusInfo {

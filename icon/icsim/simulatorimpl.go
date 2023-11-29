@@ -438,6 +438,8 @@ func (sim *simulatorImpl) executeTx(cc *callContext, tx Transaction) error {
 		err = sim.handleDoubleSignReport(es, cc, tx)
 	case TypeSetPRepCountConfig:
 		err = sim.setPRepCountConfig(es, cc, tx)
+	case TypeSetRewardFundAllocation2:
+		err = sim.setRewardFundAllocation2(es, cc, tx)
 	default:
 		return errors.Errorf("Unexpected transaction: %v", tx.Type())
 	}
@@ -831,6 +833,32 @@ func (sim *simulatorImpl) setPRepCountConfig(es *iiss.ExtensionStateImpl, cc *ca
 	return es.SetPRepCountConfig(cc, counts)
 }
 
+func (sim *simulatorImpl) GetRewardFundAllocation2() *icstate.RewardFund {
+	es := sim.getReadonlyExtensionState()
+	return es.State.GetRewardFundV2()
+}
+
+func (sim *simulatorImpl) SetRewardFundAllocation2(
+	from module.Address, values map[icstate.RFundKey]icmodule.Rate) Transaction {
+	return NewTransaction(TypeSetRewardFundAllocation2, from, values)
+}
+
+func (sim *simulatorImpl) GoBySetRewardFundAllocation2(
+	csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) (Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetRewardFundAllocation2, from, values)
+}
+
+func (sim *simulatorImpl) setRewardFundAllocation2(
+	es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
+	args := tx.Args()
+	values := args[0].(map[icstate.RFundKey]icmodule.Rate)
+	rf := es.State.GetRewardFundV2()
+	if err := rf.SetAllocation(values); err != nil {
+		return err
+	}
+	return es.State.SetRewardFund(rf)
+}
+
 func NewSimulator(
 	revision module.Revision, initValidators []module.Validator, initBalances map[string]*big.Int, config *SimConfig,
 ) (Simulator, error) {
@@ -844,13 +872,4 @@ func NewSimulator(
 		return nil, err
 	}
 	return sim, nil
-}
-
-func CheckReceiptSuccess(receipts ...Receipt) bool {
-	for _, rcpt := range receipts {
-		if rcpt.Status() != 1 {
-			return false
-		}
-	}
-	return true
 }
