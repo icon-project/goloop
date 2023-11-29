@@ -98,6 +98,29 @@ func (s *GenericSet[T]) Reset(l ...T) {
 	}
 }
 
+func (s *GenericSet[T]) SetByDiff(dr DiffResult[T]) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	switch dr.Type {
+	case DiffTypePartial:
+		for _, v := range dr.Add {
+			s._add(v, true)
+		}
+		for _, v := range dr.Del {
+			s._remove(v)
+		}
+	case DiffTypeEntire:
+		s._clear()
+		for _, v := range dr.Add {
+			s._add(v, true)
+		}
+	default:
+		return
+	}
+	s.version = dr.Version
+}
+
 func (s *GenericSet[T]) Contains(v T) bool {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()

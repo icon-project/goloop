@@ -289,6 +289,12 @@ func (p *Peer) ResetConnsByNetAddresses(connType PeerConnectionType, l []NetAddr
 	p.conns[connType].Reset(tl...)
 }
 
+func (p *Peer) UpdateConns(connType PeerConnectionType, dr DiffResult[PeerAddress]) {
+	if s, ok := p.conns[connType]; ok {
+		s.SetByDiff(dr)
+	}
+}
+
 func (p *Peer) _close() (err error) {
 	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
 		if err = p.conn.Close(); err != nil {
