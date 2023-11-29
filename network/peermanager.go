@@ -4,6 +4,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -66,6 +67,7 @@ type peerManager struct {
 	mc         messageCodec
 	self       *Peer
 	m          map[PeerConnectionType]*PeerSet
+	dm         map[PeerConnectionType]*DiffSet[PeerAddress]
 	transiting *PeerSet
 	reject     *PeerSet
 	connMtx    sync.RWMutex
@@ -86,10 +88,16 @@ func newPeerManager(
 	onEventCb func(evt string, p *Peer),
 	onCloseCb func(p *Peer, removed bool),
 	l log.Logger) *peerManager {
+	dm := map[PeerConnectionType]*DiffSet[PeerAddress]{
+		p2pConnTypeChildren: NewDiffSet[PeerAddress](DefaultDiffMaxHold),
+		p2pConnTypeNephew:   NewDiffSet[PeerAddress](DefaultDiffMaxHold),
+		p2pConnTypeOther:    NewDiffSet[PeerAddress](DefaultDiffMaxHold),
+	}
 	pm := &peerManager{
 		mc:         mc,
 		self:       self,
 		m:          make(map[PeerConnectionType]*PeerSet),
+		dm:         dm,
 		transiting: NewPeerSet(),
 		reject:     NewPeerSet(),
 		//
@@ -241,7 +249,14 @@ func (pm *peerManager) _removePeer(p *Peer) bool {
 	pm.transiting.Remove(p)
 
 	if v, ok := pm.m[p.ConnType()]; ok {
-		return v.Remove(p)
+		if v.Remove(p) {
+			if ds, ok := pm.dm[p.ConnType()]; ok {
+				ds.Remove(p.PeerAddress())
+			}
+			return true
+		} else {
+			return false
+		}
 	}
 	return false
 }
@@ -312,6 +327,19 @@ func (pm *peerManager) hasNetAddress(na NetAddress) bool {
 		}
 	}
 	return false
+}
+
+func (pm *peerManager) peerAddressSetDiff(connType PeerConnectionType, version int64) (*DiffResult[PeerAddress], error) {
+	pm.connMtx.Lock()
+	defer pm.connMtx.Unlock()
+	ds, ok := pm.dm[connType]
+	if !ok {
+		return nil, errors.Errorf("not supported diff connType:%v", connType)
+	}
+	if ds.Version() < version {
+		return nil, errors.Errorf("invalid version:%v", version)
+	}
+	return ds.Diff(version), nil
 }
 
 func (pm *peerManager) onPacket(pkt *Packet, p *Peer) bool {
@@ -490,6 +518,9 @@ func (pm *peerManager) updatePeerConnectionType(p *Peer, connType PeerConnection
 		if updated = t.Add(p); !updated {
 			//unexpected failure
 			return
+		}
+		if ds, ok := pm.dm[connType]; ok {
+			ds.Add(p.PeerAddress())
 		}
 		if l == t.Len() {
 			pm.l.Debugln("updatePeerConnectionType", "complete", strPeerConnectionType[connType])
