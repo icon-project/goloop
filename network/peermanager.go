@@ -364,8 +364,12 @@ type P2PConnectionResponse struct {
 }
 
 func (pm *peerManager) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
+	pi := p2pProtoControl
+	if p.ProtocolInfos().Exists(p2pProtoControlV1) {
+		pi = p2pProtoControlV1
+	}
 	m := &P2PConnectionRequest{ConnType: connType}
-	pkt := newPacket(p2pProtoControl, p2pProtoConnReq, pm.mc.encode(m), pm.self.ID())
+	pkt := newPacket(pi, p2pProtoConnReq, pm.mc.encode(m), pm.self.ID())
 	pkt.destPeer = p.ID()
 	err := p.sendPacket(pkt)
 	if err != nil {
@@ -423,7 +427,7 @@ func (pm *peerManager) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 			}
 		}
 	}
-	rpkt := newPacket(p2pProtoControl, p2pProtoConnResp, pm.mc.encode(m), pm.self.ID())
+	rpkt := newPacket(pkt.protocol, p2pProtoConnResp, pm.mc.encode(m), pm.self.ID())
 	rpkt.destPeer = p.ID()
 	err = p.sendPacket(rpkt)
 	if err != nil {

@@ -52,12 +52,14 @@ const (
 	AttrP2PConnectionRequest    = "P2PConnectionRequest"
 	AttrP2PLegacy               = "P2PLegacy"
 	AttrSupportDefaultProtocols = "SupportDefaultProtocols"
+	AttrSRHeight                = "SeedRequestHeight"
 	DefaultQueryElementLength   = 200
+	DefaultDiffMaxHold          = 10
 )
 
 var (
 	p2pProtoControl     = module.ProtoP2P
-	p2pControlProtocols = []module.ProtocolInfo{p2pProtoControl}
+	p2pControlProtocols = []module.ProtocolInfo{p2pProtoControl, p2pProtoControlV1}
 )
 
 var (
@@ -81,10 +83,12 @@ type PeerToPeer struct {
 
 	self *Peer
 
-	rh *rttHandler
-	rr *roleResolver
-	pm *peerManager
-	as *addressSyncer
+	rh   *rttHandler
+	rr   *roleResolver
+	pm   *peerManager
+	as   *addressSyncer
+	qh   *queryHandler
+	qhv1 *queryHandlerV1
 
 	//monitor
 	mtr *metric.NetworkMetric
@@ -108,7 +112,7 @@ type messageCodec interface {
 	decode([]byte, interface{}) error
 }
 
-func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
+func newPeerToPeer(channel string, self *Peer, d *Dialer, sm *SeedManager, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
 	rr := newRoleResolver(self, l)
 	rh := newRTTHandler(l)
 	p2p := &PeerToPeer{
@@ -133,6 +137,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 	p2p.pm = newPeerManager(p2p, self, p2p.onEvent, p2p._onClose, l)
 	p2p.as = newAddressSyncer(d, p2p.pm, l)
 	p2p.qh = newQueryHandler(p2p, self, p2p.pm, rr, p2p.as, rh, l)
+	p2p.qhv1 = newQueryHandlerV1(p2p, self, p2p.pm, rr, p2p.as, rh, sm, l)
 	return p2p
 }
 
@@ -315,12 +320,20 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		p.CloseByError(ErrNotRegisteredProtocol)
 		return
 	}
-	if pkt.protocol.ID() == p2pProtoControl.ID() {
+	if pkt.protocol.ID() == module.ProtoP2P.ID() {
 		switch pkt.protocol {
 		case p2pProtoControl:
 			handled := p2p.pm.onPacket(pkt, p)
 			if !handled {
 				handled = p2p.qh.onPacket(pkt, p)
+			}
+			if !handled {
+				p.CloseByError(ErrNotRegisteredProtocol)
+			}
+		case p2pProtoControlV1:
+			handled := p2p.pm.onPacket(pkt, p)
+			if !handled {
+				handled = p2p.qhv1.onPacket(pkt, p)
 			}
 			if !handled {
 				p.CloseByError(ErrNotRegisteredProtocol)
@@ -444,7 +457,11 @@ func (p2p *PeerToPeer) NetAddress() NetAddress {
 }
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
-	p2p.qh.sendQuery(p)
+	if p.ProtocolInfos().Exists(p2pProtoControlV1) {
+		p2p.qhv1.sendQuery(p)
+	} else {
+		p2p.qh.sendQuery(p)
+	}
 }
 
 func (p2p *PeerToPeer) sendToPeers(ctx context.Context, connTypes ...PeerConnectionType) int {

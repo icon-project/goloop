@@ -45,10 +45,18 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		logger:           c.Logger().WithFields(log.Fields{log.FieldKeyModule: "NM"}),
 		mtr:              metric.NewNetworkMetric(c.MetricContext()),
 	}
+	p := &Peer{
+		id:         nt.PeerID(),
+		netAddress: NetAddress(nt.Address()),
+		role:       NewPeerRoleFlag(roles...),
+	}
+	//TODO Chain.SeedRoleAuthorizationPolicy()
+	sm := newSeedManager(c, p, module.SeedRoleAuthorizationPolicyNone, m.logger)
 	m.p2p = newPeerToPeer(
 		m.channel,
-		&Peer{id: nt.PeerID(), netAddress: NetAddress(nt.Address())},
+		p,
 		m.t.GetDialer(m.channel),
+		sm,
 		m.mtr,
 		m.logger)
 
