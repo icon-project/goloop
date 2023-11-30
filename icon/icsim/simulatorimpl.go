@@ -743,10 +743,14 @@ func (sim *simulatorImpl) GoBySetMinimumBond(
 	return sim.goByOneTransaction(csi, TypeSetMinimumBond, from, bond)
 }
 
-func (sim *simulatorImpl) setMinimumBond(es *iiss.ExtensionStateImpl, _ *callContext, tx Transaction) error {
+func (sim *simulatorImpl) setMinimumBond(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
 	args := tx.Args()
 	bond := args[0].(*big.Int)
-	return es.State.SetMinimumBond(bond)
+	if err := es.State.SetMinimumBond(bond); err != nil {
+		return err
+	}
+	iiss.EmitMinimumBondSetEvent(cc, bond)
+	return nil
 }
 
 func (sim *simulatorImpl) InitCommissionRate(

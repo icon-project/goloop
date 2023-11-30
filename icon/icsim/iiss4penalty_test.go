@@ -175,6 +175,11 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
 
+	events = rcpt.Events()
+	assert.Equal(t, 1, len(events))
+	expData := []any{minBond}
+	assert.NoError(t, events[0].Assert(state.SystemAddress, "MinimumBondSet(int)", nil, expData))
+
 	newMinBond := sim.GetMinimumBond()
 	assert.Zero(t, minBond.Cmp(newMinBond))
 
