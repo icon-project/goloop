@@ -104,17 +104,17 @@ const (
 
 	RevisionFixTransferRewardFund = Revision18
 
-	// Unused
-	// RevisionJavaPurgeEnumCache = Revision19
+	RevisionJavaPurgeEnumCache = Revision19
 
-	// Unused
-	// RevisionJavaFixMapValues = Revision20
+	RevisionJavaFixMapValues = Revision20
 
 	RevisionBTP2           = Revision21
 	RevisionBlockAccounts2 = Revision21
 
 	RevisionUpdatePRepStats = Revision22
 	RevisionBlockAccountAPI = Revision22
+
+	RevisionFixJCLSteps = Revision23
 
 	RevisionIISS4R0            = Revision24
 	RevisionChainScoreEventLog = Revision24
@@ -134,12 +134,12 @@ var toggleFlagsOnRevision = []struct {
 	{Revision13, module.LegacyFeeCharge | module.LegacyNoTimeout},
 	{Revision14, module.LegacyInputJSON | module.InputCostingWithJSON},
 	{Revision18, module.FixLostFeeByDeposit},
-	{Revision19, module.PurgeEnumCache},
-	{Revision20, module.FixMapValues},
-	{Revision21, module.MultipleFeePayers},
-	{Revision23, module.FixJCLSteps},
-	{Revision24, module.ReportConfigureEvents},
-	{Revision25, module.ReportDoubleSign},
+	{RevisionJavaPurgeEnumCache, module.PurgeEnumCache},
+	{RevisionJavaFixMapValues, module.FixMapValues},
+	{RevisionBTP2, module.MultipleFeePayers},
+	{RevisionFixJCLSteps, module.FixJCLSteps},
+	{RevisionChainScoreEventLog, module.ReportConfigureEvents},
+	{RevisionIISS4R1, module.ReportDoubleSign},
 }
 
 func init() {

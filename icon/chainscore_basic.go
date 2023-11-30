@@ -385,7 +385,7 @@ func (s *chainScore) Ex_setStepCost(costType string, cost *common.HexInt) error 
 	}
 	if _, err := contract.SetStepCost(s.cc, costType, cost.Value(), true); err != nil {
 		if scoreresult.InvalidParameterError.Equals(err) {
-			return scoreresult.IllegalFormatError.Wrapf(err, "InvalidStepType(%s)", costType)
+			return scoreresult.IllegalFormatError.AttachTo(err)
 		} else {
 			return err
 		}
