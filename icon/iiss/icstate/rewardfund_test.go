@@ -187,11 +187,14 @@ func TestRewardFund(t *testing.T) {
 
 	assert.True(t, rf.Equal(rf2))
 
-	assert.Equal(t, iprep.MulBigInt(iglobal), rf.GetAmount(KeyIprep))
-	assert.Equal(t, iwage.MulBigInt(iglobal), rf.GetAmount(KeyIwage))
-	assert.Equal(t, icps.MulBigInt(iglobal), rf.GetAmount(KeyIcps))
-	assert.Equal(t, irelay.MulBigInt(iglobal), rf.GetAmount(KeyIrelay))
-	assert.Equal(t, int64(0), rf.GetAmount("invalid").Int64())
+	assert.True(t, rf.Equal(rf2))
+	assert.Equal(t, RFVersion2, rf2.version)
+	assert.Equal(t, iglobal, rf2.IGlobal())
+	assert.Equal(t, iprep.MulBigInt(iglobal), rf2.GetAmount(KeyIprep))
+	assert.Equal(t, iwage.MulBigInt(iglobal), rf2.GetAmount(KeyIwage))
+	assert.Equal(t, icps.MulBigInt(iglobal), rf2.GetAmount(KeyIcps))
+	assert.Equal(t, irelay.MulBigInt(iglobal), rf2.GetAmount(KeyIrelay))
+	assert.Equal(t, int64(0), rf2.GetAmount("invalid").Int64())
 }
 
 func TestRewardFundFromVersion1(t *testing.T) {
@@ -508,8 +511,8 @@ func TestRewardFund_Format(t *testing.T) {
 	assert.Equal(t, exp, ret)
 
 	exp = fmt.Sprintf(
-		"RewardFund{version=%d iGlobal=%d icps=%d iprep=%d irelay=%d iwage=%d}",
-		RFVersion2, iglobal, icps, iprep, irelay, iwage)
+		"RewardFund{version=%d %s=%d %s=%d %s=%d %s=%d %s=%d}",
+		RFVersion2, KeyIglobal, iglobal, KeyIcps, icps, KeyIprep, iprep, KeyIrelay, irelay, KeyIwage, iwage)
 	assert.Equal(t, exp, fmt.Sprintf("%+v", rf))
 	assert.Equal(t, exp, fmt.Sprintf("%s", rf))
 
@@ -528,8 +531,75 @@ func TestRewardFund_Format(t *testing.T) {
 	assert.Equal(t, exp, ret)
 
 	exp = fmt.Sprintf(
-		"RewardFund{version=%d iGlobal=%d icps=%d iprep=%d iwage=%d}",
-		RFVersion2, iglobal, icps, iprep, iwage)
+		"RewardFund{version=%d %s=%d %s=%d %s=%d %s=%d}",
+		RFVersion2, KeyIglobal, iglobal, KeyIcps, icps, KeyIprep, iprep, KeyIwage, iwage)
 	assert.Equal(t, exp, fmt.Sprintf("%+v", rf))
 	assert.Equal(t, exp, fmt.Sprintf("%s", rf))
+}
+
+func TestRewardFund_GetOrderAllocationKeys(t *testing.T) {
+
+	tests := []struct {
+		allocation map[RFundKey]icmodule.Rate
+		expect     []RFundKey
+	}{
+		{
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIvoter: icmodule.Rate(4000),
+			},
+			[]RFundKey{KeyIcps, KeyIprep, KeyIrelay, KeyIvoter},
+		},
+		{
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIwage:  icmodule.Rate(4000),
+			},
+			[]RFundKey{KeyIcps, KeyIprep, KeyIrelay, KeyIwage},
+		},
+		{
+			map[RFundKey]icmodule.Rate{
+				KeyIprep: icmodule.Rate(1000),
+				KeyIcps:  icmodule.Rate(1000),
+				KeyIwage: icmodule.Rate(4000),
+			},
+			[]RFundKey{KeyIcps, KeyIprep, KeyIwage},
+		},
+		{
+			map[RFundKey]icmodule.Rate{
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIwage:  icmodule.Rate(4000),
+				KeyIvoter: icmodule.Rate(4000),
+			},
+			[]RFundKey{KeyIcps, KeyIprep, KeyIrelay, KeyIvoter, KeyIwage},
+		},
+		{
+			map[RFundKey]icmodule.Rate{
+				"newKey":  icmodule.Rate(1000),
+				KeyIprep:  icmodule.Rate(1000),
+				KeyIcps:   icmodule.Rate(1000),
+				KeyIrelay: icmodule.Rate(4000),
+				KeyIwage:  icmodule.Rate(4000),
+				KeyIvoter: icmodule.Rate(4000),
+			},
+			[]RFundKey{KeyIcps, KeyIprep, KeyIrelay, KeyIvoter, KeyIwage, "newKey"},
+		},
+	}
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			rf := &RewardFund{
+				RFVersion2,
+				big.NewInt(10),
+				tt.allocation,
+			}
+
+			assert.Equal(t, tt.expect, rf.GetOrderAllocationKeys())
+		})
+	}
 }

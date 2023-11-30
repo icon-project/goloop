@@ -280,6 +280,17 @@ def setRevision(code: int) -> None:
 |:-----|:-----|:------------------------|
 | code | int  | revision of the network |
 
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def RevisionSet(code: int) -> None:
+```
+
+| Name | Type | Description             |
+|:-----|:-----|:------------------------|
+| code | int  | revision of the network |
+
 *Revision:* 0 ~
 
 ### setStepPrice
@@ -295,6 +306,17 @@ def setStepPrice(price: int) -> None:
 | Name  | Type | Description           |
 |:------|:-----|:----------------------|
 | price | int  | price of step in loop |
+
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def StepPriceSet(price: int) -> None:
+```
+
+| Name  | Type | Description            |
+|:------|:-----|:-----------------------|
+| price | int  | price of step in loop  |
 
 *Revision:* 0 ~
 
@@ -313,6 +335,18 @@ def setStepCost(type: str, cost: int) -> None:
 | type | str  | step type. refer to `Key` of [StepCosts](#stepcosts) |
 | cost | int  | cost for step type                                   |
 
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def StepCostSet(type: str, cost: int) -> None:
+```
+
+| Name | Type | Description                                           |
+|:-----|:-----|:------------------------------------------------------|
+| type | str  | step type. refer to `Key` of [StepCosts](#stepcosts)  |
+| cost | int  | cost for step type                                    |
+
 *Revision:* 0 ~
 
 ### setMaxStepLimit
@@ -324,6 +358,18 @@ def setMaxStepLimit(contextType: str, limit: int) -> None:
 ```
 
 *Parameters:*
+
+| Name        | Type | Description                     |
+|:------------|:-----|:--------------------------------|
+| contextType | str  | context type. (invoke, query)   |
+| limit       | int  | max step limit for context type |
+
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def MaxStepLimitSet(contextType: str, limit: int) -> None:
+```
 
 | Name        | Type | Description                     |
 |:------------|:-----|:--------------------------------|
@@ -378,6 +424,18 @@ def blockScore(address: Address) -> None:
 |:--------|:--------|:---------------------|
 | address | Address | address of the SCORE |
 
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=1)
+def AccountBlockedSet(address: Address, yn: bool) -> None:
+```
+
+| Name     | Type    | Description          |
+|:---------|:--------|:---------------------|
+| address  | Address | address of the SCORE |
+| yn       | bool    | blocked or not       |
+
 *Revision:* 0 ~
 
 ### unblockScore
@@ -393,6 +451,18 @@ def unblockScore(address: Address) -> None:
 | Name    | Type    | Description          |
 |:--------|:--------|:---------------------|
 | address | Address | address of the SCORE |
+
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=1)
+def AccountBlockedSet(address: Address, yn: bool) -> None:
+```
+
+| Name     | Type     | Description           |
+|:---------|:---------|:----------------------|
+| address  | Address  | address of the SCORE  |
+| yn       | bool     | blocked or not        |
 
 *Revision:* 0 ~
 
@@ -904,7 +974,7 @@ def setDelegation(delegations: List[Vote]) -> None:
 | delegations | List\[[Vote](#vote)\] | list of delegation information |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def DelegationSet(address: Address, delegations: bytes) -> None:
@@ -936,7 +1006,7 @@ def setBond(bonds: List[Vote]) -> None:
 | bonds | List\[[Vote](#vote)\] | list of bond information |
 
 *Event Log:*
-- from revison 25
+- from revision 24
 ```python
 @eventlog(indexed=1)
 def BondSet(address: Address, bonds: bytes) -> None:
@@ -1117,6 +1187,17 @@ def setRewardFund(iglobal: int) -> None:
 |:--------|:-----|:--------------------|
 | iglobal | int  | size of reward fund |
 
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def RewardFundSet(iglobal: int) -> None:
+```
+
+| Name     | Type | Description          |
+|:---------|:-----|:---------------------|
+| iglobal  | int  | size of reward fund  |
+
 *Revision:* 13 ~
 
 ### setRewardFundAllocation
@@ -1126,7 +1207,7 @@ Updates allocation of reward fund. Governance only.
 - Sum of all allocation rates must be 100
 
 ```python
-def setRewardFundAllocation(iprep: int, icsp: int, irelay: int, ivoter: int) -> None:
+def setRewardFundAllocation(iprep: int, icps: int, irelay: int, ivoter: int) -> None:
 ```
 
 *Parameters:*
@@ -1176,6 +1257,18 @@ def setNetworkScore(role: str, address: Address) -> None:
 | role    | str             | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype)                 |
 | address | List\[Address\] | (Optional from revision 17) address of Network SCORE. Do not pass `address` to clear Network SCORE |
 
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def NetworkScoreSet(role: str, address: Address) -> None:
+```
+
+| Name    | Type     | Description                                                                        |
+|:--------|:---------|:-----------------------------------------------------------------------------------|
+| role    | str      | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype) |
+| address | Address  | address of Network SCORE.                                                          |
+
 *Revision:* 15 ~
 
 ### setRewardFundAllocation2
@@ -1191,6 +1284,18 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 | Name   | Type                              | Description                                                                                                |
 |:-------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------|
 | values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)<br>sum of values must be 10,000 |
+
+*Event Log:*
+- from revision 24
+```python
+@eventlog(indexed=0)
+def RewardFundAllocationSet(type: str, value: int) -> None:
+```
+
+| Name  | Type | Description                                                                |
+|:------|:-----|:---------------------------------------------------------------------------|
+| name  | str  | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey) |
+| value | int  | allocation value                                                           |
 
 *Revision:* 24 ~
 
@@ -1697,8 +1802,8 @@ def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
 
 | value    | revision | Description                                |
 |:---------|:---------|:-------------------------------------------|
-| "iprep"  | 13 ~     | key for P-Rep reward                       |
-| "ivoter" | 13 ~ 23  | key for Voter reward. Deprecated in IISS 4 |
-| "icps"   | 13 ~     | key for CPS reward                         |
-| "irelay" | 13 ~     | key for BTP relay reward                   |
-| "iwage"  | 23 ~     | key for P-Rep minimum wage                 |
+| "Iprep"  | 13 ~     | key for P-Rep reward                       |
+| "Ivoter" | 13 ~ 23  | key for Voter reward. Deprecated in IISS 4 |
+| "Icps"   | 13 ~     | key for CPS reward                         |
+| "Irelay" | 13 ~     | key for BTP relay reward                   |
+| "Iwage"  | 23 ~     | key for P-Rep minimum wage                 |

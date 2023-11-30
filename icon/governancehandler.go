@@ -19,7 +19,6 @@ package icon
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/icon/icmodule"
@@ -32,8 +31,8 @@ import (
 )
 
 type governanceHandler struct {
-	ch    contract.ContractHandler
-	log   *trace.Logger
+	ch  contract.ContractHandler
+	log *trace.Logger
 }
 
 func (g *governanceHandler) Prepare(ctx contract.Context) (state.WorldContext, error) {
@@ -86,7 +85,7 @@ func applyGovernanceVariablesToSystem(cc contract.CallContext, govAs, sysAs cont
 		sysRev := scoredb.NewVarDB(sysAs, state.VarRevision)
 		if sysRev.Int64() < revision.Int64() {
 			chainSCORE, _ := newChainScore(cc, govAddress, new(big.Int))
-			if err := chainSCORE.(*chainScore).Ex_setRevision(common.NewHexInt(revision.Int64())); err != nil {
+			if err := chainSCORE.(*chainScore).Ex_setRevision(revision.Int64()); err != nil {
 				return err
 			}
 		}

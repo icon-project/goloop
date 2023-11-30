@@ -291,7 +291,7 @@ func EmitDoubleSignReportedEvent(cc icmodule.CallContext, signer module.Address,
 }
 
 func EmitBondSetEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
-	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
+	if cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
@@ -301,7 +301,7 @@ func EmitBondSetEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
 }
 
 func EmitDelegationSetEvent(cc icmodule.CallContext, delegations icstate.Delegations) {
-	if cc.Revision().Value() < icmodule.RevisionVoteEventLog {
+	if cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
@@ -318,5 +318,33 @@ func EmitPRepCountConfigSetEvent(cc icmodule.CallContext, main, sub, extra int64
 			intconv.Int64ToBytes(sub),
 			intconv.Int64ToBytes(extra),
 		},
+	)
+}
+
+func EmitRewardFundSetEvent(cc icmodule.CallContext, value *big.Int) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("RewardFundSet(int)")},
+		[][]byte{intconv.BigIntToBytes(value)},
+	)
+}
+
+func EmitRewardFundAllocationSetEvent(cc icmodule.CallContext, type_ icstate.RFundKey, value icmodule.Rate) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("RewardFundAllocationSet(str,int)")},
+		[][]byte{[]byte(type_), intconv.Int64ToBytes(value.NumInt64())},
+	)
+}
+
+func EmitNetworkScoreSetEvent(cc icmodule.CallContext, role string, address module.Address) {
+	if cc.Revision().Value() < icmodule.RevisionChainScoreEventLog {
+		return
+	}
+	var addrBytes []byte
+	if address != nil {
+		addrBytes = address.Bytes()
+	}
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte("NetworkScoreSet(str,Address)")},
+		[][]byte{[]byte(role), addrBytes},
 	)
 }
