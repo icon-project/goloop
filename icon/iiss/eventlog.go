@@ -28,34 +28,35 @@ import (
 )
 
 const (
-	EventSlashingRateSet  = "SlashingRateSet(str,int)"
+	EventSlashingRateChanged       = "SlashingRateChanged(str,int)" // before RevisionIISS4R0
+	EventSlashingRateSet           = "SlashingRateSet(str,int)"
 	EventCommissionRateInitialized = "CommissionRateInitialized(Address,int,int,int)"
-	EventCommissionRateSet = "CommissionRateSet(Address,int)"
-	EventPenaltyImposed = "PenaltyImposed(Address,int,int)"
-	EventSlashed = "Slashed(Address,Address,int)"
-	EventIScoreClaimedV2 = "IScoreClaimedV2(Address,int,int)"
-	EventPRepIssued = "PRepIssued(int,int,int,int)"
-	EventICXIssued = "ICXIssued(int,int,int,int)"
-	EventTermStarted = "TermStarted(int,int,int)"
-	EventPRepRegistered = "PRepRegistered(Address)"
-	EventPRepSet = "PRepSet(Address)"
-	EventRewardFundTransferred = "RewardFundTransferred(str,Address,Address,int)"
-	EventRewardFundBurned = "RewardFundBurned(str,Address,int)"
-	EventPRepUnregistered = "PRepUnregistered(Address)"
-	EventBTPNetworkTypeActivated = "BTPNetworkTypeActivated(str,int)"
-	EventBTPNetworkOpened = "BTPNetworkOpened(int,int)"
-	EventBTPNetworkClosed = "BTPNetworkClosed(int,int)"
-	EventBTPMessage = "BTPMessage(int,int)"
-	EventGovernanceVariablesSet = "GovernanceVariablesSet(Address,int)"
-	EventMinimumBondSet = "MinimumBondSet(int)"
-	EventICXBurnedV2 = "ICXBurnedV2(Address,int,int)"
-	EventDoubleSignReported = "DoubleSignReported(Address,int,str)"
-	EventBondSet = "BondSet(Address,bytes)"
-	EventDelegationSet = "DelegationSet(Address,bytes)"
-	EventPRepCountConfigSet = "PRepCountConfigSet(int,int,int)"
-	EventRewardFundSet = "RewardFundSet(int)"
-	EventRewardFundAllocationSet = "RewardFundAllocationSet(str,int)"
-	EventNetworkScoreSet = "NetworkScoreSet(str,Address)"
+	EventCommissionRateSet         = "CommissionRateSet(Address,int)"
+	EventPenaltyImposed            = "PenaltyImposed(Address,int,int)"
+	EventSlashed                   = "Slashed(Address,Address,int)"
+	EventIScoreClaimedV2           = "IScoreClaimedV2(Address,int,int)"
+	EventPRepIssued                = "PRepIssued(int,int,int,int)"
+	EventICXIssued                 = "ICXIssued(int,int,int,int)"
+	EventTermStarted               = "TermStarted(int,int,int)"
+	EventPRepRegistered            = "PRepRegistered(Address)"
+	EventPRepSet                   = "PRepSet(Address)"
+	EventRewardFundTransferred     = "RewardFundTransferred(str,Address,Address,int)"
+	EventRewardFundBurned          = "RewardFundBurned(str,Address,int)"
+	EventPRepUnregistered          = "PRepUnregistered(Address)"
+	EventBTPNetworkTypeActivated   = "BTPNetworkTypeActivated(str,int)"
+	EventBTPNetworkOpened          = "BTPNetworkOpened(int,int)"
+	EventBTPNetworkClosed          = "BTPNetworkClosed(int,int)"
+	EventBTPMessage                = "BTPMessage(int,int)"
+	EventGovernanceVariablesSet    = "GovernanceVariablesSet(Address,int)"
+	EventMinimumBondSet            = "MinimumBondSet(int)"
+	EventICXBurnedV2               = "ICXBurnedV2(Address,int,int)"
+	EventDoubleSignReported        = "DoubleSignReported(Address,int,str)"
+	EventBondSet                   = "BondSet(Address,bytes)"
+	EventDelegationSet             = "DelegationSet(Address,bytes)"
+	EventPRepCountConfigSet        = "PRepCountConfigSet(int,int,int)"
+	EventRewardFundSet             = "RewardFundSet(int)"
+	EventRewardFundAllocationSet   = "RewardFundAllocationSet(str,int)"
+	EventNetworkScoreSet           = "NetworkScoreSet(str,Address)"
 )
 
 func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
@@ -70,7 +71,7 @@ func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.Pena
 			return
 		}
 		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
+			[][]byte{[]byte(EventSlashingRateChanged), []byte(name)},
 			[][]byte{intconv.Int64ToBytes(rate.Percent())},
 		)
 		return
@@ -180,13 +181,13 @@ func EmitICXIssuedEvent(cc icmodule.CallContext, result *IssueResultJSON, issue 
 	)
 }
 
-func EmitTermStartedEvent(cc icmodule.CallContext, term *icstate.TermSnapshot) {
+func EmitTermStartedEvent(cc icmodule.CallContext, sequence int, startHeight, endHeight int64) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte(EventTermStarted)},
 		[][]byte{
-			intconv.Int64ToBytes(int64(term.Sequence())),
-			intconv.Int64ToBytes(term.StartHeight()),
-			intconv.Int64ToBytes(term.GetEndHeight()),
+			intconv.Int64ToBytes(int64(sequence)),
+			intconv.Int64ToBytes(startHeight),
+			intconv.Int64ToBytes(endHeight),
 		},
 	)
 }

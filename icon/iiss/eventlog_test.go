@@ -17,125 +17,192 @@
 package iiss
 
 import (
-	"bytes"
+	"fmt"
 	"math/big"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
-type EventLogSignature struct {
-	name   string
-	params []string
-}
-
-func (s *EventLogSignature) Name() string {
-	return s.name
-}
-
-func (s *EventLogSignature) Param(i int) string {
-	if i < 0 || i >= len(s.params) {
-		return ""
+func getEventLog(cc *mockCallContext) *txresult.TestEventLog {
+	calls := cc.GetCalls("OnEvent")
+	if calls == nil {
+		return nil
 	}
-	return s.params[i]
-}
-
-func (s *EventLogSignature) ParamLen() int {
-	return len(s.params)
-}
-
-func (s *EventLogSignature) String() string {
-	sb := strings.Builder{}
-	sb.WriteString(s.name)
-	sb.WriteByte('(')
-	for i, param := range s.params {
-		if i > 0 {
-			sb.WriteByte(',')
-		}
-		sb.WriteString(param)
-	}
-	sb.WriteByte(')')
-	return sb.String()
-}
-
-func NewEventLogSignature(sig string) (*EventLogSignature, error) {
-	if len(sig) < 3 {
-		return nil, errors.New("NoName")
-	}
-	idx := strings.Index(sig, "(")
-	if idx <= 0 {
-		return nil, errors.New("'(' NotFound")
-	}
-	endIdx := len(sig) - 1
-	if sig[endIdx] != ')' {
-		return nil, errors.New("')' NotFound")
-	}
-
-	name := sig[:idx]
-	if !(name[0] >= 'A' && name[0] <= 'Z') {
-		return nil, errors.New("FirstCharacterIsNotUpperCase")
-	}
-
-	params := strings.Split(sig[idx+1:endIdx], ",")
-	for _, param := range params {
-		switch param {
-		case "Address":
-		case "bytes":
-		case "bool":
-		case "int":
-		case "str":
-		default:
-			return nil, errors.Errorf("UnknownParam(%s)", param)
-		}
-	}
-
-	return &EventLogSignature{
-		name:   name,
-		params: params,
-	}, nil
-}
-
-func getParams(cc *mockCallContext) (module.Address, [][]byte, [][]byte) {
-	call := cc.GetCalls("OnEvent")[0]
+	call := calls[0]
 	params := call.Params()
-	return params[0].(module.Address), params[1].([][]byte), params[2].([][]byte)
+	return &txresult.TestEventLog{
+		Address: params[0].(module.Address),
+		Indexed: params[1].([][]byte),
+		Data:    params[2].([][]byte),
+	}
 }
 
-func checkEventLogSignature(t *testing.T, scoreAddress module.Address, indexed, data [][]byte) {
-	assert.True(t, state.SystemAddress.Equal(scoreAddress))
-	sig := string(indexed[0])
-	elSig, err := NewEventLogSignature(sig)
-	assert.NoError(t, err)
-	assert.Equal(t, sig, elSig.String())
-	assert.Equal(t, len(indexed)+len(data), elSig.ParamLen()+1)
-}
-
-func TestEmitSlashingRateSetEvent(t *testing.T) {
+func TestEmitSlashingRateChanged(t *testing.T) {
 	from := newDummyAddress(1)
-	rate := icmodule.Rate(1)
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
-		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 		CallCtxOptionBlockHeight: int64(1000),
 		CallCtxOptionFrom:        from,
 	})
 
-	for _, rev := range []int{icmodule.RevisionIISS4R0 - 1, icmodule.RevisionIISS4R0} {
-		revision := icmodule.ValueToRevision(rev)
-		cc.SetRevision(revision)
-		cc.Clear()
+	type input struct {
+		rev  int
+		pt   icmodule.PenaltyType
+		rate icmodule.Rate
+	}
+	type output struct {
+		penaltyName string
+	}
+	args := []struct {
+		in  input
+		out output
+	}{
+		{
+			in: input{
+				rev:  icmodule.RevisionIISS4R0 - 1,
+				pt:   icmodule.PenaltyAccumulatedValidationFailure,
+				rate: icmodule.ToRate(10),
+			},
+			out: output{
+				penaltyName: "ConsistentValidationPenalty",
+			},
+		},
+		{
+			in: input{
+				rev:  icmodule.RevisionIISS4R0 - 1,
+				pt:   icmodule.PenaltyMissedNetworkProposalVote,
+				rate: icmodule.ToRate(1),
+			},
+			out: output{
+				penaltyName: "NonVotePenalty",
+			},
+		},
+		{
+			in: input{
+				rev:  icmodule.RevisionIISS4R0 - 1,
+				pt:   icmodule.PenaltyPRepDisqualification,
+				rate: icmodule.ToRate(100),
+			},
+			out: output{
+				penaltyName: "",
+			},
+		},
+		{
+			in: input{
+				rev:  icmodule.RevisionIISS4R0 - 1,
+				pt:   icmodule.PenaltyValidationFailure,
+				rate: icmodule.ToRate(1),
+			},
+			out: output{
+				penaltyName: "",
+			},
+		},
+		{
+			in: input{
+				rev:  icmodule.RevisionIISS4R0 - 1,
+				pt:   icmodule.PenaltyDoubleSign,
+				rate: icmodule.ToRate(10),
+			},
+			out: output{
+				penaltyName: "",
+			},
+		},
+	}
 
-		EmitSlashingRateSetEvent(cc, icmodule.PenaltyAccumulatedValidationFailure, rate)
-		scoreAddress, indexed, data := getParams(cc)
-		checkEventLogSignature(t, scoreAddress, indexed, data)
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		rev := arg.in.rev
+		cc.Clear()
+		cc.SetRevision(icmodule.ValueToRevision(rev))
+
+		t.Run(name, func(t *testing.T) {
+			EmitSlashingRateSetEvent(cc, arg.in.pt, arg.in.rate)
+
+			e := getEventLog(cc)
+			if arg.out.penaltyName == "" {
+				assert.Nil(t, e)
+				return
+			}
+
+			expIndexed := []any{
+				arg.out.penaltyName,
+			}
+			expData := []any{
+				arg.in.rate.Percent(),
+			}
+			assert.NoError(t, e.Assert(state.SystemAddress, EventSlashingRateChanged, expIndexed, expData))
+		})
+	}
+}
+
+func TestEmitSlashingRateSetEvent(t *testing.T) {
+	from := newDummyAddress(1)
+	cc := newMockCallContext(map[CallCtxOption]interface{}{
+		CallCtxOptionBlockHeight: int64(1000),
+		CallCtxOptionFrom:        from,
+	})
+
+	args := []struct {
+		rev  int
+		pt   icmodule.PenaltyType
+		rate icmodule.Rate
+	}{
+		{
+			rev:  icmodule.RevisionIISS4R0,
+			pt:   icmodule.PenaltyPRepDisqualification,
+			rate: icmodule.ToRate(100),
+		},
+		{
+			rev:  icmodule.RevisionIISS4R0,
+			pt:   icmodule.PenaltyAccumulatedValidationFailure,
+			rate: icmodule.ToRate(10),
+		},
+		{
+			rev:  icmodule.RevisionIISS4R0,
+			pt:   icmodule.PenaltyValidationFailure,
+			rate: icmodule.Rate(1),
+		},
+		{
+			rev:  icmodule.RevisionIISS4R0,
+			pt:   icmodule.PenaltyMissedNetworkProposalVote,
+			rate: icmodule.ToRate(1),
+		},
+		{
+			rev:  icmodule.RevisionIISS4R0,
+			pt:   icmodule.PenaltyDoubleSign,
+			rate: icmodule.ToRate(20),
+		},
+		{
+			rev:  icmodule.RevisionIISS4R1,
+			pt:   icmodule.PenaltyDoubleSign,
+			rate: icmodule.ToRate(12),
+		},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		cc.Clear()
+		cc.SetRevision(icmodule.ValueToRevision(arg.rev))
+
+		t.Run(name, func(t *testing.T) {
+			EmitSlashingRateSetEvent(cc, arg.pt, arg.rate)
+
+			e := getEventLog(cc)
+			expData := []any{
+				arg.pt.String(),
+				arg.rate.NumInt64(),
+			}
+			assert.NoError(t, e.Assert(state.SystemAddress, EventSlashingRateSet, nil, expData))
+		})
 	}
 }
 
@@ -150,8 +217,16 @@ func TestEmitCommissionRateInitializedEvent(t *testing.T) {
 	changeRate := icmodule.ToRate(1)
 
 	EmitCommissionRateInitializedEvent(cc, rate, maxRate, changeRate)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	e := getEventLog(cc)
+	expIndexed := []any{
+		cc.From(),
+	}
+	expData := []any{
+		rate.NumInt64(),
+		maxRate.NumInt64(),
+		changeRate.NumInt64(),
+	}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventCommissionRateInitialized, expIndexed, expData))
 }
 
 func TestEmitCommissionRateSetEvent(t *testing.T) {
@@ -164,12 +239,15 @@ func TestEmitCommissionRateSetEvent(t *testing.T) {
 	rate := icmodule.ToRate(1)
 
 	EmitCommissionRateSetEvent(cc, rate)
-	scoreAddress, indexed, data := getParams(cc)
-	// Indexed
-	checkEventLogSignature(t, scoreAddress, indexed, data)
-	assert.Zero(t, bytes.Compare(from.Bytes(), indexed[1]))
-	// Data
-	assert.Equal(t, 1, len(data))
+
+	e := getEventLog(cc)
+	expIndexed := []any{
+		cc.From(),
+	}
+	expData := []any{
+		rate.NumInt64(),
+	}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventCommissionRateSet, expIndexed, expData))
 }
 
 func TestEmitPenaltyImposedEvent(t *testing.T) {
@@ -177,13 +255,50 @@ func TestEmitPenaltyImposedEvent(t *testing.T) {
 		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 		CallCtxOptionBlockHeight: int64(1000),
 	})
-	owner := newDummyAddress(2)
-	ps := icstate.NewPRepStatus(owner)
+	args := []struct {
+		status icstate.Status
+		pt     icmodule.PenaltyType
+	}{
+		{
+			status: icstate.Disqualified,
+			pt:     icmodule.PenaltyPRepDisqualification,
+		},
+		{
+			status: icstate.Active,
+			pt:     icmodule.PenaltyAccumulatedValidationFailure,
+		},
+		{
+			status: icstate.Active,
+			pt:     icmodule.PenaltyValidationFailure,
+		},
+		{
+			status: icstate.Active,
+			pt:     icmodule.PenaltyMissedNetworkProposalVote,
+		},
+		{
+			status: icstate.Active,
+			pt:     icmodule.PenaltyDoubleSign,
+		},
+	}
 
-	EmitPenaltyImposedEvent(cc, ps, icmodule.PenaltyDoubleSign)
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		owner := newDummyAddress(i + 1)
+		ps := icstate.NewPRepStatus(owner)
+		ps.SetStatus(arg.status)
+		pt := arg.pt
 
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+		t.Run(name, func(t *testing.T) {
+			EmitPenaltyImposedEvent(cc, ps, pt)
+
+			e := getEventLog(cc)
+			expIndexed := []any{ps.Owner()}
+			expData := []any{int64(ps.Status()), int(pt)}
+			assert.NoError(t, e.Assert(state.SystemAddress, EventPenaltyImposed, expIndexed, expData))
+		})
+
+		cc.Clear()
+	}
 }
 
 func TestEmitSlashedEvent(t *testing.T) {
@@ -197,11 +312,18 @@ func TestEmitSlashedEvent(t *testing.T) {
 
 	EmitSlashedEvent(cc, owner, bonder, amount)
 
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	e := getEventLog(cc)
+	expIndexed := []any{
+		owner,
+	}
+	expData := []any{
+		bonder,
+		amount,
+	}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventSlashed, expIndexed, expData))
 }
 
-func TestEmitIScoreClaimEvent(t *testing.T) {
+func TestEmitIScoreClaimEventV2(t *testing.T) {
 	from := newDummyAddress(1)
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
 		CallCtxOptionBlockHeight: int64(1000),
@@ -210,12 +332,17 @@ func TestEmitIScoreClaimEvent(t *testing.T) {
 	icx := icutils.ToLoop(1)
 	claim := icutils.ICXToIScore(icx)
 
-	for _, rev := range []int{icmodule.RevisionIISS2 - 1, icmodule.RevisionIISS4R0} {
+	for _, rev := range []int{icmodule.RevisionIISS2, icmodule.RevisionIISS4R0} {
 		revision := icmodule.ValueToRevision(rev)
 		cc.SetRevision(revision)
+
 		EmitIScoreClaimEvent(cc, claim, icx)
-		scoreAddress, indexed, data := getParams(cc)
-		checkEventLogSignature(t, scoreAddress, indexed, data)
+
+		e := getEventLog(cc)
+		expIndexed := []any{from}
+		expData := []any{claim, icx}
+		assert.NoError(t, e.Assert(state.SystemAddress, EventIScoreClaimedV2, expIndexed, expData))
+
 		cc.Clear()
 	}
 }
@@ -234,8 +361,15 @@ func TestEmitPRepIssuedEvent(t *testing.T) {
 	}
 
 	EmitPRepIssuedEvent(cc, prep)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expData := []any{
+		prep.IRep.Value(),
+		prep.RRep.Value(),
+		prep.TotalDelegation.Value(),
+		prep.Value.Value(),
+	}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventPRepIssued, nil, expData))
 }
 
 func TestEmitICXIssuedEvent(t *testing.T) {
@@ -250,10 +384,20 @@ func TestEmitICXIssuedEvent(t *testing.T) {
 		Issue:           common.NewHexInt(1000),
 	}
 	issue := icstate.NewIssue()
+	icx := big.NewInt(1234)
+	issue.SetOverIssuedIScore(icutils.ICXToIScore(icx))
 
 	EmitICXIssuedEvent(cc, result, issue)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expData := []any{
+		result.ByFee.Value(),
+		result.ByOverIssuedICX.Value(),
+		result.Issue.Value(),
+		icx,
+	}
+
+	assert.NoError(t, e.Assert(state.SystemAddress, EventICXIssued, nil, expData))
 }
 
 func TestEmitTermStartedEvent(t *testing.T) {
@@ -261,11 +405,15 @@ func TestEmitTermStartedEvent(t *testing.T) {
 		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 		CallCtxOptionBlockHeight: int64(1000),
 	})
-	term := &icstate.TermSnapshot{}
+	sequence := 10
+	startHeight := int64(1000)
+	endHeight := startHeight + icmodule.DefaultTermPeriod - 1
 
-	EmitTermStartedEvent(cc, term)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitTermStartedEvent(cc, sequence, startHeight, endHeight)
+
+	e := getEventLog(cc)
+	expData := []any{sequence, startHeight, endHeight}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventTermStarted, nil, expData))
 }
 
 func TestEmitPRepRegisteredEvent(t *testing.T) {
@@ -277,8 +425,10 @@ func TestEmitPRepRegisteredEvent(t *testing.T) {
 	})
 
 	EmitPRepRegisteredEvent(cc)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expData := []any{cc.From()}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventPRepRegistered, nil, expData))
 }
 
 func TestEmitPRepSetEvent(t *testing.T) {
@@ -290,8 +440,10 @@ func TestEmitPRepSetEvent(t *testing.T) {
 	})
 
 	EmitPRepSetEvent(cc)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expData := []any{cc.From()}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventPRepSet, nil, expData))
 }
 
 func TestEmitRewardFundTransferredEvent(t *testing.T) {
@@ -305,8 +457,10 @@ func TestEmitRewardFundTransferredEvent(t *testing.T) {
 	amount := icutils.ToLoop(1)
 
 	EmitRewardFundTransferredEvent(cc, icstate.CPSKey, from, to, amount)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expData := []any{icstate.CPSKey, from, to, amount}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventRewardFundTransferred, nil, expData))
 }
 
 func TestEmitRewardFundBurnedEvent(t *testing.T) {
@@ -316,11 +470,14 @@ func TestEmitRewardFundBurnedEvent(t *testing.T) {
 		CallCtxOptionBlockHeight: int64(1000),
 		CallCtxOptionFrom:        from,
 	})
+	key := icstate.RelayKey
 	amount := icutils.ToLoop(1)
 
-	EmitRewardFundBurnedEvent(cc, icstate.RelayKey, from, amount)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitRewardFundBurnedEvent(cc, key, from, amount)
+
+	e := getEventLog(cc)
+	expData := []any{key, from, amount}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventRewardFundBurned, nil, expData))
 }
 
 func TestEmitPRepUnregisteredEvent(t *testing.T) {
@@ -332,8 +489,10 @@ func TestEmitPRepUnregisteredEvent(t *testing.T) {
 	})
 
 	EmitPRepUnregisteredEvent(cc)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expData := []any{cc.From()}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventPRepUnregistered, nil, expData))
 }
 
 func TestEmitBTPNetworkTypeActivatedEvent(t *testing.T) {
@@ -341,10 +500,14 @@ func TestEmitBTPNetworkTypeActivatedEvent(t *testing.T) {
 		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 		CallCtxOptionBlockHeight: int64(1000),
 	})
+	networkTypeName := "icon"
+	ntid := int64(7)
 
-	EmitBTPNetworkTypeActivatedEvent(cc, "icon", 7)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitBTPNetworkTypeActivatedEvent(cc, networkTypeName, ntid)
+
+	e := getEventLog(cc)
+	expIndexed := []any{networkTypeName, ntid}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventBTPNetworkTypeActivated, expIndexed, nil))
 }
 
 func TestEmitBTPNetworkOpenedEvent(t *testing.T) {
@@ -352,10 +515,14 @@ func TestEmitBTPNetworkOpenedEvent(t *testing.T) {
 		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 		CallCtxOptionBlockHeight: int64(1000),
 	})
+	ntid := int64(7)
+	nid := int64(1)
 
-	EmitBTPNetworkOpenedEvent(cc, 7, 1)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitBTPNetworkOpenedEvent(cc, ntid, nid)
+
+	e := getEventLog(cc)
+	expIndexed := []any{ntid, nid}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventBTPNetworkOpened, expIndexed, nil))
 }
 
 func TestEmitBTPNetworkClosedEvent(t *testing.T) {
@@ -363,10 +530,14 @@ func TestEmitBTPNetworkClosedEvent(t *testing.T) {
 		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 		CallCtxOptionBlockHeight: int64(1000),
 	})
+	ntid := int64(7)
+	nid := int64(1)
 
-	EmitBTPNetworkClosedEvent(cc, 7, 1)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitBTPNetworkClosedEvent(cc, ntid, nid)
+
+	e := getEventLog(cc)
+	expIndexed := []any{ntid, nid}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventBTPNetworkClosed, expIndexed, nil))
 }
 
 func TestEmitBTPMessageEvent(t *testing.T) {
@@ -374,10 +545,14 @@ func TestEmitBTPMessageEvent(t *testing.T) {
 		CallCtxOptionRevision:    icmodule.ValueToRevision(icmodule.RevisionIISS4R0),
 		CallCtxOptionBlockHeight: int64(1000),
 	})
+	nid := int64(7)
+	sn := int64(100)
 
-	EmitBTPMessageEvent(cc, 7, 100)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitBTPMessageEvent(cc, nid, sn)
+
+	e := getEventLog(cc)
+	expIndexed := []any{nid, sn}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventBTPMessage, expIndexed, nil))
 }
 
 func TestEmitGovernanceVariablesSetEvent(t *testing.T) {
@@ -390,8 +565,11 @@ func TestEmitGovernanceVariablesSetEvent(t *testing.T) {
 	irep := icutils.ToLoop(100)
 
 	EmitGovernanceVariablesSetEvent(cc, irep)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expIndexed := []any{cc.From()}
+	expData := []any{irep}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventGovernanceVariablesSet, expIndexed, expData))
 }
 
 func TestEmitMinimumBondSetEvent(t *testing.T) {
@@ -404,8 +582,10 @@ func TestEmitMinimumBondSetEvent(t *testing.T) {
 	bond := icutils.ToLoop(10_000)
 
 	EmitMinimumBondSetEvent(cc, bond)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expData := []any{bond}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventMinimumBondSet, nil, expData))
 }
 
 func TestEmitICXBurnedEvent(t *testing.T) {
@@ -418,12 +598,17 @@ func TestEmitICXBurnedEvent(t *testing.T) {
 	amount := icutils.ToLoop(1)
 	ts := icutils.ToLoop(100)
 
-	for _, rev := range []int{icmodule.RevisionFixBurnEventSignature, icmodule.RevisionIISS4R0} {
+	for _, rev := range []int{icmodule.RevisionBurnV2, icmodule.RevisionIISS4R0} {
 		revision := icmodule.ValueToRevision(rev)
 		cc.SetRevision(revision)
+
 		EmitICXBurnedEvent(cc, from, amount, ts)
-		scoreAddress, indexed, data := getParams(cc)
-		checkEventLogSignature(t, scoreAddress, indexed, data)
+
+		e := getEventLog(cc)
+		expIndexed := []any{from}
+		expData := []any{amount, ts}
+		assert.NoError(t, e.Assert(state.SystemAddress, EventICXBurnedV2, expIndexed, expData))
+
 		cc.Clear()
 	}
 }
@@ -436,10 +621,15 @@ func TestEmitDoubleSignReportedEvent(t *testing.T) {
 		CallCtxOptionFrom:        from,
 	})
 	signer := newDummyAddress(100)
+	dsBlockHeight := int64(700)
+	dsType := module.DSTProposal
 
-	EmitDoubleSignReportedEvent(cc, signer, int64(700), module.DSTProposal)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitDoubleSignReportedEvent(cc, signer, dsBlockHeight, dsType)
+
+	e := getEventLog(cc)
+	expIndexed := []any{signer}
+	expData := []any{dsBlockHeight, dsType}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventDoubleSignReported, expIndexed, expData))
 }
 
 func TestEmitBondSetEvent(t *testing.T) {
@@ -457,8 +647,11 @@ func TestEmitBondSetEvent(t *testing.T) {
 	}
 
 	EmitBondSetEvent(cc, bonds)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expIndexed := []any{cc.From()}
+	expData := []any{codec.BC.MustMarshalToBytes(bonds)}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventBondSet, expIndexed, expData))
 }
 
 func TestEmitDelegationSetEvent(t *testing.T) {
@@ -476,8 +669,11 @@ func TestEmitDelegationSetEvent(t *testing.T) {
 	}
 
 	EmitDelegationSetEvent(cc, ds)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+
+	e := getEventLog(cc)
+	expIndexed := []any{cc.From()}
+	expData := []any{codec.BC.MustMarshalToBytes(ds)}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventDelegationSet, expIndexed, expData))
 }
 
 func TestEmitPRepCountConfigSetEvent(t *testing.T) {
@@ -487,38 +683,54 @@ func TestEmitPRepCountConfigSetEvent(t *testing.T) {
 		CallCtxOptionBlockHeight: int64(1000),
 		CallCtxOptionFrom:        from,
 	})
+	main := int64(22)
+	sub := int64(78)
+	extra := int64(3)
 
-	EmitPRepCountConfigSetEvent(cc, 22, 78, 3)
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitPRepCountConfigSetEvent(cc, main, sub, extra)
+
+	e := getEventLog(cc)
+	expData := []any{main, sub, extra}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventPRepCountConfigSet, nil, expData))
 }
 
 func TestEmitRewardFundSetEvent(t *testing.T) {
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
 		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
 	})
+	value := big.NewInt(1000)
 
-	EmitRewardFundSetEvent(cc, big.NewInt(1000))
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitRewardFundSetEvent(cc, value)
+
+	e := getEventLog(cc)
+	expData := []any{value}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventRewardFundSet, nil, expData))
 }
 
 func TestEmitRewardFundAllocationSetEvent(t *testing.T) {
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
 		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
 	})
+	key := icstate.KeyIvoter
+	rate := icmodule.Rate(1000)
 
-	EmitRewardFundAllocationSetEvent(cc, icstate.KeyIvoter, icmodule.Rate(1000))
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitRewardFundAllocationSetEvent(cc, key, rate)
+
+	e := getEventLog(cc)
+	expData := []any{string(key), rate.NumInt64()}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventRewardFundAllocationSet, nil, expData))
 }
 
 func TestEmitNetworkScoreSetEvent(t *testing.T) {
 	cc := newMockCallContext(map[CallCtxOption]interface{}{
 		CallCtxOptionRevision: icmodule.ValueToRevision(icmodule.RevisionIISS4R1),
 	})
+	key := icstate.CPSKey
+	addr := common.MustNewAddressFromString("cx123")
 
-	EmitNetworkScoreSetEvent(cc, icstate.CPSKey, common.MustNewAddressFromString("cx123"))
-	scoreAddress, indexed, data := getParams(cc)
-	checkEventLogSignature(t, scoreAddress, indexed, data)
+	EmitNetworkScoreSetEvent(cc, icstate.CPSKey, addr)
+
+	e := getEventLog(cc)
+	expData := []any{key, addr}
+	assert.NoError(t, e.Assert(state.SystemAddress, EventNetworkScoreSet, nil, expData))
 }

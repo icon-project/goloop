@@ -298,7 +298,7 @@ func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byt
 
 	term := es.State.GetTermSnapshot()
 	if cc.BlockHeight() == term.StartHeight() {
-		EmitTermStartedEvent(cc, term)
+		EmitTermStartedEvent(cc, term.Sequence(), term.StartHeight(), term.GetEndHeight())
 	}
 	return nil
 }
