@@ -2030,3 +2030,22 @@ func (es *ExtensionStateImpl) GetPRepCountConfig() (map[string]interface{}, erro
 		icstate.PRepCountExtra.String(): es.State.GetExtraMainPRepCount(),
 	}, nil
 }
+
+func (es *ExtensionStateImpl) SetMinimumBond(cc icmodule.CallContext, nBond *big.Int) error {
+	if nBond.Sign() < 0 {
+		return scoreresult.InvalidParameterError.New("NegativeMinimumBond")
+	}
+	oBond := es.State.GetMinimumBond()
+	if oBond.Cmp(nBond) == 0 {
+		return nil
+	}
+	if err := es.State.SetMinimumBond(nBond); err != nil {
+		return scoreresult.InvalidParameterError.Wrapf(
+			err,
+			"Failed to set minimum bond: bond=%d",
+			nBond,
+		)
+	}
+	EmitMinimumBondSetEvent(cc, nBond)
+	return nil
+}
