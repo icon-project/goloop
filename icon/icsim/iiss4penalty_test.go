@@ -17,11 +17,11 @@
 package icsim
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -76,15 +76,24 @@ func TestSimulatorImpl_SetSlashingRate(t *testing.T) {
 
 	// Check eventLogs for slashingRate
 	// There is no eventLog for ValidationFailurePenalty, as its rate is not changed
+	m := make(map[string]bool)
 	events := receipts[0].Events()
 	assert.Equal(t, 4, len(events))
 	for _, e := range events {
-		assert.True(t, e.From().Equal(state.SystemAddress))
-		assert.Equal(t, e.Signature(), "SlashingRateSet(str,int)")
-		assert.Equal(t, 1, len(e.Indexed()))
-		assert.Equal(t, 2, len(e.Data()))
-		penaltyName := string(e.Data()[0])
-		rate := icmodule.Rate(intconv.BytesToInt64(e.Data()[1]))
+		signature, indexed, data, err := e.DecodeParams()
+		assert.NoError(t, err)
+
+		assert.True(t, e.Address.Equal(state.SystemAddress))
+		assert.Equal(t, signature, "SlashingRateSet(str,int)")
+		assert.Zero(t, len(indexed))
+		assert.Equal(t, 2, len(data))
+
+		// duplicate eventLog check
+		penaltyName := data[0].(string)
+		assert.False(t, m[penaltyName])
+		m[penaltyName] = true
+
+		rate := icmodule.Rate(data[1].(*big.Int).Int64())
 		assert.Equal(t, expRates[penaltyName], rate)
 	}
 }
@@ -144,12 +153,16 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	events := receipts[0].Events()
 	assert.Equal(t, 4, len(events))
 	for _, e := range events {
-		assert.True(t, e.From().Equal(state.SystemAddress))
-		assert.Equal(t, e.Signature(), "SlashingRateSet(str,int)")
-		assert.Equal(t, 1, len(e.Indexed()))
-		assert.Equal(t, 2, len(e.Data()))
-		penaltyName := string(e.Data()[0])
-		rate := icmodule.Rate(intconv.BytesToInt64(e.Data()[1]))
+		signature, indexed, data, err := e.DecodeParams()
+		assert.NoError(t, err)
+
+		assert.True(t, e.Address.Equal(state.SystemAddress))
+		assert.Equal(t, signature, "SlashingRateSet(str,int)")
+		assert.Zero(t, len(indexed))
+		assert.Equal(t, 2, len(data))
+
+		penaltyName := data[0].(string)
+		rate := icmodule.Rate(data[1].(*big.Int).Int64())
 		assert.Equal(t, expRates[penaltyName], rate)
 	}
 

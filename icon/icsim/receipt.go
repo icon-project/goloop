@@ -16,6 +16,10 @@
 
 package icsim
 
+import (
+	"github.com/icon-project/goloop/service/txresult"
+)
+
 const (
 	Failure = 0
 	Success = 1
@@ -25,14 +29,14 @@ type Receipt interface {
 	BlockHeight() int64
 	Status() int
 	Error() error
-	Events() []*Event
+	Events() []*txresult.TestEventLog
 }
 
 type receipt struct {
 	blockHeight int64
-	status int
-	err error
-	events []*Event
+	status      int
+	err         error
+	events      []*txresult.TestEventLog
 }
 
 func (r *receipt) BlockHeight() int64 {
@@ -47,19 +51,19 @@ func (r *receipt) Error() error {
 	return r.err
 }
 
-func (r *receipt) Events() []*Event{
+func (r *receipt) Events() []*txresult.TestEventLog {
 	return r.events
 }
 
-func NewReceipt(blockHeight int64, err error, events []*Event) Receipt {
+func NewReceipt(blockHeight int64, err error, events []*txresult.TestEventLog) Receipt {
 	status := Success
 	if err != nil {
 		status = Failure
 	}
 	return &receipt{
 		blockHeight: blockHeight,
-		status: status,
-		err: err,
-		events: events,
+		status:      status,
+		err:         err,
+		events:      events,
 	}
 }
