@@ -925,22 +925,7 @@ func (s *chainScore) Ex_setMinimumBond(nBond *big.Int) error {
 	if err != nil {
 		return err
 	}
-	if nBond.Sign() < 0 {
-		return scoreresult.InvalidParameterError.New("NegativeMinimumBond")
-	}
-	oBond := es.State.GetMinimumBond()
-	if oBond.Cmp(nBond) == 0 {
-		return nil
-	}
-	if err = es.State.SetMinimumBond(nBond); err != nil {
-		return scoreresult.InvalidParameterError.Wrapf(
-			err,
-			"Failed to set minimum bond: bond=%d",
-			nBond,
-		)
-	}
-	iiss.EmitMinimumBondSetEvent(s.newCallContext(s.cc), nBond)
-	return nil
+	return es.SetMinimumBond(s.newCallContext(s.cc), nBond)
 }
 
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
