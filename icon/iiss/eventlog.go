@@ -27,6 +27,37 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
+const (
+	EventSlashingRateSet  = "SlashingRateSet(str,int)"
+	EventCommissionRateInitialized = "CommissionRateInitialized(Address,int,int,int)"
+	EventCommissionRateSet = "CommissionRateSet(Address,int)"
+	EventPenaltyImposed = "PenaltyImposed(Address,int,int)"
+	EventSlashed = "Slashed(Address,Address,int)"
+	EventIScoreClaimedV2 = "IScoreClaimedV2(Address,int,int)"
+	EventPRepIssued = "PRepIssued(int,int,int,int)"
+	EventICXIssued = "ICXIssued(int,int,int,int)"
+	EventTermStarted = "TermStarted(int,int,int)"
+	EventPRepRegistered = "PRepRegistered(Address)"
+	EventPRepSet = "PRepSet(Address)"
+	EventRewardFundTransferred = "RewardFundTransferred(str,Address,Address,int)"
+	EventRewardFundBurned = "RewardFundBurned(str,Address,int)"
+	EventPRepUnregistered = "PRepUnregistered(Address)"
+	EventBTPNetworkTypeActivated = "BTPNetworkTypeActivated(str,int)"
+	EventBTPNetworkOpened = "BTPNetworkOpened(int,int)"
+	EventBTPNetworkClosed = "BTPNetworkClosed(int,int)"
+	EventBTPMessage = "BTPMessage(int,int)"
+	EventGovernanceVariablesSet = "GovernanceVariablesSet(Address,int)"
+	EventMinimumBondSet = "MinimumBondSet(int)"
+	EventICXBurnedV2 = "ICXBurnedV2(Address,int,int)"
+	EventDoubleSignReported = "DoubleSignReported(Address,int,str)"
+	EventBondSet = "BondSet(Address,bytes)"
+	EventDelegationSet = "DelegationSet(Address,bytes)"
+	EventPRepCountConfigSet = "PRepCountConfigSet(int,int,int)"
+	EventRewardFundSet = "RewardFundSet(int)"
+	EventRewardFundAllocationSet = "RewardFundAllocationSet(str,int)"
+	EventNetworkScoreSet = "NetworkScoreSet(str,Address)"
+)
+
 func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
 	if cc.Revision().Value() < icmodule.RevisionIISS4R0 {
 		var name string
@@ -46,7 +77,7 @@ func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.Pena
 	}
 
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateSet(str,int)")},
+		[][]byte{[]byte(EventSlashingRateSet)},
 		[][]byte{
 			[]byte(penaltyType.String()),
 			intconv.Int64ToBytes(rate.NumInt64()),
@@ -57,7 +88,7 @@ func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.Pena
 func EmitCommissionRateInitializedEvent(
 	cc icmodule.CallContext, rate, maxRate, maxChangeRate icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("CommissionRateInitialized(Address,int,int,int)"), cc.From().Bytes()},
+		[][]byte{[]byte(EventCommissionRateInitialized), cc.From().Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(rate.NumInt64()),
 			intconv.Int64ToBytes(maxRate.NumInt64()),
@@ -69,7 +100,7 @@ func EmitCommissionRateInitializedEvent(
 func EmitCommissionRateSetEvent(
 	cc icmodule.CallContext, rate icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("CommissionRateSet(Address,int)"), cc.From().Bytes()},
+		[][]byte{[]byte(EventCommissionRateSet), cc.From().Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(rate.NumInt64()),
 		},
@@ -78,7 +109,7 @@ func EmitCommissionRateSetEvent(
 
 func EmitPenaltyImposedEvent(cc icmodule.CallContext, ps *icstate.PRepStatusState, pt icmodule.PenaltyType) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), ps.Owner().Bytes()},
+		[][]byte{[]byte(EventPenaltyImposed), ps.Owner().Bytes()},
 		[][]byte{
 			intconv.Int64ToBytes(int64(ps.Status())),
 			intconv.Int64ToBytes(int64(pt)),
@@ -92,7 +123,7 @@ func EmitSlashedEvent(cc icmodule.CallContext, owner, bonder module.Address, amo
 	}
 	cc.OnEvent(
 		state.SystemAddress,
-		[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
+		[][]byte{[]byte(EventSlashed), owner.Bytes()},
 		[][]byte{bonder.Bytes(), intconv.BigIntToBytes(amount)},
 	)
 }
@@ -112,7 +143,7 @@ func EmitIScoreClaimEvent(cc icmodule.CallContext, claim, icx *big.Int) {
 	} else {
 		cc.OnEvent(state.SystemAddress,
 			[][]byte{
-				[]byte("IScoreClaimedV2(Address,int,int)"),
+				[]byte(EventIScoreClaimedV2),
 				cc.From().Bytes(),
 			},
 			[][]byte{
@@ -126,7 +157,7 @@ func EmitIScoreClaimEvent(cc icmodule.CallContext, claim, icx *big.Int) {
 func EmitPRepIssuedEvent(cc icmodule.CallContext, prep *IssuePRepJSON) {
 	if prep != nil {
 		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("PRepIssued(int,int,int,int)")},
+			[][]byte{[]byte(EventPRepIssued)},
 			[][]byte{
 				intconv.BigIntToBytes(prep.GetIRep()),
 				intconv.BigIntToBytes(prep.GetRRep()),
@@ -139,7 +170,7 @@ func EmitPRepIssuedEvent(cc icmodule.CallContext, prep *IssuePRepJSON) {
 
 func EmitICXIssuedEvent(cc icmodule.CallContext, result *IssueResultJSON, issue *icstate.Issue) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("ICXIssued(int,int,int,int)")},
+		[][]byte{[]byte(EventICXIssued)},
 		[][]byte{
 			intconv.BigIntToBytes(result.GetByFee()),
 			intconv.BigIntToBytes(result.GetByOverIssuedICX()),
@@ -151,7 +182,7 @@ func EmitICXIssuedEvent(cc icmodule.CallContext, result *IssueResultJSON, issue 
 
 func EmitTermStartedEvent(cc icmodule.CallContext, term *icstate.TermSnapshot) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("TermStarted(int,int,int)")},
+		[][]byte{[]byte(EventTermStarted)},
 		[][]byte{
 			intconv.Int64ToBytes(int64(term.Sequence())),
 			intconv.Int64ToBytes(term.StartHeight()),
@@ -162,21 +193,21 @@ func EmitTermStartedEvent(cc icmodule.CallContext, term *icstate.TermSnapshot) {
 
 func EmitPRepRegisteredEvent(cc icmodule.CallContext) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepRegistered(Address)")},
+		[][]byte{[]byte(EventPRepRegistered)},
 		[][]byte{cc.From().Bytes()},
 	)
 }
 
 func EmitPRepSetEvent(cc icmodule.CallContext) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepSet(Address)")},
+		[][]byte{[]byte(EventPRepSet)},
 		[][]byte{cc.From().Bytes()},
 	)
 }
 
 func EmitRewardFundTransferredEvent(cc icmodule.CallContext, key string, from, to module.Address, amount *big.Int) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("RewardFundTransferred(str,Address,Address,int)")},
+		[][]byte{[]byte(EventRewardFundTransferred)},
 		[][]byte{
 			[]byte(key),
 			from.Bytes(),
@@ -188,7 +219,7 @@ func EmitRewardFundTransferredEvent(cc icmodule.CallContext, key string, from, t
 
 func EmitRewardFundBurnedEvent(cc icmodule.CallContext, key string, from module.Address, amount *big.Int) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("RewardFundBurned(str,Address,int)")},
+		[][]byte{[]byte(EventRewardFundBurned)},
 		[][]byte{
 			[]byte(key),
 			from.Bytes(),
@@ -199,7 +230,7 @@ func EmitRewardFundBurnedEvent(cc icmodule.CallContext, key string, from module.
 
 func EmitPRepUnregisteredEvent(cc icmodule.CallContext) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepUnregistered(Address)")},
+		[][]byte{[]byte(EventPRepUnregistered)},
 		[][]byte{cc.From().Bytes()},
 	)
 }
@@ -207,7 +238,7 @@ func EmitPRepUnregisteredEvent(cc icmodule.CallContext) {
 func EmitBTPNetworkTypeActivatedEvent(cc icmodule.CallContext, networkTypeName string, ntid int64) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{
-			[]byte("BTPNetworkTypeActivated(str,int)"),
+			[]byte(EventBTPNetworkTypeActivated),
 			[]byte(networkTypeName),
 			intconv.Int64ToBytes(ntid),
 		},
@@ -218,7 +249,7 @@ func EmitBTPNetworkTypeActivatedEvent(cc icmodule.CallContext, networkTypeName s
 func EmitBTPNetworkOpenedEvent(cc icmodule.CallContext, ntid, nid int64) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{
-			[]byte("BTPNetworkOpened(int,int)"),
+			[]byte(EventBTPNetworkOpened),
 			intconv.Int64ToBytes(ntid),
 			intconv.Int64ToBytes(nid),
 		},
@@ -229,7 +260,7 @@ func EmitBTPNetworkOpenedEvent(cc icmodule.CallContext, ntid, nid int64) {
 func EmitBTPNetworkClosedEvent(cc icmodule.CallContext, ntid, nid int64) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{
-			[]byte("BTPNetworkClosed(int,int)"),
+			[]byte(EventBTPNetworkClosed),
 			intconv.Int64ToBytes(ntid),
 			intconv.Int64ToBytes(nid),
 		},
@@ -240,7 +271,7 @@ func EmitBTPNetworkClosedEvent(cc icmodule.CallContext, ntid, nid int64) {
 func EmitBTPMessageEvent(cc icmodule.CallContext, nid, sn int64) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{
-			[]byte("BTPMessage(int,int)"),
+			[]byte(EventBTPMessage),
 			intconv.Int64ToBytes(nid),
 			intconv.Int64ToBytes(sn),
 		},
@@ -250,14 +281,14 @@ func EmitBTPMessageEvent(cc icmodule.CallContext, nid, sn int64) {
 
 func EmitGovernanceVariablesSetEvent(cc icmodule.CallContext, irep *big.Int) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), cc.From().Bytes()},
+		[][]byte{[]byte(EventGovernanceVariablesSet), cc.From().Bytes()},
 		[][]byte{intconv.BigIntToBytes(irep)},
 	)
 }
 
 func EmitMinimumBondSetEvent(cc icmodule.CallContext, bond *big.Int) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("MinimumBondSet(int)")},
+		[][]byte{[]byte(EventMinimumBondSet)},
 		[][]byte{intconv.BigIntToBytes(bond)},
 	)
 }
@@ -277,7 +308,7 @@ func EmitICXBurnedEvent(cc icmodule.CallContext, from module.Address, amount, ts
 		)
 	} else {
 		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), from.Bytes()},
+			[][]byte{[]byte(EventICXBurnedV2), from.Bytes()},
 			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
 		)
 	}
@@ -285,7 +316,7 @@ func EmitICXBurnedEvent(cc icmodule.CallContext, from module.Address, amount, ts
 
 func EmitDoubleSignReportedEvent(cc icmodule.CallContext, signer module.Address, dsBlockHeight int64, dsType string) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("DoubleSignReported(Address,int,str)"), signer.Bytes()},
+		[][]byte{[]byte(EventDoubleSignReported), signer.Bytes()},
 		[][]byte{intconv.Int64ToBytes(dsBlockHeight), []byte(dsType)},
 	)
 }
@@ -295,7 +326,7 @@ func EmitBondSetEvent(cc icmodule.CallContext, bonds icstate.Bonds) {
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("BondSet(Address,bytes)"), cc.From().Bytes()},
+		[][]byte{[]byte(EventBondSet), cc.From().Bytes()},
 		[][]byte{codec.BC.MustMarshalToBytes(bonds)},
 	)
 }
@@ -305,14 +336,14 @@ func EmitDelegationSetEvent(cc icmodule.CallContext, delegations icstate.Delegat
 		return
 	}
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("DelegationSet(Address,bytes)"), cc.From().Bytes()},
+		[][]byte{[]byte(EventDelegationSet), cc.From().Bytes()},
 		[][]byte{codec.BC.MustMarshalToBytes(delegations)},
 	)
 }
 
 func EmitPRepCountConfigSetEvent(cc icmodule.CallContext, main, sub, extra int64) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PRepCountConfigSet(int,int,int)")},
+		[][]byte{[]byte(EventPRepCountConfigSet)},
 		[][]byte{
 			intconv.Int64ToBytes(main),
 			intconv.Int64ToBytes(sub),
@@ -323,14 +354,14 @@ func EmitPRepCountConfigSetEvent(cc icmodule.CallContext, main, sub, extra int64
 
 func EmitRewardFundSetEvent(cc icmodule.CallContext, value *big.Int) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("RewardFundSet(int)")},
+		[][]byte{[]byte(EventRewardFundSet)},
 		[][]byte{intconv.BigIntToBytes(value)},
 	)
 }
 
 func EmitRewardFundAllocationSetEvent(cc icmodule.CallContext, type_ icstate.RFundKey, value icmodule.Rate) {
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("RewardFundAllocationSet(str,int)")},
+		[][]byte{[]byte(EventRewardFundAllocationSet)},
 		[][]byte{[]byte(type_), intconv.Int64ToBytes(value.NumInt64())},
 	)
 }
@@ -344,7 +375,7 @@ func EmitNetworkScoreSetEvent(cc icmodule.CallContext, role string, address modu
 		addrBytes = address.Bytes()
 	}
 	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("NetworkScoreSet(str,Address)")},
+		[][]byte{[]byte(EventNetworkScoreSet)},
 		[][]byte{[]byte(role), addrBytes},
 	)
 }
