@@ -127,23 +127,25 @@ func (s *GenericSet[T]) Contains(v T) bool {
 	return s._contains(v)
 }
 
-func (s *GenericSet[T]) Find(predicate func(v T) bool) []T {
+type GenericPredicate[T comparable] func(v T) bool
+
+func (s *GenericSet[T]) Find(f GenericPredicate[T]) []T {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	var l []T
 	for v := range s.m {
-		if predicate == nil || predicate(v) {
+		if f == nil || f(v) {
 			l = append(l, v)
 		}
 	}
 	return l
 }
 
-func (s *GenericSet[T]) FindOne(predicate func(v T) bool) (T, bool) {
+func (s *GenericSet[T]) FindOne(f GenericPredicate[T]) (T, bool) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	for v := range s.m {
-		if predicate == nil || predicate(v) {
+		if f == nil || f(v) {
 			return v, true
 		}
 	}
