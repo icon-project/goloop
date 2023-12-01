@@ -806,7 +806,12 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 		} else {
 			connTypes = []PeerConnectionType{p2pConnTypeParent, p2pConnTypeUncle}
 		}
-	//case p2pDestSeed:
+	case p2pDestSeed:
+		if r.Has(p2pRoleRoot) {
+			connTypes = []PeerConnectionType{p2pConnTypeChildren, p2pConnTypeNephew}
+		} else {
+			connTypes = []PeerConnectionType{p2pConnTypeParent, p2pConnTypeUncle}
+		}
 	default:
 		connTypes = joinPeerConnectionTypes[:]
 	}

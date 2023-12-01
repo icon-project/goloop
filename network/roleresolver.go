@@ -68,7 +68,7 @@ func (rr *roleResolver) resolveRole(r PeerRoleFlag, id module.PeerID, onlyUnSet 
 	} else {
 		if rr.allowedRoots.Contains(id) {
 			r.SetFlag(p2pRoleRoot)
-		} else if r.Has(p2pRoleRoot) && !rr.allowedSeeds.IsEmpty() {
+		} else if r.Has(p2pRoleRoot) && !rr.allowedRoots.IsEmpty() {
 			r.UnSetFlag(p2pRoleRoot)
 		}
 		if rr.allowedSeeds.Contains(id) {
