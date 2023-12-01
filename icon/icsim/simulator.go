@@ -19,12 +19,10 @@ package icsim
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
 )
 
 type TxType int
@@ -183,15 +181,4 @@ type Simulator interface {
 	SetRewardFundAllocation2(from module.Address, values map[icstate.RFundKey]icmodule.Rate) Transaction
 	GoBySetRewardFundAllocation2(
 		csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) (Receipt, error)
-}
-
-func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) module.ConsensusInfo {
-	vss, err := state.ValidatorSnapshotFromSlice(dbase, vl)
-	if err != nil {
-		return nil
-	}
-	v, _ := vss.Get(vss.Len() - 1)
-	copiedVoted := make([]bool, vss.Len())
-	copy(copiedVoted, voted)
-	return common.NewConsensusInfo(v.Address(), vss, copiedVoted)
 }

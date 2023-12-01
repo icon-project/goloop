@@ -19,6 +19,8 @@ package icsim
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
@@ -58,4 +60,15 @@ func CheckReceiptSuccess(receipts ...Receipt) bool {
 		}
 	}
 	return true
+}
+
+func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) module.ConsensusInfo {
+	vss, err := state.ValidatorSnapshotFromSlice(dbase, vl)
+	if err != nil {
+		return nil
+	}
+	v, _ := vss.Get(vss.Len() - 1)
+	copiedVoted := make([]bool, vss.Len())
+	copy(copiedVoted, voted)
+	return common.NewConsensusInfo(v.Address(), vss, copiedVoted)
 }
