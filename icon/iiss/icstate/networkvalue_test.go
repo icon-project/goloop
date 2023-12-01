@@ -694,11 +694,16 @@ func TestState_GetNetworkInfoInJSON(t *testing.T) {
 	irep := big.NewInt(100)
 	rrep := big.NewInt(200)
 	minBond := big.NewInt(1234)
+	rates := []icmodule.Rate{icmodule.ToRate(1), icmodule.ToRate(5)}
 
 	state := newDummyState(false)
 	assert.NoError(t, state.SetIRep(irep))
 	assert.NoError(t, state.SetRRep(rrep))
 	assert.NoError(t, state.SetMinimumBond(minBond))
+	assert.NoError(t, state.SetSlashingRate(
+		icmodule.RevisionIISS4R0-1, icmodule.PenaltyAccumulatedValidationFailure, rates[0]))
+	assert.NoError(t, state.SetSlashingRate(
+		icmodule.RevisionIISS4R0-1, icmodule.PenaltyMissedNetworkProposalVote, rates[1]))
 
 	for _, rev := range []int{icmodule.RevisionIISS4R0 - 1, icmodule.RevisionIISS4R0, icmodule.RevisionIISS4R1} {
 		jso, err := state.GetNetworkInfoInJSON(rev)
@@ -708,13 +713,23 @@ func TestState_GetNetworkInfoInJSON(t *testing.T) {
 			assert.Zero(t, irep.Cmp(irep2))
 			rrep2 := jso["rrep"].(*big.Int)
 			assert.Zero(t, rrep.Cmp(rrep2))
+			assert.Equal(t, rates[0].Percent(), jso["consistentValidationPenaltySlashRatio"])
+			assert.Equal(t, rates[1].Percent(), jso["proposalNonVotePenaltySlashRatio"])
+
 			_, ok := jso["minimumBond"]
 			assert.False(t, ok)
 		} else {
-			_, ok := jso["irep"]
-			assert.False(t, ok)
-			_, ok = jso["rrep"]
-			assert.False(t, ok)
+			keys := []string{
+				"irep",
+				"rrep",
+				"consistentValidationPenaltySlashRatio",
+				"proposalNonVotePenaltySlashRatio",
+			}
+			for _, key := range keys {
+				_, ok := jso[key]
+				assert.False(t, ok)
+			}
+
 			mb := jso["minimumBond"].(*big.Int)
 			assert.Zero(t, mb.Cmp(minBond))
 		}

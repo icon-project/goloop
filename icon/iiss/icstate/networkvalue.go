@@ -501,19 +501,16 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()
 	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
-
-	rate, _ := s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
-	jso["consistentValidationPenaltySlashRatio"] = rate.Percent()
-
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
-
-	rate, _ = s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
-	jso["proposalNonVotePenaltySlashRatio"] = rate.Percent()
 
 	if revision < icmodule.RevisionIISS4R0 {
 		jso["irep"] = s.GetIRep()
 		jso["rrep"] = s.GetRRep()
+		rate, _ := s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
+		jso["consistentValidationPenaltySlashRatio"] = rate.Percent()
+		rate, _ = s.GetSlashingRate(revision, icmodule.PenaltyMissedNetworkProposalVote)
+		jso["proposalNonVotePenaltySlashRatio"] = rate.Percent()
 	} else {
 		jso["minimumBond"] = s.GetMinimumBond()
 	}
