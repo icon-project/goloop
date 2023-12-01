@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
@@ -71,4 +72,64 @@ func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) mo
 	copiedVoted := make([]bool, vss.Len())
 	copy(copiedVoted, voted)
 	return common.NewConsensusInfo(v.Address(), vss, copiedVoted)
+}
+
+func NewConsensusInfo2(sim Simulator, nilVoteIndices ...int) module.ConsensusInfo {
+	vl := sim.ValidatorList()
+	voted := make([]bool, len(vl))
+	for i := 0; i < len(voted); i++ {
+		voted[i] = true
+	}
+	for _, i := range nilVoteIndices {
+		voted[i] = false
+	}
+	return NewConsensusInfo(sim.Database(), vl, voted)
+}
+
+func NewDefaultConsensusInfo(sim Simulator) module.ConsensusInfo {
+	vl := sim.ValidatorList()
+	voted := make([]bool, len(vl))
+	for i := 0; i < len(voted); i++ {
+		voted[i] = true
+	}
+	return NewConsensusInfo(sim.Database(), vl, voted)
+}
+
+func ValidatorIndexOf(vl []module.Validator, address module.Address) int {
+	for i, v := range vl {
+		if v.Address().Equal(address) {
+			return i
+		}
+	}
+	return -1
+}
+
+func CheckMainPRep(prep *icstate.PRep) bool {
+	return prep.Grade() == icstate.GradeMain &&
+		prep.IsActive() &&
+		prep.IsJailInfoElectable() &&
+		prep.IsInJail() == false &&
+		prep.IsAlreadyPenalized() == false &&
+		prep.IsUnjailing() == false &&
+		prep.IsUnjailable() == false
+}
+
+func CheckPenalizedPRep(prep *icstate.PRep) bool {
+	return prep.Grade() == icstate.GradeCandidate &&
+		prep.IsActive() &&
+		prep.IsInJail() &&
+		prep.IsAlreadyPenalized() &&
+		prep.IsUnjailable() &&
+		prep.IsJailInfoElectable() == false &&
+		prep.IsUnjailing() == false
+}
+
+func CheckUnjailingPRep(prep *icstate.PRep) bool {
+	return prep.Grade() == icstate.GradeCandidate &&
+		prep.IsActive() &&
+		prep.IsJailInfoElectable() &&
+		prep.IsInJail() &&
+		prep.IsAlreadyPenalized() &&
+		prep.IsUnjailing() &&
+		prep.IsUnjailable() == false
 }

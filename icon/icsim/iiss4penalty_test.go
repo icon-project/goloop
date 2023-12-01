@@ -23,8 +23,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -43,7 +45,9 @@ func TestSimulatorImpl_SetSlashingRate(t *testing.T) {
 		SCOAccumulatedValidationFailurePenaltyCondition: consistentValidationPenaltyCondition,
 	})
 
+	var err error
 	var tx Transaction
+
 	initRevision := icmodule.ValueToRevision(icmodule.RevisionIISS4R0)
 	env, err := NewEnv(cfg, initRevision)
 	assert.NoError(t, err)
@@ -84,7 +88,7 @@ func TestSimulatorImpl_SetSlashingRate(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, e.Address.Equal(state.SystemAddress))
-		assert.Equal(t, signature, "SlashingRateSet(str,int)")
+		assert.Equal(t, signature, iiss.EventSlashingRateSet)
 		assert.Zero(t, len(indexed))
 		assert.Equal(t, 2, len(data))
 
@@ -116,14 +120,20 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	// Initialize simulation environment based on a specific revision
 	var tx Transaction
 	var rcpt Receipt
+	var csi module.ConsensusInfo
 	initRevision := icmodule.ValueToRevision(icmodule.RevisionIISS4R0)
 	env, err := NewEnv(cfg, initRevision)
 	assert.NoError(t, err)
 	assert.NotNil(t, env)
 	sim := env.Simulator()
 	assert.Equal(t, initRevision, sim.Revision())
+	gov := env.Governance()
 
 	// T(0) --------------------------------------------------
+	assert.NoError(t, sim.Go(nil, 2))
+
+	csi = sim.NewDefaultConsensusInfo()
+
 	// SetSlashingRAtes
 	_, err = sim.GetSlashingRates()
 	assert.NoError(t, err)
@@ -136,8 +146,8 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 		icmodule.PenaltyMissedNetworkProposalVote.String():    icmodule.Rate(1),     // 0.01%
 		icmodule.PenaltyDoubleSign.String():                   icmodule.ToRate(10),  // 10%
 	}
-	tx = sim.SetSlashingRates(env.Governance(), expRates)
-	receipts, err := sim.GoByTransaction(nil, tx)
+	tx = sim.SetSlashingRates(gov, expRates)
+	receipts, err := sim.GoByTransaction(csi, tx)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(receipts...))
 
@@ -157,7 +167,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, e.Address.Equal(state.SystemAddress))
-		assert.Equal(t, signature, "SlashingRateSet(str,int)")
+		assert.Equal(t, signature, iiss.EventSlashingRateSet)
 		assert.Zero(t, len(indexed))
 		assert.Equal(t, 2, len(data))
 
@@ -171,26 +181,26 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.Zero(t, minBond.Sign())
 
 	minBond = icutils.ToLoop(10_000)
-	rcpt, err = sim.GoBySetMinimumBond(nil, env.Governance(), minBond)
+	rcpt, err = sim.GoBySetMinimumBond(csi, gov, minBond)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
 
 	events = rcpt.Events()
 	assert.Equal(t, 1, len(events))
 	expData := []any{minBond}
-	assert.NoError(t, events[0].Assert(state.SystemAddress, "MinimumBondSet(int)", nil, expData))
+	assert.NoError(t, events[0].Assert(state.SystemAddress, iiss.EventMinimumBondSet, nil, expData))
 
 	newMinBond := sim.GetMinimumBond()
 	assert.Zero(t, minBond.Cmp(newMinBond))
 
 	// SetRewardFundAllocation2
 	values := map[icstate.RFundKey]icmodule.Rate{
-		icstate.KeyIcps:   icmodule.ToRate(0),
-		icstate.KeyIprep:  icmodule.ToRate(90),
+		icstate.KeyIcps:   icmodule.ToRate(10),
+		icstate.KeyIprep:  icmodule.ToRate(85),
 		icstate.KeyIrelay: icmodule.ToRate(0),
-		icstate.KeyIwage:  icmodule.ToRate(10),
+		icstate.KeyIwage:  icmodule.ToRate(5),
 	}
-	rcpt, err = sim.GoBySetRewardFundAllocation2(nil, env.Governance(), values)
+	rcpt, err = sim.GoBySetRewardFundAllocation2(csi, gov, values)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
 
@@ -208,7 +218,145 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 		default:
 			assert.True(t, false, "InvalidRFundKey(%s)", k)
 		}
-
-		// T(1) --------------------------------------------------
 	}
+
+	// PRepCountConfig
+	pcc := sim.PRepCountConfig()
+	assert.NoError(t, err)
+	assert.Equal(t, 22, pcc.MainPReps())
+	assert.Equal(t, 78, pcc.SubPReps())
+	assert.Equal(t, 3, pcc.ExtraMainPReps())
+
+	// SetRevision: IISS4R0 -> IISS4R1
+	revision := icmodule.ValueToRevision(icmodule.RevisionIISS4R1)
+	rcpt, err = sim.GoBySetRevision(csi, gov, revision)
+	assert.NoError(t, err)
+	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.Equal(t, revision, sim.Revision())
+
+	assert.NoError(t, sim.GoToTermEnd(csi))
+
+	// T(1) ----------------------------------------------------------
+	assert.NoError(t, sim.Go(csi, 2))
+
+	idx := 10
+	voted := make([]bool, pcc.MainPReps()+pcc.ExtraMainPReps())
+	for i := 0; i < len(voted); i++ {
+		voted[i] = true
+	}
+	voted[idx] = false
+
+	vl := sim.ValidatorList()
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
+
+	owner := vl[idx].Address()
+	prep := sim.GetPRep(owner)
+	assert.True(t, CheckMainPRep(prep))
+	assert.Equal(t, validationPenaltyCondition-1, prep.GetVFailCont(sim.BlockHeight()))
+	oldBonded := prep.Bonded()
+
+	// We expect this prep to get penalized for validationFailurePenalty
+	assert.NoError(t, sim.Go(csi, 1))
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckPenalizedPRep(prep))
+	// Bond of prep is not slashed
+	assert.Zero(t, prep.Bonded().Cmp(oldBonded))
+	assert.True(t, ValidatorIndexOf(sim.ValidatorList(), owner) < 0)
+
+	assert.NoError(t, sim.Go(csi, 2))
+	csi = sim.NewDefaultConsensusInfo()
+	assert.NoError(t, sim.GoToTermEnd(csi))
+
+	// T(2) --------------------------------------------------------
+	assert.NoError(t, sim.Go(csi, 2))
+	csi = sim.NewDefaultConsensusInfo()
+
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckPenalizedPRep(prep))
+
+	rcpt, err = sim.GoByRequestUnjail(csi, owner)
+	assert.NoError(t, err)
+	assert.True(t, CheckReceiptSuccess(rcpt))
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckUnjailingPRep(prep))
+
+	assert.NoError(t, sim.GoToTermEnd(csi))
+
+	// T(3) ----------------------------------------
+	assert.NoError(t, sim.Go(csi, 2))
+
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckMainPRep(prep))
+
+	voted[idx] = true
+	vl = sim.ValidatorList()
+	idx = ValidatorIndexOf(vl, owner)
+	assert.True(t, idx >= 0)
+	voted[idx] = false
+
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckMainPRep(prep))
+
+	csi = NewConsensusInfo2(sim)
+	assert.NoError(t, sim.Go(csi, 1))
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckMainPRep(prep))
+
+	assert.NoError(t, sim.Go(csi, 1))
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckMainPRep(prep))
+	oldBonded = prep.Bonded()
+
+	// The second validationFailurePenalty
+	csi = NewConsensusInfo2(sim, sim.ValidatorIndexOf(owner))
+	assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckPenalizedPRep(prep))
+	assert.True(t, ValidatorIndexOf(sim.ValidatorList(), owner) < 0)
+	assert.Equal(t, 2, prep.GetVPenaltyCount())
+	assert.Zero(t, prep.Bonded().Cmp(oldBonded))
+
+	assert.NoError(t, sim.Go(csi, 2))
+
+	// RequestUnjail
+	csi = sim.NewDefaultConsensusInfo()
+	rcpt, err = sim.GoByRequestUnjail(csi, owner)
+	assert.NoError(t, err)
+	assert.True(t, CheckReceiptSuccess(rcpt))
+
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckUnjailingPRep(prep))
+
+	assert.NoError(t, sim.GoToTermEnd(csi))
+
+	// T(4) -------------------------------------------
+	assert.NoError(t, sim.Go(csi, 2))
+
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckMainPRep(prep))
+
+	csi = NewConsensusInfo2(sim, sim.ValidatorIndexOf(owner))
+
+	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckMainPRep(prep))
+
+	receipts, err = sim.GoByBlock(csi, nil)
+	assert.NoError(t, err)
+
+	prep = sim.GetPRep(owner)
+	assert.True(t, CheckPenalizedPRep(prep))
+	assert.True(t, ValidatorIndexOf(sim.ValidatorList(), owner) < 0)
+	assert.Equal(t, 3, prep.GetVPenaltyCount())
+
+	pt := icmodule.PenaltyAccumulatedValidationFailure
+	rate, err := sim.GetSlashingRate(pt)
+	assert.Equal(t, expRates[pt.String()], rate)
+	assert.NoError(t, err)
+	slashed := rate.MulBigInt(oldBonded)
+	bonded := prep.Bonded()
+	assert.Zero(t, bonded.Cmp(new(big.Int).Sub(oldBonded, slashed)))
 }

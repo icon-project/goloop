@@ -202,6 +202,11 @@ func (sim *simulatorImpl) TotalSupply() *big.Int {
 	return icmodule.BigIntZero
 }
 
+func (sim *simulatorImpl) PRepCountConfig() icstate.PRepCountConfig {
+	es := sim.getReadonlyExtensionState()
+	return es.State.GetPRepCountConfig(sim.Revision().Value())
+}
+
 func (sim *simulatorImpl) GetBalance(address module.Address) *big.Int {
 	ws := state.NewReadOnlyWorldState(sim.wss)
 	as := ws.GetAccountState(address.ID())
@@ -693,6 +698,10 @@ func (sim *simulatorImpl) ValidatorList() []module.Validator {
 	return vl
 }
 
+func (sim *simulatorImpl) ValidatorIndexOf(address module.Address) int {
+	return ValidatorIndexOf(sim.ValidatorList(), address)
+}
+
 func (sim *simulatorImpl) GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot {
 	es := sim.getReadonlyExtensionState()
 	return es.State.GetAccountSnapshot(address)
@@ -707,6 +716,11 @@ func (sim *simulatorImpl) GetStateContext() icmodule.StateContext {
 		int64(0),
 		icmodule.ToRate(5),
 	}
+}
+
+func (sim *simulatorImpl) GetSlashingRate(pt icmodule.PenaltyType) (icmodule.Rate, error) {
+	es, cc := sim.getReadonlyExtensionStateAndCallContext()
+	return es.State.GetSlashingRate(cc.Revision().Value(), pt)
 }
 
 func (sim *simulatorImpl) GetSlashingRates() (map[string]interface{}, error) {

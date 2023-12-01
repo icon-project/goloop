@@ -86,8 +86,10 @@ type Simulator interface {
 	TotalStake() *big.Int
 	TotalSupply() *big.Int
 	ValidatorList() []module.Validator
+	ValidatorIndexOf(address module.Address) int
 	GetStateContext() icmodule.StateContext
 	TermSnapshot() *icstate.TermSnapshot
+	PRepCountConfig() icstate.PRepCountConfig
 	GetPReps(grade icstate.Grade) []*icstate.PRep
 	GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot
 
@@ -154,6 +156,7 @@ type Simulator interface {
 	//SetPRepNodePublicKey(pubKey []byte) error
 
 	// After RevisionIISS4R0
+	GetSlashingRate(pt icmodule.PenaltyType) (icmodule.Rate, error)
 	GetSlashingRates() (map[string]interface{}, error)
 	SetSlashingRates(from module.Address, rates map[string]icmodule.Rate) Transaction
 	GoBySetSlashingRates(csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) (Receipt, error)
