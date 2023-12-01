@@ -294,6 +294,41 @@ func (p *Peer) UpdateConns(connType PeerConnectionType, dr DiffResult[PeerAddres
 	}
 }
 
+func (p *Peer) FindConns(f GenericPredicate[PeerAddress], connTypes ...PeerConnectionType) []PeerAddress {
+	var l []PeerAddress
+	if len(connTypes) == 0 {
+		for _, v := range p.conns {
+			l = append(l, v.Find(f)...)
+		}
+	} else {
+		for _, k := range connTypes {
+			if v, ok := p.conns[k]; ok {
+				l = append(l, v.Find(f)...)
+			}
+		}
+	}
+	return l
+}
+
+func (p *Peer) FindConn(f GenericPredicate[PeerAddress], connTypes ...PeerConnectionType) (PeerAddress, bool) {
+	if len(connTypes) == 0 {
+		for _, v := range p.conns {
+			if pa, found := v.FindOne(GenericPredicate[PeerAddress](f)); found {
+				return pa, found
+			}
+		}
+	} else {
+		for _, k := range connTypes {
+			if v, ok := p.conns[k]; ok {
+				if pa, found := v.FindOne(f); found {
+					return pa, found
+				}
+			}
+		}
+	}
+	return "", false
+}
+
 func (p *Peer) _close() (err error) {
 	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
 		if err = p.conn.Close(); err != nil {
