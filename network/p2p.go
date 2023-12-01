@@ -810,7 +810,10 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 	default:
 		connTypes = joinPeerConnectionTypes[:]
 	}
-	return p2p.pm.lenPeersByProtocol(pkt.protocol, joinPeerConnectionTypes...) > 0
+	if len(connTypes) == 0 {
+		return false
+	}
+	return p2p.pm.lenPeersByProtocol(pkt.protocol, connTypes...) > 0
 }
 
 //Dial to seeds, roots, nodes and create p2p connection
