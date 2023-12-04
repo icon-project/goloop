@@ -12,19 +12,35 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-type RevHandler func(wc WorldContext) error
+type handleRevFunc func(sim *simulatorImpl, wc WorldContext, rev, targetRev int) error
+type revHandlerItem struct {
+	rev int
+	fn  handleRevFunc
+}
 
-func (sim *simulatorImpl) initRevHandler() {
-	sim.revHandlers = map[int]RevHandler{
-		icmodule.Revision5:  sim.handleRev5,
-		icmodule.Revision6:  sim.handleRev6,
-		icmodule.Revision9:  sim.handleRev9,
-		icmodule.Revision14: sim.handleRev14,
-		icmodule.Revision15: sim.handleRev15,
-		icmodule.Revision17: sim.handleRev17, // Enable ExtraMainPReps
-		icmodule.Revision23: sim.handleRev23, // PrevIISS4
-		icmodule.Revision24: sim.handleRev24, // IISS4
+var revHandlerTable = []revHandlerItem{
+	{icmodule.RevisionIISS, onRevIISS},
+	{icmodule.RevisionDecentralize, onRevDecentralize},
+	{icmodule.RevisionIISS2, onRevIISS2},
+	//{icmodule.RevisionICON2R0, onRevICON2R0},
+	{icmodule.RevisionICON2R1, onRevICON2R1},
+	{icmodule.RevisionICON2R2, onRevEnableJavaEE},
+	{icmodule.RevisionICON2R3, onRevICON2R3},
+	//{icmodule.RevisionBlockAccounts2, onRevBlockAccounts2},
+	{icmodule.RevisionIISS4R0, onRevIISS4R0},
+	{icmodule.RevisionIISS4R1, onRevIISS4R1},
+}
+
+// DO NOT update revHandlerMap manually
+var revHandlerMap = make(map[int][]revHandlerItem)
+
+func init() {
+	for _, item := range revHandlerTable {
+		rev := item.rev
+		items, _ := revHandlerMap[rev]
+		revHandlerMap[rev] = append(items, item)
 	}
+	revHandlerTable = nil
 }
 
 func (sim *simulatorImpl) handleRevisionChange(wc WorldContext, oldRev, newRev int) error {
@@ -32,9 +48,11 @@ func (sim *simulatorImpl) handleRevisionChange(wc WorldContext, oldRev, newRev i
 		return nil
 	}
 	for rev := oldRev + 1; rev <= newRev; rev++ {
-		if handler, ok := sim.revHandlers[rev]; ok {
-			if err := handler(wc); err != nil {
-				return err
+		if items, ok := revHandlerMap[rev]; ok {
+			for _, item := range items {
+				if err := item.fn(sim, wc, rev, newRev); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -42,8 +60,7 @@ func (sim *simulatorImpl) handleRevisionChange(wc WorldContext, oldRev, newRev i
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev5(wc WorldContext) error {
-	revision := icmodule.Revision5
+func onRevIISS(sim *simulatorImpl, wc WorldContext, rev, _ int) error {
 	as := wc.GetAccountState(state.SystemID)
 
 	// enable Fee sharing 2.0
@@ -115,13 +132,13 @@ func (sim *simulatorImpl) handleRev5(wc WorldContext) error {
 		return err
 	}
 	if err := es.State.SetSlashingRate(
-		revision,
+		rev,
 		icmodule.PenaltyAccumulatedValidationFailure,
 		cfg.ConsistentValidationPenaltySlashRate); err != nil {
 		return err
 	}
 
-	return es.GenesisTerm(sim.blockHeight, revision)
+	return es.GenesisTerm(sim.blockHeight, rev)
 }
 
 func applyRewardFund(config *SimConfig, s *icstate.State) error {
@@ -145,8 +162,7 @@ func applyRewardFund(config *SimConfig, s *icstate.State) error {
 	return nil
 }
 
-// handleRev6: icmodule.RevisionDecentralize
-func (sim *simulatorImpl) handleRev6(wc WorldContext) error {
+func onRevDecentralize(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	es := getExtensionState(wc)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
@@ -156,7 +172,7 @@ func (sim *simulatorImpl) handleRev6(wc WorldContext) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev9(wc WorldContext) error {
+func onRevIISS2(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	es := getExtensionState(wc)
 	if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
 		if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
@@ -178,7 +194,7 @@ func (sim *simulatorImpl) handleRev9(wc WorldContext) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev14(wc WorldContext) error {
+func onRevICON2R1(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	es := getExtensionState(wc)
 	as := wc.GetAccountState(state.SystemID)
 
@@ -204,7 +220,7 @@ func (sim *simulatorImpl) handleRev14(wc WorldContext) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev15(wc WorldContext) error {
+func onRevEnableJavaEE(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	as := wc.GetAccountState(state.SystemID)
 
 	if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(icon.EETypesJavaAndPython); err != nil {
@@ -213,7 +229,7 @@ func (sim *simulatorImpl) handleRev15(wc WorldContext) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev17(wc WorldContext) error {
+func onRevICON2R3(sim *simulatorImpl, wc WorldContext, _, _ int) error {
 	revision := icmodule.Revision17
 	cfg := sim.config
 	es := getExtensionState(wc)
@@ -239,7 +255,7 @@ func (sim *simulatorImpl) handleRev17(wc WorldContext) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev23(wc WorldContext) error {
+func onRevIISS4R0(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	es := getExtensionState(wc)
 
 	// RewardFundAllocation2
@@ -247,7 +263,7 @@ func (sim *simulatorImpl) handleRev23(wc WorldContext) error {
 	return es.State.SetRewardFund(r.ToRewardFundV2())
 }
 
-func (sim *simulatorImpl) handleRev24(wc WorldContext) error {
+func onRevIISS4R1(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	es := getExtensionState(wc)
 	return es.State.SetIISSVersion(icstate.IISSVersion4)
 }

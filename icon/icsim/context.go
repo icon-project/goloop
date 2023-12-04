@@ -30,6 +30,7 @@ import (
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/trace"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 var (
@@ -242,8 +243,8 @@ func NewWorldContext(
 
 type callContext struct {
 	WorldContext
-	from module.Address
-	events []*Event
+	from   module.Address
+	events []*txresult.TestEventLog
 }
 
 func (ctx *callContext) From() module.Address {
@@ -291,11 +292,11 @@ func (ctx *callContext) SumOfStepUsed() *big.Int {
 }
 
 func (ctx *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
-	e := NewEvent(addr, indexed, data)
+	e := &txresult.TestEventLog{Address: addr, Indexed: indexed, Data: data}
 	ctx.events = append(ctx.events, e)
 }
 
-func (ctx *callContext) Events() []*Event {
+func (ctx *callContext) Events() []*txresult.TestEventLog {
 	return ctx.events
 }
 

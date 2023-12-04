@@ -19,12 +19,10 @@ package icsim
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
 )
 
 type TxType int
@@ -47,6 +45,7 @@ const (
 	TypeRequestUnjail
 	TypeHandleDoubleSignReport
 	TypeSetPRepCountConfig
+	TypeSetRewardFundAllocation2
 )
 
 type Transaction interface {
@@ -87,13 +86,12 @@ type Simulator interface {
 	TotalStake() *big.Int
 	TotalSupply() *big.Int
 	ValidatorList() []module.Validator
+	ValidatorIndexOf(address module.Address) int
 	GetStateContext() icmodule.StateContext
 	TermSnapshot() *icstate.TermSnapshot
+	PRepCountConfig() icstate.PRepCountConfig
 	GetPReps(grade icstate.Grade) []*icstate.PRep
 	GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot
-
-	NewDefaultConsensusInfo() module.ConsensusInfo
-	NewConsensusInfo(voted []bool) (module.ConsensusInfo, error)
 
 	GetPRepTermInJSON() map[string]interface{}
 	GetMainPRepsInJSON() map[string]interface{}
@@ -111,42 +109,43 @@ type Simulator interface {
 	// Transactions
 
 	Transfer(from, to module.Address, amount *big.Int) Transaction
-	GoByTransfer(csi module.ConsensusInfo, from, to module.Address, amount *big.Int) (Receipt, error)
+	GoByTransfer(csi module.ConsensusInfo, from, to module.Address, amount *big.Int) ([]Receipt, error)
 
 	SetRevision(from module.Address, revision module.Revision) Transaction
-	GoBySetRevision(csi module.ConsensusInfo, from module.Address, revision module.Revision) (Receipt, error)
+	GoBySetRevision(csi module.ConsensusInfo, from module.Address, revision module.Revision) ([]Receipt, error)
 
 	GetStakeInJSON(from module.Address) map[string]interface{}
 	SetStake(from module.Address, amount *big.Int) Transaction
-	GoBySetStake(csi module.ConsensusInfo, from module.Address, amount *big.Int) (Receipt, error)
+	GoBySetStake(csi module.ConsensusInfo, from module.Address, amount *big.Int) ([]Receipt, error)
 
 	QueryIScore(address module.Address) *big.Int
 	ClaimIScore(from module.Address) Transaction
-	GoByClaimIScore(csi module.ConsensusInfo, from module.Address) (Receipt, error)
+	GoByClaimIScore(csi module.ConsensusInfo, from module.Address) ([]Receipt, error)
 
-	GetPRep(address module.Address) *icstate.PRep
+	GetPRepByOwner(owner module.Address) *icstate.PRep
+	GetPRepByNode(node module.Address) *icstate.PRep
 	SetPRep(from module.Address, info *icstate.PRepInfo) Transaction
-	GoBySetPRep(csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) (Receipt, error)
+	GoBySetPRep(csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) ([]Receipt, error)
 
 	GetDelegationInJSON(address module.Address) map[string]interface{}
 	SetDelegation(from module.Address, ds icstate.Delegations) Transaction
-	GoBySetDelegation(csi module.ConsensusInfo, from module.Address, ds *icstate.Delegations) (Receipt, error)
+	GoBySetDelegation(csi module.ConsensusInfo, from module.Address, ds *icstate.Delegations) ([]Receipt, error)
 
 	GetBondInJSON(address module.Address) map[string]interface{}
 	SetBond(from module.Address, bonds icstate.Bonds) Transaction
-	GoBySetBond(csi module.ConsensusInfo, from module.Address, bonds icstate.Bonds) (Receipt, error)
+	GoBySetBond(csi module.ConsensusInfo, from module.Address, bonds icstate.Bonds) ([]Receipt, error)
 
 	GetBonderListInJSON(address module.Address) map[string]interface{}
 	GetBonderList(address module.Address) icstate.BonderList
 	SetBonderList(from module.Address, bl icstate.BonderList) Transaction
-	GoBySetBonderList(csi module.ConsensusInfo, from module.Address, bl icstate.BonderList) (Receipt, error)
+	GoBySetBonderList(csi module.ConsensusInfo, from module.Address, bl icstate.BonderList) ([]Receipt, error)
 
 	RegisterPRep(from module.Address, info *icstate.PRepInfo) Transaction
-	GoByRegisterPRep(csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) (Receipt, error)
+	GoByRegisterPRep(csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) ([]Receipt, error)
 	UnregisterPRep(from module.Address) Transaction
-	GoByUnregisterPRep(csi module.ConsensusInfo, from module.Address) (Receipt, error)
+	GoByUnregisterPRep(csi module.ConsensusInfo, from module.Address) ([]Receipt, error)
 	DisqualifyPRep(from, address module.Address) Transaction
-	GoByDisqualifyPRep(csi module.ConsensusInfo, from, address module.Address) (Receipt, error)
+	GoByDisqualifyPRep(csi module.ConsensusInfo, from, address module.Address) ([]Receipt, error)
 
 	// After RevisionBTP2
 	//OpenBTPNetwork(networkTypeName string, name string, owner module.Address) (int64, error)
@@ -155,37 +154,32 @@ type Simulator interface {
 	//SetPRepNodePublicKey(pubKey []byte) error
 
 	// After RevisionIISS4R0
+	GetSlashingRate(pt icmodule.PenaltyType) (icmodule.Rate, error)
 	GetSlashingRates() (map[string]interface{}, error)
 	SetSlashingRates(from module.Address, rates map[string]icmodule.Rate) Transaction
-	GoBySetSlashingRates(csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) (Receipt, error)
+	GoBySetSlashingRates(csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) ([]Receipt, error)
 
 	GetMinimumBond() *big.Int
 	SetMinimumBond(from module.Address, bond *big.Int) Transaction
-	GoBySetMinimumBond(csi module.ConsensusInfo, from module.Address, bond *big.Int) (Receipt, error)
+	GoBySetMinimumBond(csi module.ConsensusInfo, from module.Address, bond *big.Int) ([]Receipt, error)
 
 	InitCommissionRate(from module.Address, rate, maxRate, maxChangeRate icmodule.Rate) Transaction
-	GoByInitCommissionRate(csi module.ConsensusInfo, from module.Address, rate, maxRate, maxChangeRate icmodule.Rate) (Receipt, error)
+	GoByInitCommissionRate(csi module.ConsensusInfo, from module.Address, rate, maxRate, maxChangeRate icmodule.Rate) ([]Receipt, error)
 	SetCommissionRate(from module.Address, rate icmodule.Rate) Transaction
-	GoBySetCommissionRate(csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) (Receipt, error)
+	GoBySetCommissionRate(csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) ([]Receipt, error)
 
 	HandleDoubleSignReport(from module.Address, dsType string, dsBlockHeight int64, signer module.Address) Transaction
 	GoByHandleDoubleSignReport(csi module.ConsensusInfo,
-		from module.Address, dsType string, dsBlockHeight int64, signer module.Address) (Receipt, error)
+		from module.Address, dsType string, dsBlockHeight int64, signer module.Address) ([]Receipt, error)
 	RequestUnjail(from module.Address) Transaction
-	GoByRequestUnjail(csi module.ConsensusInfo, from module.Address) (Receipt, error)
+	GoByRequestUnjail(csi module.ConsensusInfo, from module.Address) ([]Receipt, error)
 
 	GetPRepCountConfig() (map[string]interface{}, error)
 	SetPRepCountConfig(from module.Address, counts map[string]int64) Transaction
-	GoBySetPRepCountConfig(csi module.ConsensusInfo, from module.Address, counts map[string]int64) (Receipt, error)
-}
+	GoBySetPRepCountConfig(csi module.ConsensusInfo, from module.Address, counts map[string]int64) ([]Receipt, error)
 
-func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) module.ConsensusInfo {
-	vss, err := state.ValidatorSnapshotFromSlice(dbase, vl)
-	if err != nil {
-		return nil
-	}
-	v, _ := vss.Get(vss.Len() - 1)
-	copiedVoted := make([]bool, vss.Len())
-	copy(copiedVoted, voted)
-	return common.NewConsensusInfo(v.Address(), vss, copiedVoted)
+	GetRewardFundAllocation2() *icstate.RewardFund
+	SetRewardFundAllocation2(from module.Address, values map[icstate.RFundKey]icmodule.Rate) Transaction
+	GoBySetRewardFundAllocation2(
+		csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) ([]Receipt, error)
 }

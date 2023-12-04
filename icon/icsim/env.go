@@ -265,11 +265,11 @@ func (env *Env) defaultInitOnRev(revision int) error {
 	var csi module.ConsensusInfo
 
 	sim := env.sim
-	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
+	receipts, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
 	if err != nil {
 		return err
 	}
-	if !CheckReceiptSuccess(rcpt) {
+	if !CheckReceiptSuccess(receipts[1]) {
 		return errors.Errorf("SetRevisionFailure(%d)", revision)
 	}
 
@@ -284,11 +284,11 @@ func (env *Env) initOnRev13(revision int) error {
 	var receipts []Receipt
 	sim := env.Simulator()
 
-	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
+	receipts, err = sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
 	if err != nil {
 		return err
 	}
-	if !CheckReceiptSuccess(rcpt) {
+	if !CheckReceiptSuccess(receipts[1]) {
 		return errors.Errorf("SetRevisionFailure(%d)", revision)
 	}
 

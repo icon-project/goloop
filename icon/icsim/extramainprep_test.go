@@ -39,18 +39,18 @@ func Test_ExtraMainPReps(t *testing.T) {
 	env, err := NewEnv(c, icmodule.Revision13)
 	assert.NoError(t, err)
 	sim := env.sim
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 
 	// Set revision to 17 to activate extra main preps
-	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.RevisionExtraMainPReps)
+	receipts, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.RevisionExtraMainPReps)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
 
 	vl = sim.ValidatorList()
 	assert.Len(t, vl, newMainPRepCount)
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 
 	bonders := make(map[string]bool)
 
@@ -62,9 +62,9 @@ func Test_ExtraMainPReps(t *testing.T) {
 	}
 	for i := 0; i < size; i++ {
 		bonder := env.bonders[i]
-		rcpt, err = sim.GoBySetBond(csi, bonder, emptyBonds)
+		receipts, err = sim.GoBySetBond(csi, bonder, emptyBonds)
 		assert.NoError(t, err)
-		assert.True(t, CheckReceiptSuccess(rcpt))
+		assert.True(t, CheckReceiptSuccess(receipts[1]))
 
 		assert.False(t, bonders[icutils.ToKey(bonder)])
 		bonders[icutils.ToKey(bonder)] = true
@@ -78,9 +78,9 @@ func Test_ExtraMainPReps(t *testing.T) {
 		bonderList := sim.GetBonderList(owner)
 
 		assert.False(t, bonders[icutils.ToKey(bonderList[0])])
-		rcpt, err = sim.GoBySetBond(csi, bonderList[0], emptyBonds)
+		receipts, err = sim.GoBySetBond(csi, bonderList[0], emptyBonds)
 		assert.NoError(t, err)
-		assert.True(t, CheckReceiptSuccess(rcpt))
+		assert.True(t, CheckReceiptSuccess(receipts[1]))
 
 		// Move to the next term
 		assert.NoError(t, sim.GoToTermEnd(csi))
@@ -89,14 +89,14 @@ func Test_ExtraMainPReps(t *testing.T) {
 		vl = sim.ValidatorList()
 		assert.Len(t, vl, newMainPRepCount-i-1)
 		for _, v := range vl {
-			prep := sim.GetPRep(v.Address())
+			prep := sim.GetPRepByOwner(v.Address())
 			assert.True(t, prep.Bonded().Sign() > 0)
 			assert.True(t, prep.GetPower(br).Sign() > 0)
 		}
 
 		bondedPReps := 0
 		for _, address := range env.preps {
-			prep := sim.GetPRep(address)
+			prep := sim.GetPRepByOwner(address)
 			if prep.Bonded().Sign() > 0 {
 				bondedPReps++
 			}

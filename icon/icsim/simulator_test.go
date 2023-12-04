@@ -105,12 +105,12 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	// T(7)
 	blockHeight = sim.BlockHeight()
 	for i := 1; i < mainPRepCount; i++ {
-		prep := sim.GetPRep(vl[i].Address())
+		prep := sim.GetPRepByOwner(vl[i].Address())
 		assert.Equal(t, blocks, prep.GetVTotal(blockHeight))
 		assert.Zero(t, prep.GetVFail(blockHeight))
 		assert.Zero(t, prep.GetVFailCont(blockHeight))
 	}
-	prep := sim.GetPRep(env.preps[0])
+	prep := sim.GetPRepByOwner(env.preps[0])
 	assert.Equal(t, blocks, prep.GetVTotal(blockHeight))
 	assert.Equal(t, blocks, prep.GetVFail(blockHeight))
 	assert.Equal(t, int64(0), prep.GetVFailCont(blockHeight))
@@ -130,7 +130,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	assert.NoError(t, sim.GoToTermEnd(csi))
 
 	blockHeight = sim.BlockHeight()
-	prep = sim.GetPRep(vl[0].Address())
+	prep = sim.GetPRepByOwner(vl[0].Address())
 	assert.Equal(t, int64(3), prep.GetVFail(blockHeight))
 	assert.Equal(t, int64(3), prep.GetVFailCont(blockHeight))
 
@@ -145,7 +145,7 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 
 	// T(2)
 	blockHeight = sim.BlockHeight()
-	prep = sim.GetPRep(env.preps[22])
+	prep = sim.GetPRepByOwner(env.preps[22])
 	assert.Equal(t, 1, prep.GetVPenaltyCount())
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 	assert.Equal(t, int64(93+2), prep.GetVTotal(blockHeight))
@@ -205,14 +205,14 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	// env.users[0] transfers 2000 ICX to env.preps[0]
 	amount := icutils.ToLoop(2000)
-	rcpt, err := sim.GoByTransfer(nil, env.users[0], prep0, amount)
+	receipts, err = sim.GoByTransfer(nil, env.users[0], prep0, amount)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	assert.Zero(t, amount.Cmp(sim.GetBalance(prep0)))
 
 	// prep0 stakes 2000 ICX to bond to itself
 	// Increase the bonds of env.preps[0] by 2000 ICX (others have 2000 ICX)
-	prep := sim.GetPRep(prep0)
+	prep := sim.GetPRepByOwner(prep0)
 	oldBonded = prep.Bonded()
 
 	receipts, err = sim.GoByTransaction(
@@ -223,7 +223,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(receipts...))
 
-	newBonded := sim.GetPRep(prep0).Bonded()
+	newBonded := sim.GetPRepByOwner(prep0).Bonded()
 	assert.Zero(t, newBonded.Cmp(new(big.Int).Add(oldBonded, amount)))
 
 	// Skip a term to ignore exceptions at the 1st term after decentralization
@@ -233,7 +233,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	for i := 0; i < consistentValidationPenaltyCondition; i++ {
 		// PenaltyCount is reset to 0 at the beginning of every term on rev 13
-		prep = sim.GetPRep(prep0)
+		prep = sim.GetPRepByOwner(prep0)
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Zero(t, prep.GetVPenaltyCount())
 
@@ -244,7 +244,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 
 		// Check if 1st validator got penalized after 5 blocks
-		prep = sim.GetPRep(vl[0].Address())
+		prep = sim.GetPRepByOwner(vl[0].Address())
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, 1, prep.GetVPenaltyCount())
 
@@ -262,7 +262,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	// T(0)
 	vl = sim.ValidatorList()
 	assert.True(t, prep0.Equal(vl[0].Address()))
-	prep = sim.GetPRep(vl[0].Address())
+	prep = sim.GetPRepByOwner(vl[0].Address())
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 
 	// Set 14 to revision
@@ -278,7 +278,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	// Next Term on Rev14
 
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	oldBonded = prep.Bonded()
 	oldTotalBond := sim.TotalBond()
 	oldTotalStake := sim.TotalStake()
@@ -286,7 +286,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	for i := 0; i < consistentValidationPenaltyCondition; i++ {
 		// PenaltyCount is not reset after revision is 14
-		prep = sim.GetPRep(prep0)
+		prep = sim.GetPRepByOwner(prep0)
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Equal(t, i, prep.GetVPenaltyCount())
 
@@ -297,7 +297,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 
 		// Check if prep0 got penalized after 5 blocks
-		prep = sim.GetPRep(vl[0].Address())
+		prep = sim.GetPRepByOwner(vl[0].Address())
 		assert.True(t, prep.Owner().Equal(vl[0].Address()))
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, i+1, prep.GetVPenaltyCount())
@@ -306,7 +306,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		// prep22 was a sub prep before prep0 got penalized
 		vl = sim.ValidatorList()
 		assert.True(t, prep22.Equal(vl[0].Address()))
-		prep = sim.GetPRep(vl[0].Address())
+		prep = sim.GetPRepByOwner(vl[0].Address())
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		voted[0] = true
 		csi = NewConsensusInfo(sim.Database(), vl, voted)
@@ -315,7 +315,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	// Check if the bond of prep0 is slashed by default rate
 	// Slashed bond will be burned
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	bonded = prep.Bonded()
 	slashed = estimateSlashed(slashRate, oldBonded)
 	assert.Zero(t, bonded.Cmp(new(big.Int).Sub(oldBonded, slashed)))
@@ -338,7 +338,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	// Case: prep0 has already been penalized 3 times.
 	// From now on, the bond of prep0 will be slashed every penalty
 	for i := 0; i < 3; i++ {
-		prep = sim.GetPRep(prep0)
+		prep = sim.GetPRepByOwner(prep0)
 		oldBonded = prep.Bonded()
 		penaltyCount := consistentValidationPenaltyCondition + i
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
@@ -346,13 +346,12 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 		// Make the case when prep0 fails to vote for blocks to validate
 		voted[0] = false
-		csi, err = sim.NewConsensusInfo(voted)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), sim.ValidatorList(), voted)
 		assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 
 		// Check if prep0 was slashed after 5 blocks
 		penaltyCount++
-		prep = sim.GetPRep(env.preps[0])
+		prep = sim.GetPRepByOwner(env.preps[0])
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, penaltyCount, prep.GetVPenaltyCount())
 		slashed = estimateSlashed(slashRate, oldBonded)
@@ -363,8 +362,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		vl = sim.ValidatorList()
 		assert.True(t, prep22.Equal(vl[0].Address()))
 		voted[0] = true
-		csi, err = sim.NewConsensusInfo(voted)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), vl, voted)
 		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
@@ -373,22 +371,22 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	assert.True(t, prep0.Equal(vl[0].Address()))
 
 	for i := 0; i < 23; i++ {
-		prep = sim.GetPRep(prep0)
+		prep = sim.GetPRepByOwner(prep0)
 		assert.Equal(t, 6, prep.GetVPenaltyCount())
 
-		csi = sim.NewDefaultConsensusInfo()
+		csi = NewConsensusInfoBySim(sim)
 		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
 	for i := 0; i < 6; i++ {
-		prep = sim.GetPRep(prep0)
+		prep = sim.GetPRepByOwner(prep0)
 		assert.Equal(t, 6-i, prep.GetVPenaltyCount())
 
-		csi = sim.NewDefaultConsensusInfo()
+		csi = NewConsensusInfoBySim(sim)
 		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	assert.Zero(t, prep.GetVPenaltyCount())
 }
 
@@ -448,7 +446,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check if 1st validator got penalized after 5 blocks
-	prep = sim.GetPRep(env.preps[0])
+	prep = sim.GetPRepByOwner(env.preps[0])
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 	assert.Equal(t, 1, prep.GetVPenaltyCount())
 
@@ -486,7 +484,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	// prep0: mainPRep -> candidate, prep22: subPRep -> mainPRep
 	vl = sim.ValidatorList()
 	assert.True(t, checkValidatorList(vl1, vl))
-	prep = sim.GetPRep(env.preps[0])
+	prep = sim.GetPRepByOwner(env.preps[0])
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 
 	// prep0 fails to vote for 2 blocks, getting penalized
@@ -495,7 +493,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check if prep22 becomes a main prep instead of prep0
-	prep = sim.GetPRep(env.preps[22])
+	prep = sim.GetPRepByOwner(env.preps[22])
 	assert.Equal(t, int64(2), prep.GetVFailCont(sim.BlockHeight()))
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 	assert.Zero(t, prep.GetVPenaltyCount())
@@ -508,7 +506,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// prep21 got penalized and its penaltyCount is set to 1
-	prep = sim.GetPRep(env.preps[22])
+	prep = sim.GetPRepByOwner(env.preps[22])
 	assert.Equal(t, 1, prep.GetVPenaltyCount())
 	// prep0: candidate, prep21: mainPRep -> candidate, prep22: subPRep -> mainPRep
 	vl = sim.ValidatorList()
@@ -522,7 +520,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 
 	// prep0 and prep21 have got penalized and their grade is set to candidate
 	// prep22 will be the new main prep
-	prep = sim.GetPRep(env.preps[23])
+	prep = sim.GetPRepByOwner(env.preps[23])
 	assert.Zero(t, prep.GetVPenaltyCount())
 	assert.Zero(t, prep.GetVTotal(sim.BlockHeight()))
 }
@@ -581,13 +579,13 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 
 	// Check if prep1 and prep2 got penalized after 5 blocks
 	for i := 1; i <= 2; i++ {
-		prep = sim.GetPRep(env.preps[i])
+		prep = sim.GetPRepByOwner(env.preps[i])
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, 1, prep.GetVPenaltyCount())
 	}
 	// Check if prep22 and prep23 become main preps
 	for i := 22; i <= 23; i++ {
-		prep = sim.GetPRep(env.preps[i])
+		prep = sim.GetPRepByOwner(env.preps[i])
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Equal(t, 0, prep.GetVPenaltyCount())
 	}
@@ -599,7 +597,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	blockHeight = sim.BlockHeight()
 	// Check the states of prep1 and prep2 after additional 2 blocks
 	for i := 1; i <= 2; i++ {
-		prep = sim.GetPRep(env.preps[i])
+		prep = sim.GetPRepByOwner(env.preps[i])
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, 1, prep.GetVPenaltyCount())
 		assert.Equal(t, int64(7), prep.GetVTotal(blockHeight))
@@ -609,7 +607,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	}
 	// Check if prep22 and prep23 become main preps
 	for i := 22; i <= 23; i++ {
-		prep = sim.GetPRep(env.preps[i])
+		prep = sim.GetPRepByOwner(env.preps[i])
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Zero(t, prep.GetVPenaltyCount())
 		assert.Zero(t, prep.GetVTotal(blockHeight))
@@ -634,7 +632,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	blockHeight = sim.BlockHeight()
 	// Check if prep1 and prep2 return to main preps
 	for i := 1; i <= 2; i++ {
-		prep = sim.GetPRep(env.preps[i])
+		prep = sim.GetPRepByOwner(env.preps[i])
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		// PenaltyCount is reset to 0 when a prep becomes a main prep on rev13
 		assert.Equal(t, 0, prep.GetVPenaltyCount())
@@ -643,7 +641,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	}
 	// Check if prep22 and prep23 return to sub preps
 	for i := 22; i <= 23; i++ {
-		prep = sim.GetPRep(env.preps[i])
+		prep = sim.GetPRepByOwner(env.preps[i])
 		assert.Equal(t, icstate.GradeSub, prep.Grade())
 		assert.Equal(t, 0, prep.GetVPenaltyCount())
 		assert.Equal(t, int64(termPeriod-7), prep.GetVTotal(blockHeight))
@@ -679,7 +677,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 
 	// Check getPRep
 	sc := sim.GetStateContext()
-	prep = sim.GetPRep(address)
+	prep = sim.GetPRepByOwner(address)
 	jso = prep.ToJSON(sc)
 	assertPower(t, jso)
 
