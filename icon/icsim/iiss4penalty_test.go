@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -251,7 +252,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 
 	owner := vl[idx].Address()
 	prep := sim.GetPRep(owner)
-	assert.True(t, CheckMainPRep(prep))
+	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 	assert.Equal(t, validationPenaltyCondition-1, prep.GetVFailCont(sim.BlockHeight()))
 	oldBonded := prep.Bonded()
 
@@ -286,7 +287,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.NoError(t, sim.Go(csi, 2))
 
 	prep = sim.GetPRep(owner)
-	assert.True(t, CheckMainPRep(prep))
+	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	voted[idx] = true
 	vl = sim.ValidatorList()
@@ -297,16 +298,16 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	csi = NewConsensusInfo(sim.Database(), vl, voted)
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
 	prep = sim.GetPRep(owner)
-	assert.True(t, CheckMainPRep(prep))
+	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	csi = NewConsensusInfoBySim(sim)
 	assert.NoError(t, sim.Go(csi, 1))
 	prep = sim.GetPRep(owner)
-	assert.True(t, CheckMainPRep(prep))
+	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	assert.NoError(t, sim.Go(csi, 1))
 	prep = sim.GetPRep(owner)
-	assert.True(t, CheckMainPRep(prep))
+	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 	oldBonded = prep.Bonded()
 
 	// The second validationFailurePenalty
@@ -335,16 +336,17 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.NoError(t, sim.Go(csi, 2))
 
 	prep = sim.GetPRep(owner)
-	assert.True(t, CheckMainPRep(prep))
+	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	csi = NewConsensusInfoBySim(sim, sim.ValidatorIndexOf(owner))
 
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
 	prep = sim.GetPRep(owner)
-	assert.True(t, CheckMainPRep(prep))
+	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	receipts, err = sim.GoByBlock(csi, nil)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(receipts))
 
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
@@ -358,4 +360,81 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	slashed := rate.MulBigInt(oldBonded)
 	bonded := prep.Bonded()
 	assert.Zero(t, bonded.Cmp(new(big.Int).Sub(oldBonded, slashed)))
+
+	// Check the receipt of baseTx on imposing penalty
+	// PenaltyImposed, PenaltyImposed, Slashed, ICXBurnedV2
+	events = receipts[0].Events()
+	e := events[0]
+	signature, indexed, data, err := e.DecodeParams()
+	assert.NoError(t, err)
+	assert.Equal(t, iiss.EventPenaltyImposed, signature)
+	assert.True(t, owner.Equal(indexed[0].(*common.Address)))
+	assert.Equal(t, int64(icstate.Active), data[0].(*big.Int).Int64())
+	assert.Equal(t, int64(icmodule.PenaltyValidationFailure), data[1].(*big.Int).Int64())
+
+	e = events[1]
+	signature, indexed, data, err = e.DecodeParams()
+	assert.NoError(t, err)
+	assert.Equal(t, iiss.EventPenaltyImposed, signature)
+	assert.True(t, owner.Equal(indexed[0].(*common.Address)))
+	assert.Equal(t, int64(icstate.Active), data[0].(*big.Int).Int64())
+	assert.Equal(t, int64(icmodule.PenaltyAccumulatedValidationFailure), data[1].(*big.Int).Int64())
+
+	e = events[2]
+	bonders := sim.GetBonderList(owner)
+	signature, indexed, data, err = e.DecodeParams()
+	assert.NoError(t, err)
+	assert.Equal(t, iiss.EventSlashed, signature)
+	assert.True(t, owner.Equal(indexed[0].(*common.Address)))
+	assert.True(t, bonders[0].Equal(data[0].(module.Address)))
+	assert.Zero(t, slashed.Cmp(data[1].(*big.Int)))
+
+	e = events[3]
+	signature, indexed, data, err = e.DecodeParams()
+	assert.NoError(t, err)
+	assert.Equal(t, iiss.EventICXBurnedV2, signature)
+	assert.True(t, state.SystemAddress.Equal(indexed[0].(module.Address)))
+	assert.Zero(t, slashed.Cmp(data[0].(*big.Int)))
+	assert.Zero(t, sim.TotalSupply().Cmp(data[1].(*big.Int)))
+
+	// SetPRepCountConfig
+	receipts, err = sim.GoBySetPRepCountConfig(csi, gov, map[string]int64{"main": 19, "sub": 81, "extra": 9})
+	assert.NoError(t, err)
+	assert.True(t, CheckReceiptSuccess(receipts...))
+	assert.Equal(t, 25, len(sim.ValidatorList()))
+
+	events = receipts[1].Events()
+	e = events[0]
+	signature, indexed, data, err = e.DecodeParams()
+	assert.NoError(t, err)
+	assert.Equal(t, iiss.EventPRepCountConfigSet, signature)
+	assert.Zero(t, len(indexed))
+	assert.Equal(t, int64(19), data[0].(*big.Int).Int64())
+	assert.Equal(t, int64(81), data[1].(*big.Int).Int64())
+	assert.Equal(t, int64(9), data[2].(*big.Int).Int64())
+
+	assert.NoError(t, sim.GoToTermEnd(csi))
+
+	// T(5) ------------------------------------------------
+	assert.NoError(t, sim.Go(csi, 2))
+
+	var grade icstate.Grade
+	term := sim.TermSnapshot()
+	pssList := term.PRepSnapshots()
+	for i, pss := range pssList {
+		prep = sim.GetPRep(pss.Owner())
+		if i < 28 {
+			grade = icstate.GradeMain
+		} else {
+			grade = icstate.GradeSub
+		}
+		CheckElectablePRep(prep, grade)
+	}
+
+	vl = sim.ValidatorList()
+	assert.Equal(t, 28, len(vl))
+	for i, v := range vl {
+		prep = sim.GetPRepByNode(v.Address())
+		assert.True(t, pssList[i].Owner().Equal(prep.Owner()))
+	}
 }

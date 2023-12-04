@@ -646,6 +646,12 @@ func (sim *simulatorImpl) GetPRep(address module.Address) *icstate.PRep {
 	return es.State.GetPRepByOwner(address)
 }
 
+func (sim *simulatorImpl) GetPRepByNode(node module.Address) *icstate.PRep {
+	es := sim.getReadonlyExtensionState()
+	owner := es.State.GetOwnerByNode(node)
+	return sim.GetPRep(owner)
+}
+
 func (sim *simulatorImpl) GetPRepStatsInJSON(address module.Address) map[string]interface{} {
 	es := sim.getReadonlyExtensionState()
 	ps := es.State.GetPRepStatusByOwner(address, false)

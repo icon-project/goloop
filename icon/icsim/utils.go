@@ -99,8 +99,8 @@ func ValidatorIndexOf(vl []module.Validator, address module.Address) int {
 	return -1
 }
 
-func CheckMainPRep(prep *icstate.PRep) bool {
-	return prep.Grade() == icstate.GradeMain &&
+func CheckElectablePRep(prep *icstate.PRep, expGrade icstate.Grade) bool {
+	return prep.Grade() == expGrade &&
 		prep.IsActive() &&
 		prep.IsJailInfoElectable() &&
 		prep.IsInJail() == false &&
