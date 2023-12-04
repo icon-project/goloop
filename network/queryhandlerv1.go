@@ -137,7 +137,7 @@ func (h *queryHandlerV1) sendQuery(p *Peer) {
 	if r.Has(p2pRoleSeed) || r.Has(p2pRoleRoot) {
 		qm.Items = append(qm.Items, QueryItem{ID: QueryItemRoots})
 	}
-	connsItemIDs := connTypeToQueryItems[p.connType]
+	connsItemIDs := connTypeToQueryItems[p.ConnType()]
 	for _, qid := range connsItemIDs {
 		qm.Items = append(qm.Items, QueryItem{
 			ID:      qid,
