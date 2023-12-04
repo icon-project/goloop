@@ -57,7 +57,7 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 
 	prep0 := env.preps[0]
 	prep0Sub := env.preps[cfg.TotalMainPRepCount()]
-	prep := sim.GetPRep(prep0)
+	prep := sim.GetPRepByOwner(prep0)
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 	assert.Zero(t, prep.JailFlags())
 
@@ -68,12 +68,12 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	// Check the status of prep0
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 	assert.True(t, icutils.ContainsAll(prep.JailFlags(), icstate.JFlagInJail|icstate.JFlagDoubleSign))
 	assert.Zero(t, prep.MinDoubleSignHeight())
 	// Check the status of prep0Sub(prep25)
-	prep = sim.GetPRep(prep0Sub)
+	prep = sim.GetPRepByOwner(prep0Sub)
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 
 	// Move to the block which is 5 blocks earlier
@@ -91,12 +91,12 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 	// Next Term
 
 	// T(0) : RequestUnjail transaction
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 	receipts, err = sim.GoByRequestUnjail(csi, prep0)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(receipts[1]))
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	assert.True(t, icutils.ContainsAll(
 		prep.JailFlags(), icstate.JFlagUnjailing|icstate.JFlagDoubleSign|icstate.JFlagInJail))
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
@@ -104,7 +104,7 @@ func TestDoubleSign_RequestUnjailNormalCase(t *testing.T) {
 
 	// T(2) : Go to term end
 	assert.NoError(t, sim.GoToTermEnd(nil))
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 	assert.Zero(t, prep.JailFlags())
 	assert.Equal(t, sim.BlockHeight(), prep.MinDoubleSignHeight())
@@ -162,12 +162,12 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 
 	prep0 := env.preps[0]
 	prep0Sub := env.preps[cfg.TotalMainPRepCount()]
-	prep := sim.GetPRep(prep0)
+	prep := sim.GetPRepByOwner(prep0)
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 	assert.Zero(t, prep.JailFlags())
 
 	// T(1) : SuccessCase(HandleDoubleSignReport)
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	oldBonded := prep.Bonded()
 	oldTotalSupply := sim.TotalSupply()
 	oldTotalStake := sim.TotalStake()
@@ -178,15 +178,15 @@ func TestHandleDoubleSignReport_Slashing(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	// Check the status of prep0
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 	assert.True(t, icutils.ContainsAll(prep.JailFlags(), icstate.JFlagInJail|icstate.JFlagDoubleSign))
 	assert.Zero(t, prep.MinDoubleSignHeight())
 	// Check the status of prep0Sub(prep25)
-	prep = sim.GetPRep(prep0Sub)
+	prep = sim.GetPRepByOwner(prep0Sub)
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 	// Slashing for DoubleSignPenalty
-	prep = sim.GetPRep(prep0)
+	prep = sim.GetPRepByOwner(prep0)
 	newBonded := prep.Bonded()
 	slashed := estimateSlashed(slashingRate, oldBonded)
 	assert.Zero(t, newBonded.Cmp(new(big.Int).Sub(oldBonded, slashed)))
@@ -255,7 +255,7 @@ func TestDoubleSign_HandleDoubleSignReportErrorCases(t *testing.T) {
 			assert.True(t, receipts[1].Status() == 0)
 
 			// No impact on PRep's JailFlags
-			prep := sim.GetPRep(prep0)
+			prep := sim.GetPRepByOwner(prep0)
 			assert.Zero(t, prep.JailFlags())
 			assert.Equal(t, icstate.GradeMain, prep.Grade())
 			assert.Zero(t, prep.MinDoubleSignHeight())
@@ -289,7 +289,7 @@ func TestDoubleSign_RequestUnjailForNormalPRep(t *testing.T) {
 
 	// T(0)
 	prep0 := env.preps[0]
-	prep := sim.GetPRep(prep0)
+	prep := sim.GetPRepByOwner(prep0)
 	assert.Equal(t, icstate.GradeMain, prep.Grade())
 	assert.Zero(t, prep.JailFlags())
 
@@ -297,5 +297,5 @@ func TestDoubleSign_RequestUnjailForNormalPRep(t *testing.T) {
 	receipts, err = sim.GoByRequestUnjail(csi, prep0)
 	assert.NoError(t, err)
 	assert.Zero(t, receipts[1].Status())
-	assert.Zero(t, sim.GetPRep(prep0).JailFlags())
+	assert.Zero(t, sim.GetPRepByOwner(prep0).JailFlags())
 }

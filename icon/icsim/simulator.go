@@ -122,7 +122,7 @@ type Simulator interface {
 	ClaimIScore(from module.Address) Transaction
 	GoByClaimIScore(csi module.ConsensusInfo, from module.Address) ([]Receipt, error)
 
-	GetPRep(address module.Address) *icstate.PRep
+	GetPRepByOwner(owner module.Address) *icstate.PRep
 	GetPRepByNode(node module.Address) *icstate.PRep
 	SetPRep(from module.Address, info *icstate.PRepInfo) Transaction
 	GoBySetPRep(csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) ([]Receipt, error)

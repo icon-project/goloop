@@ -641,15 +641,15 @@ func (sim *simulatorImpl) GetSubPRepsInJSON() map[string]interface{} {
 	return jso
 }
 
-func (sim *simulatorImpl) GetPRep(address module.Address) *icstate.PRep {
+func (sim *simulatorImpl) GetPRepByOwner(owner module.Address) *icstate.PRep {
 	es := sim.getReadonlyExtensionState()
-	return es.State.GetPRepByOwner(address)
+	return es.State.GetPRepByOwner(owner)
 }
 
 func (sim *simulatorImpl) GetPRepByNode(node module.Address) *icstate.PRep {
 	es := sim.getReadonlyExtensionState()
 	owner := es.State.GetOwnerByNode(node)
-	return sim.GetPRep(owner)
+	return sim.GetPRepByOwner(owner)
 }
 
 func (sim *simulatorImpl) GetPRepStatsInJSON(address module.Address) map[string]interface{} {

@@ -251,14 +251,14 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
 
 	owner := vl[idx].Address()
-	prep := sim.GetPRep(owner)
+	prep := sim.GetPRepByOwner(owner)
 	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 	assert.Equal(t, validationPenaltyCondition-1, prep.GetVFailCont(sim.BlockHeight()))
 	oldBonded := prep.Bonded()
 
 	// We expect this prep to get penalized for validationFailurePenalty
 	assert.NoError(t, sim.Go(csi, 1))
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
 	// Bond of prep is not slashed
 	assert.Zero(t, prep.Bonded().Cmp(oldBonded))
@@ -272,13 +272,13 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.NoError(t, sim.Go(csi, 2))
 	csi = NewConsensusInfoBySim(sim)
 
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
 
 	receipts, err = sim.GoByRequestUnjail(csi, owner)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(receipts[1]))
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckUnjailingPRep(prep))
 
 	assert.NoError(t, sim.GoToTermEnd(csi))
@@ -286,7 +286,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	// T(3) ----------------------------------------
 	assert.NoError(t, sim.Go(csi, 2))
 
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	voted[idx] = true
@@ -297,23 +297,23 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 
 	csi = NewConsensusInfo(sim.Database(), vl, voted)
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	csi = NewConsensusInfoBySim(sim)
 	assert.NoError(t, sim.Go(csi, 1))
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	assert.NoError(t, sim.Go(csi, 1))
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 	oldBonded = prep.Bonded()
 
 	// The second validationFailurePenalty
 	csi = NewConsensusInfoBySim(sim, sim.ValidatorIndexOf(owner))
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
 	assert.True(t, ValidatorIndexOf(sim.ValidatorList(), owner) < 0)
 	assert.Equal(t, 2, prep.GetVPenaltyCount())
@@ -327,7 +327,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(receipts[1]))
 
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckUnjailingPRep(prep))
 
 	assert.NoError(t, sim.GoToTermEnd(csi))
@@ -335,20 +335,20 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	// T(4) -------------------------------------------
 	assert.NoError(t, sim.Go(csi, 2))
 
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	csi = NewConsensusInfoBySim(sim, sim.ValidatorIndexOf(owner))
 
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckElectablePRep(prep, icstate.GradeMain))
 
 	receipts, err = sim.GoByBlock(csi, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(receipts))
 
-	prep = sim.GetPRep(owner)
+	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
 	assert.True(t, ValidatorIndexOf(sim.ValidatorList(), owner) < 0)
 	assert.Equal(t, 3, prep.GetVPenaltyCount())
@@ -422,7 +422,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	term := sim.TermSnapshot()
 	pssList := term.PRepSnapshots()
 	for i, pss := range pssList {
-		prep = sim.GetPRep(pss.Owner())
+		prep = sim.GetPRepByOwner(pss.Owner())
 		if i < 28 {
 			grade = icstate.GradeMain
 		} else {

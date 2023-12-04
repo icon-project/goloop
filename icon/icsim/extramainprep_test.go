@@ -89,14 +89,14 @@ func Test_ExtraMainPReps(t *testing.T) {
 		vl = sim.ValidatorList()
 		assert.Len(t, vl, newMainPRepCount-i-1)
 		for _, v := range vl {
-			prep := sim.GetPRep(v.Address())
+			prep := sim.GetPRepByOwner(v.Address())
 			assert.True(t, prep.Bonded().Sign() > 0)
 			assert.True(t, prep.GetPower(br).Sign() > 0)
 		}
 
 		bondedPReps := 0
 		for _, address := range env.preps {
-			prep := sim.GetPRep(address)
+			prep := sim.GetPRepByOwner(address)
 			if prep.Bonded().Sign() > 0 {
 				bondedPReps++
 			}
