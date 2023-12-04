@@ -132,7 +132,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	// T(0) --------------------------------------------------
 	assert.NoError(t, sim.Go(nil, 2))
 
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 
 	// SetSlashingRAtes
 	_, err = sim.GetSlashingRates()
@@ -265,12 +265,12 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.True(t, ValidatorIndexOf(sim.ValidatorList(), owner) < 0)
 
 	assert.NoError(t, sim.Go(csi, 2))
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 	assert.NoError(t, sim.GoToTermEnd(csi))
 
 	// T(2) --------------------------------------------------------
 	assert.NoError(t, sim.Go(csi, 2))
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
@@ -300,7 +300,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckMainPRep(prep))
 
-	csi = NewConsensusInfo2(sim)
+	csi = NewConsensusInfoBySim(sim)
 	assert.NoError(t, sim.Go(csi, 1))
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckMainPRep(prep))
@@ -311,7 +311,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	oldBonded = prep.Bonded()
 
 	// The second validationFailurePenalty
-	csi = NewConsensusInfo2(sim, sim.ValidatorIndexOf(owner))
+	csi = NewConsensusInfoBySim(sim, sim.ValidatorIndexOf(owner))
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
@@ -322,7 +322,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.NoError(t, sim.Go(csi, 2))
 
 	// RequestUnjail
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 	rcpt, err = sim.GoByRequestUnjail(csi, owner)
 	assert.NoError(t, err)
 	assert.True(t, CheckReceiptSuccess(rcpt))
@@ -338,7 +338,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckMainPRep(prep))
 
-	csi = NewConsensusInfo2(sim, sim.ValidatorIndexOf(owner))
+	csi = NewConsensusInfoBySim(sim, sim.ValidatorIndexOf(owner))
 
 	assert.NoError(t, sim.Go(csi, validationPenaltyCondition-1))
 	prep = sim.GetPRep(owner)

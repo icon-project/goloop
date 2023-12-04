@@ -68,13 +68,17 @@ func NewConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) mo
 	if err != nil {
 		return nil
 	}
+	if len(vl) != len(voted) {
+		return nil
+	}
+
 	v, _ := vss.Get(vss.Len() - 1)
 	copiedVoted := make([]bool, vss.Len())
 	copy(copiedVoted, voted)
 	return common.NewConsensusInfo(v.Address(), vss, copiedVoted)
 }
 
-func NewConsensusInfo2(sim Simulator, nilVoteIndices ...int) module.ConsensusInfo {
+func NewConsensusInfoBySim(sim Simulator, nilVoteIndices ...int) module.ConsensusInfo {
 	vl := sim.ValidatorList()
 	voted := make([]bool, len(vl))
 	for i := 0; i < len(voted); i++ {
@@ -82,15 +86,6 @@ func NewConsensusInfo2(sim Simulator, nilVoteIndices ...int) module.ConsensusInf
 	}
 	for _, i := range nilVoteIndices {
 		voted[i] = false
-	}
-	return NewConsensusInfo(sim.Database(), vl, voted)
-}
-
-func NewDefaultConsensusInfo(sim Simulator) module.ConsensusInfo {
-	vl := sim.ValidatorList()
-	voted := make([]bool, len(vl))
-	for i := 0; i < len(voted); i++ {
-		voted[i] = true
 	}
 	return NewConsensusInfo(sim.Database(), vl, voted)
 }

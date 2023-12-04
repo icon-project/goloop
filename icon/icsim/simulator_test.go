@@ -346,8 +346,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 		// Make the case when prep0 fails to vote for blocks to validate
 		voted[0] = false
-		csi, err = sim.NewConsensusInfo(voted)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), sim.ValidatorList(), voted)
 		assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 
 		// Check if prep0 was slashed after 5 blocks
@@ -363,8 +362,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		vl = sim.ValidatorList()
 		assert.True(t, prep22.Equal(vl[0].Address()))
 		voted[0] = true
-		csi, err = sim.NewConsensusInfo(voted)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), vl, voted)
 		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
@@ -376,7 +374,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		prep = sim.GetPRep(prep0)
 		assert.Equal(t, 6, prep.GetVPenaltyCount())
 
-		csi = sim.NewDefaultConsensusInfo()
+		csi = NewConsensusInfoBySim(sim)
 		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
@@ -384,7 +382,7 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		prep = sim.GetPRep(prep0)
 		assert.Equal(t, 6-i, prep.GetVPenaltyCount())
 
-		csi = sim.NewDefaultConsensusInfo()
+		csi = NewConsensusInfoBySim(sim)
 		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 

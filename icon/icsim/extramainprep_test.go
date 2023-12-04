@@ -39,7 +39,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 	env, err := NewEnv(c, icmodule.Revision13)
 	assert.NoError(t, err)
 	sim := env.sim
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 
 	// Set revision to 17 to activate extra main preps
 	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.RevisionExtraMainPReps)
@@ -50,7 +50,7 @@ func Test_ExtraMainPReps(t *testing.T) {
 
 	vl = sim.ValidatorList()
 	assert.Len(t, vl, newMainPRepCount)
-	csi = sim.NewDefaultConsensusInfo()
+	csi = NewConsensusInfoBySim(sim)
 
 	bonders := make(map[string]bool)
 

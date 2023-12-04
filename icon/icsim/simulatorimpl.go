@@ -618,15 +618,6 @@ func (sim *simulatorImpl) GetPRepsInJSON() map[string]interface{} {
 	return jso
 }
 
-func (sim *simulatorImpl) NewDefaultConsensusInfo() module.ConsensusInfo {
-	vl := sim.ValidatorList()
-	voted := make([]bool, len(vl))
-	for i := 0; i < len(voted); i++ {
-		voted[i] = true
-	}
-	return NewConsensusInfo(sim.Database(), vl, voted)
-}
-
 func (sim *simulatorImpl) NewConsensusInfo(voted []bool) (module.ConsensusInfo, error) {
 	vl := sim.ValidatorList()
 	if len(vl) != len(voted) {

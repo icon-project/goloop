@@ -93,9 +93,6 @@ type Simulator interface {
 	GetPReps(grade icstate.Grade) []*icstate.PRep
 	GetAccountSnapshot(address module.Address) *icstate.AccountSnapshot
 
-	NewDefaultConsensusInfo() module.ConsensusInfo
-	NewConsensusInfo(voted []bool) (module.ConsensusInfo, error)
-
 	GetPRepTermInJSON() map[string]interface{}
 	GetMainPRepsInJSON() map[string]interface{}
 	GetSubPRepsInJSON() map[string]interface{}
