@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -102,21 +103,6 @@ func (vd *validatorsData) clone() validatorsData {
 	}
 }
 
-func (vd *validatorsData) set(other *validatorsData) {
-	size := len(other.nodeList)
-	nodeMap := make(map[string]int)
-	nodeList := make([]*common.Address, size)
-
-	for i, node := range other.nodeList {
-		nodeList[i] = node
-		nodeMap[icutils.ToKey(node)] = i
-	}
-	vd.nodeList = nodeList
-	vd.nodeMap = nodeMap
-	vd.nextPssIdx = other.nextPssIdx
-	vd.lastHeight = other.lastHeight
-}
-
 func (vd *validatorsData) IndexOf(node module.Address) int {
 	key := icutils.ToKey(node)
 	idx, ok := vd.nodeMap[key]
@@ -159,10 +145,10 @@ func (vd *validatorsData) Format(f fmt.State, verb rune) {
 				vd.nodeList, vd.nextPssIdx, vd.lastHeight,
 			)
 		} else {
-			_, _ = fmt.Fprintf(f, "{%v %v %v", vd.nodeList, vd.nextPssIdx, vd.lastHeight)
+			_, _ = fmt.Fprintf(f, "{%v %v %v}", vd.nodeList, vd.nextPssIdx, vd.lastHeight)
 		}
 	case 's':
-		_, _ = fmt.Fprintf(f, vd.String())
+		_, _ = fmt.Fprint(f, vd.String())
 	}
 }
 
@@ -334,12 +320,9 @@ func NewValidatorsStateWithSnapshot(vss *ValidatorsSnapshot) *ValidatorsState {
 
 func NewValidatorsSnapshotWithPRepSnapshot(
 	prepSnapshots PRepSnapshots, ownerToNodeMapper OwnerToNodeMappable, size int) *ValidatorsSnapshot {
-	vd := validatorsData{}
-	vd.init(prepSnapshots, ownerToNodeMapper, size)
-
-	return &ValidatorsSnapshot{
-		validatorsData: vd,
-	}
+	vss := &ValidatorsSnapshot{}
+	vss.validatorsData.init(prepSnapshots, ownerToNodeMapper, size)
+	return vss
 }
 
 // changeValidatorNodeAddress is called when a main prep wants to change its node address
@@ -378,14 +361,15 @@ func (s *State) changeValidatorNodeAddress(
 	return s.SetValidatorsSnapshot(vs.GetSnapshot())
 }
 
-func (s *State) replaceMainPRepByOwner(owner module.Address, blockHeight int64) error {
+func (s *State) replaceMainPRepByOwner(sc icmodule.StateContext, owner module.Address) error {
 	node := s.GetNodeByOwner(owner)
+	blockHeight := sc.BlockHeight()
 	newMainPRepOwner, err := s.replaceMainPRepByNode(node, blockHeight)
 	if err != nil {
 		return err
 	}
 	if newMainPRepOwner != nil {
-		err = s.OnMainPRepReplaced(blockHeight, owner, newMainPRepOwner)
+		err = s.OnMainPRepReplaced(sc, owner, newMainPRepOwner)
 	}
 	return err
 }

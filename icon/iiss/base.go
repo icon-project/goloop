@@ -27,7 +27,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -207,35 +206,35 @@ func (es *ExtensionStateImpl) updateBlockVoteStats(
 	cc icmodule.CallContext, voters *icstate.BlockVotersSnapshot, voted []bool) error {
 
 	var err error
-	blockHeight := cc.BlockHeight()
+	sc := NewStateContext(cc, es)
 
 	size := voters.Len()
 	for i := 0; i < size; i++ {
 		voter := voters.Get(i)
-		if err = es.State.OnBlockVote(voter, voted[i], blockHeight); err != nil {
+		if err = es.State.OnBlockVote(sc, voter, voted[i]); err != nil {
 			return err
 		}
-		if !voted[i] {
-			if err = es.handlePenalty(cc, voter); err != nil {
+		if voted[i] == false {
+			if err = es.handleBlockValidationPenalty(cc, voter); err != nil {
 				return err
 			}
 		}
 	}
 
 	lastVoters := es.State.GetLastBlockVotersSnapshot()
-	if lastVoters != nil {
-		size = lastVoters.Len()
-		for i := 0; i < size; i++ {
-			voter := lastVoters.Get(i)
-			if voters.IndexOf(voter) < 0 {
-				if err = es.State.OnValidatorOut(blockHeight-1, voter); err != nil {
-					return err
+	if !voters.Equal(lastVoters) {
+		if lastVoters != nil {
+			size = lastVoters.Len()
+			for i := 0; i < size; i++ {
+				voter := lastVoters.Get(i)
+				if voters.IndexOf(voter) < 0 {
+					if err = es.State.OnValidatorOut(sc, voter); err != nil {
+						return err
+					}
 				}
 			}
 		}
-	}
 
-	if lastVoters == nil || !voters.Equal(lastVoters) {
 		return es.State.SetLastBlockVotersSnapshot(voters)
 	}
 	return nil
@@ -294,36 +293,12 @@ func (es *ExtensionStateImpl) handleICXIssue(cc icmodule.CallContext, data []byt
 	}
 
 	// make event log
-	if prep != nil {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("PRepIssued(int,int,int,int)")},
-			[][]byte{
-				intconv.BigIntToBytes(prep.GetIRep()),
-				intconv.BigIntToBytes(prep.GetRRep()),
-				intconv.BigIntToBytes(prep.GetTotalDelegation()),
-				intconv.BigIntToBytes(prep.GetValue()),
-			},
-		)
-	}
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("ICXIssued(int,int,int,int)")},
-		[][]byte{
-			intconv.BigIntToBytes(result.GetByFee()),
-			intconv.BigIntToBytes(result.GetByOverIssuedICX()),
-			intconv.BigIntToBytes(result.GetIssue()),
-			intconv.BigIntToBytes(issue.GetOverIssuedICX()),
-		},
-	)
+	EmitPRepIssuedEvent(cc, prep)
+	EmitICXIssuedEvent(cc, result, issue)
+
 	term := es.State.GetTermSnapshot()
 	if cc.BlockHeight() == term.StartHeight() {
-		cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("TermStarted(int,int,int)")},
-			[][]byte{
-				intconv.Int64ToBytes(int64(term.Sequence())),
-				intconv.Int64ToBytes(term.StartHeight()),
-				intconv.Int64ToBytes(term.GetEndHeight()),
-			},
-		)
+		EmitTermStartedEvent(cc, term.Sequence(), term.StartHeight(), term.GetEndHeight())
 	}
 	return nil
 }

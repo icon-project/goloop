@@ -12,22 +12,39 @@ import (
 	"github.com/icon-project/goloop/service/state"
 )
 
-func (sim *simulatorImpl) handleRevisionChange(ws state.WorldState, r1, r2 int) error {
-	if r1 >= r2 {
+type RevHandler func(wc WorldContext) error
+
+func (sim *simulatorImpl) initRevHandler() {
+	sim.revHandlers = map[int]RevHandler{
+		icmodule.Revision5:  sim.handleRev5,
+		icmodule.Revision6:  sim.handleRev6,
+		icmodule.Revision9:  sim.handleRev9,
+		icmodule.Revision14: sim.handleRev14,
+		icmodule.Revision15: sim.handleRev15,
+		icmodule.Revision17: sim.handleRev17, // Enable ExtraMainPReps
+		icmodule.Revision23: sim.handleRev23, // PrevIISS4
+		icmodule.Revision24: sim.handleRev24, // IISS4
+	}
+}
+
+func (sim *simulatorImpl) handleRevisionChange(wc WorldContext, oldRev, newRev int) error {
+	if oldRev >= newRev {
 		return nil
 	}
-	for rev := r1 + 1; rev <= r2; rev++ {
+	for rev := oldRev + 1; rev <= newRev; rev++ {
 		if handler, ok := sim.revHandlers[rev]; ok {
-			if err := handler(ws, r1, rev); err != nil {
+			if err := handler(wc); err != nil {
 				return err
 			}
 		}
 	}
+	sim.revision = icmodule.ValueToRevision(newRev)
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev5(ws state.WorldState, r1, r2 int) error {
-	as := ws.GetAccountState(state.SystemID)
+func (sim *simulatorImpl) handleRev5(wc WorldContext) error {
+	revision := icmodule.Revision5
+	as := wc.GetAccountState(state.SystemID)
 
 	// enable Fee sharing 2.0
 	systemConfig := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
@@ -42,79 +59,85 @@ func (sim *simulatorImpl) handleRev5(ws state.WorldState, r1, r2 int) error {
 			return err
 		}
 	}
-	return sim.handleRevIISS(ws, r1, r2)
-}
 
-func (sim *simulatorImpl) handleRevIISS(ws state.WorldState, r1, r2 int) error {
-	config := sim.config
-	ws.GetExtensionState().Reset(iiss.NewExtensionSnapshot(ws.Database(), nil))
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+	cfg := sim.config
+	wc.GetExtensionState().Reset(iiss.NewExtensionSnapshot(wc.Database(), nil))
+	es := getExtensionState(wc)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion2); err != nil {
 		return err
 	}
-	if err := es.State.SetTermPeriod(config.TermPeriod); err != nil {
+	if err := es.State.SetTermPeriod(cfg.TermPeriod); err != nil {
 		return err
 	}
-	if err := es.State.SetIRep(big.NewInt(config.Irep)); err != nil {
+	if err := es.State.SetIRep(big.NewInt(cfg.Irep)); err != nil {
 		return err
 	}
-	if err := es.State.SetRRep(big.NewInt(config.Rrep)); err != nil {
+	if err := es.State.SetRRep(big.NewInt(cfg.Rrep)); err != nil {
 		return err
 	}
-	if err := es.State.SetMainPRepCount(config.MainPRepCount); err != nil {
+	if err := es.State.SetMainPRepCount(cfg.MainPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetSubPRepCount(config.SubPRepCount); err != nil {
+	if err := es.State.SetSubPRepCount(cfg.SubPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(config.BondRequirement); err != nil {
+	if err := es.State.SetBondRequirement(cfg.BondRequirement); err != nil {
 		return err
 	}
-	if err := es.State.SetLockVariables(big.NewInt(config.LockMinMultiplier), big.NewInt(config.LockMaxMultiplier)); err != nil {
+	if err := es.State.SetLockVariables(big.NewInt(cfg.LockMinMultiplier), big.NewInt(cfg.LockMaxMultiplier)); err != nil {
 		return err
 	}
-	if err := es.State.SetUnbondingPeriodMultiplier(config.UnbondingPeriodMultiplier); err != nil {
+	if err := es.State.SetUnbondingPeriodMultiplier(cfg.UnbondingPeriodMultiplier); err != nil {
 		return err
 	}
-	if err := es.State.SetDelegationSlotMax(config.DelegationSlotMax); err != nil {
+	if err := es.State.SetDelegationSlotMax(cfg.DelegationSlotMax); err != nil {
 		return err
 	}
-	if err := applyRewardFund(config, es.State); err != nil {
+	if err := applyRewardFund(cfg, es.State); err != nil {
 		return err
 	}
-	if err := es.State.SetUnstakeSlotMax(config.UnstakeSlotMax); err != nil {
+	if err := es.State.SetUnstakeSlotMax(cfg.UnstakeSlotMax); err != nil {
 		return err
 	}
-	if err := es.State.SetUnbondingMax(config.UnbondingMax); err != nil {
+	if err := es.State.SetUnbondingMax(cfg.UnbondingMax); err != nil {
 		return err
 	}
-	if err := es.State.SetValidationPenaltyCondition(config.ValidationPenaltyCondition); err != nil {
+	if err := es.State.SetValidationPenaltyCondition(int(cfg.ValidationPenaltyCondition)); err != nil {
 		return err
 	}
 	if err := es.State.SetConsistentValidationPenaltyCondition(
-		config.ConsistentValidationPenaltyCondition); err != nil {
+		cfg.ConsistentValidationPenaltyCondition); err != nil {
 		return err
 	}
 	if err := es.State.SetConsistentValidationPenaltyMask(
-		config.ConsistentValidationPenaltyMask); err != nil {
+		cfg.ConsistentValidationPenaltyMask); err != nil {
 		return err
 	}
-	if err := es.State.SetConsistentValidationPenaltySlashRatio(
-		config.ConsistentValidationPenaltySlashRatio); err != nil {
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		cfg.ConsistentValidationPenaltySlashRate); err != nil {
 		return err
 	}
 
-	return es.GenesisTerm(sim.blockHeight, r2)
+	return es.GenesisTerm(sim.blockHeight, revision)
 }
 
-func applyRewardFund(config *config, s *icstate.State) error {
-	rf := &icstate.RewardFund{
-		Iglobal: big.NewInt(config.RewardFund.Iglobal),
-		Iprep:   big.NewInt(config.RewardFund.Iprep),
-		Icps:    big.NewInt(config.RewardFund.Icps),
-		Irelay:  big.NewInt(config.RewardFund.Irelay),
-		Ivoter:  big.NewInt(config.RewardFund.Ivoter),
+func applyRewardFund(config *SimConfig, s *icstate.State) error {
+	rf := icstate.NewRewardFund(icstate.RFVersion1)
+	if err := rf.SetIGlobal(big.NewInt(config.RewardFund.Iglobal)); err != nil {
+		return err
+	}
+	if err := rf.SetAllocation(
+		map[icstate.RFundKey]icmodule.Rate{
+			icstate.KeyIprep:  icmodule.ToRate(config.RewardFund.Iprep),
+			icstate.KeyIcps:   icmodule.ToRate(config.RewardFund.Icps),
+			icstate.KeyIrelay: icmodule.ToRate(config.RewardFund.Irelay),
+			icstate.KeyIvoter: icmodule.ToRate(config.RewardFund.Ivoter),
+		},
+	); err != nil {
+		return err
 	}
 	if err := s.SetRewardFund(rf); err != nil {
 		return err
@@ -123,8 +146,8 @@ func applyRewardFund(config *config, s *icstate.State) error {
 }
 
 // handleRev6: icmodule.RevisionDecentralize
-func (sim *simulatorImpl) handleRev6(ws state.WorldState, r1, r2 int) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+func (sim *simulatorImpl) handleRev6(wc WorldContext) error {
+	es := getExtensionState(wc)
 	if termPeriod := es.State.GetTermPeriod(); termPeriod == icmodule.InitialTermPeriod {
 		if err := es.State.SetTermPeriod(icmodule.DecentralizedTermPeriod); err != nil {
 			return err
@@ -133,8 +156,8 @@ func (sim *simulatorImpl) handleRev6(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev9(ws state.WorldState, r1, r2 int) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
+func (sim *simulatorImpl) handleRev9(wc WorldContext) error {
+	es := getExtensionState(wc)
 	if unstakeSlotMax := es.State.GetUnstakeSlotMax(); unstakeSlotMax == icmodule.InitialUnstakeSlotMax {
 		if err := es.State.SetUnstakeSlotMax(icmodule.DefaultUnstakeSlotMax); err != nil {
 			return err
@@ -155,13 +178,9 @@ func (sim *simulatorImpl) handleRev9(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev10(ws state.WorldState, r1, r2 int) error {
-	return nil
-}
-
-func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
-	es := ws.GetExtensionState().(*iiss.ExtensionStateImpl)
-	as := ws.GetAccountState(state.SystemID)
+func (sim *simulatorImpl) handleRev14(wc WorldContext) error {
+	es := getExtensionState(wc)
+	as := wc.GetAccountState(state.SystemID)
 
 	if err := es.State.SetIISSVersion(icstate.IISSVersion3); err != nil {
 		return err
@@ -174,8 +193,8 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 	if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
 		return err
 	}
-	if es.State.GetBondRequirement() == icmodule.IISS2BondRequirement {
-		if err := es.State.SetBondRequirement(icmodule.DefaultBondRequirement); err != nil {
+	if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.IISS2BondRequirement) {
+		if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
 			return err
 		}
 	}
@@ -185,8 +204,8 @@ func (sim *simulatorImpl) handleRev14(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev15(ws state.WorldState, r1, r2 int) error {
-	as := ws.GetAccountState(state.SystemID)
+func (sim *simulatorImpl) handleRev15(wc WorldContext) error {
+	as := wc.GetAccountState(state.SystemID)
 
 	if err := scoredb.NewVarDB(as, state.VarEnabledEETypes).Set(icon.EETypesJavaAndPython); err != nil {
 		return err
@@ -194,6 +213,41 @@ func (sim *simulatorImpl) handleRev15(ws state.WorldState, r1, r2 int) error {
 	return nil
 }
 
-func (sim *simulatorImpl) handleRev17(ws state.WorldState, r1, r2 int) error {
+func (sim *simulatorImpl) handleRev17(wc WorldContext) error {
+	revision := icmodule.Revision17
+	cfg := sim.config
+	es := getExtensionState(wc)
+
+	// Set slashingRate for PenaltyAccumulatedValidationFailure
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		cfg.ConsistentValidationPenaltySlashRate); err != nil {
+		return err
+	}
+	// Set slashingRate for PenaltyMissedNetworkProposalVote
+	if err := es.State.SetSlashingRate(
+		revision,
+		icmodule.PenaltyMissedNetworkProposalVote,
+		cfg.NonVotePenaltySlashRate); err != nil {
+		return err
+	}
+	// Enable ExtraMainPReps
+	if err := es.State.SetExtraMainPRepCount(cfg.ExtraMainPRepCount); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (sim *simulatorImpl) handleRev23(wc WorldContext) error {
+	es := getExtensionState(wc)
+
+	// RewardFundAllocation2
+	r := es.State.GetRewardFundV1()
+	return es.State.SetRewardFund(r.ToRewardFundV2())
+}
+
+func (sim *simulatorImpl) handleRev24(wc WorldContext) error {
+	es := getExtensionState(wc)
+	return es.State.SetIISSVersion(icstate.IISSVersion4)
 }

@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -54,7 +56,8 @@ func newDummyPRepBase(i int) *PRepBaseState {
 }
 
 func newDummyPRepStatus(value int) *PRepStatusState {
-	ps := NewPRepStatus()
+	owner := newDummyAddress(value)
+	ps := NewPRepStatus(owner)
 	_ = ps.Activate()
 	ps.SetDelegated(big.NewInt(rand.Int63n(1000) + 1))
 	ps.SetBonded(big.NewInt(rand.Int63n(1000) + 1))
@@ -72,339 +75,450 @@ func newDummyPRep(i int) *PRep {
 	}
 }
 
-type dummyPRepSetEntry struct {
-	prep      *PRep
-	status    Status
-	grade     Grade
-	power     *big.Int
-	delegated *big.Int
-	bonded    *big.Int
-	owner     module.Address
-	pubKey    bool
-}
-
-func (d *dummyPRepSetEntry) PRep() *PRep {
-	return d.prep
-}
-
-func (d *dummyPRepSetEntry) Status() Status {
-	return Active
-}
-
-func (d *dummyPRepSetEntry) Grade() Grade {
-	return d.grade
-}
-
-func (d *dummyPRepSetEntry) Power(_ int64) *big.Int {
-	return d.power
-}
-
-func (d *dummyPRepSetEntry) Delegated() *big.Int {
-	return d.delegated
-}
-
-func (d *dummyPRepSetEntry) Bonded() *big.Int {
-	return d.bonded
-}
-
-func (d *dummyPRepSetEntry) Owner() module.Address {
-	return d.prep.Owner()
-}
-
-func (d *dummyPRepSetEntry) HasPubKey() bool {
-	return d.pubKey
-}
-
-func newDummyPRepSetEntry(
-	prep *PRep, grade Grade, power, delegated, bonded int, pubKey bool,
-) *dummyPRepSetEntry {
-	return &dummyPRepSetEntry{
-		prep:      prep,
-		grade:     grade,
-		power:     big.NewInt(int64(power)),
-		delegated: big.NewInt(int64(delegated)),
-		bonded:    big.NewInt(int64(bonded)),
-		pubKey:    pubKey,
-	}
-}
-
-func newDummyPRepSet(size int) PRepSet {
-	prepSetEntries := make([]PRepSetEntry, size)
+func newDummyPReps(size int) []*PRep {
+	preps := make([]*PRep, size)
 	for i := 0; i < size; i++ {
-		prepSetEntries[i] = NewPRepSetEntry(newDummyPRep(i), false)
+		preps[i] = newDummyPRep(i + 1)
 	}
-	prepSet := NewPRepSet(prepSetEntries)
-	return prepSet
+	return preps
+}
+
+func TestPRep_IRep(t *testing.T) {
+	prep := newDummyPRep(1)
+	assert.Zero(t, prep.IRep().Sign())
+}
+
+func TestPRep_NodeAddress(t *testing.T) {
+	owner := newDummyAddress(1)
+	prep := newDummyPRep(1)
+	assert.True(t, owner.Equal(prep.NodeAddress()))
+
+	newOwner := newDummyAddress(100)
+	assert.False(t, owner.Equal(newOwner))
+
+	prepInfo := &PRepInfo{
+		Node: newOwner,
+	}
+	prep.getPRepBaseState().UpdateInfo(prepInfo)
+	assert.True(t, newOwner.Equal(prep.NodeAddress()))
+}
+
+func TestPRep_ToJSON(t *testing.T) {
+	bh := int64(1000)
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight":   bh,
+		"revision":      icmodule.RevisionIISS4R1,
+		"activeDSAMask": int64(1),
+	})
+	br := sc.GetBondRequirement()
+
+	newOwner := newDummyAddress(100)
+	prep := newDummyPRep(1)
+	prepInfo := &PRepInfo{
+		Node: newOwner,
+	}
+	pb := prep.getPRepBaseState()
+	pb.UpdateInfo(prepInfo)
+	info := prep.Info()
+
+	jso := prep.ToJSON(sc)
+	assert.True(t, prep.Owner().Equal(jso["address"].(module.Address)))
+	assert.True(t, prep.NodeAddress().Equal(jso["nodeAddress"].(module.Address)))
+	assert.Equal(t, *info.City, jso["city"])
+	assert.Equal(t, *info.Country, jso["country"])
+	assert.Equal(t, *info.Details, jso["details"])
+	assert.Equal(t, *info.Email, jso["email"])
+	assert.Equal(t, *info.Name, jso["name"])
+	assert.Equal(t, *info.WebSite, jso["website"])
+	assert.Equal(t, prep.LastHeight(), jso["lastHeight"])
+	assert.Equal(t, int(prep.Grade()), jso["grade"])
+	assert.Equal(t, int(prep.Status()), jso["status"])
+	assert.Equal(t, int(prep.getPenaltyType(sc)), jso["penalty"])
+	assert.Zero(t, prep.Bonded().Cmp(jso["bonded"].(*big.Int)))
+	assert.Zero(t, prep.Delegated().Cmp(jso["delegated"].(*big.Int)))
+	assert.Zero(t, prep.GetPower(br).Cmp(jso["power"].(*big.Int)))
+	assert.Equal(t, prep.GetVTotal(bh), jso["totalBlocks"])
+	assert.Equal(t, prep.GetVTotal(bh)-prep.GetVFail(bh), jso["validatedBlocks"])
+	assert.Equal(t, prep.HasPubKey(sc.GetActiveDSAMask()), jso["hasPublicKey"].(bool))
+	assert.Equal(t, prep.JailFlags(), jso["jailFlags"].(int))
+	assert.Equal(t, prep.UnjailRequestHeight(), jso["unjailRequestHeight"].(int64))
+	assert.Equal(t, prep.MinDoubleSignHeight(), jso["minDoubleSignHeight"].(int64))
+}
+
+func TestPRep_IsElectable(t *testing.T) {
+	br := icmodule.ToRate(5)
+	activeDSAMask := int64(3)
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight":     int64(1000),
+		"revision":        icmodule.RevisionIISS4R1,
+		"bondRequirement": br,
+		"activeDSAMask":   activeDSAMask,
+	})
+
+	args := []struct {
+		status      Status
+		bonded      *big.Int
+		dsaMask     int64
+		pt          icmodule.PenaltyType
+		isElectable bool
+	}{
+		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
+		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
+		{Active, icmodule.BigIntZero, int64(3), icmodule.PenaltyNone, false},
+		{Active, big.NewInt(100), int64(0), icmodule.PenaltyNone, false},
+		{Active, big.NewInt(100), int64(1), icmodule.PenaltyNone, false},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyNone, true},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyAccumulatedValidationFailure, false},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyValidationFailure, false},
+		{Active, big.NewInt(100), int64(3), icmodule.PenaltyDoubleSign, false},
+		{Unregistered, big.NewInt(100), int64(3), icmodule.PenaltyNone, false},
+		{Disqualified, big.NewInt(100), int64(3), icmodule.PenaltyNone, false},
+	}
+
+	for i, arg := range args {
+		prep := newDummyPRep(1)
+		if arg.status == Unregistered || arg.status == Disqualified {
+			_, err := prep.DisableAs(arg.status)
+			assert.NoError(t, err)
+		}
+		prep.SetBonded(arg.bonded)
+		prep.SetDSAMask(arg.dsaMask)
+		name := fmt.Sprintf("name-%02d", i)
+
+		if arg.pt != icmodule.PenaltyNone {
+			err := prep.OnEvent(sc, icmodule.PRepEventImposePenalty, arg.pt)
+			assert.NoError(t, err)
+		}
+		assert.Zero(t, arg.bonded.Cmp(prep.Bonded()))
+		assert.Equal(t, arg.dsaMask, prep.GetDSAMask())
+
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, arg.isElectable, prep.IsElectable(sc))
+		})
+	}
 }
 
 func TestPRepSet_Sort_OnTermEnd(t *testing.T) {
-	br := int64(5)
-	prep1 := newDummyPRep(1)
-	prep1.lastState = None
-	prep1.vPenaltyMask = (rand.Uint32() & uint32(0x3FFFFFFF)) | uint32(1)
-	prep2 := newDummyPRep(2)
-	prep2.lastState = None
-	prep3 := newDummyPRep(3)
-	prep3.lastState = None
-	prep3.lastHeight = 1
-	prep4 := newDummyPRep(4)
-	prep4.lastState = Success
-	prep5 := newDummyPRep(5)
-	prep5.lastState = None
-	prep5.lastHeight = 2
-	prep6 := newDummyPRep(6)
-	prepSetEntries := []PRepSetEntry{
-		&dummyPRepSetEntry{
-			prep:      prep1,
-			grade:     GradeMain,
-			power:     big.NewInt(1),
-			delegated: big.NewInt(1),
-			bonded:    big.NewInt(1),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep2,
-			grade:     GradeSub,
-			power:     big.NewInt(2),
-			delegated: big.NewInt(2),
-			bonded:    big.NewInt(2),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep3,
-			grade:     GradeSub,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep4,
-			grade:     GradeMain,
-			power:     big.NewInt(4),
-			delegated: big.NewInt(4),
-			bonded:    big.NewInt(4),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep5,
-			grade:     GradeCandidate,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep6,
-			grade:     GradeCandidate,
-			power:     big.NewInt(0),
-			delegated: big.NewInt(0),
-			bonded:    big.NewInt(0),
-			pubKey:    true,
-		},
-	}
+	const (
+		mainPReps      = 22
+		extraMainPReps = 3
+		subPReps       = 78
+		totalPReps     = 110
+		activeDSAMask  = int64(3)
+		limit          = 30
+	)
+	var err error
+	cfg := NewPRepCountConfig(mainPReps, subPReps, extraMainPReps)
 
-	prepSet := NewPRepSet(prepSetEntries)
-	assert.Equal(t, 2, prepSet.GetPRepSize(GradeMain))
-	assert.Equal(t, 2, prepSet.GetPRepSize(GradeSub))
-	assert.Equal(t, 2, prepSet.GetPRepSize(GradeCandidate))
-	assert.Equal(t, 6, prepSet.Size())
-	assert.Equal(t, big.NewInt(13), prepSet.TotalBonded())
-	assert.Equal(t, big.NewInt(13), prepSet.TotalDelegated())
-	assert.Equal(t, big.NewInt(13), prepSet.GetTotalPower(br))
-
-	tests := []struct {
-		name       string
-		rev        int
-		main       int
-		sub        int
-		extra      int
-		expect     []*PRep
-		expectMain int
-		expectSub  int
+	args := []struct {
+		rev int
 	}{
-		{
-			"Sort by power",
-			icmodule.RevisionResetPenaltyMask,
-			1, 2, 0,
-			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
-			1, 2,
-		},
-		{
-			"Sort by power",
-			icmodule.RevisionEnableIISS3,
-			1, 2, 0,
-			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
-			1, 2,
-		},
-		{
-			"Sort by power + extra main prep",
-			icmodule.RevisionExtraMainPReps,
-			1, 2, 1,
-			[]*PRep{prep4, prep3, prep5, prep2, prep1, prep6},
-			2, 1,
-		},
-		{
-			"Sort by power + extra main prep with zero count",
-			icmodule.RevisionExtraMainPReps,
-			1, 2, 0,
-			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
-			1, 2,
-		},
-		{
-			"Sort by power + pubKey + extra main prep",
-			icmodule.RevisionBTP2,
-			1, 2, 1,
-			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
-			2, 0,
-		},
-		{
-			"Sort by power + pubKey + extra main prep with zero count",
-			icmodule.RevisionBTP2,
-			1, 2, 0,
-			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
-			1, 1,
-		},
-		{
-			"Too big sub prep, extra main prep",
-			icmodule.RevisionBTP2,
-			1, 6, 10,
-			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
-			2, 0,
-		},
-		{
-			"Too big sub prep, extra main prep with zero main prep",
-			icmodule.RevisionBTP2,
-			0, 6, 10,
-			[]*PRep{prep1, prep5, prep6, prep4, prep3, prep2},
-			2, 0,
-		},
+		{icmodule.RevisionExtraMainPReps},
+		{icmodule.RevisionBTP2},
+		{icmodule.RevisionIISS4R0},
+		{icmodule.RevisionIISS4R1},
 	}
 
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s rev=%d", tt.name, tt.rev), func(t *testing.T) {
-			prepSet.Sort(tt.main, tt.sub, tt.extra, br, tt.rev)
-			err := prepSet.OnTermEnd(tt.rev, tt.main, tt.sub, tt.extra, 0, br)
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			sc := newMockStateContext(map[string]interface{}{
+				"blockHeight":     int64(1000),
+				"revision":        arg.rev,
+				"activeDSAMask":   activeDSAMask,
+				"bondRequirement": icmodule.ToRate(5),
+			})
+
+			// Initialize PRepSet
+			preps := newDummyPReps(totalPReps)
+			for _, prep := range preps {
+				dsaMask := rand.Int63n(activeDSAMask + 1)
+				prep.SetDSAMask(dsaMask)
+			}
+
+			prepSet := NewPRepSet(sc, preps, cfg)
+			err = prepSet.OnTermEnd(sc, limit)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expectMain, prepSet.GetPRepSize(GradeMain))
-			assert.Equal(t, tt.expectSub, prepSet.GetPRepSize(GradeSub))
 
-			for j := 0; j < prepSet.Size(); j++ {
-				// check sort order
-				aEntry := prepSet.GetByIndex(j)
-				ePRep := tt.expect[j]
-				ao := aEntry.Owner()
-				eo := ePRep.Owner()
-				assert.True(t, ao.Equal(eo), fmt.Sprintf("e:%s a:%s", eo, ao))
+			sc.IncreaseBlockHeightBy(50)
+			prep0 := prepSet.GetByIndex(0)
+			err = prep0.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			assert.NoError(t, err)
 
-				// check grade of P-Rep
-				switch {
-				case j < tt.expectMain:
-					if tt.rev >= icmodule.RevisionBTP2 &&
-						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
-						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
-					} else {
-						assert.Equal(t, GradeMain, aEntry.PRep().Grade())
+			prepWithNoPower := prepSet.GetByIndex(1)
+			prepWithNoPower.SetBonded(icmodule.BigIntZero)
+			prepWithNoPower.SetDelegated(big.NewInt(1000))
+
+			sc.IncreaseBlockHeightBy(50)
+			prepSet = NewPRepSet(sc, preps, cfg)
+			err = prepSet.OnTermEnd(sc, limit)
+
+			assert.NoError(t, err)
+			mainPRepSize := prepSet.GetPRepSize(GradeMain)
+			subPRepSize := prepSet.GetPRepSize(GradeSub)
+			candidateSize := prepSet.GetPRepSize(GradeCandidate)
+			assert.True(t, mainPRepSize <= mainPReps+extraMainPReps)
+			assert.True(t, subPRepSize <= subPReps)
+			assert.Equal(t, totalPReps, mainPRepSize+subPRepSize+candidateSize)
+
+			var prevPower *big.Int
+			electedPRepSize := mainPRepSize + subPRepSize
+			for j := 0; j < totalPReps; j++ {
+				prep := prepSet.GetByIndex(j)
+				grade := prep.Grade()
+				power := prep.GetPower(sc.GetBondRequirement())
+
+				if j < electedPRepSize {
+					if j < mainPRepSize {
+						assert.Equal(t, GradeMain, grade)
+					} else if j < electedPRepSize {
+						assert.Equal(t, GradeSub, grade)
 					}
-				case j < tt.expectMain+tt.expectSub:
-					if tt.rev >= icmodule.RevisionBTP2 &&
-						(aEntry.HasPubKey() == false || aEntry.Power(br).Sign() == 0) {
-						assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
-					} else {
-						assert.Equal(t, GradeSub, aEntry.PRep().Grade())
+
+					assert.True(t, prep.IsElectable(sc))
+					if sc.RevisionValue() >= icmodule.RevisionExtraMainPReps {
+						assert.True(t, power.Sign() > 0)
+						if j > 0 {
+							assert.True(t, power.Cmp(prevPower) <= 0)
+						}
 					}
-				default:
-					assert.Equal(t, GradeCandidate, aEntry.PRep().Grade())
+					if sc.RevisionValue() >= icmodule.RevisionBTP2 {
+						assert.True(t, prep.HasPubKey(activeDSAMask))
+					}
+					prevPower = power
+				} else {
+					assert.Equal(t, GradeCandidate, grade)
 				}
 
-				if tt.rev == icmodule.RevisionResetPenaltyMask {
-					assert.Zero(t, aEntry.PRep().GetVPenaltyCount())
+				if prep.Owner().Equal(prep0.Owner()) {
+					expGrade := GradeMain
+					rev := sc.RevisionValue()
+					if rev >= icmodule.RevisionIISS4R1 {
+						expGrade = GradeCandidate
+					}
+					assert.Equal(t, expGrade, grade)
+					assert.Equal(t, expGrade == GradeMain, prep.IsElectable(sc))
+				} else if prep.Owner().Equal(prepWithNoPower.Owner()) {
+					assert.Equal(t, GradeCandidate, grade)
 				}
 			}
 		})
 	}
 }
 
-func TestPRepSet_SortForQuery(t *testing.T) {
-	br := int64(5)
-	prep1 := newDummyPRep(1)
-	prep2 := newDummyPRep(1)
-	prep3 := newDummyPRep(1)
-	prep4 := newDummyPRep(1)
-	prep5 := newDummyPRep(1)
-	prep6 := newDummyPRep(1)
-	prepSetEntries := []PRepSetEntry{
-		&dummyPRepSetEntry{
-			prep:      prep1,
-			power:     big.NewInt(1),
-			delegated: big.NewInt(1),
-			bonded:    big.NewInt(1),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep2,
-			power:     big.NewInt(2),
-			delegated: big.NewInt(2),
-			bonded:    big.NewInt(2),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep3,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep4,
-			power:     big.NewInt(4),
-			delegated: big.NewInt(4),
-			bonded:    big.NewInt(4),
-			pubKey:    false,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep5,
-			power:     big.NewInt(3),
-			delegated: big.NewInt(3),
-			bonded:    big.NewInt(3),
-			pubKey:    true,
-		},
-		&dummyPRepSetEntry{
-			prep:      prep6,
-			power:     big.NewInt(0),
-			delegated: big.NewInt(0),
-			bonded:    big.NewInt(0),
-			pubKey:    true,
-		},
+func TestPrepSetImpl_OnTermEnd(t *testing.T) {
+	const (
+		totalPReps    = 110
+		limit         = 30
+		activeDSAMask = int64(3)
+	)
+
+	noPubKeys := []int{0, 10}
+	noBonds := []int{10, 20}
+	inJails := []int{20, 30}
+
+	var err error
+	sc := newMockStateContext(map[string]interface{}{
+		"blockHeight":     int64(1000),
+		"revision":        icmodule.RevisionIISS4R1,
+		"activeDSAMask":   activeDSAMask,
+		"bondRequirement": icmodule.Rate(5),
+	})
+	cfg := NewPRepCountConfig(22, 78, 3)
+
+	preps := newDummyPReps(totalPReps)
+	for i, prep := range preps {
+		if i >= noPubKeys[0] && i < noPubKeys[1] {
+			prep.SetDSAMask(0)
+		} else {
+			prep.SetDSAMask(activeDSAMask)
+		}
+
+		if i >= noBonds[0] && i < noBonds[1] {
+			prep.SetBonded(icmodule.BigIntZero)
+		}
+
+		if i >= inJails[0] && i < inJails[1] {
+			err = prep.OnEvent(sc, icmodule.PRepEventImposePenalty, icmodule.PenaltyValidationFailure)
+			assert.NoError(t, err)
+			assert.True(t, prep.IsInJail())
+		}
 	}
 
-	prepSet := NewPRepSet(prepSetEntries)
+	electables := 0
+	for _, prep := range preps {
+		if prep.IsElectable(sc) {
+			electables++
+		}
+	}
 
-	tests := []struct {
-		rev    int
-		expect []*PRep
+	prepSet := NewPRepSet(sc, preps, cfg)
+	err = prepSet.OnTermEnd(sc, limit)
+	assert.NoError(t, err)
+	assert.Equal(t, len(preps), prepSet.Size())
+
+	electables2 := 0
+	for _, prep := range preps {
+		if prep.IsElectable(sc) {
+			electables2++
+		}
+	}
+	assert.Equal(t, electables, electables2)
+	assert.Equal(t, cfg.MainPReps()+cfg.ExtraMainPReps(), prepSet.GetPRepSize(GradeMain))
+	assert.Equal(t, electables, prepSet.GetPRepSize(GradeMain)+prepSet.GetPRepSize(GradeSub))
+	assert.Equal(t, totalPReps-electables, prepSet.GetPRepSize(GradeCandidate))
+
+	var expGrade Grade
+	for i, prep := range preps {
+		grade := prep.Grade()
+		if i < prepSet.GetPRepSize(GradeMain) {
+			expGrade = GradeMain
+		} else if i < electables {
+			expGrade = GradeSub
+		} else {
+			expGrade = GradeCandidate
+			assert.False(t, prep.IsElectable(sc))
+		}
+		assert.Equal(t, expGrade, grade)
+	}
+}
+
+func TestSortByPower(t *testing.T) {
+	br := icmodule.ToRate(5)
+	preps := newDummyPReps(6)
+
+	for _, prep := range preps {
+		dsaMask := rand.Int63n(4)
+		prep.SetDSAMask(dsaMask)
+	}
+
+	args := []struct {
+		rev           int
+		activeDSAMask int64
 	}{
-		{
-			icmodule.RevisionBTP2 - 1,
-			[]*PRep{prep4, prep5, prep3, prep2, prep1, prep6},
-		},
-		{
-			icmodule.RevisionBTP2,
-			[]*PRep{prep5, prep1, prep6, prep4, prep3, prep2},
-		},
+		{icmodule.RevisionBTP2 - 1, 0},
+		{icmodule.RevisionBTP2, 1},
+		{icmodule.RevisionBTP2, 3},
 	}
 
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("rev=%d", tt.rev), func(t *testing.T) {
-			prepSet.SortForQuery(br, tt.rev)
-			for j := 0; j < prepSet.Size(); j++ {
-				// check sort order
-				aEntry := prepSet.GetByIndex(j)
-				ePRep := tt.expect[j]
-				ao := aEntry.Owner()
-				eo := ePRep.Owner()
-				assert.True(t, ao.Equal(eo), fmt.Sprintf("%d: e:%s a:%s", j, eo, ao))
+	for _, arg := range args {
+		name := fmt.Sprintf("rev=%d", arg.rev)
+		activeDSAMask := arg.activeDSAMask
+		sc := newMockStateContext(map[string]interface{}{
+			"blockHeight":     int64(1000),
+			"revision":        arg.rev,
+			"activeDSAMask":   activeDSAMask,
+			"bondRequirement": br,
+		})
+
+		t.Run(name, func(t *testing.T) {
+			SortByPower(sc, preps)
+			size := len(preps)
+
+			for i := 1; i < size; i++ {
+				assert.True(t, checkPRepOrder(sc, preps[i-1], preps[i]))
 			}
 		})
 	}
+}
+
+func TestChooseExtraMainPReps(t *testing.T) {
+	const (
+		size = 10
+	)
+	br := icmodule.ToRate(5)
+
+	args := []struct {
+		eligible           int
+		extraMainPRepCount int
+		exp                int
+	}{
+		{0, 0, 0},
+		{0, 3, 0},
+		{1, 3, 1},
+		{2, 3, 2},
+		{3, 3, 3},
+		{5, 2, 2},
+		{size, 3, 3},
+	}
+
+	for i, arg := range args {
+		eligible := arg.eligible
+		extraMainPRepCount := arg.extraMainPRepCount
+		exp := arg.exp
+
+		name := fmt.Sprintf("case-%02d", i)
+		preps := newDummyPReps(size)
+		for j := 0; j < size-arg.eligible; j++ {
+			preps[j].SetBonded(icmodule.BigIntZero)
+		}
+
+		t.Run(name, func(t *testing.T) {
+			extras := chooseExtraMainPReps(preps, extraMainPRepCount, func(prep *PRep) bool {
+				return prep.GetPower(br).Sign() > 0
+			})
+			assert.Equal(t, exp, len(extras))
+			for j := 0; j < exp; j++ {
+				assert.Equal(t, preps[size-eligible+j], extras[j])
+			}
+		})
+	}
+}
+
+func TestCopyPReps(t *testing.T) {
+	srcPReps := newDummyPReps(10)
+
+	args := []struct {
+		excludes []int
+	}{
+		{nil},
+		{[]int{0, 5}},
+		{[]int{7}},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		dstPReps := make([]*PRep, len(srcPReps))
+		excludeMap := make(map[string]bool)
+		for _, idx := range arg.excludes {
+			prep := srcPReps[idx]
+			excludeMap[icutils.ToKey(prep.Owner())] = true
+		}
+
+		t.Run(name, func(t *testing.T) {
+			copyPReps(dstPReps, srcPReps, excludeMap)
+			nils := 0
+			for _, prep := range dstPReps {
+				if prep == nil {
+					nils++
+				} else {
+					assert.False(t, excludeMap[icutils.ToKey(prep.Owner())])
+				}
+			}
+			assert.Equal(t, nils, len(excludeMap))
+		})
+	}
+}
+
+func checkPRepOrder(sc icmodule.StateContext, p0, p1 *PRep) bool {
+	rev := sc.RevisionValue()
+	br := sc.GetBondRequirement()
+	activeDSAMask := sc.GetActiveDSAMask()
+
+	if rev >= icmodule.RevisionBTP2 {
+		if p0.HasPubKey(activeDSAMask) != p1.HasPubKey(activeDSAMask) {
+			return p0.HasPubKey(activeDSAMask)
+		}
+		if p0.IsJailInfoElectable() != p1.IsJailInfoElectable() {
+			return p0.IsJailInfoElectable()
+		}
+	}
+
+	if cmp := p0.GetPower(br).Cmp(p1.GetPower(br)); cmp != 0 {
+		return cmp > 0
+	}
+	if cmp := p0.Delegated().Cmp(p1.Delegated()); cmp != 0 {
+		return cmp > 0
+	}
+	return bytes.Compare(p0.Owner().Bytes(), p1.Owner().Bytes()) > 0
 }

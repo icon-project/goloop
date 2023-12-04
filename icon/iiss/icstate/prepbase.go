@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -32,8 +33,9 @@ import (
 )
 
 const (
-	prepVersion1  = iota + 1
-	prepVersion   = prepVersion1
+	PRepBaseVersion1 = iota + 1
+	PRepBaseVersion2
+
 	bonderListMax = 10
 )
 
@@ -161,6 +163,9 @@ func (r *PRepInfo) equal(r2 *PRepInfo) bool {
 }
 
 type PRepBaseData struct {
+	version int
+
+	// Fields in version1
 	city        string
 	country     string
 	details     string
@@ -169,9 +174,21 @@ type PRepBaseData struct {
 	p2pEndpoint string
 	website     string
 	node        *common.Address
-	irep       *big.Int
-	irepHeight int64
-	bonderList BonderList
+	irep        *big.Int
+	irepHeight  int64
+	bonderList  BonderList
+	// Fields in version2
+	ci *CommissionInfo
+}
+
+func (p *PRepBaseData) Version() int {
+	return p.version
+}
+
+func (p *PRepBaseData) migrateVersion(version int) {
+	if version > p.version {
+		p.version = version
+	}
 }
 
 func (p *PRepBaseData) Name() string {
@@ -194,7 +211,10 @@ func (p *PRepBaseData) equal(p2 *PRepBaseData) bool {
 	if p == p2 {
 		return true
 	}
-	return p.city == p2.city &&
+	if p.Version() != p2.Version() {
+		return false
+	}
+	ret := p.city == p2.city &&
 		p.country == p2.country &&
 		p.details == p2.details &&
 		p.email == p2.email &&
@@ -205,6 +225,15 @@ func (p *PRepBaseData) equal(p2 *PRepBaseData) bool {
 		p.irep.Cmp(p2.irep) == 0 &&
 		p.irepHeight == p2.irepHeight &&
 		p.bonderList.Equal(p2.bonderList)
+	if !ret {
+		return false
+	}
+	if p.ci != nil {
+		if !p.ci.Equal(p2.ci) {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *PRepBaseData) GetNode(owner module.Address) module.Address {
@@ -238,7 +267,43 @@ func (p *PRepBaseData) GetBonderListInJSON() []interface{} {
 
 func (p PRepBaseData) clone() PRepBaseData {
 	p.bonderList = p.bonderList.Clone()
+	if p.ci != nil {
+		p.ci = p.ci.Clone()
+	}
 	return p
+}
+
+func (p *PRepBaseData) initCommissionInfo(rate, maxRate, maxChangeRate icmodule.Rate) error {
+	ci, err := NewCommissionInfo(rate, maxRate, maxChangeRate)
+	if err != nil {
+		return err
+	}
+	if p.ci != nil {
+		return icmodule.IllegalArgumentError.New("CommissionInfoAlreadyExists")
+	}
+	p.ci = ci
+	return nil
+}
+
+func (p *PRepBaseData) CommissionRate() icmodule.Rate {
+	if p.ci != nil {
+		return p.ci.Rate()
+	}
+	return 0
+}
+
+func (p *PRepBaseData) MaxCommissionRate() icmodule.Rate {
+	if p.ci != nil {
+		return p.ci.MaxRate()
+	}
+	return 0
+}
+
+func (p *PRepBaseData) MaxCommissionChangeRate() icmodule.Rate {
+	if p.ci != nil {
+		return p.ci.MaxChangeRate()
+	}
+	return 0
 }
 
 func NewStringPtr(s string) *string {
@@ -274,6 +339,11 @@ func (p *PRepBaseData) ToJSON(owner module.Address) map[string]interface{} {
 	}
 	jso["irep"] = p.irep
 	jso["irepUpdateBlockHeight"] = p.irepHeight
+
+	if p.ci != nil {
+		ci := p.ci
+		ci.ToJSON(jso)
+	}
 	return jso
 }
 
@@ -306,12 +376,8 @@ type PRepBaseSnapshot struct {
 	PRepBaseData
 }
 
-func (p *PRepBaseSnapshot) Version() int {
-	return prepVersion
-}
-
 func (p *PRepBaseSnapshot) RLPEncodeFields(e codec.Encoder) error {
-	return e.EncodeMulti(
+	err := e.EncodeMulti(
 		p.name,
 		p.country,
 		p.city,
@@ -324,10 +390,14 @@ func (p *PRepBaseSnapshot) RLPEncodeFields(e codec.Encoder) error {
 		p.irepHeight,
 		p.bonderList,
 	)
+	if err == nil && p.Version() == PRepBaseVersion2 {
+		err = e.Encode(p.ci)
+	}
+	return err
 }
 
 func (p *PRepBaseSnapshot) RLPDecodeFields(d codec.Decoder) error {
-	return d.DecodeAll(
+	err := d.DecodeAll(
 		&p.name,
 		&p.country,
 		&p.city,
@@ -340,6 +410,10 @@ func (p *PRepBaseSnapshot) RLPDecodeFields(d codec.Decoder) error {
 		&p.irepHeight,
 		&p.bonderList,
 	)
+	if err == nil && p.Version() == PRepBaseVersion2 {
+		err = d.Decode(&p.ci)
+	}
+	return err
 }
 
 func (p *PRepBaseSnapshot) Equal(object icobject.Impl) bool {
@@ -354,6 +428,13 @@ func (p *PRepBaseSnapshot) Equal(object icobject.Impl) bool {
 	return p.PRepBaseData.equal(&other.PRepBaseData)
 }
 
+func NewPRepBaseSnapshot(version int) *PRepBaseSnapshot {
+	return &PRepBaseSnapshot{
+		PRepBaseData: PRepBaseData{
+			version: version,
+		},
+	}
+}
 
 type PRepBaseState struct {
 	PRepBaseData
@@ -362,7 +443,7 @@ type PRepBaseState struct {
 
 func (p *PRepBaseState) GetSnapshot() *PRepBaseSnapshot {
 	if p.last == nil {
-		p.last = &PRepBaseSnapshot {
+		p.last = &PRepBaseSnapshot{
 			PRepBaseData: p.PRepBaseData.clone(),
 		}
 	}
@@ -438,14 +519,46 @@ func (p *PRepBaseState) Reset(snapshot *PRepBaseSnapshot) *PRepBaseState {
 	return p
 }
 
+func (p *PRepBaseState) InitCommissionInfo(ci *CommissionInfo) error {
+	if ci == nil {
+		return scoreresult.InvalidParameterError.New("InvalidCommissionInfo")
+	}
+	if p.ci != nil {
+		return icmodule.DuplicateError.New("CommissionInfoAlreadySet")
+	}
+	p.ci = ci
+	p.migrateVersion(PRepBaseVersion2)
+	p.setDirty()
+	return nil
+}
+
+func (p *PRepBaseState) SetCommissionRate(rate icmodule.Rate) error {
+	if p.ci == nil {
+		return icmodule.NotFoundError.New("CommissionInfoNotFound")
+	}
+	if rate == p.ci.Rate() {
+		return nil
+	}
+	err := p.ci.SetRate(rate)
+	if err == nil {
+		p.setDirty()
+	}
+	return err
+}
+
+func (p *PRepBaseState) CommissionInfoExists() bool {
+	return p.ci != nil
+}
+
 var emptyPRepBaseSnapshot = &PRepBaseSnapshot{
 	PRepBaseData: PRepBaseData{
-		irep: new(big.Int),
+		version: PRepBaseVersion1,
+		irep:    icmodule.BigIntZero,
 	},
 }
 
-func newPRepBaseWithTag(_ icobject.Tag) *PRepBaseSnapshot {
-	return new(PRepBaseSnapshot)
+func newPRepBaseWithTag(tag icobject.Tag) *PRepBaseSnapshot {
+	return NewPRepBaseSnapshot(tag.Version())
 }
 
 func NewPRepBaseState() *PRepBaseState {
@@ -493,7 +606,7 @@ func (bl BonderList) Clone() BonderList {
 
 func (bl BonderList) ToJSON() []interface{} {
 	size := len(bl)
-	jso := make([]interface{}, size, size)
+	jso := make([]interface{}, size)
 	for i, b := range bl {
 		jso[i] = b
 	}

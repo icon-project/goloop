@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 ICON Foundation
+ * Copyright 2023 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-package iiss
+package calculator
 
 import (
 	"bytes"
 	"math/big"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -37,324 +35,93 @@ import (
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
 )
 
-type RewardType int
-
-const (
-	TypeBlockProduce RewardType = iota
-	TypeVoted
-	TypeVoting
-)
-
-const (
-	DayBlock     = 24 * 60 * 60 / 2
-	DayPerMonth  = 30
-	MonthBlock   = DayBlock * DayPerMonth
-	MonthPerYear = 12
-	YearBlock    = MonthBlock * MonthPerYear
-
-	MinRrep        = 200
-	RrepMultiplier = 3      // rrep = rrep + eep + dbp = 3 * rrep
-	RrepDivider    = 10_000 // rrep(10_000) = 100.00%, rrep(200) = 2.00%
-	MinDelegation  = YearBlock / icmodule.IScoreICXRatio * (RrepDivider / MinRrep)
-)
-
-var (
-	BigIntMinDelegation = big.NewInt(int64(MinDelegation))
-)
-
-type Calculator struct {
-	log log.Logger
-
-	startHeight int64
-	database    db.Database
-	back        *icstage.Snapshot
-	base        *icreward.Snapshot
-	global      icstage.Global
-	temp        *icreward.State
-	stats       *statistics
-
-	lock    sync.Mutex
-	waiters []*sync.Cond
-	err     error
-	result  *icreward.Snapshot
+type iiss3Reward struct {
+	Context
+	g icstage.Global
 }
 
-func (c *Calculator) Result() *icreward.Snapshot {
-	return c.result
-}
-
-func (c *Calculator) StartHeight() int64 {
-	return c.startHeight
-}
-
-func (c *Calculator) TotalReward() *big.Int {
-	return c.stats.TotalReward()
-}
-
-func (c *Calculator) Back() *icstage.Snapshot {
-	return c.back
-}
-
-func (c *Calculator) Base() *icreward.Snapshot {
-	return c.base
-}
-
-func (c *Calculator) Temp() *icreward.State {
-	return c.temp
-}
-
-func (c *Calculator) Error() error {
-	return c.err
-}
-
-func (c *Calculator) WaitResult(blockHeight int64) error {
-	if c.startHeight == InitBlockHeight {
-		return nil
+func NewIISS3Reward(ctx Context) (*iiss3Reward, error) {
+	global, err := ctx.Back().GetGlobal()
+	if err != nil {
+		return nil, err
 	}
-	if c.startHeight != blockHeight {
-		return errors.InvalidStateError.Errorf("Calculator(height=%d,exp=%d)",
-			c.startHeight, blockHeight)
-	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.err == nil && c.result == nil {
-		cond := sync.NewCond(&c.lock)
-		c.waiters = append(c.waiters, cond)
-		cond.Wait()
-	}
-	return c.err
+	return &iiss3Reward{Context: ctx, g: global}, nil
 }
 
-func (c *Calculator) setResult(result *icreward.Snapshot, err error) {
-	if result == nil && err == nil {
-		c.log.Panicf("InvalidParameters(result=%+v, err=%+v)")
-	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
+func (r *iiss3Reward) Calculate() (err error) {
+	r.Logger().Infof("Start calculation %d", r.g.GetStartHeight())
+	r.Logger().Infof("Global Option: %+v", r.g)
 
-	// it's already interrupted.
-	if c.err != nil {
-		return
+	if err = processClaim(r); err != nil {
+		return err
 	}
 
-	c.result = result
-	c.err = err
-	for _, cond := range c.waiters {
-		cond.Signal()
+	if err = r.replayBugDisabledPRep(); err != nil {
+		return err
 	}
-	c.waiters = nil
-}
-
-func (c *Calculator) Stop() {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.err == nil && c.result == nil {
-		c.err = errors.ErrInterrupted
-		for _, w := range c.waiters {
-			w.Signal()
-		}
-		c.waiters = nil
-	}
-}
-
-func UpdateCalculator(c *Calculator, ess state.ExtensionSnapshot, logger log.Logger) *Calculator {
-	essi := ess.(*ExtensionSnapshotImpl)
-	back := essi.Back2()
-	reward := essi.Reward()
-	if c != nil {
-		if c.database == essi.database &&
-			bytes.Equal(c.back.Bytes(), back.Bytes()) &&
-			bytes.Equal(c.base.Bytes(), reward.Bytes()) {
-			return c
-		}
-		c.Stop()
-	}
-	return NewCalculator(essi.database, back, reward, logger)
-}
-
-func (c *Calculator) run() (err error) {
-	defer func() {
-		if err != nil {
-			c.setResult(nil, err)
-		}
-	}()
 
 	startTS := time.Now()
-	if err = c.prepare(); err != nil {
-		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to prepare calculator")
-		return
-	}
-	prepareTS := time.Now()
-
-	if err = c.calculateBlockProduce(); err != nil {
+	if err = r.calculateBlockProduce(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate block produce reward")
 		return
 	}
 	bpTS := time.Now()
 
-	if err = c.calculateVotedReward(); err != nil {
+	if err = r.calculateVotedReward(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate P-Rep voted reward")
 		return
 	}
 	votedTS := time.Now()
 
-	if err = c.calculateVotingReward(); err != nil {
+	if err = r.calculateVotingReward(); err != nil {
 		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to calculate ICONist voting reward")
-		return
-	}
-	votingTS := time.Now()
-
-	if err = c.postWork(); err != nil {
-		err = icmodule.CalculationFailedError.Wrapf(err, "Failed to do post work of calculator")
 		return
 	}
 	finalTS := time.Now()
 
-	c.log.Infof("Calculation time: total=%s prepare=%s blockProduce=%s voted=%s voting=%s postwork=%s",
-		finalTS.Sub(startTS), prepareTS.Sub(startTS), bpTS.Sub(prepareTS),
-		votedTS.Sub(bpTS), votingTS.Sub(votedTS), finalTS.Sub(votingTS),
+	r.Logger().Infof("Calculation time: total=%s blockProduce=%s voted=%s voting=%s",
+		finalTS.Sub(startTS), bpTS.Sub(startTS), votedTS.Sub(bpTS), finalTS.Sub(votedTS),
 	)
-	c.log.Infof("Calculation statistics: Total=%d BlockProduce=%s Voted=%s Voting=%s",
-		c.stats.TotalReward(), c.stats.BlockProduce(), c.stats.Voted(), c.stats.Voting())
 
-	c.setResult(c.temp.GetSnapshot(), nil)
-	return nil
-}
-
-func (c *Calculator) prepare() error {
-	var err error
-	c.log.Infof("Start calculation %d", c.startHeight)
-	c.log.Infof("Global Option: %+v", c.global)
-
-	// write claim data to temp
-	if err = c.processClaim(); err != nil {
-		return err
+	if err = processBTP(r); err != nil {
+		return
 	}
 
-	// replay BugDisabledPRep
-	if err = c.replayBugDisabledPRep(); err != nil {
-		return err
+	if err = processCommissionRate(r); err != nil {
+		return
 	}
-	return nil
-}
 
-func (c *Calculator) processClaim() error {
-	for iter := c.back.Filter(icstage.IScoreClaimKey.Build()); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-		obj := o.(*icobject.Object)
-		if obj.Tag().Type() == icstage.TypeIScoreClaim {
-			claim := icstage.ToIScoreClaim(o)
-			keySplit, err := containerdb.SplitKeys(key)
-			if err != nil {
-				return nil
-			}
-			addr, err := common.NewAddress(keySplit[1])
-			if err != nil {
-				return nil
-			}
-			iScore, err := c.temp.GetIScore(addr)
-			if err != nil {
-				return nil
-			}
-			nIScore := iScore.Subtracted(claim.Value())
-			if nIScore.Value().Sign() == -1 {
-				return errors.Errorf("Invalid negative I-Score for %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
-			}
-			c.log.Tracef("Claim %s. %+v - %+v = %+v", addr, iScore, claim, nIScore)
-			if err = c.temp.SetIScore(addr, nIScore); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (c *Calculator) replayBugDisabledPRep() error {
-	revision := c.global.GetRevision()
-	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||
-		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
-		return nil
-	}
-	for iter := c.base.Filter(icreward.BugDisabledPRepKey.Build()); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-		keySplit, err := containerdb.SplitKeys(key)
-		if err != nil {
-			return err
-		}
-		addr, err := common.NewAddress(keySplit[1])
-		if err != nil {
-			return err
-		}
-		obj := icreward.ToBugDisabledPRep(o)
-		if err = c.updateIScore(addr, obj.Value(), TypeVoting); err != nil {
-			return err
-		}
-		if err = c.temp.DeleteBugDisabledPRep(addr); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *Calculator) updateIScore(addr module.Address, reward *big.Int, t RewardType) error {
-	iScore, err := c.temp.GetIScore(addr)
-	if err != nil {
-		return err
-	}
-	nIScore := iScore.Added(reward)
-	if err = c.temp.SetIScore(addr, nIScore); err != nil {
-		return err
-	}
-	c.log.Tracef("Update IScore %s by %d: %+v + %s = %+v", addr, t, iScore, reward, nIScore)
-
-	switch t {
-	case TypeBlockProduce:
-		c.stats.IncreaseBlockProduce(reward)
-	case TypeVoted:
-		c.stats.IncreaseVoted(reward)
-	case TypeVoting:
-		c.stats.IncreaseVoting(reward)
-	}
-	return nil
+	return
 }
 
 // varForBlockProduceReward return variable for block produce reward
 // return (((irep * MonthPerYear) / (YearBlock * 2)) * mainPRepCount * IScoreICXRatio) / 2
 func varForBlockProduceReward(irep *big.Int, mainPRepCount int) *big.Int {
 	v := new(big.Int)
-	v.Mul(irep, big.NewInt(MonthPerYear))
-	v.Div(v, big.NewInt(int64(YearBlock*2)))
+	v.Mul(irep, big.NewInt(icmodule.MonthPerYear))
+	v.Div(v, big.NewInt(int64(icmodule.YearBlock*2)))
 	v.Mul(v, big.NewInt(int64(mainPRepCount)*icmodule.IScoreICXRatio))
 	v.Div(v, big.NewInt(int64(2)))
 	return v
 }
 
-func (c *Calculator) calculateBlockProduce() error {
-	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
+func (r *iiss3Reward) calculateBlockProduce() error {
+	if r.g.GetIISSVersion() == icstate.IISSVersion3 {
 		return nil
 	}
 	var err error
 	var validators []*validator
-	global := c.global.GetV1()
+	global := r.g.GetV1()
 	variable := varForBlockProduceReward(global.GetIRep(), global.GetMainRepCount())
-	validators, err = c.loadValidators()
+	validators, err = loadValidators(r)
 	if err != nil {
 		return err
 	}
 
 	prefix := icstage.BlockProduceKey.Build()
-	for iter := c.back.Filter(prefix); iter.Has(); iter.Next() {
+	for iter := r.Back().Filter(prefix); iter.Has(); iter.Next() {
 		var obj trie.Object
 		obj, _, err = iter.Get()
 		if err != nil {
@@ -367,24 +134,12 @@ func (c *Calculator) calculateBlockProduce() error {
 	}
 
 	for _, v := range validators {
-		if err = c.updateIScore(v.Address(), v.IScore(), TypeBlockProduce); err != nil {
+		if err = r.UpdateIScore(v.Address(), v.IScore(), RTBlockProduce); err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func (c *Calculator) loadValidators() ([]*validator, error) {
-	vl, err := c.back.GetValidators()
-	if err != nil {
-		return nil, err
-	}
-	vs := make([]*validator, len(vl))
-	for i, a := range vl {
-		vs[i] = newValidator(common.AddressToPtr(a))
-	}
-	return vs, nil
 }
 
 // processBlockProduce calculate blockProduce reward with Block Produce Info.
@@ -429,10 +184,13 @@ func processBlockProduce(bp *icstage.BlockProduce, variable *big.Int, validators
 
 // varForVotedReward return variable for P-Rep voted reward
 // IISS 2.0
+//
 //	multiplier = (((irep * MonthPerYear) / (YearBlock * 2)) * 100 * IScoreICXRatio) / 2
 //	divider = 1
+//
 // IISS 3.1
-// 	multiplier = iglobal * iprep * IScoreICXRatio
+//
+//	multiplier = iglobal * iprep * IScoreICXRatio
 //	divider = 100 * MonthBlock
 func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
@@ -441,32 +199,33 @@ func varForVotedReward(global icstage.Global) (multiplier, divider *big.Int) {
 	iissVersion := global.GetIISSVersion()
 	if iissVersion == icstate.IISSVersion2 {
 		g := global.GetV1()
-		multiplier.Mul(g.GetIRep(), big.NewInt(MonthPerYear))
-		multiplier.Div(multiplier, big.NewInt(int64(YearBlock*2)))
+		multiplier.Mul(g.GetIRep(), big.NewInt(icmodule.MonthPerYear))
+		multiplier.Div(multiplier, big.NewInt(int64(icmodule.YearBlock*2)))
 		multiplier.Mul(multiplier, big.NewInt(int64(icmodule.VotedRewardMultiplier*icmodule.IScoreICXRatio)))
 	} else {
 		g := global.GetV2()
 		if g.GetTermPeriod() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetIGlobal(), g.GetIPRep())
+		iprep := g.GetIPRep()
+		multiplier.Mul(g.GetIGlobal(), iprep.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * MonthBlock))
+		divider.SetInt64(iprep.DenomInt64() * icmodule.MonthBlock)
 	}
 	return
 }
 
-func (c *Calculator) calculateVotedReward() error {
+func (r *iiss3Reward) calculateVotedReward() error {
 	// Calculate reward with a new configuration from next block
 	from := -1
-	multiplier, divider := varForVotedReward(c.global)
-	vInfo, err := c.loadVotedInfo()
+	multiplier, divider := varForVotedReward(r.g)
+	vInfo, err := r.loadVotedInfo()
 	if err != nil {
 		return err
 	}
 
 	eventPrefix := icstage.EventKey.Build()
-	for iter := c.back.Filter(eventPrefix); iter.Has(); iter.Next() {
+	for iter := r.Back().Filter(eventPrefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
@@ -481,12 +240,12 @@ func (c *Calculator) calculateVotedReward() error {
 		case icstage.TypeEventEnable:
 			obj := icstage.ToEventEnable(o)
 			if obj.Status().IsEnabled() == false && vInfo.IsElectedPRep(obj.Target()) {
-				c.log.Tracef("Calculate voted reward with %+v", obj)
+				r.Logger().Tracef("Calculate voted reward with %+v", obj)
 				vInfo.CalculateReward(multiplier, divider, keyOffset-from)
 				from = keyOffset
 				vInfo.SetEnable(obj.Target(), obj.Status())
 				// If revision < 7, do not update totalBondedDelegation with temporarily disabled P-Rep
-				if c.global.GetRevision() >= icmodule.RevisionFixTotalDelegated || !obj.Status().IsDisabledTemporarily() {
+				if r.g.GetRevision() >= icmodule.RevisionFixTotalDelegated || !obj.Status().IsDisabledTemporarily() {
 					vInfo.UpdateTotalBondedDelegation()
 				}
 			} else {
@@ -507,8 +266,8 @@ func (c *Calculator) calculateVotedReward() error {
 			from = keyOffset
 		}
 	}
-	if from < c.global.GetOffsetLimit() {
-		vInfo.CalculateReward(multiplier, divider, c.global.GetOffsetLimit()-from)
+	if from < r.g.GetOffsetLimit() {
+		vInfo.CalculateReward(multiplier, divider, r.g.GetOffsetLimit()-from)
 	}
 
 	// write result to temp and update statistics
@@ -519,7 +278,7 @@ func (c *Calculator) calculateVotedReward() error {
 			return err
 		}
 		prep.UpdateToWrite()
-		if err = c.temp.SetVoted(addr, prep.Voted()); err != nil {
+		if err = r.Temp().SetVoted(addr, prep.Voted()); err != nil {
 			return err
 		}
 
@@ -527,26 +286,26 @@ func (c *Calculator) calculateVotedReward() error {
 			continue
 		}
 
-		if err = c.updateIScore(addr, prep.IScore(), TypeVoted); err != nil {
+		if err = r.UpdateIScore(addr, prep.IScore(), RTPRep); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
-	electedPRepCount := c.global.GetElectedPRepCount()
-	bondRequirement := c.global.GetBondRequirement()
+func (r *iiss3Reward) loadVotedInfo() (*votedInfo, error) {
+	electedPRepCount := r.g.GetElectedPRepCount()
+	bondRequirement := r.g.GetBondRequirement()
 	vInfo := newVotedInfo(electedPRepCount)
 
 	var dsa *icreward.DSA
 	var err error
-	if dsa, err = c.base.GetDSA(); err != nil {
+	if dsa, err = r.Base().GetDSA(); err != nil {
 		return nil, err
 	}
 
 	prefix := icreward.VotedKey.Build()
-	for iter := c.base.Filter(prefix); iter.Has(); iter.Next() {
+	for iter := r.Base().Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return nil, err
@@ -562,7 +321,7 @@ func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 		obj := icreward.ToVoted(o)
 		data := newVotedData(obj.Clone()) // Clone Voted instance as we will modify it later
 		data.UpdateBondedDelegation(bondRequirement)
-		pubKey, err := c.base.GetPublicKey(addr)
+		pubKey, err := r.Base().GetPublicKey(addr)
 		if err != nil {
 			return nil, err
 		}
@@ -577,9 +336,9 @@ func (c *Calculator) loadVotedInfo() (*votedInfo, error) {
 }
 
 // loadPRepInfo load P-Rep status from base
-func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
+func (r *iiss3Reward) loadPRepInfo() (map[string]*pRepEnable, error) {
 	prepInfo := make(map[string]*pRepEnable)
-	for iter := c.base.Filter(icreward.VotedKey.Build()); iter.Has(); iter.Next() {
+	for iter := r.Base().Filter(icreward.VotedKey.Build()); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return nil, err
@@ -593,7 +352,7 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 			return nil, err
 		}
 		obj := icreward.ToVoted(o)
-		if obj.Enable() == false {
+		if obj.IsEnabled() == false {
 			// do not collect disabled P-Rep
 			continue
 		}
@@ -605,10 +364,13 @@ func (c *Calculator) loadPRepInfo() (map[string]*pRepEnable, error) {
 
 // varForPRepDelegatingReward return variables for ICONist delegating reward
 // IISS 2.0
-// 	multiplier = Rrep * IScoreICXRatio
+//
+//	multiplier = Rrep * IScoreICXRatio
 //	divider = YearBlock * RrepDivider
+//
 // IISS 3.1
-// 	multiplier = Iglobal * Ivoter * IScoreICXRatio
+//
+//	multiplier = Iglobal * Ivoter * IScoreICXRatio
 //	divider = 100 * MonthBlock * total voting amount
 func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (multiplier, divider *big.Int) {
 	multiplier = new(big.Int)
@@ -620,36 +382,37 @@ func varForVotingReward(global icstage.Global, totalVotingAmount *big.Int) (mult
 		if g.GetRRep().Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(icmodule.IScoreICXRatio*RrepMultiplier))
-		divider.SetInt64(int64(YearBlock * RrepDivider))
+		multiplier.Mul(g.GetRRep(), new(big.Int).SetInt64(icmodule.IScoreICXRatio*icmodule.RrepMultiplier))
+		divider.SetInt64(int64(icmodule.YearBlock * icmodule.RrepDivider))
 	} else {
 		g := global.GetV2()
 		if g.GetTermPeriod() == 0 || totalVotingAmount.Sign() == 0 {
 			return
 		}
-		multiplier.Mul(g.GetIGlobal(), g.GetIVoter())
+		ivoter := g.GetIVoter()
+		multiplier.Mul(g.GetIGlobal(), ivoter.NumBigInt())
 		multiplier.Mul(multiplier, icmodule.BigIntIScoreICXRatio)
-		divider.SetInt64(int64(100 * MonthBlock))
+		divider.SetInt64(ivoter.DenomInt64() * icmodule.MonthBlock)
 		divider.Mul(divider, totalVotingAmount)
 	}
 	return
 }
 
-func (c *Calculator) calculateVotingReward() error {
+func (r *iiss3Reward) calculateVotingReward() error {
 	totalVotingAmount := new(big.Int)
 	delegatingMap := make(map[string]map[int]icstage.VoteList)
 	bondingMap := make(map[string]map[int]icstage.VoteList)
-	prepInfo, err := c.loadPRepInfo()
+	prepInfo, err := r.loadPRepInfo()
 	if err != nil {
 		return err
 	}
-	vInfo, err := c.loadVotedInfo()
+	vInfo, err := r.loadVotedInfo()
 	if err != nil {
 		return err
 	}
 	totalVotingAmount.Set(vInfo.TotalVoted())
 
-	for iter := c.back.Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
+	for iter := r.Back().Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
 		var o trie.Object
 		var key []byte
 		o, key, err = iter.Get()
@@ -683,9 +446,9 @@ func (c *Calculator) calculateVotingReward() error {
 			}
 			// update vInfo
 			status := event.Status()
-			if c.global.GetRevision() >= icmodule.RevisionFixVotingReward && event.Status().IsDisabledTemporarily() {
+			if r.g.GetRevision() >= icmodule.RevisionFixVotingReward && event.Status().IsDisabledTemporarily() {
 				// ICONist get voting reward when target PRep got turn skipping penalty
-				status = icstage.ESEnable
+				status = icmodule.ESEnable
 			}
 			vInfo.SetEnable(event.Target(), status)
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
@@ -746,7 +509,7 @@ func (c *Calculator) calculateVotingReward() error {
 	}
 
 	// get variables for calculation
-	multiplier, divider := varForVotingReward(c.global, totalVotingAmount)
+	multiplier, divider := varForVotingReward(r.g, totalVotingAmount)
 	if multiplier.Sign() == 0 || divider.Sign() == 0 {
 		return nil
 	}
@@ -761,7 +524,7 @@ func (c *Calculator) calculateVotingReward() error {
 
 	// calculate voting reward
 	for _, i := range inputs {
-		if err = c.processVoting(
+		if err = r.processVoting(
 			i._type,
 			multiplier,
 			divider,
@@ -770,7 +533,7 @@ func (c *Calculator) calculateVotingReward() error {
 		); err != nil {
 			return err
 		}
-		if err = c.processVotingEvent(
+		if err = r.processVotingEvent(
 			i._type,
 			multiplier,
 			divider,
@@ -781,56 +544,11 @@ func (c *Calculator) calculateVotingReward() error {
 		}
 	}
 	// add preprocessed data for BugDisabledPRep
-	c.addDataForBugDisabledPRep(prepInfo, multiplier, divider)
-	return nil
-}
-
-func (c *Calculator) addDataForBugDisabledPRep(prepInfo map[string]*pRepEnable, multiplier, divider *big.Int) error {
-	revision := c.global.GetRevision()
-	if c.global.GetIISSVersion() != icstate.IISSVersion2 ||
-		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
-		return nil
-	}
-	for iter := c.back.Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
-		o, key, err := iter.Get()
-		if err != nil {
-			return err
-		}
-
-		obj := o.(*icobject.Object)
-		_type := obj.Tag().Type()
-
-		var keySplit [][]byte
-		keySplit, err = containerdb.SplitKeys(key)
-		if err != nil {
-			return err
-		}
-		// DisabledPRep bug condition
-		// - got a disabled event
-		// - had a delegating
-		if _type == icstage.TypeEventEnable {
-			event := icstage.ToEventEnable(obj)
-			if !event.Status().IsEnabled() {
-				delegating, err := c.temp.GetDelegating(event.Target())
-				if err != nil {
-					return err
-				}
-				if delegating != nil {
-					offset := int(intconv.BytesToInt64(keySplit[1]))
-					reward := c.votingReward(multiplier, divider, offset, c.global.GetOffsetLimit(), prepInfo, delegating.Iterator())
-					bug := icreward.NewBugDisabledPRep(reward)
-					if err = c.temp.AddBugDisabledPRep(event.Target(), bug); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}
-	return nil
+	return r.addDataForBugDisabledPRep(prepInfo, multiplier, divider)
 }
 
 // processVoting calculator voting reward with delegating and bonding data.
-func (c *Calculator) processVoting(
+func (r *iiss3Reward) processVoting(
 	_type int,
 	multiplier *big.Int,
 	divider *big.Int,
@@ -843,14 +561,14 @@ func (c *Calculator) processVoting(
 
 	// voting took place in the previous period
 	from := -1
-	to := c.global.GetOffsetLimit()
+	to := r.g.GetOffsetLimit()
 	var prefix []byte
 	if _type == icreward.TypeDelegating {
 		prefix = icreward.DelegatingKey.Build()
 	} else {
 		prefix = icreward.BondingKey.Build()
 	}
-	for iter := c.base.Filter(prefix); iter.Has(); iter.Next() {
+	for iter := r.Base().Filter(prefix); iter.Has(); iter.Next() {
 		o, key, err := iter.Get()
 		if err != nil {
 			return err
@@ -871,12 +589,12 @@ func (c *Calculator) processVoting(
 		} else {
 			voting := toVoting(_type, o)
 			if voting == nil {
-				c.log.Errorf("Failed to convert data to voting instance")
+				r.Logger().Errorf("Failed to convert data to voting instance")
 				continue
 			}
-			reward = c.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
+			reward = r.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
 		}
-		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
+		if err = r.UpdateIScore(addr, reward, RTVoter); err != nil {
 			return err
 		}
 	}
@@ -886,15 +604,19 @@ func (c *Calculator) processVoting(
 
 // votingReward calculate voting reward with a single voting data
 // IISS 2.0
-//   reward = Rrep * delegations * period * IScoreICXRatio / YearBlock
-//   multiplier = Rrep * IScoreICXRatio
-//   divider = YearBlock
+//
+//	reward = Rrep * delegations * period * IScoreICXRatio / YearBlock
+//	multiplier = Rrep * IScoreICXRatio
+//	divider = YearBlock
+//
 // IISS 3.1
-//   reward = Iglobal * Ivoter * voting amount * period * IScoreICXRatio / (100 * Term period * total voting amount)
-//   multiplier = Iglobal * Ivoter * IScoreICXRatio
-//   divider = 100 * Term period * total voting amount
+//
+//	reward = Iglobal * Ivoter * voting amount * period * IScoreICXRatio / (100 * Term period * total voting amount)
+//	multiplier = Iglobal * Ivoter * IScoreICXRatio
+//	divider = 100 * Term period * total voting amount
+//
 // reward = multiplier * voting amount * period / divider
-func (c *Calculator) votingReward(
+func (r *iiss3Reward) votingReward(
 	multiplier *big.Int,
 	divider *big.Int,
 	from int,
@@ -903,12 +625,12 @@ func (c *Calculator) votingReward(
 	iter icstate.VotingIterator,
 ) *big.Int {
 	total := new(big.Int)
-	checkMinVoting := c.global.GetIISSVersion() == icstate.IISSVersion2
+	checkMinVoting := r.g.GetIISSVersion() == icstate.IISSVersion2
 	for ; iter.Has(); iter.Next() {
 		if voting, err := iter.Get(); err != nil {
-			c.log.Errorf("Failed to iterate votings err=%+v", err)
+			r.Logger().Errorf("Failed to iterate votings err=%+v", err)
 		} else {
-			if checkMinVoting && voting.Amount().Cmp(BigIntMinDelegation) < 0 {
+			if checkMinVoting && voting.Amount().Cmp(icmodule.BigIntMinDelegation) < 0 {
 				continue
 			}
 			s := from
@@ -928,7 +650,7 @@ func (c *Calculator) votingReward(
 				reward.Mul(reward, big.NewInt(int64(period)))
 				reward.Div(reward, divider)
 				total.Add(total, reward)
-				c.log.Tracef("VotingReward %s: %s = %s * %s * %d / %s",
+				r.Logger().Tracef("VotingReward %s: %s = %s * %s * %d / %s",
 					voting.To(), reward, multiplier, voting.Amount(), period, divider)
 			}
 		}
@@ -937,7 +659,7 @@ func (c *Calculator) votingReward(
 }
 
 // processVotingEvent calculate reward for account who got DELEGATE event
-func (c *Calculator) processVotingEvent(
+func (r *iiss3Reward) processVotingEvent(
 	_type int,
 	multiplier *big.Int,
 	divider *big.Int,
@@ -954,7 +676,7 @@ func (c *Calculator) processVotingEvent(
 		// sort with offset
 		sort.Ints(offsets)
 
-		voting, err := c.getVoting(_type, addr)
+		voting, err := r.getVoting(_type, addr)
 		if err != nil {
 			return err
 		}
@@ -962,43 +684,43 @@ func (c *Calculator) processVotingEvent(
 		// initial voting took place in the previous period
 		// New configuration works from the next block
 		from := -1
-		offsetLimit := c.global.GetOffsetLimit()
-		iissVersion := c.global.GetIISSVersion()
+		offsetLimit := r.g.GetOffsetLimit()
+		iissVersion := r.g.GetIISSVersion()
 		for i := 0; i < len(events); i += 1 {
 			to := offsets[i]
 			switch iissVersion {
 			case icstate.IISSVersion2:
-				ret := c.votingReward(multiplier, divider, from, offsetLimit, prepInfo, voting.Iterator())
+				ret := r.votingReward(multiplier, divider, from, offsetLimit, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
-				c.log.Tracef("VotingEvent %s %d add: %d-%d %s", addr, i, from, offsetLimit, ret)
-				ret = c.votingReward(multiplier, divider, to, offsetLimit, prepInfo, voting.Iterator())
+				r.Logger().Tracef("VotingEvent %s %d add: %d-%d %s", addr, i, from, offsetLimit, ret)
+				ret = r.votingReward(multiplier, divider, to, offsetLimit, prepInfo, voting.Iterator())
 				reward.Sub(reward, ret)
-				c.log.Tracef("VotingEvent %s %d sub: %d-%d %s", addr, i, to, offsetLimit, ret)
+				r.Logger().Tracef("VotingEvent %s %d sub: %d-%d %s", addr, i, to, offsetLimit, ret)
 			case icstate.IISSVersion3:
 				to = offsets[i]
-				ret := c.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
+				ret := r.votingReward(multiplier, divider, from, to, prepInfo, voting.Iterator())
 				reward.Add(reward, ret)
-				c.log.Tracef("VotingEvent %s %d: %d-%d %s", addr, i, from, to, ret)
+				r.Logger().Tracef("VotingEvent %s %d: %d-%d %s", addr, i, from, to, ret)
 			}
 
 			// update Bonding or Delegating
 			votes := events[to]
 			if err = voting.ApplyVotes(votes); err != nil {
-				errors.Wrapf(err, "Failed to apply vote of %s, offset=%d, votes=%+v", addr, to, votes)
+				err = errors.Wrapf(err, "Failed to apply vote of %s, offset=%d, votes=%+v", addr, to, votes)
 				return err
 			}
 
 			from = to
 		}
 		// calculate reward for last event
-		ret := c.votingReward(multiplier, divider, from, offsetLimit, prepInfo, voting.Iterator())
+		ret := r.votingReward(multiplier, divider, from, offsetLimit, prepInfo, voting.Iterator())
 		reward.Add(reward, ret)
-		c.log.Tracef("VotingEvent %s last: %d, %d: %s", addr, from, offsetLimit, ret)
+		r.Logger().Tracef("VotingEvent %s last: %d, %d: %s", addr, from, offsetLimit, ret)
 
-		if err = c.writeVoting(addr, voting); err != nil {
-			return nil
+		if err = r.writeVoting(addr, voting); err != nil {
+			return err
 		}
-		if err = c.updateIScore(addr, reward, TypeVoting); err != nil {
+		if err = r.UpdateIScore(addr, reward, RTVoter); err != nil {
 			return err
 		}
 	}
@@ -1016,10 +738,10 @@ func toVoting(_type int, o trie.Object) icreward.Voting {
 }
 
 // getVoting read Voting object from MPT and return cloned object
-func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting, error) {
+func (r *iiss3Reward) getVoting(_type int, addr *common.Address) (icreward.Voting, error) {
 	switch _type {
 	case icreward.TypeDelegating:
-		delegating, err := c.temp.GetDelegating(addr)
+		delegating, err := r.Temp().GetDelegating(addr)
 		if err != nil {
 			return nil, err
 		}
@@ -1030,7 +752,7 @@ func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting
 		}
 		return delegating, nil
 	case icreward.TypeBonding:
-		bonding, err := c.temp.GetBonding(addr)
+		bonding, err := r.Temp().GetBonding(addr)
 		if err != nil {
 			return nil, err
 		}
@@ -1045,133 +767,100 @@ func (c *Calculator) getVoting(_type int, addr *common.Address) (icreward.Voting
 	return nil, nil
 }
 
-func (c *Calculator) writeVoting(addr *common.Address, data interface{}) error {
+func (r *iiss3Reward) writeVoting(addr *common.Address, data interface{}) error {
 	switch o := data.(type) {
 	case *icreward.Delegating:
-		return c.temp.SetDelegating(addr, o)
+		return r.Temp().SetDelegating(addr, o)
 	case *icreward.Bonding:
-		return c.temp.SetBonding(addr, o)
+		return r.Temp().SetBonding(addr, o)
 	}
 	return nil
 }
 
-func (c *Calculator) postWork() (err error) {
-	// check result
-	if c.global.GetIISSVersion() == icstate.IISSVersion3 {
-		if c.stats.blockProduce.Sign() != 0 {
-			return errors.Errorf("Too much BlockProduce Reward. %d", c.stats.blockProduce)
-		}
-		g := c.global.GetV2()
-		maxVotedReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIPRep())
-		maxVotedReward.Mul(maxVotedReward, icmodule.BigIntIScoreICXRatio)
-		if c.stats.voted.Cmp(maxVotedReward) == 1 {
-			return errors.Errorf("Too much Voted Reward. %d < %d", maxVotedReward, c.stats.voted)
-		}
-		maxVotingReward := new(big.Int).Mul(g.GetIGlobal(), g.GetIVoter())
-		maxVotingReward.Mul(maxVotingReward, icmodule.BigIntIScoreICXRatio)
-		if c.stats.voting.Cmp(maxVotingReward) == 1 {
-			return errors.Errorf("Too much Voting Reward. %d < %d", maxVotingReward, c.stats.voting)
-		}
+func (r *iiss3Reward) addDataForBugDisabledPRep(prepInfo map[string]*pRepEnable, multiplier, divider *big.Int) error {
+	revision := r.g.GetRevision()
+	if r.g.GetIISSVersion() != icstate.IISSVersion2 ||
+		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
+		return nil
 	}
-
-	// write BTP data to temp. Use BTP data in the next term
-	if err = c.processBTP(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Calculator) processBTP() error {
-	for iter := c.back.Filter(icstage.BTPKey.Build()); iter.Has(); iter.Next() {
-		o, _, err := iter.Get()
+	for iter := r.Back().Filter(icstage.EventKey.Build()); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
 		if err != nil {
 			return err
 		}
+
 		obj := o.(*icobject.Object)
-		switch obj.Tag().Type() {
-		case icstage.TypeBTPDSA:
-			value := icstage.ToBTPDSA(o)
-			dsa, err := c.temp.GetDSA()
-			if err != nil {
-				return err
-			}
-			nDSA := dsa.Updated(value.Index())
-			if err = c.temp.SetDSA(nDSA); err != nil {
-				return err
-			}
-		case icstage.TypeBTPPublicKey:
-			value := icstage.ToBTPPublicKey(o)
-			pubKey, err := c.temp.GetPublicKey(value.From())
-			if err != nil {
-				return nil
-			}
-			nPubKey := pubKey.Updated(value.Index())
-			if err = c.temp.SetPublicKey(value.From(), nPubKey); err != nil {
-				return err
+		_type := obj.Tag().Type()
+
+		var keySplit [][]byte
+		keySplit, err = containerdb.SplitKeys(key)
+		if err != nil {
+			return err
+		}
+		// DisabledPRep bug condition
+		// - got a disabled event
+		// - had a delegating
+		if _type == icstage.TypeEventEnable {
+			event := icstage.ToEventEnable(obj)
+			if !event.Status().IsEnabled() {
+				delegating, err := r.Temp().GetDelegating(event.Target())
+				if err != nil {
+					return err
+				}
+				if delegating != nil {
+					offset := int(intconv.BytesToInt64(keySplit[1]))
+					reward := r.votingReward(multiplier, divider, offset, r.g.GetOffsetLimit(), prepInfo, delegating.Iterator())
+					bug := icreward.NewBugDisabledPRep(reward)
+					if err = r.Temp().AddBugDisabledPRep(event.Target(), bug); err != nil {
+						return err
+					}
+				}
 			}
 		}
 	}
 	return nil
 }
 
-const InitBlockHeight = -1
-
-func NewCalculator(database db.Database, back *icstage.Snapshot, reward *icreward.Snapshot, logger log.Logger) *Calculator {
-	var err error
-	var global icstage.Global
-	var startHeight int64
-
-	global, err = back.GetGlobal()
-	if err != nil {
-		logger.Errorf("Failed to get Global values for calculator. %+v", err)
+func (r *iiss3Reward) replayBugDisabledPRep() error {
+	revision := r.g.GetRevision()
+	if r.g.GetIISSVersion() != icstate.IISSVersion2 ||
+		revision < icmodule.RevisionDecentralize || revision >= icmodule.RevisionFixBugDisabledPRep {
 		return nil
 	}
-	if global == nil {
-		// back has no global at first term
-		startHeight = InitBlockHeight
-	} else {
-		startHeight = global.GetStartHeight()
-	}
-	c := &Calculator{
-		database:    database,
-		back:        back,
-		base:        reward,
-		temp:        icreward.NewStateFromSnapshot(reward),
-		log:         logger,
-		global:      global,
-		startHeight: startHeight,
-		stats:       newStatistics(),
-	}
-	if startHeight != InitBlockHeight {
-		go c.run()
-	}
-	return c
-}
-
-type CalculatorHolder struct {
-	lock   sync.Mutex
-	runner *Calculator
-}
-
-func (h *CalculatorHolder) Start(ess state.ExtensionSnapshot, logger log.Logger) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	if ess != nil {
-		h.runner = UpdateCalculator(h.runner, ess, logger)
-	} else {
-		if h.runner != nil {
-			h.runner.Stop()
-			h.runner = nil
+	for iter := r.Base().Filter(icreward.BugDisabledPRepKey.Build()); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
+		if err != nil {
+			return err
+		}
+		keySplit, err := containerdb.SplitKeys(key)
+		if err != nil {
+			return err
+		}
+		addr, err := common.NewAddress(keySplit[1])
+		if err != nil {
+			return err
+		}
+		obj := icreward.ToBugDisabledPRep(o)
+		if err = r.UpdateIScore(addr, obj.Value(), RTVoter); err != nil {
+			return err
+		}
+		if err = r.Temp().DeleteBugDisabledPRep(addr); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func (h *CalculatorHolder) Get() *Calculator {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	return h.runner
+func loadValidators(ctx Context) ([]*validator, error) {
+	vl, err := ctx.Back().GetValidators()
+	if err != nil {
+		return nil, err
+	}
+	vs := make([]*validator, len(vl))
+	for i, a := range vl {
+		vs[i] = newValidator(common.AddressToPtr(a))
+	}
+	return vs, nil
 }
 
 type validator struct {
@@ -1201,7 +890,6 @@ func newValidator(addr *common.Address) *validator {
 type votedData struct {
 	voted  *icreward.Voted
 	iScore *big.Int
-	status icstage.EnableStatus
 	pubKey bool
 }
 
@@ -1248,17 +936,16 @@ func (vd *votedData) SetIScore(value *big.Int) {
 	vd.iScore = value
 }
 
-func (vd *votedData) Status() icstage.EnableStatus {
-	return vd.status
+func (vd *votedData) Status() icmodule.EnableStatus {
+	return vd.voted.Status()
 }
 
 func (vd *votedData) Enable() bool {
-	return vd.voted.Enable()
+	return vd.voted.IsEnabled()
 }
 
-func (vd *votedData) SetEnable(status icstage.EnableStatus) {
-	vd.voted.SetEnable(status.IsEnabled())
-	vd.status = status
+func (vd *votedData) SetStatus(status icmodule.EnableStatus) {
+	vd.voted.SetStatus(status)
 }
 
 func (vd *votedData) GetDelegated() *big.Int {
@@ -1290,12 +977,12 @@ func (vd *votedData) IsEmpty() bool {
 }
 
 func (vd *votedData) UpdateToWrite() {
-	if vd.status.IsDisabledTemporarily() {
-		vd.voted.SetEnable(true)
+	if vd.voted.Status().IsDisabledTemporarily() {
+		vd.voted.SetStatus(icmodule.ESEnable)
 	}
 }
 
-func (vd *votedData) UpdateBondedDelegation(bondRequirement int) {
+func (vd *votedData) UpdateBondedDelegation(bondRequirement icmodule.Rate) {
 	vd.voted.UpdateBondedDelegation(bondRequirement)
 }
 
@@ -1367,7 +1054,7 @@ func (vi *votedInfo) AddVotedData(addr module.Address, data *votedData) {
 	}
 }
 
-func (vi *votedInfo) SetEnable(addr module.Address, status icstage.EnableStatus) {
+func (vi *votedInfo) SetEnable(addr module.Address, status icmodule.EnableStatus) {
 	if vData, ok := vi.preps[icutils.ToKey(addr)]; ok {
 		if status.IsEnabled() != vData.Enable() {
 			if status.IsEnabled() {
@@ -1376,11 +1063,11 @@ func (vi *votedInfo) SetEnable(addr module.Address, status icstage.EnableStatus)
 				vi.updateTotalVoted(new(big.Int).Neg(vData.GetVotedAmount()))
 			}
 		}
-		vData.SetEnable(status)
+		vData.SetStatus(status)
 	} else {
 		voted := icreward.NewVoted()
 		vData = newVotedData(voted)
-		vData.SetEnable(status)
+		vData.SetStatus(status)
 		vi.AddVotedData(addr, vData)
 	}
 }
@@ -1527,65 +1214,4 @@ func (p *pRepEnable) SetStartOffset(value int) {
 
 func (p *pRepEnable) SetEndOffset(value int) {
 	p.endOffset = value
-}
-
-type statistics struct {
-	blockProduce *big.Int
-	voted        *big.Int
-	voting       *big.Int
-}
-
-func (s *statistics) BlockProduce() *big.Int {
-	return s.blockProduce
-}
-
-func (s *statistics) Voted() *big.Int {
-	return s.voted
-}
-
-func (s *statistics) Voting() *big.Int {
-	return s.voting
-}
-
-func increaseStats(src *big.Int, amount *big.Int) *big.Int {
-	n := new(big.Int)
-	if src == nil {
-		n.Set(amount)
-	} else {
-		n.Add(src, amount)
-	}
-	return n
-}
-
-func (s *statistics) IncreaseBlockProduce(amount *big.Int) {
-	s.blockProduce = increaseStats(s.blockProduce, amount)
-}
-
-func (s *statistics) IncreaseVoted(amount *big.Int) {
-	s.voted = increaseStats(s.voted, amount)
-}
-
-func (s *statistics) IncreaseVoting(amount *big.Int) {
-	s.voting = increaseStats(s.voting, amount)
-}
-
-func (s *statistics) TotalReward() *big.Int {
-	reward := new(big.Int)
-	reward.Add(s.blockProduce, s.voted)
-	reward.Add(reward, s.voting)
-	return reward
-}
-
-func (s *statistics) Clear() {
-	s.blockProduce = new(big.Int)
-	s.voted = new(big.Int)
-	s.voting = new(big.Int)
-}
-
-func newStatistics() *statistics {
-	return &statistics{
-		new(big.Int),
-		new(big.Int),
-		new(big.Int),
-	}
 }

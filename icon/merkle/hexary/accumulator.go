@@ -98,6 +98,9 @@ func (ba *accumulator) SetLen(l int64) error {
 		return nil
 	}
 	hd, err := ba.Finalize()
+	if err != nil {
+		return err
+	}
 	mt, err := NewMerkleTree(ba.treeBucket, hd, 0)
 	if err != nil {
 		return err

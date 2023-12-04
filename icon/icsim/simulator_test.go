@@ -23,56 +23,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
+	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
-
-func newConsensusInfo(dbase db.Database, vl []module.Validator, voted []bool) module.ConsensusInfo {
-	vss, err := state.ValidatorSnapshotFromSlice(dbase, vl)
-	if err != nil {
-		return nil
-	}
-	v, _ := vss.Get(vss.Len() - 1)
-	copiedVoted := make([]bool, vss.Len())
-	copy(copiedVoted, voted)
-	return common.NewConsensusInfo(v.Address(), vss, copiedVoted)
-}
-
-func initEnv(t *testing.T, c *config, revision module.Revision) *Env {
-	var env *Env
-	var err error
-	mainPRepCount := int(c.MainPRepCount)
-
-	// Decentralization is activated
-	env, err = NewEnv(c, revision)
-	assert.NoError(t, err)
-	sim := env.sim
-
-	// Check if decentralization is done
-	vl := sim.ValidatorList()
-	for i := 0; i < mainPRepCount; i++ {
-		assert.True(t, env.preps[i].Equal(vl[i].Address()))
-	}
-	jso := sim.GetMainPReps()
-	assert.Equal(t, mainPRepCount, len(jso["preps"].([]interface{})))
-
-	blockHeight := sim.BlockHeight()
-	for i := 0; i < len(env.preps); i++ {
-		prep := sim.GetPRep(env.preps[i])
-		if i < mainPRepCount {
-			assert.Equal(t, icstate.GradeMain, prep.Grade())
-		} else {
-			assert.Equal(t, icstate.GradeSub, prep.Grade())
-		}
-		assert.Zero(t, prep.GetVTotal(blockHeight))
-		assert.Zero(t, prep.GetVFail(blockHeight))
-		assert.Zero(t, prep.GetVFailCont(blockHeight))
-	}
-	return env
-}
 
 func checkValidatorList(vl0, vl1 []module.Validator) bool {
 	if len(vl0) != len(vl1) {
@@ -86,12 +42,8 @@ func checkValidatorList(vl0, vl1 []module.Validator) bool {
 	return true
 }
 
-func estimateSlashed(slashRatio int, oldBonded *big.Int) *big.Int {
-	slashed := new(big.Int)
-	if slashRatio > 0 {
-		slashed.Div(oldBonded, big.NewInt(int64(slashRatio)))
-	}
-	return slashed
+func estimateSlashed(slashRate icmodule.Rate, oldBonded *big.Int) *big.Int {
+	return slashRate.MulBigInt(oldBonded)
 }
 
 func assertPower(t *testing.T, p map[string]interface{}) bool {
@@ -119,9 +71,8 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	var blockHeight int64
 	var csi module.ConsensusInfo
 	var vl []module.Validator
-	var prep *icstate.PRep
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
@@ -133,28 +84,35 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	}
 
 	// Decentralization is activated
-	env := initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	env, err := NewEnv(c, icmodule.Revision13)
+	assert.NoError(t, err)
+	sim := env.Simulator()
 
 	// Term
 
+	// T(0)
+	// Skip 2 blocks after decentralization
+	assert.NoError(t, sim.Go(nil, 2))
+
+	// T(2)
 	// prep0 gets penalized and prep22 will become a new main prep instead of prep0
 	vl = sim.ValidatorList()
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl, voted)
-	err = sim.Go(5, csi)
-	assert.NoError(t, err)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	blocks := int64(validationPenaltyCondition)
+	assert.NoError(t, sim.Go(csi, blocks))
 
+	// T(7)
 	blockHeight = sim.BlockHeight()
 	for i := 1; i < mainPRepCount; i++ {
-		prep = sim.GetPRep(vl[i].Address())
-		assert.Equal(t, int64(5), prep.GetVTotal(blockHeight))
+		prep := sim.GetPRep(vl[i].Address())
+		assert.Equal(t, blocks, prep.GetVTotal(blockHeight))
 		assert.Zero(t, prep.GetVFail(blockHeight))
 		assert.Zero(t, prep.GetVFailCont(blockHeight))
 	}
-	prep = sim.GetPRep(env.preps[0])
-	assert.Equal(t, int64(5), prep.GetVTotal(blockHeight))
-	assert.Equal(t, int64(5), prep.GetVFail(blockHeight))
+	prep := sim.GetPRep(env.preps[0])
+	assert.Equal(t, blocks, prep.GetVTotal(blockHeight))
+	assert.Equal(t, blocks, prep.GetVFail(blockHeight))
 	assert.Equal(t, int64(0), prep.GetVFailCont(blockHeight))
 
 	// Main PRep change: env.preps[0] -> env.preps[22]
@@ -162,14 +120,14 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	assert.True(t, vl[0].Address().Equal(env.preps[22]))
 
 	voted[0] = true
-	csi = newConsensusInfo(sim.Database(), vl, voted)
-	err = sim.Go(c.TermPeriod-5-3, csi)
-	assert.NoError(t, err)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	term := sim.TermSnapshot()
+	assert.NoError(t, sim.GoTo(csi, term.GetEndHeight()-3))
 
+	// T(7) -> T(99)
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl, voted)
-	err = sim.GoToTermEnd(csi)
-	assert.NoError(t, err)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	assert.NoError(t, sim.GoToTermEnd(csi))
 
 	blockHeight = sim.BlockHeight()
 	prep = sim.GetPRep(vl[0].Address())
@@ -178,16 +136,19 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 
 	// Term start
 
+	// T(0) -> T(1)
 	// ValidatorList is reverted to the initial list
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl, voted)
-	err = sim.Go(2, csi)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	err = sim.Go(csi, 2)
+	assert.NoError(t, err)
 
+	// T(2)
 	blockHeight = sim.BlockHeight()
 	prep = sim.GetPRep(env.preps[22])
 	assert.Equal(t, 1, prep.GetVPenaltyCount())
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
-	assert.Equal(t, int64(95+2), prep.GetVTotal(blockHeight))
+	assert.Equal(t, int64(93+2), prep.GetVTotal(blockHeight))
 	assert.Equal(t, int64(5), prep.GetVFail(blockHeight))
 	assert.Equal(t, int64(0), prep.GetVFailCont(blockHeight))
 	assert.Zero(t, prep.GetVFailCont(blockHeight))
@@ -198,8 +159,8 @@ func TestSimulator_CandidateIsPenalized(t *testing.T) {
 	}
 
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl, voted)
-	err = sim.Go(5, csi)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	err = sim.Go(csi, 5)
 	assert.NoError(t, err)
 }
 
@@ -216,17 +177,17 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	var csi module.ConsensusInfo
 	var vl []module.Validator
 	var env *Env
-	var prep *icstate.PRep
 	var receipts []Receipt
 	var oldBonded, bonded, slashed *big.Int
-	var slashRatio = 0
+	var slashRate = icmodule.ToRate(5) // 5%
+	var tx Transaction
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
 	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
-	c.ConsistentValidationPenaltySlashRatio = slashRatio
+	c.ConsistentValidationPenaltySlashRate = slashRate
 
 	voted = make([]bool, mainPRepCount)
 	for i := 0; i < len(voted); i++ {
@@ -234,22 +195,53 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	}
 
 	// Decentralization is activated
-	env = initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	env, err = NewEnv(c, icmodule.Revision13)
+	assert.NoError(t, err)
+	sim := env.Simulator()
+
+	// Term
+	prep0 := env.preps[0]
+	prep22 := env.preps[mainPRepCount]
+
+	// env.users[0] transfers 2000 ICX to env.preps[0]
+	amount := icutils.ToLoop(2000)
+	rcpt, err := sim.GoByTransfer(nil, env.users[0], prep0, amount)
+	assert.NoError(t, err)
+	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.Zero(t, amount.Cmp(sim.GetBalance(prep0)))
+
+	// prep0 stakes 2000 ICX to bond to itself
+	// Increase the bonds of env.preps[0] by 2000 ICX (others have 2000 ICX)
+	prep := sim.GetPRep(prep0)
+	oldBonded = prep.Bonded()
+
+	receipts, err = sim.GoByTransaction(
+		nil,
+		sim.SetStake(prep0, amount),
+		sim.SetBond(prep0, icstate.Bonds{icstate.NewBond(common.AddressToPtr(prep0), amount)}),
+	)
+	assert.NoError(t, err)
+	assert.True(t, CheckReceiptSuccess(receipts...))
+
+	newBonded := sim.GetPRep(prep0).Bonded()
+	assert.Zero(t, newBonded.Cmp(new(big.Int).Add(oldBonded, amount)))
+
+	// Skip a term to ignore exceptions at the 1st term after decentralization
+	assert.NoError(t, sim.GoToTermEnd(nil))
 
 	// Term
 
 	for i := 0; i < consistentValidationPenaltyCondition; i++ {
 		// PenaltyCount is reset to 0 at the beginning of every term on rev 13
-		prep = sim.GetPRep(env.preps[0])
+		prep = sim.GetPRep(prep0)
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Zero(t, prep.GetVPenaltyCount())
 
+		// 1st validator does not vote for 5 consecutive blocks
 		vl = sim.ValidatorList()
 		voted[0] = false
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.Go(validationPenaltyCondition, csi)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), vl, voted)
+		assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 
 		// Check if 1st validator got penalized after 5 blocks
 		prep = sim.GetPRep(vl[0].Address())
@@ -259,65 +251,73 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 		// Check if prep22 acts as a validator instead of prep0
 		// prep22 was a sub prep before prep0 got penalized
 		vl = sim.ValidatorList()
-		assert.True(t, env.preps[mainPRepCount].Equal(vl[0].Address()))
+		assert.True(t, prep22.Equal(vl[0].Address()))
 		voted[0] = true
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.GoToTermEnd(csi)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), vl, voted)
+		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
-	// Set 14 to revision
+	// Next Term
+
+	// T(0)
 	vl = sim.ValidatorList()
-	assert.True(t, env.preps[0].Equal(vl[0].Address()))
+	assert.True(t, prep0.Equal(vl[0].Address()))
+	prep = sim.GetPRep(vl[0].Address())
+	assert.Equal(t, icstate.GradeMain, prep.Grade())
+
+	// Set 14 to revision
 	voted[0] = true
-	csi = newConsensusInfo(sim.Database(), vl, voted)
-	tx := sim.SetRevision(icmodule.RevisionICON2R1)
-	receipts, err = sim.GoByTransaction(tx, csi)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
+	tx = sim.SetRevision(env.Governance(), icmodule.Revision14)
+	receipts, err = sim.GoByTransaction(csi, tx)
 	assert.True(t, checkReceipts(receipts))
 	assert.NoError(t, err)
 
-	prep = sim.GetPRep(env.preps[0])
+	// go to Term.revision == 14
+	assert.NoError(t, sim.GoToTermEnd(nil))
+
+	// Next Term on Rev14
+
+	prep = sim.GetPRep(prep0)
 	oldBonded = prep.Bonded()
 	oldTotalBond := sim.TotalBond()
 	oldTotalStake := sim.TotalStake()
+	oldTotalSupply := sim.TotalSupply()
 
 	for i := 0; i < consistentValidationPenaltyCondition; i++ {
 		// PenaltyCount is not reset after revision is 14
-		prep = sim.GetPRep(env.preps[0])
+		prep = sim.GetPRep(prep0)
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Equal(t, i, prep.GetVPenaltyCount())
 
-		// Create a scenario when prep0 fails to vote for blocks to validate
+		// Create a scenario when prep0 fails to vote for 5 blocks to validate
 		vl = sim.ValidatorList()
 		voted[0] = false
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.Go(validationPenaltyCondition, csi)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), vl, voted)
+		assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 
 		// Check if prep0 got penalized after 5 blocks
 		prep = sim.GetPRep(vl[0].Address())
+		assert.True(t, prep.Owner().Equal(vl[0].Address()))
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, i+1, prep.GetVPenaltyCount())
 
 		// Check if prep22 acts as a validator instead of prep0
 		// prep22 was a sub prep before prep0 got penalized
 		vl = sim.ValidatorList()
-		assert.True(t, env.preps[mainPRepCount].Equal(vl[0].Address()))
+		assert.True(t, prep22.Equal(vl[0].Address()))
+		prep = sim.GetPRep(vl[0].Address())
+		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		voted[0] = true
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.GoToTermEnd(csi)
-		assert.NoError(t, err)
+		csi = NewConsensusInfo(sim.Database(), vl, voted)
+		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
-	// Check if the bond of prep0 is slashed by default ratio
-	prep = sim.GetPRep(env.preps[0])
+	// Check if the bond of prep0 is slashed by default rate
+	// Slashed bond will be burned
+	prep = sim.GetPRep(prep0)
 	bonded = prep.Bonded()
-	slashed = estimateSlashed(slashRatio, oldBonded)
-	if slashRatio > 0 {
-		assert.True(t, slashed.Sign() > 0)
-	} else {
-		assert.True(t, slashed.Sign() == 0)
-	}
+	slashed = estimateSlashed(slashRate, oldBonded)
 	assert.Zero(t, bonded.Cmp(new(big.Int).Sub(oldBonded, slashed)))
 
 	// Check if totalBond is reduced by slashed amount
@@ -328,68 +328,67 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 	totalStake := sim.TotalStake()
 	assert.Zero(t, totalStake.Cmp(new(big.Int).Sub(oldTotalStake, slashed)))
 
+	// Check if totalSupply is reduced by slashed amount
+	totalSupply := sim.TotalSupply()
+	assert.Zero(t, totalSupply.Cmp(new(big.Int).Sub(oldTotalSupply, slashed)))
+
 	vl = sim.ValidatorList()
-	assert.True(t, vl[0].Address().Equal(env.preps[0]))
+	assert.True(t, vl[0].Address().Equal(prep0))
 
 	// Case: prep0 has already been penalized 3 times.
 	// From now on, the bond of prep0 will be slashed every penalty
 	for i := 0; i < 3; i++ {
-		prep = sim.GetPRep(env.preps[0])
+		prep = sim.GetPRep(prep0)
 		oldBonded = prep.Bonded()
 		penaltyCount := consistentValidationPenaltyCondition + i
-
-		prep = sim.GetPRep(env.preps[0])
 		assert.Equal(t, icstate.GradeMain, prep.Grade())
 		assert.Equal(t, penaltyCount, prep.GetVPenaltyCount())
 
 		// Make the case when prep0 fails to vote for blocks to validate
-		vl = sim.ValidatorList()
 		voted[0] = false
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.Go(validationPenaltyCondition, csi)
+		csi, err = sim.NewConsensusInfo(voted)
 		assert.NoError(t, err)
+		assert.NoError(t, sim.Go(csi, validationPenaltyCondition))
 
 		// Check if prep0 was slashed after 5 blocks
 		penaltyCount++
-		prep = sim.GetPRep(vl[0].Address())
+		prep = sim.GetPRep(env.preps[0])
 		assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 		assert.Equal(t, penaltyCount, prep.GetVPenaltyCount())
-		slashed = estimateSlashed(slashRatio, oldBonded)
+		slashed = estimateSlashed(slashRate, oldBonded)
 		assert.Zero(t, prep.Bonded().Cmp(new(big.Int).Sub(oldBonded, slashed)))
 
 		// Check if prep22 acts as a validator instead of prep0
 		// prep22 was a sub prep before prep0 got penalized
 		vl = sim.ValidatorList()
-		assert.True(t, env.preps[mainPRepCount].Equal(vl[0].Address()))
+		assert.True(t, prep22.Equal(vl[0].Address()))
 		voted[0] = true
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.GoToTermEnd(csi)
+		csi, err = sim.NewConsensusInfo(voted)
 		assert.NoError(t, err)
+		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
 	// Case: Accumulated penaltyCount will be reset to 0 after 30 terms when prep0 acts as a main prep
 	vl = sim.ValidatorList()
-	assert.True(t, env.preps[0].Equal(vl[0].Address()))
+	assert.True(t, prep0.Equal(vl[0].Address()))
 
 	for i := 0; i < 23; i++ {
-		prep = sim.GetPRep(env.preps[0])
+		prep = sim.GetPRep(prep0)
 		assert.Equal(t, 6, prep.GetVPenaltyCount())
 
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.GoToTermEnd(csi)
-		assert.NoError(t, err)
+		csi = sim.NewDefaultConsensusInfo()
+		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
 	for i := 0; i < 6; i++ {
-		prep = sim.GetPRep(env.preps[0])
+		prep = sim.GetPRep(prep0)
 		assert.Equal(t, 6-i, prep.GetVPenaltyCount())
 
-		csi = newConsensusInfo(sim.Database(), vl, voted)
-		err = sim.GoToTermEnd(csi)
-		assert.NoError(t, err)
+		csi = sim.NewDefaultConsensusInfo()
+		assert.NoError(t, sim.GoToTermEnd(csi))
 	}
 
-	prep = sim.GetPRep(env.preps[0])
+	prep = sim.GetPRep(prep0)
 	assert.Zero(t, prep.GetVPenaltyCount())
 }
 
@@ -410,8 +409,9 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	//var receipts []Receipt
 	//var oldBonded, bonded, slashed *big.Int
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
+	c.ExtraMainPRepCount = int64(0)
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
 	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
@@ -422,8 +422,9 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	}
 
 	// Decentralization is activated
-	env = initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	env, err = NewEnv(c, icmodule.Revision13)
+	assert.NoError(t, err)
+	sim := env.Simulator()
 
 	vl0 := make([]module.Validator, mainPRepCount)
 	vl1 := make([]module.Validator, mainPRepCount)
@@ -442,8 +443,8 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 
 	// term 1
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl0, voted)
-	err = sim.Go(validationPenaltyCondition, csi)
+	csi = NewConsensusInfo(sim.Database(), vl0, voted)
+	err = sim.Go(csi, validationPenaltyCondition)
 	assert.NoError(t, err)
 
 	// Check if 1st validator got penalized after 5 blocks
@@ -456,7 +457,7 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	vl = sim.ValidatorList()
 	assert.True(t, checkValidatorList(vl, vl1))
 	voted[0] = true
-	csi = newConsensusInfo(sim.Database(), vl, voted)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
 
@@ -465,22 +466,22 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	// The first 2 consensus info follows the prev term validator list
 	// prep22 fails to vote for the first 2 blocks of this term
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl1, voted)
-	err = sim.Go(2, csi)
+	csi = NewConsensusInfo(sim.Database(), vl1, voted)
+	err = sim.Go(csi, 2)
 	assert.NoError(t, err)
 
 	// go ahead until term end without any false votes
 	vl = sim.ValidatorList()
 	assert.True(t, checkValidatorList(vl0, vl))
 	voted[0] = true
-	csi = newConsensusInfo(sim.Database(), vl, voted)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
 
 	// prep0 fails to vote for 7 consecutive blocks and gets penalized
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl0, voted)
-	err = sim.Go(validationPenaltyCondition, csi)
+	csi = NewConsensusInfo(sim.Database(), vl0, voted)
+	err = sim.Go(csi, validationPenaltyCondition)
 	assert.NoError(t, err)
 	// prep0: mainPRep -> candidate, prep22: subPRep -> mainPRep
 	vl = sim.ValidatorList()
@@ -489,8 +490,8 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	assert.Equal(t, icstate.GradeCandidate, prep.Grade())
 
 	// prep0 fails to vote for 2 blocks, getting penalized
-	csi = newConsensusInfo(sim.Database(), vl0, voted)
-	err = sim.Go(2, csi)
+	csi = NewConsensusInfo(sim.Database(), vl0, voted)
+	err = sim.Go(csi, 2)
 	assert.NoError(t, err)
 
 	// Check if prep22 becomes a main prep instead of prep0
@@ -502,8 +503,8 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 	assert.True(t, checkValidatorList(vl, vl1))
 
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl1, voted)
-	err = sim.Go(3, csi)
+	csi = NewConsensusInfo(sim.Database(), vl1, voted)
+	err = sim.Go(csi, 3)
 	assert.NoError(t, err)
 
 	// prep21 got penalized and its penaltyCount is set to 1
@@ -515,8 +516,8 @@ func TestSimulator_CheckIfVFailContWorks(t *testing.T) {
 
 	// Create 2 blocks
 	voted[0] = false
-	csi = newConsensusInfo(sim.Database(), vl1, voted)
-	err = sim.Go(2, csi)
+	csi = NewConsensusInfo(sim.Database(), vl1, voted)
+	err = sim.Go(csi, 2)
 	assert.NoError(t, err)
 
 	// prep0 and prep21 have got penalized and their grade is set to candidate
@@ -542,7 +543,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	var prep *icstate.PRep
 	var blockHeight int64
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
@@ -554,8 +555,9 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	}
 
 	// Decentralization is activated
-	env = initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	env, err = NewEnv(c, icmodule.Revision13)
+	assert.NoError(t, err)
+	sim := env.Simulator()
 
 	vl0 := make([]module.Validator, mainPRepCount)
 	vl1 := make([]module.Validator, mainPRepCount)
@@ -573,8 +575,8 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	// term 1
 	voted[1] = false // prep1
 	voted[2] = false // prep2
-	csi = newConsensusInfo(sim.Database(), vl0, voted)
-	err = sim.Go(validationPenaltyCondition, csi)
+	csi = NewConsensusInfo(sim.Database(), vl0, voted)
+	err = sim.Go(csi, validationPenaltyCondition)
 	assert.NoError(t, err)
 
 	// Check if prep1 and prep2 got penalized after 5 blocks
@@ -591,7 +593,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	}
 
 	// Go ahead 2 blocks to simulate on the next mechanism
-	err = sim.Go(2, csi)
+	err = sim.Go(csi, 2)
 	assert.NoError(t, err)
 
 	blockHeight = sim.BlockHeight()
@@ -621,7 +623,7 @@ func TestSimulator_PenalizeMultiplePReps(t *testing.T) {
 	assert.True(t, checkValidatorList(vl, vl1))
 	voted[1] = true
 	voted[2] = true
-	csi = newConsensusInfo(sim.Database(), vl, voted)
+	csi = NewConsensusInfo(sim.Database(), vl, voted)
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
 
@@ -661,27 +663,28 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	var prep *icstate.PRep
 	var jso map[string]interface{}
 	var ok bool
-	var br = int64(5)
 
-	c := NewConfig()
+	c := NewSimConfig()
 	c.MainPRepCount = mainPRepCount
 	c.TermPeriod = termPeriod
 	c.ValidationPenaltyCondition = validationPenaltyCondition
 	c.ConsistentValidationPenaltyCondition = consistentValidationPenaltyCondition
 
 	// Decentralization is activated
-	env := initEnv(t, c, icmodule.Revision13)
-	sim := env.sim
+	env, err := NewEnv(c, icmodule.Revision13)
+	assert.NoError(t, err)
+	sim := env.Simulator()
 
 	address := env.preps[0]
 
 	// Check getPRep
+	sc := sim.GetStateContext()
 	prep = sim.GetPRep(address)
-	jso = prep.ToJSON(sim.BlockHeight(), br, 0)
+	jso = prep.ToJSON(sc)
 	assertPower(t, jso)
 
 	// Check getPReps
-	jso = sim.GetPReps()
+	jso = sim.GetPRepsInJSON()
 	_, ok = jso["totalBondedDelegated"]
 	assert.False(t, ok)
 	preps := jso["preps"].([]interface{})
@@ -690,7 +693,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	}
 
 	// Check getMainPReps
-	jso = sim.GetMainPReps()
+	jso = sim.GetMainPRepsInJSON()
 	_, ok = jso["totalPower"].(*big.Int)
 	assert.True(t, ok)
 	preps = jso["preps"].([]interface{})
@@ -699,7 +702,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	}
 
 	// Check getSubPReps
-	jso = sim.GetSubPReps()
+	jso = sim.GetSubPRepsInJSON()
 	_, ok = jso["totalPower"].(*big.Int)
 	assert.True(t, ok)
 	preps = jso["preps"].([]interface{})
@@ -708,7 +711,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	}
 
 	// Check getPRepTerm
-	jso = sim.GetPRepTerm()
+	jso = sim.GetPRepTermInJSON()
 	_, ok = jso["totalPower"].(*big.Int)
 	assert.True(t, ok)
 	preps = jso["preps"].([]interface{})
@@ -717,7 +720,7 @@ func TestSimulator_ReplaceBondedDelegationWithPower(t *testing.T) {
 	}
 
 	// Check getNetworkInfo
-	jso = sim.GetNetworkInfo()
+	jso = sim.GetNetworkInfoInJSON()
 	_, ok = jso["totalPower"].(*big.Int)
 	assert.True(t, ok)
 }

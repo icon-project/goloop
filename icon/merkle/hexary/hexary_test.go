@@ -54,6 +54,7 @@ func TestBasics(t *testing.T) {
 	assert.NoError(t, err)
 
 	prover, err := hexary.NewMerkleTree(perm, header, cacheMax)
+	assert.NoError(t, err)
 	builder, err := hexary.NewMerkleTree(newMapBucket(), header, cacheMax)
 	assert.NoError(t, err)
 	for i := int64(0); i < maxHash; i++ {

@@ -21,7 +21,50 @@ type PenaltyType int
 const (
 	PenaltyNone PenaltyType = iota
 	PenaltyPRepDisqualification
-	PenaltyLowProductivity
-	PenaltyBlockValidation
-	PenaltyNonVote
+	PenaltyAccumulatedValidationFailure
+	PenaltyValidationFailure
+	PenaltyMissedNetworkProposalVote
+	PenaltyDoubleSign
+	PenaltyReserved
 )
+
+var penaltyNames = []string{
+	"",
+	"prepDisqualification",
+	"accumulatedValidationFailure",
+	"validationFailure",
+	"missedNetworkProposalVote",
+	"doubleSign",
+}
+
+var penaltyTypes = []PenaltyType {
+	PenaltyPRepDisqualification,
+	PenaltyAccumulatedValidationFailure,
+	PenaltyValidationFailure,
+	PenaltyMissedNetworkProposalVote,
+	PenaltyDoubleSign,
+}
+
+func (p PenaltyType) String() string {
+	if p > PenaltyNone && p < PenaltyReserved {
+		return penaltyNames[p]
+	}
+	return ""
+}
+
+func (p PenaltyType) IsValid() bool {
+	return p > PenaltyNone && p < PenaltyReserved
+}
+
+func ToPenaltyType(name string) PenaltyType {
+	for i, penaltyName := range penaltyNames {
+		if name == penaltyName {
+			return PenaltyType(i)
+		}
+	}
+	return PenaltyNone
+}
+
+func GetPenaltyTypes() []PenaltyType {
+	return penaltyTypes
+}

@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -196,6 +195,15 @@ func (ctx *worldContextImpl) GetBTPContext() state.BTPContext {
 	return state.NewBTPContext(ctx.WorldContext, as)
 }
 
+func (ctx *worldContextImpl) GetActiveDSAMask() int64 {
+	if ctx.Revision().Value() >= icmodule.RevisionBTP2 {
+		if bc := ctx.GetBTPContext(); bc != nil {
+			return bc.GetActiveDSAMask()
+		}
+	}
+	return 0
+}
+
 func NewWorldContext(ctx state.WorldContext, logger log.Logger) icmodule.WorldContext {
 	tlog := trace.LoggerOf(logger)
 	return &worldContextImpl{
@@ -224,30 +232,9 @@ func (ctx *callContextImpl) HandleBurn(from module.Address, amount *big.Int) err
 		if err != nil {
 			return err
 		}
-		ctx.onICXBurnedEvent(from, amount, ts)
+		EmitICXBurnedEvent(ctx, from, amount, ts)
 	}
 	return nil
-}
-
-func (ctx *callContextImpl) onICXBurnedEvent(from module.Address, amount, ts *big.Int) {
-	rev := ctx.Revision().Value()
-	if rev < icmodule.RevisionBurnV2 {
-		var burnSig string
-		if rev < icmodule.RevisionFixBurnEventSignature {
-			burnSig = "ICXBurned"
-		} else {
-			burnSig = "ICXBurned(int)"
-		}
-		ctx.cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte(burnSig)},
-			[][]byte{intconv.BigIntToBytes(amount)},
-		)
-	} else {
-		ctx.cc.OnEvent(state.SystemAddress,
-			[][]byte{[]byte("ICXBurnedV2(Address,int,int)"), from.Bytes()},
-			[][]byte{intconv.BigIntToBytes(amount), intconv.BigIntToBytes(ts)},
-		)
-	}
 }
 
 func (ctx *callContextImpl) SumOfStepUsed() *big.Int {

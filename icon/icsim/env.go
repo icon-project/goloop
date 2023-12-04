@@ -6,6 +6,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
@@ -49,69 +50,48 @@ func newDummyAddresses(start, size int) []module.Address {
 }
 
 type Env struct {
-	config  *config
+	config  *SimConfig
+	gov     module.Address // Governance
+	bso     module.Address // BuiltinScoreOwner
 	bonders []module.Address
 	preps   []module.Address
 	users   []module.Address
 	sim     Simulator
 }
 
-// init makes the initial environment for penalty and slashing test
-func (env *Env) init() error {
-	var receipts []Receipt
-	var err error
+func (env *Env) Governance() module.Address {
+	if env.gov == nil {
+		env.gov = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
+	}
+	return env.gov
+}
+
+func (env *Env) SetRevision(revision module.Revision) ([]Receipt, error) {
 	sim := env.sim
-
-	receipts, err = env.RegisterPReps()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.RegisterPReps()")
-	}
-
-	receipts, err = env.SetStakesAll()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetStakesAll()")
-	}
-
-	receipts, err = env.SetDelegations(env.users, icutils.ToLoop(10000))
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetDelegations()")
-	}
-
-	receipts, err = env.SetBonderLists()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetBonderLists()")
-	}
-
-	receipts, err = env.SetBonds()
-	if !(checkReceipts(receipts) && err == nil) {
-		return errors.Errorf("Failed to Env.SetBonds()")
-	}
-
-	// Activate decentralization
-	_ = sim.GoToTermEnd(nil)
-	return sim.GoToTermEnd(nil)
+	tx := sim.SetRevision(env.Governance(), revision)
+	return sim.GoByTransaction(nil, tx)
 }
 
 // RegisterPReps register all preps in Env
 func (env *Env) RegisterPReps() ([]Receipt, error) {
 	sim := env.sim
 	preps := env.preps
-	block := NewBlock()
+	blk := NewBlock()
 	for i, from := range preps {
 		info := newDummyPRepInfo(i)
 		tx := sim.RegisterPRep(from, info)
-		block.AddTransaction(tx)
+		blk.AddTransaction(tx)
 	}
-	return env.sim.GoByBlock(block, nil)
+	return env.sim.GoByBlock(nil, blk)
 }
 
-func (env *Env) SetStakesAll() ([]Receipt, error) {
+// SetStakesAll stakes a given amount of ICX for bonders and users
+func (env *Env) SetStakesAll(amount *big.Int) ([]Receipt, error) {
 	var err error
 	var receipts []Receipt
 
 	addrsList := [][]module.Address{env.bonders, env.users}
 	for _, addrs := range addrsList {
-		amount := env.sim.GetBalance(addrs[0])
 		receipts, err = env.SetStakes(addrs, amount)
 		if !(checkReceipts(receipts) && err == nil) {
 			return receipts, err
@@ -123,19 +103,19 @@ func (env *Env) SetStakesAll() ([]Receipt, error) {
 
 func (env *Env) SetStakes(addrs []module.Address, amount *big.Int) ([]Receipt, error) {
 	sim := env.sim
-	block := NewBlock()
+	blk := NewBlock()
 	for _, from := range addrs {
 		tx := sim.SetStake(from, amount)
-		block.AddTransaction(tx)
+		blk.AddTransaction(tx)
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, blk)
 }
 
 func (env *Env) SetDelegationsAll() error {
 	var err error
 	addrsList := [][]module.Address{env.bonders, env.preps, env.users}
 	for _, addrs := range addrsList {
-		amount, ok := env.sim.GetStake(addrs[0])["stake"].(*big.Int)
+		amount, ok := env.sim.GetStakeInJSON(addrs[0])["stake"].(*big.Int)
 		if ok {
 			if _, err = env.SetDelegations(addrs, amount); err != nil {
 				return err
@@ -148,68 +128,72 @@ func (env *Env) SetDelegationsAll() error {
 func (env *Env) SetDelegations(addrs []module.Address, amount *big.Int) ([]Receipt, error) {
 	sim := env.sim
 	preps := env.preps
-	block := NewBlock()
+	blk := NewBlock()
 
 	// One user delegates amount of ICX to one prep
 	for i, from := range addrs {
 		i = i % len(preps)
 		prep := preps[i]
-		ds := make([]*icstate.Delegation, 1)
-		ds[0] = icstate.NewDelegation(common.AddressToPtr(prep), amount)
-		block.AddTransaction(sim.SetDelegation(from, ds))
+		ds := []*icstate.Delegation{
+			icstate.NewDelegation(common.AddressToPtr(prep), amount),
+		}
+		blk.AddTransaction(sim.SetDelegation(from, ds))
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, blk)
 }
 
 func (env *Env) SetBonderLists() ([]Receipt, error) {
 	sim := env.sim
 	preps := env.preps
 	bonders := env.bonders
-	block := NewBlock()
+	blk := NewBlock()
 
-	// One user delegates amount of ICX to one prep
+	// Every PRep has 2 bonders, which are env.bonders[i] and itself
 	for i, from := range preps {
 		bonderList := []*common.Address{
-			common.AddressToPtr(from),
 			common.AddressToPtr(bonders[i]),
+			common.AddressToPtr(from),
 		}
 		tx := sim.SetBonderList(from, bonderList)
-		block.AddTransaction(tx)
+		blk.AddTransaction(tx)
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, blk)
 }
 
-func (env *Env) SetBonds() ([]Receipt, error) {
+// SetBonds makes all env.bonders[i] bond a given amount to env.preps[i]
+func (env *Env) SetBonds(amount *big.Int) ([]Receipt, error) {
 	sim := env.sim
 	preps := env.preps
 	bonders := env.bonders
-	block := NewBlock()
+	blk := NewBlock()
 
-	// One bonder delegates some amount of bond to one prep
+	// One bonder delegates a given amount of bond to one prep
 	for i, from := range bonders {
-		if i >= env.config.BondedPRepCount {
-			// Limit the number of bonded preps
-			break
-		}
-		balance := sim.GetBalance(from)
-		if balance.Sign() == 0 {
-			continue
-		}
 		bonds := []*icstate.Bond{
-			icstate.NewBond(common.AddressToPtr(preps[i]), balance),
+			icstate.NewBond(common.AddressToPtr(preps[i]), amount),
 		}
 		tx := sim.SetBond(from, bonds)
-		block.AddTransaction(tx)
+		blk.AddTransaction(tx)
 	}
-	return sim.GoByBlock(block, nil)
+	return sim.GoByBlock(nil, blk)
 }
 
-func NewEnv(c *config, revision module.Revision) (*Env, error) {
+func (env *Env) Simulator() Simulator {
+	return env.sim
+}
+
+// NewEnv initializes environment for extension simulation test
+// Default configuration:
+// 100 preps with 2000 ICX
+// 100 bonders with 10000 ICX
+// 100 users with 10000 ICX
+func NewEnv(c *SimConfig, revision module.Revision) (*Env, error) {
 	userLen := 100
 	prepLen := int(c.MainPRepCount + c.SubPRepCount)
 	bonderLen := prepLen
 	validatorLen := int(c.MainPRepCount)
 
+	// Initialize addresses for test
 	preps := newDummyAddresses(1000, prepLen)
 	users := newDummyAddresses(2000, userLen)
 	bonders := newDummyAddresses(3000, bonderLen)
@@ -231,23 +215,117 @@ func NewEnv(c *config, revision module.Revision) (*Env, error) {
 	for _, user := range users {
 		balances[icutils.ToKey(user)] = balance
 	}
-	for i, bonder := range bonders {
-		if i == 0 {
-			balance = icutils.ToLoop(100)
-		} else {
-			balance = icutils.ToLoop(10)
-		}
+	for _, bonder := range bonders {
 		balances[icutils.ToKey(bonder)] = balance
 	}
 
-	sim := NewSimulator(revision, validators, balances, c)
-	env := &Env{
-		config:  c,
-		bonders: bonders,
-		preps:   preps,
-		users:   users,
-		sim:     sim,
+	var env *Env
+	sim, err := NewSimulator(revision, validators, balances, c)
+	if err == nil {
+		// Check if balance initialization succeeded
+		for k, amount := range balances {
+			addr := common.MustNewAddress([]byte(k))
+			if amount.Cmp(sim.GetBalance(addr)) != 0 {
+				return nil, errors.New("Balance initialization failed")
+			}
+		}
+
+		env = &Env{
+			config:  c,
+			bonders: bonders,
+			preps:   preps,
+			users:   users,
+			sim:     sim,
+		}
+		err = env.init(revision)
 	}
-	err := env.init()
 	return env, err
+}
+
+func (env *Env) init(revision module.Revision) error {
+	initHandlers := map[int]func(int) error{
+		icmodule.Revision13: env.initOnRev13,
+	}
+
+	targetRev := revision.Value()
+	for rev := icmodule.Revision13; rev <= targetRev; rev++ {
+		handler, ok := initHandlers[rev]
+		if !ok {
+			handler = env.defaultInitOnRev
+		}
+		if err := handler(rev); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Update revision and finish this term
+func (env *Env) defaultInitOnRev(revision int) error {
+	var csi module.ConsensusInfo
+
+	sim := env.sim
+	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
+	if err != nil {
+		return err
+	}
+	if !CheckReceiptSuccess(rcpt) {
+		return errors.Errorf("SetRevisionFailure(%d)", revision)
+	}
+
+	return sim.GoToTermEnd(csi)
+}
+
+// initOnRev13
+// Revision has been already updated in NewSimulator() so revision update is not needed
+func (env *Env) initOnRev13(revision int) error {
+	var err error
+	var csi module.ConsensusInfo
+	var receipts []Receipt
+	sim := env.Simulator()
+
+	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.ValueToRevision(revision))
+	if err != nil {
+		return err
+	}
+	if !CheckReceiptSuccess(rcpt) {
+		return errors.Errorf("SetRevisionFailure(%d)", revision)
+	}
+
+	receipts, err = env.RegisterPReps()
+	if !(checkReceipts(receipts) && err == nil) {
+		return errors.Errorf("Failed to Env.RegisterPReps()")
+	}
+
+	// Stakes 1000 ICX of all bonders and users
+	amount := icutils.ToLoop(2000)
+	receipts, err = env.SetStakesAll(amount)
+	if !(checkReceipts(receipts) && err == nil) {
+		return errors.Errorf("Failed to Env.SetStakesAll()")
+	}
+
+	receipts, err = env.SetDelegations(env.users, amount)
+	if !(checkReceipts(receipts) && err == nil) {
+		return errors.Errorf("Failed to Env.SetDelegations()")
+	}
+
+	// Activate decentralization
+	if err = sim.GoToTermEnd(nil); err != nil {
+		return err
+	}
+
+	receipts, err = env.SetBonderLists()
+	if !(checkReceipts(receipts) && err == nil) {
+		return errors.Errorf("Failed to Env.SetBonderLists()")
+	}
+
+	receipts, err = env.SetBonds(amount)
+	if !(checkReceipts(receipts) && err == nil) {
+		return errors.Errorf("Failed to Env.SetBonds()")
+	}
+
+	if err = sim.GoToTermEnd(nil); err != nil {
+		return err
+	}
+	return nil
 }

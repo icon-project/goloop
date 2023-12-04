@@ -20,6 +20,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
@@ -33,12 +34,17 @@ import (
 
 var (
 	treasury = common.MustNewAddressFromString("hx1000000000000000000000000000000000000000")
+	governance = common.MustNewAddressFromString("cx0000000000000000000000000000000000000001")
 )
 
 type WorldContext interface {
 	icmodule.WorldContext
 	GetExtensionState() state.ExtensionState
 	BlockTimeStamp() int64
+	Database() db.Database
+	GetAccountState(id []byte) state.AccountState
+	GetSnapshot() state.WorldSnapshot
+	Reset(snapshot state.WorldSnapshot) error
 }
 
 type worldContext struct {
@@ -207,6 +213,19 @@ func (ctx *worldContext) GetBTPContext() state.BTPContext {
 	return state.NewBTPContext(nil, as)
 }
 
+func (ctx *worldContext) GetActiveDSAMask() int64 {
+	if ctx.Revision().Value() >= icmodule.RevisionBTP2 {
+		if bc := ctx.GetBTPContext(); bc != nil {
+			return bc.GetActiveDSAMask()
+		}
+	}
+	return 0
+}
+
+func (ctx *worldContext) Governance() module.Address {
+	return governance
+}
+
 func NewWorldContext(
 	ws state.WorldState, blockHeight int64, revision module.Revision,
 	csi module.ConsensusInfo, stepPrice *big.Int,
@@ -224,6 +243,7 @@ func NewWorldContext(
 type callContext struct {
 	WorldContext
 	from module.Address
+	events []*Event
 }
 
 func (ctx *callContext) From() module.Address {
@@ -271,14 +291,16 @@ func (ctx *callContext) SumOfStepUsed() *big.Int {
 }
 
 func (ctx *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
+	e := NewEvent(addr, indexed, data)
+	ctx.events = append(ctx.events, e)
+}
+
+func (ctx *callContext) Events() []*Event {
+	return ctx.events
 }
 
 func (ctx *callContext) CallOnTimer(to module.Address, params []byte) error {
 	return nil
-}
-
-func (ctx *callContext) Governance() module.Address {
-	return ctx.Governance()
 }
 
 func (ctx *callContext) FrameLogger() *trace.Logger {
@@ -289,7 +311,7 @@ func (ctx *callContext) TransactionInfo() *state.TransactionInfo {
 	panic("implement me")
 }
 
-func NewCallContext(wc WorldContext, from module.Address) icmodule.CallContext {
+func NewCallContext(wc WorldContext, from module.Address) *callContext {
 	return &callContext{
 		WorldContext: wc,
 		from:         from,

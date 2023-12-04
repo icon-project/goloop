@@ -77,11 +77,11 @@ func (t *testProofStorage) SetBlockV1Proof(root []byte, size int64, votes *block
 
 type testTransitionCallback chan error
 
-func (tcb testTransitionCallback) OnValidate(t module.Transition, err error) {
+func (tcb testTransitionCallback) OnValidate(_ module.Transition, err error) {
 	tcb <- err
 }
 
-func (tcb testTransitionCallback) OnExecute(t module.Transition, err error) {
+func (tcb testTransitionCallback) OnExecute(_ module.Transition, err error) {
 	tcb <- err
 }
 

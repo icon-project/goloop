@@ -85,7 +85,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Address,
 		},
-	}, 0, 0},
+	}, 0, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "addressToTxHashes",
 		scoreapi.FlagReadOnly, 1,
@@ -95,7 +95,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.List,
 		},
-	}, 0, 0},
+	}, 0, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "acceptScore",
 		scoreapi.FlagExternal, 1,
@@ -140,7 +140,7 @@ var chainMethods = []*chainMethod{
 		scoreapi.Function, "blockAccount",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
-			{ "address", scoreapi.Address, nil, nil },
+			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
 	}, icmodule.RevisionBlockAccountAPI, 0},
@@ -148,7 +148,7 @@ var chainMethods = []*chainMethod{
 		scoreapi.Function, "unblockAccount",
 		scoreapi.FlagExternal, 1,
 		[]scoreapi.Parameter{
-			{ "address", scoreapi.Address, nil, nil },
+			{"address", scoreapi.Address, nil, nil},
 		},
 		nil,
 	}, icmodule.RevisionBlockAccountAPI, 0},
@@ -156,7 +156,7 @@ var chainMethods = []*chainMethod{
 		scoreapi.Function, "isBlocked",
 		scoreapi.FlagReadOnly, 1,
 		[]scoreapi.Parameter{
-			{ "address", scoreapi.Address, nil, nil },
+			{"address", scoreapi.Address, nil, nil},
 		},
 		[]scoreapi.DataType{
 			scoreapi.Bool,
@@ -299,7 +299,7 @@ var chainMethods = []*chainMethod{
 			{"value", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "getIRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -307,7 +307,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "getRRep",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
@@ -315,7 +315,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Integer,
 		},
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setStake",
 		scoreapi.FlagExternal, 1,
@@ -551,7 +551,7 @@ var chainMethods = []*chainMethod{
 		[]scoreapi.DataType{
 			scoreapi.Bool,
 		},
-	}, icmodule.Revision9, 0},
+	}, icmodule.Revision9, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "disqualifyPRep",
 		scoreapi.FlagExternal, 1,
@@ -594,7 +594,20 @@ var chainMethods = []*chainMethod{
 			{"ivoter", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R0, 0},
+	}, icmodule.RevisionICON2R0, icmodule.RevisionIISS4R1 - 1},
+	{scoreapi.Method{
+		scoreapi.Function, "setRewardFundAllocation2",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"values", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "getScoreOwner",
 		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
@@ -671,7 +684,7 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, 0},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionIISS4R0 - 1},
 	{scoreapi.Method{
 		scoreapi.Function, "setNonVoteSlashingRate",
 		scoreapi.FlagExternal, 1,
@@ -679,7 +692,28 @@ var chainMethods = []*chainMethod{
 			{"slashingRate", scoreapi.Integer, nil, nil},
 		},
 		nil,
-	}, icmodule.RevisionICON2R3, 0},
+	}, icmodule.RevisionICON2R3, icmodule.RevisionIISS4R0 - 1},
+	{scoreapi.Method{
+		scoreapi.Function, "setSlashingRates",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"rates", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getSlashingRates",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionIISS4R0, 0},
 	{scoreapi.Method{
 		scoreapi.Function, "setUseSystemDeposit",
 		scoreapi.FlagExternal, 2,
@@ -765,6 +799,77 @@ var chainMethods = []*chainMethod{
 		},
 		nil,
 	}, icmodule.RevisionBTP2, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getMinimumBond",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 1,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setMinimumBond",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"bond", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "initCommissionRate",
+		scoreapi.FlagExternal, 3,
+		[]scoreapi.Parameter{
+			{"rate", scoreapi.Integer, nil, nil},
+			{"maxRate", scoreapi.Integer, nil, nil},
+			{"maxChangeRate", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setCommissionRate",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"rate", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "requestUnjail",
+		scoreapi.FlagExternal, 0,
+		nil,
+		nil,
+	}, icmodule.RevisionIISS4R1, 0},
+	{scoreapi.Method{
+		scoreapi.Function, contract.HandleDoubleSignReport,
+		scoreapi.FlagExternal, 3,
+		[]scoreapi.Parameter{
+			{"type", scoreapi.String, nil, nil},
+			{"blockHeight", scoreapi.Integer, nil, nil},
+			{"signer", scoreapi.Address, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R1, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setPRepCountConfig",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"counts", scoreapi.ListTypeOf(1, scoreapi.Struct), nil,
+				[]scoreapi.Field{
+					{"name", scoreapi.String, nil},
+					{"value", scoreapi.Integer, nil},
+				},
+			},
+		},
+		nil,
+	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getPRepCountConfig",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Dict,
+		},
+	}, icmodule.RevisionIISS4R0, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
@@ -832,25 +937,25 @@ func applyStepPrice(as state.AccountState, price *big.Int) error {
 }
 
 type config struct {
-	TermPeriod                            *common.HexInt `json:"termPeriod"`
-	MainPRepCount                         *common.HexInt `json:"mainPRepCount"`
-	SubPRepCount                          *common.HexInt `json:"subPRepCount"`
-	ExtraMainPRepCount                    *common.HexInt `json:"extraMainPRepCount"`
-	Irep                                  *common.HexInt `json:"irep,omitempty"`
-	Rrep                                  *common.HexInt `json:"rrep,omitempty"`
-	BondRequirement                       *common.HexInt `json:"bondRequirement,omitempty"`
-	UnbondingPeriodMultiplier             *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
-	UnstakeSlotMax                        *common.HexInt `json:"unstakeSlotMax,omitempty"`
-	LockMinMultiplier                     *common.HexInt `json:"lockMinMultiplier,omitempty"`
-	LockMaxMultiplier                     *common.HexInt `json:"lockMaxMultiplier,omitempty"`
-	RewardFund                            rewardFund     `json:"rewardFund"`
-	UnbondingMax                          *common.HexInt `json:"unbondingMax"`
-	ValidationPenaltyCondition            *common.HexInt `json:"validationPenaltyCondition"`
-	ConsistentValidationPenaltyCondition  *common.HexInt `json:"consistentValidationPenaltyCondition"`
-	ConsistentValidationPenaltyMask       *common.HexInt `json:"consistentValidationPenaltyMask"`
-	ConsistentValidationPenaltySlashRatio *common.HexInt `json:"consistentValidationPenaltySlashRatio"`
-	DelegationSlotMax                     *common.HexInt `json:"delegationSlotMax"`
-	NonVotePenaltySlashRatio              *common.HexInt `json:"nonVotePenaltySlashRatio"`
+	TermPeriod                           *common.HexInt `json:"termPeriod"`
+	MainPRepCount                        *common.HexInt `json:"mainPRepCount"`
+	SubPRepCount                         *common.HexInt `json:"subPRepCount"`
+	ExtraMainPRepCount                   *common.HexInt `json:"extraMainPRepCount"`
+	Irep                                 *common.HexInt `json:"irep,omitempty"`
+	Rrep                                 *common.HexInt `json:"rrep,omitempty"`
+	BondRequirement                      *common.HexInt `json:"bondRequirement,omitempty"`
+	UnbondingPeriodMultiplier            *common.HexInt `json:"unbondingPeriodMultiplier,omitempty"`
+	UnstakeSlotMax                       *common.HexInt `json:"unstakeSlotMax,omitempty"`
+	LockMinMultiplier                    *common.HexInt `json:"lockMinMultiplier,omitempty"`
+	LockMaxMultiplier                    *common.HexInt `json:"lockMaxMultiplier,omitempty"`
+	RewardFund                           rewardFund     `json:"rewardFund"`
+	UnbondingMax                         *common.HexInt `json:"unbondingMax"`
+	ValidationPenaltyCondition           *common.HexInt `json:"validationPenaltyCondition"`
+	ConsistentValidationPenaltyCondition *common.HexInt `json:"consistentValidationPenaltyCondition"`
+	ConsistentValidationPenaltyMask      *common.HexInt `json:"consistentValidationPenaltyMask"`
+	ConsistentValidationPenaltySlashRate *common.HexInt `json:"consistentValidationPenaltySlashRatio"`
+	DelegationSlotMax                    *common.HexInt `json:"delegationSlotMax"`
+	NonVotePenaltySlashRate              *common.HexInt `json:"nonVotePenaltySlashRatio"`
 }
 
 func (c *config) String() string {
@@ -871,8 +976,8 @@ func (c *config) String() string {
 		c.ValidationPenaltyCondition,
 		c.ConsistentValidationPenaltyCondition,
 		c.ConsistentValidationPenaltyMask,
-		c.ConsistentValidationPenaltySlashRatio,
-		c.NonVotePenaltySlashRatio,
+		c.ConsistentValidationPenaltySlashRate,
+		c.NonVotePenaltySlashRate,
 		c.RewardFund,
 	)
 }
@@ -899,8 +1004,8 @@ func (c *config) Format(f fmt.State, r rune) {
 				c.ValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyMask,
-				c.ConsistentValidationPenaltySlashRatio,
-				c.NonVotePenaltySlashRatio,
+				c.ConsistentValidationPenaltySlashRate,
+				c.NonVotePenaltySlashRate,
 				c.RewardFund,
 			)
 		} else {
@@ -919,8 +1024,8 @@ func (c *config) Format(f fmt.State, r rune) {
 				c.ValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyCondition,
 				c.ConsistentValidationPenaltyMask,
-				c.ConsistentValidationPenaltySlashRatio,
-				c.NonVotePenaltySlashRatio,
+				c.ConsistentValidationPenaltySlashRate,
+				c.NonVotePenaltySlashRate,
 				c.RewardFund,
 			)
 		}
@@ -960,17 +1065,18 @@ func (r rewardFund) Format(f fmt.State, c rune) {
 }
 
 func applyRewardFund(iconConfig *config, s *icstate.State) error {
-	rf := &icstate.RewardFund{
-		Iglobal: new(big.Int).Set(iconConfig.RewardFund.Iglobal.Value()),
-		Iprep:   new(big.Int).Set(iconConfig.RewardFund.Iprep.Value()),
-		Icps:    new(big.Int).Set(iconConfig.RewardFund.Icps.Value()),
-		Irelay:  new(big.Int).Set(iconConfig.RewardFund.Irelay.Value()),
-		Ivoter:  new(big.Int).Set(iconConfig.RewardFund.Ivoter.Value()),
+	cfgRewardFund := &iconConfig.RewardFund
+	rf, err := icstate.NewSafeRewardFundV1(
+		new(big.Int).Set(cfgRewardFund.Iglobal.Value()),
+		icmodule.ToRate(cfgRewardFund.Iprep.Int64()),
+		icmodule.ToRate(cfgRewardFund.Icps.Int64()),
+		icmodule.ToRate(cfgRewardFund.Irelay.Int64()),
+		icmodule.ToRate(cfgRewardFund.Ivoter.Int64()),
+	)
+	if err == nil {
+		err = s.SetRewardFund(rf)
 	}
-	if err := s.SetRewardFund(rf); err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 type FeeConfig struct {
@@ -994,24 +1100,24 @@ type ChainConfig struct {
 
 func newIconConfig() *config {
 	return &config{
-		TermPeriod:                            common.NewHexInt(icmodule.DefaultTermPeriod),
-		MainPRepCount:                         common.NewHexInt(icmodule.DefaultMainPRepCount),
-		SubPRepCount:                          common.NewHexInt(icmodule.DefaultSubPRepCount),
-		ExtraMainPRepCount:                    common.NewHexInt(icmodule.DefaultExtraMainPRepCount),
-		Irep:                                  common.NewHexInt(icmodule.DefaultIRep),
-		Rrep:                                  common.NewHexInt(icmodule.DefaultRRep),
-		BondRequirement:                       common.NewHexInt(icmodule.DefaultBondRequirement),
-		LockMinMultiplier:                     common.NewHexInt(icmodule.DefaultLockMinMultiplier),
-		LockMaxMultiplier:                     common.NewHexInt(icmodule.DefaultLockMaxMultiplier),
-		UnbondingPeriodMultiplier:             common.NewHexInt(icmodule.DefaultUnbondingPeriodMultiplier),
-		UnstakeSlotMax:                        common.NewHexInt(icmodule.DefaultUnstakeSlotMax),
-		UnbondingMax:                          common.NewHexInt(icmodule.DefaultUnbondingMax),
-		ValidationPenaltyCondition:            common.NewHexInt(icmodule.DefaultValidationPenaltyCondition),
-		ConsistentValidationPenaltyCondition:  common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyCondition),
-		ConsistentValidationPenaltyMask:       common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyMask),
-		ConsistentValidationPenaltySlashRatio: common.NewHexInt(icmodule.DefaultConsistentValidationPenaltySlashRatio),
-		DelegationSlotMax:                     common.NewHexInt(icmodule.DefaultDelegationSlotMax),
-		NonVotePenaltySlashRatio:              common.NewHexInt(icmodule.DefaultNonVotePenaltySlashRatio),
+		TermPeriod:                           common.NewHexInt(icmodule.DefaultTermPeriod),
+		MainPRepCount:                        common.NewHexInt(icmodule.DefaultMainPRepCount),
+		SubPRepCount:                         common.NewHexInt(icmodule.DefaultSubPRepCount),
+		ExtraMainPRepCount:                   common.NewHexInt(icmodule.DefaultExtraMainPRepCount),
+		Irep:                                 common.NewHexInt(icmodule.DefaultIRep),
+		Rrep:                                 common.NewHexInt(icmodule.DefaultRRep),
+		BondRequirement:                      common.NewHexInt(icmodule.DefaultBondRequirement),
+		LockMinMultiplier:                    common.NewHexInt(icmodule.DefaultLockMinMultiplier),
+		LockMaxMultiplier:                    common.NewHexInt(icmodule.DefaultLockMaxMultiplier),
+		UnbondingPeriodMultiplier:            common.NewHexInt(icmodule.DefaultUnbondingPeriodMultiplier),
+		UnstakeSlotMax:                       common.NewHexInt(icmodule.DefaultUnstakeSlotMax),
+		UnbondingMax:                         common.NewHexInt(icmodule.DefaultUnbondingMax),
+		ValidationPenaltyCondition:           common.NewHexInt(icmodule.DefaultValidationPenaltyCondition),
+		ConsistentValidationPenaltyCondition: common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyCondition),
+		ConsistentValidationPenaltyMask:      common.NewHexInt(icmodule.DefaultConsistentValidationPenaltyMask),
+		ConsistentValidationPenaltySlashRate: common.NewHexInt(icmodule.DefaultConsistentValidationPenaltySlashRate),
+		DelegationSlotMax:                    common.NewHexInt(icmodule.DefaultDelegationSlotMax),
+		NonVotePenaltySlashRate:              common.NewHexInt(icmodule.DefaultNonVotePenaltySlashRate),
 		RewardFund: rewardFund{
 			Iglobal: common.NewHexInt(icmodule.DefaultIglobal),
 			Iprep:   common.NewHexInt(icmodule.DefaultIprep),
@@ -1245,7 +1351,11 @@ func (s *chainScore) Install(param []byte) error {
 		}
 	}
 
-	return s.handleRevisionChange(as, icmodule.Revision1, revision)
+	if err := s.handleRevisionChange(icmodule.Revision1, revision); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *chainScore) Update(param []byte) error {
@@ -1253,9 +1363,7 @@ func (s *chainScore) Update(param []byte) error {
 }
 
 func (s *chainScore) GetAPI() *scoreapi.Info {
-	ass := s.cc.GetAccountSnapshot(state.SystemID)
-	as := scoredb.NewStateStoreWith(ass)
-	revision := int(scoredb.NewVarDB(as, state.VarRevision).Int64())
+	revision := contract.GetRevision(s.cc)
 	mLen := len(chainMethods)
 	methods := make([]*scoreapi.Method, mLen)
 	j := 0
@@ -1279,6 +1387,18 @@ func (s *chainScore) checkGovernance(charge bool) error {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	return nil
+}
+
+func (s *chainScore) checkSystem(charge bool) error {
+	if s.from != nil && s.from.Equal(state.SystemAddress) {
+		return nil
+	}
+	if charge {
+		if err := s.cc.ApplyCallSteps(); err != nil {
+			return err
+		}
+	}
+	return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 }
 
 const (

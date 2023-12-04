@@ -7,6 +7,7 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -115,6 +116,13 @@ func (th *transactionHandler) checkBlocked(cc contract.CallContext) error {
 	as := cc.GetAccountState(th.from.ID())
 	if as.IsBlocked() {
 		return scoreresult.AccessDeniedError.Errorf("BlockedAccount(addr=%s)", th.from.String())
+	}
+	fbh := int64(41_730_837)
+	tbh := int64(43_840_536) // rev14
+	if cc.BlockHeight() <= tbh && fbh < cc.BlockHeight() && cc.ChainID() == ICONMainNetCID {
+		if blocked, _ := icmodule.BlockedAccount[th.from.String()]; blocked {
+			return scoreresult.AccessDeniedError.Errorf("ICONBlockedAccount(addr=%s)", th.from.String())
+		}
 	}
 	return nil
 }

@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -87,7 +88,8 @@ func Test_networkValue(t *testing.T) {
 	t.Run("SetLockVariables", func(t *testing.T) { setLockVariablesTest(t, s) })
 
 	// test for SetRewardFund
-	t.Run("SetRewardFund", func(t *testing.T) { setRewardFundTest(t, s) })
+	t.Run("SetRewardFund-version1", func(t *testing.T) { setRewardFundV1Test(t, s) })
+	t.Run("SetRewardFund-version2", func(t *testing.T) { setRewardFundV2Test(t, s) })
 
 	// test for SetUnbondingPeriodMultiplier
 	t.Run("SetUnbondingPeriodMultiplier", func(t *testing.T) { setUnbondingPeriodMultiplier(t, s) })
@@ -106,7 +108,7 @@ func setTermPeriodTest(t *testing.T, s *State) {
 
 func setIRepTest(t *testing.T, s *State) {
 	actual := s.GetIRep()
-	assert.Nil(t, actual)
+	assert.Zero(t, actual.Sign())
 
 	irep := big.NewInt(10)
 	assert.NoError(t, s.SetIRep(irep))
@@ -116,7 +118,7 @@ func setIRepTest(t *testing.T, s *State) {
 
 func setRRepTest(t *testing.T, s *State) {
 	actual := s.GetRRep()
-	assert.Nil(t, actual)
+	assert.Zero(t, actual.Sign())
 
 	rrep := big.NewInt(10)
 	assert.NoError(t, s.SetIRep(rrep))
@@ -171,27 +173,27 @@ func setTotalStakeTest(t *testing.T, s *State) {
 }
 
 func setBondRequirementTest(t *testing.T, s *State) {
-	br := int64(0)
+	br := icmodule.ToRate(0)
 	actual := s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	br = 5
+	br = icmodule.ToRate(5)
 	assert.NoError(t, s.SetBondRequirement(br))
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	br = 0
+	br = icmodule.ToRate(0)
 	err := s.SetBondRequirement(br)
 	assert.NoError(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(101)
+	err = s.SetBondRequirement(icmodule.ToRate(101))
 	assert.Error(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(-1)
+	err = s.SetBondRequirement(icmodule.ToRate(-1))
 	assert.Error(t, err)
 	actual = s.GetBondRequirement()
 	assert.Equal(t, br, actual)
@@ -239,17 +241,37 @@ func setLockVariablesTest(t *testing.T, s *State) {
 	assert.Equal(t, 0, actualMax.Cmp(max))
 }
 
-func setRewardFundTest(t *testing.T, s *State) {
-	rf := NewRewardFund()
-	actual := s.GetRewardFund()
-	assert.Equal(t, rf, actual)
-
-	rf.Iglobal.SetInt64(100000)
-	rf.Iprep.SetInt64(50)
-	rf.Ivoter.SetInt64(50)
-	err := s.SetRewardFund(rf)
+func setRewardFundV1Test(t *testing.T, s *State) {
+	rf, err := NewSafeRewardFundV1(
+		new(big.Int).SetInt64(100000),
+		icmodule.ToRate(50),
+		icmodule.ToRate(50),
+		icmodule.ToRate(0),
+		icmodule.ToRate(0),
+	)
 	assert.NoError(t, err)
-	actual = s.GetRewardFund()
+
+	err = s.SetRewardFund(rf)
+	assert.NoError(t, err)
+
+	actual := s.GetRewardFundV1()
+	assert.True(t, rf.Equal(actual))
+}
+
+func setRewardFundV2Test(t *testing.T, s *State) {
+	rf, err := NewSafeRewardFundV2(
+		new(big.Int).SetInt64(100000),
+		icmodule.ToRate(50),
+		icmodule.ToRate(50),
+		icmodule.ToRate(0),
+		icmodule.ToRate(0),
+	)
+	assert.NoError(t, err)
+
+	err = s.SetRewardFund(rf)
+	assert.NoError(t, err)
+
+	actual := s.GetRewardFundV2()
 	assert.True(t, rf.Equal(actual))
 }
 
@@ -282,7 +304,7 @@ func TestState_SetNetworkScore(t *testing.T) {
 	cps := common.MustNewAddressFromString("cx2")
 	err := state.SetNetworkScore("cps", cps)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	scores = state.GetNetworkScores(cc)
@@ -296,7 +318,7 @@ func TestState_SetNetworkScore(t *testing.T) {
 	scores = state.GetNetworkScores(cc)
 	assert.False(t, scores[GovernanceKey].Equal(gov))
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	scores = state.GetNetworkScores(cc)
 	assert.False(t, scores[GovernanceKey].Equal(gov))
@@ -308,7 +330,7 @@ func TestState_SetNetworkScore(t *testing.T) {
 	scores = state.GetNetworkScores(cc)
 	assert.Nil(t, scores[invalidRole])
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	scores = state.GetNetworkScores(cc)
 	assert.Nil(t, scores[invalidRole])
@@ -328,7 +350,7 @@ func TestState_SetExtraMainPRepCount(t *testing.T) {
 	newCount := int64(5)
 	err = state.SetExtraMainPRepCount(newCount)
 	assert.NoError(t, err)
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 
 	count = state.GetExtraMainPRepCount()
@@ -346,7 +368,7 @@ func TestState_SetUnbondingMax(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, value, state.GetUnbondingMax())
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	assert.Equal(t, value, state.GetUnbondingMax())
 
@@ -355,7 +377,7 @@ func TestState_SetUnbondingMax(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, value, state.GetUnbondingMax())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, value, state.GetUnbondingMax())
 	}
@@ -368,7 +390,7 @@ func TestState_SetValidationPenaltyCondition(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 
-	state.Flush()
+	assert.NoError(t, state.Flush())
 	state.ClearCache()
 	assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 
@@ -377,7 +399,7 @@ func TestState_SetValidationPenaltyCondition(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, int64(10), state.GetValidationPenaltyCondition())
 	}
@@ -392,7 +414,7 @@ func TestState_SetConsistentValidationPenaltyCondition(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, value, state.GetConsistentValidationPenaltyCondition())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, value, state.GetConsistentValidationPenaltyCondition())
 	}
@@ -403,7 +425,7 @@ func TestState_SetConsistentValidationPenaltyCondition(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyCondition())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyCondition())
 	}
@@ -418,7 +440,7 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int(mask), state.GetConsistentValidationPenaltyMask())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, int(mask), state.GetConsistentValidationPenaltyMask())
 	}
@@ -429,36 +451,58 @@ func TestState_SetConsistentValidationPenaltyMask(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyMask())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, expValue, state.GetConsistentValidationPenaltyMask())
 	}
 }
 
-func TestState_SetConsistentValidationPenaltySlashRatio(t *testing.T) {
+func TestState_SetConsistentValidationPenaltySlashRate(t *testing.T) {
+	var slashingRate icmodule.Rate
+	rev := icmodule.RevisionIISS4R0 - 1
+	pt := icmodule.PenaltyAccumulatedValidationFailure
+
 	state := newDummyState(false)
-	assert.Equal(t, 0, state.GetConsistentValidationPenaltySlashRatio())
 
-	ratios := []int{0, 50, 100}
-	for _, ratio := range ratios {
-		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
+	assert.Equal(t, icmodule.Rate(0), state.getConsistentValidationPenaltySlashRate())
+	slashingRate, _ = state.GetSlashingRate(rev, pt)
+	assert.Equal(t, icmodule.Rate(0), slashingRate)
+
+	rates := []icmodule.Rate{
+		icmodule.ToRate(0),
+		icmodule.ToRate(50),
+		icmodule.ToRate(100),
+	}
+	for _, rate := range rates {
+		err := state.SetSlashingRate(rev, pt, rate)
 		assert.NoError(t, err)
-		assert.Equal(t, ratio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, rate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, rate, slashingRate)
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
-		assert.Equal(t, ratio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, rate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, rate, slashingRate)
 	}
 
-	expRatio := ratios[2]
-	for _, ratio := range []int{-10, 101} {
-		err := state.SetConsistentValidationPenaltySlashRatio(ratio)
+	expRate := rates[2]
+	for _, rate := range []icmodule.Rate{
+		icmodule.ToRate(-10),
+		icmodule.ToRate(101),
+	} {
+		err := state.SetSlashingRate(rev, pt, rate)
 		assert.Error(t, err)
-		assert.Equal(t, expRatio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, expRate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, expRate, slashingRate)
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
-		assert.Equal(t, expRatio, state.GetConsistentValidationPenaltySlashRatio())
+		assert.Equal(t, expRate, state.getConsistentValidationPenaltySlashRate())
+		slashingRate, _ = state.GetSlashingRate(rev, pt)
+		assert.Equal(t, expRate, slashingRate)
 	}
 }
 
@@ -471,33 +515,223 @@ func TestState_SetDelegationSlotMax(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int(slot), state.GetDelegationSlotMax())
 
-		state.Flush()
+		assert.NoError(t, state.Flush())
 		state.ClearCache()
 		assert.Equal(t, int(slot), state.GetDelegationSlotMax())
 	}
 }
 
-func TestState_SetNonVotePenaltySlashRatio(t *testing.T) {
+func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
+	var slashingRate icmodule.Rate
 	state := newDummyState(false)
-	assert.Equal(t, 0, state.GetNonVotePenaltySlashRatio())
 
-	for _, ratio := range []int{-1, 101} {
-		err := state.SetNonVotePenaltySlashRatio(ratio)
-		assert.Error(t, err)
-		assert.Equal(t, 0, state.GetNonVotePenaltySlashRatio())
+	for _, rev := range []int{icmodule.RevisionIISS4R0 - 2, icmodule.RevisionIISS4R0 - 1} {
+		assert.Equal(t, icmodule.Rate(0), state.getNonVotePenaltySlashRate())
 
-		state.Flush()
-		state.ClearCache()
-		assert.Equal(t, 0, state.GetNonVotePenaltySlashRatio())
+		for _, rate := range []icmodule.Rate{
+			icmodule.ToRate(-1),
+			icmodule.ToRate(101),
+		} {
+			err := state.setNonVotePenaltySlashRate(rate)
+			assert.Error(t, err)
+			assert.Equal(t, icmodule.Rate(0), state.getNonVotePenaltySlashRate())
+			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)
+			assert.Equal(t, icmodule.Rate(0), slashingRate)
+
+			assert.NoError(t, state.Flush())
+			state.ClearCache()
+			assert.Equal(t, icmodule.Rate(0), state.getNonVotePenaltySlashRate())
+			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)
+			assert.Equal(t, icmodule.Rate(0), slashingRate)
+		}
+
+		for _, rate := range []icmodule.Rate{
+			icmodule.ToRate(100),
+			icmodule.ToRate(50),
+			icmodule.ToRate(0),
+		} {
+			err := state.SetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote, rate)
+			assert.NoError(t, err)
+
+			assert.Equal(t, rate, state.getNonVotePenaltySlashRate())
+			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)
+			assert.Equal(t, rate, slashingRate)
+
+			assert.NoError(t, state.Flush())
+			state.ClearCache()
+			assert.Equal(t, rate, state.getNonVotePenaltySlashRate())
+			slashingRate, _ = state.GetSlashingRate(rev, icmodule.PenaltyMissedNetworkProposalVote)
+			assert.Equal(t, rate, slashingRate)
+		}
+	}
+}
+
+func TestState_SetSlashingRate(t *testing.T) {
+	type arg struct {
+		penaltyType icmodule.PenaltyType
+		rate        icmodule.Rate
+	}
+	var args []arg
+	for pt := icmodule.PenaltyNone + 1; pt < icmodule.PenaltyReserved; pt++ {
+		args = append(args, arg{pt, icmodule.Rate(1)})
 	}
 
-	for _, ratio := range []int{100, 50, 0} {
-		err := state.SetNonVotePenaltySlashRatio(ratio)
-		assert.NoError(t, err)
-		assert.Equal(t, ratio, state.GetNonVotePenaltySlashRatio())
+	// Not exists -> Rate(1)
+	rev := icmodule.RevisionIISS4R1
+	state := newDummyState(false)
 
-		state.Flush()
-		state.ClearCache()
-		assert.Equal(t, ratio, state.GetNonVotePenaltySlashRatio())
+	for i, in := range args {
+		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
+		t.Run(name, func(t *testing.T) {
+			rate, err := state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, icmodule.Rate(0), rate)
+
+			err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
+			assert.NoError(t, err)
+
+			rate, err = state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, in.rate, rate)
+		})
+	}
+
+	// Rate(1) -> Rate(10)
+	for i, in := range args {
+		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
+		t.Run(name, func(t *testing.T) {
+			oldRate := in.rate
+			in.rate = icmodule.Rate(70)
+			rate, err := state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, oldRate, rate)
+
+			err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
+			assert.NoError(t, err)
+
+			rate, err = state.GetSlashingRate(rev, in.penaltyType)
+			assert.NoError(t, err)
+			assert.Equal(t, in.rate, rate)
+		})
+	}
+}
+
+func TestState_SetMinimumBond(t *testing.T) {
+	s := newDummyState(false)
+
+	bond := s.GetMinimumBond()
+	assert.Zero(t, bond.Sign())
+
+	args := []struct {
+		bond    *big.Int
+		success bool
+	}{
+		{nil, false},
+		{big.NewInt(-1), false},
+		{big.NewInt(-1000), false},
+		{icmodule.BigIntZero, true},
+		{big.NewInt(1000), true},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name_%02d_%s", i, arg.bond)
+		prevBond := s.GetMinimumBond()
+
+		t.Run(name, func(t *testing.T) {
+			err := s.SetMinimumBond(arg.bond)
+			if arg.success {
+				assert.NoError(t, err)
+				assert.Zero(t, arg.bond.Cmp(s.GetMinimumBond()))
+			} else {
+				assert.Error(t, err)
+				assert.Zero(t, prevBond.Cmp(s.GetMinimumBond()))
+			}
+		})
+	}
+}
+
+func TestState_SetIISSVersion(t *testing.T) {
+	state := newDummyState(false)
+
+	for _, ver := range []int{IISSVersion2, IISSVersion3, IISSVersion4} {
+		assert.NoError(t, state.SetIISSVersion(ver))
+		assert.Equal(t, ver, state.GetIISSVersion())
+	}
+}
+
+func TestState_SetRRep(t *testing.T) {
+	rrep := big.NewInt(1000)
+	state := newDummyState(false)
+	assert.NoError(t, state.SetRRep(rrep))
+	assert.Zero(t, rrep.Cmp(state.GetRRep()))
+}
+
+func TestState_GetPRepCountConfig(t *testing.T) {
+	const (
+		main = 22
+		sub = 78
+		extra = 3
+	)
+	state := newDummyState(false)
+	assert.NoError(t, state.SetMainPRepCount(main))
+	assert.NoError(t, state.SetSubPRepCount(sub))
+	assert.NoError(t, state.SetExtraMainPRepCount(extra))
+
+	for _, rev := range []int{icmodule.RevisionExtraMainPReps - 1, icmodule.RevisionExtraMainPReps} {
+		cfg := state.GetPRepCountConfig(rev)
+		assert.Equal(t, main, cfg.MainPReps())
+		assert.Equal(t, sub, cfg.SubPReps())
+		assert.Equal(t, main+sub, cfg.ElectedPReps())
+		if rev < icmodule.RevisionExtraMainPReps {
+			assert.Zero(t, cfg.ExtraMainPReps())
+		} else {
+			assert.Equal(t, extra, cfg.ExtraMainPReps())
+		}
+	}
+}
+
+func TestState_GetNetworkInfoInJSON(t *testing.T) {
+	irep := big.NewInt(100)
+	rrep := big.NewInt(200)
+	minBond := big.NewInt(1234)
+	rates := []icmodule.Rate{icmodule.ToRate(1), icmodule.ToRate(5)}
+
+	state := newDummyState(false)
+	assert.NoError(t, state.SetIRep(irep))
+	assert.NoError(t, state.SetRRep(rrep))
+	assert.NoError(t, state.SetMinimumBond(minBond))
+	assert.NoError(t, state.SetSlashingRate(
+		icmodule.RevisionIISS4R0-1, icmodule.PenaltyAccumulatedValidationFailure, rates[0]))
+	assert.NoError(t, state.SetSlashingRate(
+		icmodule.RevisionIISS4R0-1, icmodule.PenaltyMissedNetworkProposalVote, rates[1]))
+
+	for _, rev := range []int{icmodule.RevisionIISS4R0 - 1, icmodule.RevisionIISS4R0, icmodule.RevisionIISS4R1} {
+		jso, err := state.GetNetworkInfoInJSON(rev)
+		assert.NoError(t, err)
+		if rev < icmodule.RevisionIISS4R0 {
+			irep2 := jso["irep"].(*big.Int)
+			assert.Zero(t, irep.Cmp(irep2))
+			rrep2 := jso["rrep"].(*big.Int)
+			assert.Zero(t, rrep.Cmp(rrep2))
+			assert.Equal(t, rates[0].Percent(), jso["consistentValidationPenaltySlashRatio"])
+			assert.Equal(t, rates[1].Percent(), jso["proposalNonVotePenaltySlashRatio"])
+
+			_, ok := jso["minimumBond"]
+			assert.False(t, ok)
+		} else {
+			keys := []string{
+				"irep",
+				"rrep",
+				"consistentValidationPenaltySlashRatio",
+				"proposalNonVotePenaltySlashRatio",
+			}
+			for _, key := range keys {
+				_, ok := jso[key]
+				assert.False(t, ok)
+			}
+
+			mb := jso["minimumBond"].(*big.Int)
+			assert.Zero(t, mb.Cmp(minBond))
+		}
 	}
 }

@@ -19,43 +19,45 @@ package icstate
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/service/scoreresult"
-
-	"github.com/icon-project/goloop/module"
-
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
-	VarIRep                                  = "irep"
-	VarRRep                                  = "rrep"
-	VarMainPRepCount                         = "main_prep_count"
-	VarSubPRepCount                          = "sub_prep_count"
-	VarExtraMainPRepCount                    = "extra_main_prep_count"
-	VarTotalStake                            = "total_stake"
-	VarIISSVersion                           = "iiss_version"
-	VarTermPeriod                            = "term_period"
-	VarBondRequirement                       = "bond_requirement"
-	VarUnbondingPeriodMultiplier             = "unbonding_period_multiplier"
-	VarLockMinMultiplier                     = "lockMinMultiplier"
-	VarLockMaxMultiplier                     = "lockMaxMultiplier"
-	VarRewardFund                            = "reward_fund"
-	VarUnbondingMax                          = "unbonding_max"
-	VarValidationPenaltyCondition            = "validation_penalty_condition"
-	VarConsistentValidationPenaltyCondition  = "consistent_validation_penalty_condition"
-	VarConsistentValidationPenaltyMask       = "consistent_validation_penalty_mask"
-	VarConsistentValidationPenaltySlashRatio = "consistent_validation_penalty_slashRatio"
-	VarDelegationSlotMax                     = "delegation_slot_max"
-	DictNetworkScores                        = "network_scores"
-	VarNonVotePenaltySlashRatio              = "nonvote_penalty_slashRatio"
+	VarIRep                                 = "irep"
+	VarRRep                                 = "rrep"
+	VarMainPRepCount                        = "main_prep_count"
+	VarSubPRepCount                         = "sub_prep_count"
+	VarExtraMainPRepCount                   = "extra_main_prep_count"
+	VarTotalStake                           = "total_stake"
+	VarIISSVersion                          = "iiss_version"
+	VarTermPeriod                           = "term_period"
+	VarBondRequirement                      = "bond_requirement"
+	VarUnbondingPeriodMultiplier            = "unbonding_period_multiplier"
+	VarLockMinMultiplier                    = "lockMinMultiplier"
+	VarLockMaxMultiplier                    = "lockMaxMultiplier"
+	VarRewardFund                           = "reward_fund"
+	VarRewardFund2                          = "reward_fund2"
+	VarUnbondingMax                         = "unbonding_max"
+	VarValidationPenaltyCondition           = "validation_penalty_condition"
+	VarConsistentValidationPenaltyCondition = "consistent_validation_penalty_condition"
+	VarConsistentValidationPenaltyMask      = "consistent_validation_penalty_mask"
+	VarConsistentValidationPenaltySlashRate = "consistent_validation_penalty_slashRatio"
+	VarDelegationSlotMax                    = "delegation_slot_max"
+	DictNetworkScores                       = "network_scores"
+	VarNonVotePenaltySlashRate              = "nonvote_penalty_slashRatio"
+	DictSlashingRate                        = "slashing_rate"
+	VarMinBond                              = "minimum_bond"
 )
 
 const (
 	IISSVersion2 int = iota + 2
 	IISSVersion3
+	IISSVersion4
 )
 
 const (
@@ -82,6 +84,13 @@ func setValue(store containerdb.ObjectStoreState, key string, value interface{})
 		return err
 	}
 	return nil
+}
+
+func (s *State) getDictDB(key string) *containerdb.DictDB {
+	return containerdb.NewDictDB(
+		s.store,
+		1,
+		containerdb.ToKey(containerdb.HashBuilder, scoredb.DictDBPrefix, key))
 }
 
 func (s *State) SetNetworkScore(role string, address module.Address) error {
@@ -138,7 +147,11 @@ func (s *State) SetTermPeriod(value int64) error {
 }
 
 func (s *State) GetIRep() *big.Int {
-	return getValue(s.store, VarIRep).BigInt()
+	ret := getValue(s.store, VarIRep).BigInt()
+	if ret == nil {
+		ret = icmodule.BigIntZero
+	}
+	return ret
 }
 
 func (s *State) SetIRep(value *big.Int) error {
@@ -146,16 +159,20 @@ func (s *State) SetIRep(value *big.Int) error {
 }
 
 func (s *State) GetRRep() *big.Int {
-	return getValue(s.store, VarRRep).BigInt()
+	ret := getValue(s.store, VarRRep).BigInt()
+	if ret == nil {
+		ret = icmodule.BigIntZero
+	}
+	return ret
 }
 
 func (s *State) SetRRep(value *big.Int) error {
 	return setValue(s.store, VarRRep, value)
 }
 
-// GetMainPRepCount returns the number of main preps including extra main preps
+// GetMainPRepCount returns the number of main preps excluding extra main preps
 // This value is the number of main preps as configuration
-// If you want to get the number of main preps in this term, use termData.MainPRepCount()
+// If you want to get the actual number of main preps in this term, use termData.MainPRepCount() instead.
 func (s *State) GetMainPRepCount() int64 {
 	return getValue(s.store, VarMainPRepCount).Int64()
 }
@@ -187,7 +204,7 @@ func (s *State) SetExtraMainPRepCount(value int64) error {
 	return setValue(s.store, VarExtraMainPRepCount, value)
 }
 
-// GetSubPRepCount returns the number of sub preps excluding extra main preps
+// GetSubPRepCount returns the number of sub preps including extra main preps
 func (s *State) GetSubPRepCount() int64 {
 	return getValue(s.store, VarSubPRepCount).Int64()
 }
@@ -197,6 +214,20 @@ func (s *State) SetSubPRepCount(value int64) error {
 		return errors.ErrIllegalArgument
 	}
 	return setValue(s.store, VarSubPRepCount, value)
+}
+
+func (s *State) GetPRepCountConfig(revision int) PRepCountConfig {
+	mainPReps := s.GetMainPRepCount()
+	subPReps := s.GetSubPRepCount()
+	extraMainPReps := int64(0)
+	if revision >= icmodule.RevisionExtraMainPReps {
+		extraMainPReps = s.GetExtraMainPRepCount()
+	}
+	return prepCountConfig{
+		mainPReps:      int(mainPReps),
+		subPReps:       int(subPReps),
+		extraMainPReps: int(extraMainPReps),
+	}
 }
 
 func (s *State) GetTotalStake() *big.Int {
@@ -211,15 +242,16 @@ func (s *State) SetTotalStake(value *big.Int) error {
 	return setValue(s.store, VarTotalStake, value)
 }
 
-func (s *State) GetBondRequirement() int64 {
-	return getValue(s.store, VarBondRequirement).Int64()
+func (s *State) GetBondRequirement() icmodule.Rate {
+	v := getValue(s.store, VarBondRequirement).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetBondRequirement(value int64) error {
-	if value < 0 || value > 100 {
-		return errors.IllegalArgumentError.New("Bond Requirement should range from 0 to 100")
+func (s *State) SetBondRequirement(br icmodule.Rate) error {
+	if !br.IsValid() {
+		return errors.IllegalArgumentError.New("Bond Requirement should range from 0% to 100%")
 	}
-	return setValue(s.store, VarBondRequirement, value)
+	return setValue(s.store, VarBondRequirement, br.Percent())
 }
 
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
@@ -270,14 +302,35 @@ func (s *State) SetLockVariables(lockMin *big.Int, lockMax *big.Int) error {
 	return nil
 }
 
-func (s *State) GetRewardFund() *RewardFund {
+func (s *State) GetRewardFundV1() *RewardFund {
 	bs := getValue(s.store, VarRewardFund).Bytes()
-	rc, _ := newRewardFundFromByte(bs)
+	rc, _ := NewRewardFundFromByte(bs)
 	return rc
 }
 
-func (s *State) SetRewardFund(rc *RewardFund) error {
-	return setValue(s.store, VarRewardFund, rc.Bytes())
+func (s *State) GetRewardFundV2() *RewardFund {
+	bs := getValue(s.store, VarRewardFund2).Bytes()
+	rc, _ := NewRewardFundFromByte(bs)
+	return rc
+}
+
+func (s *State) SetRewardFund(r *RewardFund) error {
+	switch r.version {
+	case RFVersion1:
+		return setValue(s.store, VarRewardFund, r.Bytes())
+	case RFVersion2:
+		return setValue(s.store, VarRewardFund2, r.Bytes())
+	default:
+		return icmodule.IllegalArgumentError.Errorf("invalid reward fund version %d", r.version)
+	}
+}
+
+func (s *State) GetRewardFund(revision int) *RewardFund {
+	if revision <= icmodule.RevisionIISS4R0 {
+		return s.GetRewardFundV1()
+	} else {
+		return s.GetRewardFundV2()
+	}
 }
 
 func (s *State) GetUnbondingMax() int64 {
@@ -324,15 +377,16 @@ func (s *State) SetConsistentValidationPenaltyMask(value int64) error {
 	return setValue(s.store, VarConsistentValidationPenaltyMask, value)
 }
 
-func (s *State) GetConsistentValidationPenaltySlashRatio() int {
-	return int(getValue(s.store, VarConsistentValidationPenaltySlashRatio).Int64())
+func (s *State) getConsistentValidationPenaltySlashRate() icmodule.Rate {
+	v := getValue(s.store, VarConsistentValidationPenaltySlashRate).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetConsistentValidationPenaltySlashRatio(value int) error {
-	if value < 0 || value > 100 {
+func (s *State) setConsistentValidationPenaltySlashRate(value icmodule.Rate) error {
+	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarConsistentValidationPenaltySlashRatio, value)
+	return setValue(s.store, VarConsistentValidationPenaltySlashRate, value.Percent())
 }
 
 func (s *State) GetDelegationSlotMax() int {
@@ -344,48 +398,138 @@ func (s *State) SetDelegationSlotMax(value int64) error {
 	return setValue(s.store, VarDelegationSlotMax, value)
 }
 
-func (s *State) GetNonVotePenaltySlashRatio() int {
-	return int(getValue(s.store, VarNonVotePenaltySlashRatio).Int64())
+func (s *State) getNonVotePenaltySlashRate() icmodule.Rate {
+	v := getValue(s.store, VarNonVotePenaltySlashRate).Int64()
+	return icmodule.ToRate(v)
 }
 
-func (s *State) SetNonVotePenaltySlashRatio(value int) error {
-	if value < 0 || value > 100 {
+func (s *State) setNonVotePenaltySlashRate(value icmodule.Rate) error {
+	if !value.IsValid() {
 		return errors.IllegalArgumentError.New("Invalid range")
 	}
-	return setValue(s.store, VarNonVotePenaltySlashRatio, value)
+	return setValue(s.store, VarNonVotePenaltySlashRate, value.Percent())
 }
 
-func (s *State) GetNetworkInfoInJSON() (map[string]interface{}, error) {
+func (s *State) GetSlashingRate(revision int, penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
+	if revision < icmodule.RevisionIISS4R0 {
+		switch penaltyType {
+		case icmodule.PenaltyAccumulatedValidationFailure:
+			return s.getConsistentValidationPenaltySlashRate(), nil
+		case icmodule.PenaltyMissedNetworkProposalVote:
+			return s.getNonVotePenaltySlashRate(), nil
+		}
+	}
+	return s.getSlashingRate(penaltyType)
+}
+
+func (s *State) getSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate, error) {
+	if !penaltyType.IsValid() {
+		return 0, scoreresult.InvalidParameterError.Errorf("InvalidPenaltyType(%d)", penaltyType)
+	}
+	rate := icmodule.Rate(0)
+	db := s.getDictDB(DictSlashingRate)
+	if v := db.Get(int(penaltyType)); v != nil {
+		rate = icmodule.Rate(v.Int64())
+	}
+	return rate, nil
+}
+
+func (s *State) SetSlashingRate(revision int, penaltyType icmodule.PenaltyType, rate icmodule.Rate) error {
+	if revision < icmodule.RevisionIISS4R0 {
+		switch penaltyType {
+		case icmodule.PenaltyAccumulatedValidationFailure:
+			return s.setConsistentValidationPenaltySlashRate(rate)
+		case icmodule.PenaltyMissedNetworkProposalVote:
+			return s.setNonVotePenaltySlashRate(rate)
+		}
+	}
+	return s.setSlashingRate(penaltyType, rate)
+}
+
+func (s *State) setSlashingRate(penaltyType icmodule.PenaltyType, rate icmodule.Rate) error {
+	if !penaltyType.IsValid() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidPenaltyType(%d)", penaltyType)
+	}
+	if !rate.IsValid() {
+		return scoreresult.InvalidParameterError.Errorf("RateOutOfRange(%d)", rate)
+	}
+	db := s.getDictDB(DictSlashingRate)
+	return db.Set(int(penaltyType), rate.NumInt64())
+}
+
+// GetMinimumBond returns the minimum bond related to minimum wage
+// It returns nil before RevisionIISS4R0
+func (s *State) GetMinimumBond() *big.Int {
+	ret := getValue(s.store, VarMinBond).BigInt()
+	if ret == nil {
+		ret = icmodule.BigIntZero
+	}
+	return ret
+}
+
+func (s *State) SetMinimumBond(bond *big.Int) error {
+	if bond == nil {
+		return scoreresult.InvalidParameterError.Errorf("MinimumBondIsNil")
+	}
+	if bond.Sign() < 0 {
+		return scoreresult.InvalidParameterError.Errorf("NegativeMinimumBond")
+	}
+	return setValue(s.store, VarMinBond, bond)
+}
+
+func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, error) {
 	br := s.GetBondRequirement()
 	jso := make(map[string]interface{})
-	jso["irep"] = s.GetIRep()
-	jso["rrep"] = s.GetRRep()
 	jso["mainPRepCount"] = s.GetMainPRepCount()
 	jso["extraMainPRepCount"] = s.GetExtraMainPRepCount()
 	jso["subPRepCount"] = s.GetSubPRepCount()
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
 	jso["termPeriod"] = s.GetTermPeriod()
-	jso["bondRequirement"] = br
+	jso["bondRequirement"] = br.Percent()
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
-	jso["rewardFund"] = s.GetRewardFund().ToJSON()
+	jso["rewardFund"] = s.GetRewardFund(revision).ToJSON()
+	if revision == icmodule.RevisionIISS4R0 {
+		// Under RevisionIISS4R0, RewardFundV1 and RewardFundV2 coexist
+		// jso["rewardFund"] contains RewardFundV1
+		// jso["rewardFund2"] contains RewardFundV2
+		jso["rewardFund2"] = s.GetRewardFundV2().ToJSON()
+	}
 	jso["unbondingMax"] = s.GetUnbondingMax()
 	jso["unbondingPeriodMultiplier"] = s.GetUnbondingPeriodMultiplier()
 	jso["validationPenaltyCondition"] = s.GetValidationPenaltyCondition()
 	jso["consistentValidationPenaltyCondition"] = s.GetConsistentValidationPenaltyCondition()
 	jso["consistentValidationPenaltyMask"] = s.GetConsistentValidationPenaltyMask()
-	jso["consistentValidationPenaltySlashRatio"] = s.GetConsistentValidationPenaltySlashRatio()
 	jso["unstakeSlotMax"] = s.GetUnstakeSlotMax()
 	jso["delegationSlotMax"] = s.GetDelegationSlotMax()
-	jso["proposalNonVotePenaltySlashRatio"] = s.GetNonVotePenaltySlashRatio()
 
-	preps := s.GetPRepSet(nil, 0)
-	if preps != nil {
-		jso["totalBonded"] = preps.TotalBonded()
-		jso["totalDelegated"] = preps.TotalDelegated()
-		jso["totalPower"] = preps.GetTotalPower(br)
-		jso["preps"] = preps.Size()
+	if revision < icmodule.RevisionIISS4R0 {
+		jso["irep"] = s.GetIRep()
+		jso["rrep"] = s.GetRRep()
+		rate, _ := s.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
+		jso["consistentValidationPenaltySlashRatio"] = rate.Percent()
+		rate, _ = s.GetSlashingRate(revision, icmodule.PenaltyMissedNetworkProposalVote)
+		jso["proposalNonVotePenaltySlashRatio"] = rate.Percent()
+	} else {
+		jso["minimumBond"] = s.GetMinimumBond()
+	}
+
+	if preps := s.GetPReps(true); preps != nil {
+		totalBonded := new(big.Int)
+		totalDelegated := new(big.Int)
+		totalPower := new(big.Int)
+
+		for _, prep := range preps {
+			totalBonded.Add(totalBonded, prep.Bonded())
+			totalDelegated.Add(totalDelegated, prep.Delegated())
+			totalPower.Add(totalPower, prep.GetPower(br))
+		}
+
+		jso["totalBonded"] = totalBonded
+		jso["totalDelegated"] = totalDelegated
+		jso["totalPower"] = totalPower
+		jso["preps"] = len(preps)
 	}
 	return jso, nil
 }

@@ -20,63 +20,126 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
-	"github.com/icon-project/goloop/icon/iiss/icstage"
+	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 )
 
-func (es *ExtensionStateImpl) handlePenalty(cc icmodule.CallContext, owner module.Address) error {
-	var err error
 
+func (es *ExtensionStateImpl) handleBlockValidationPenalty(cc icmodule.CallContext, owner module.Address) error {
 	ps := es.State.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return nil
 	}
 
+	if cc.Revision().Value() < icmodule.RevisionIISS4R0 {
+		return es.handleBlockValidationPenaltyBeforeRevIISS4R0(cc, ps)
+	} else {
+		return es.handleBlockValidationPenaltyAfterRevIISS4R0(cc, ps)
+	}
+}
+
+func (es *ExtensionStateImpl) handleBlockValidationPenaltyBeforeRevIISS4R0(
+	cc icmodule.CallContext, ps *icstate.PRepStatusState) error {
+	var err error
+	owner := ps.Owner()
 	blockHeight := cc.BlockHeight()
 
-	// Penalty check
+	// Check ValidationFailurePenalty
 	if !es.State.CheckValidationPenalty(ps, blockHeight) {
 		return nil
 	}
-
-	// Impose penalty
-	if err = es.State.ImposePenalty(owner, ps, blockHeight); err != nil {
+	// Impose ValidationFailurePenalty
+	sc := NewStateContext(cc, es)
+	if err = es.State.ImposePenalty(sc, icmodule.PenaltyValidationFailure, ps); err != nil {
 		return err
 	}
+	// Emit PenaltyImposed eventlog for ValidationFailurePenalty
+	EmitPenaltyImposedEvent(cc, ps, icmodule.PenaltyValidationFailure)
 
-	// Record PenaltyImposed eventlog
-	cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("PenaltyImposed(Address,int,int)"), owner.Bytes()},
-		[][]byte{
-			intconv.Int64ToBytes(int64(ps.Status())),
-			intconv.Int64ToBytes(int64(icmodule.PenaltyBlockValidation)),
-		},
-	)
-
-	// Slashing
+	// Slashing for AccumulatedValidationFailurePenalty
 	revision := cc.Revision().Value()
 	if es.State.CheckConsistentValidationPenalty(revision, ps) {
-		slashRatio := es.State.GetConsistentValidationPenaltySlashRatio()
-		if err = es.slash(cc, owner, slashRatio); err != nil {
+		slashRate, _ := es.State.GetSlashingRate(revision, icmodule.PenaltyAccumulatedValidationFailure)
+		if err = es.slash(cc, owner, slashRate); err != nil {
 			return err
 		}
 	}
 
 	// Record event for reward calculation
-	return es.addEventEnable(blockHeight, owner, icstage.ESDisableTemp)
+	return es.AddEventEnable(blockHeight, owner, icmodule.ESDisableTemp)
 }
 
-func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, ratio int) error {
-	if ratio < 0 || 100 < ratio {
-		return errors.Errorf("Invalid slash ratio %d", ratio)
+func (es *ExtensionStateImpl) handleBlockValidationPenaltyAfterRevIISS4R0(
+	cc icmodule.CallContext, ps *icstate.PRepStatusState) error {
+	var err error
+	var pt icmodule.PenaltyType
+
+	owner := ps.Owner()
+	blockHeight := cc.BlockHeight()
+	penaltyTypes := make([]icmodule.PenaltyType, 0, 2)
+
+	// Check ValidationFailurePenalty
+	if !es.State.CheckValidationPenalty(ps, blockHeight) {
+		return nil
+	}
+
+	// Impose ValidationFailurePenalty
+	sc := NewStateContext(cc, es)
+	pt = icmodule.PenaltyValidationFailure
+	if err = es.State.ImposePenalty(sc, pt, ps); err != nil {
+		return err
+	}
+	penaltyTypes = append(penaltyTypes, pt)
+
+	// Check AccumulatedValidationFailurePenalty
+	revision := cc.Revision().Value()
+	pt = icmodule.PenaltyAccumulatedValidationFailure
+	if es.State.CheckConsistentValidationPenalty(revision, ps) {
+		// Impose AccumulatedValidationFailurePenalty
+		if err = es.State.ImposePenalty(sc, pt, ps); err != nil {
+			return err
+		}
+		penaltyTypes = append(penaltyTypes, pt)
+	}
+
+	isIISS4Activated := sc.TermIISSVersion() >= icstate.IISSVersion4
+	for _, pt = range penaltyTypes {
+		EmitPenaltyImposedEvent(cc, ps, pt)
+
+		if isIISS4Activated || pt == icmodule.PenaltyAccumulatedValidationFailure {
+			// Slashing
+			if slashRate, err := es.State.GetSlashingRate(revision, pt); err != nil {
+				return err
+			} else {
+				if err = es.slash(cc, owner, slashRate); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Record event for reward calculation
+	if isIISS4Activated {
+		return es.AddEventEnable(blockHeight, owner, icmodule.ESJail)
+	} else {
+		return es.AddEventEnable(blockHeight, owner, icmodule.ESDisableTemp)
+	}
+}
+
+func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Address, rate icmodule.Rate) error {
+	if !rate.IsValid() {
+		return errors.Errorf("Invalid slashRate %d", rate.Percent())
+	}
+	if rate == 0 && cc.Revision().Value() >= icmodule.RevisionIISS4R0 {
+		// Do not record Slashed() eventLog after RevisionIISS4R0
+		return nil
 	}
 
 	logger := cc.FrameLogger()
-	logger.TSystemf("IISS slash start owner=%s ratio=%d", owner, ratio)
+	logger.TSystemf("IISS slash start owner=%s ratio=%d", owner, rate.Percent())
 
 	pb := es.State.GetPRepBaseByOwner(owner, false)
 	if pb == nil {
@@ -96,13 +159,13 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		slashedStake := new(big.Int)
 		account := es.State.GetAccountState(bonder)
 
-		if ratio > 0 {
+		if rate > 0 {
 			// bond
-			slashedBond = account.SlashBond(owner, ratio)
+			slashedBond = account.SlashBond(owner, rate)
 			slashedBondSum.Add(slashedBondSum, slashedBond)
 
 			// unbond
-			slashedUnbond, expire = account.SlashUnbond(owner, ratio)
+			slashedUnbond, expire = account.SlashUnbond(owner, rate)
 			if expire != -1 {
 				timer := es.State.GetUnbondingTimerState(expire)
 				if timer != nil {
@@ -129,11 +192,7 @@ func (es *ExtensionStateImpl) slash(cc icmodule.CallContext, owner module.Addres
 		}
 
 		// Record Slashed eventlog
-		cc.OnEvent(
-			state.SystemAddress,
-			[][]byte{[]byte("Slashed(Address,Address,int)"), owner.Bytes()},
-			[][]byte{bonder.Bytes(), intconv.BigIntToBytes(slashedStake)},
-		)
+		EmitSlashedEvent(cc, owner, bonder, slashedStake)
 		// slashedStake is the same as the sum of slashedBond and slashedUnbond
 		logger.TSystemf(
 			"IISS bonder slash loop end bonder=%s slashedBond=%v slashedUnbond=%v slashedStake=%v",

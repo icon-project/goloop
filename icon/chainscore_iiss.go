@@ -23,7 +23,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -349,10 +348,7 @@ func (s *chainScore) Ex_setGovernanceVariables(irep *common.HexInt) error {
 	if err = es.SetGovernanceVariables(s.from, new(big.Int).Set(irep.Value()), s.cc.BlockHeight()); err != nil {
 		return err
 	}
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("GovernanceVariablesSet(Address,int)"), s.from.Bytes()},
-		[][]byte{intconv.BigIntToBytes(irep.Value())},
-	)
+	iiss.EmitGovernanceVariablesSetEvent(s.newCallContext(s.cc), irep.Value())
 	return nil
 }
 
@@ -372,7 +368,7 @@ func (s *chainScore) Ex_setBond(bondList []interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err = es.SetBond(s.cc.BlockHeight(), s.from, bonds); err != nil {
+	if err = es.SetBond(s.newCallContext(s.cc), bonds); err != nil {
 		return err
 	}
 	logger.Tracef("Ex_setBond() end")
@@ -433,9 +429,9 @@ func (s *chainScore) Ex_claimIScore() error {
 		return err
 	}
 	cc := s.newCallContext(s.cc)
-	if bytes.Compare(cc.TransactionID(), skippedClaimTX) == 0 {
+	if bytes.Equal(cc.TransactionID(), skippedClaimTX) {
 		// Skip this TX like ICON1 mainnet.
-		iiss.ClaimEventLog(cc, s.from, new(big.Int), new(big.Int))
+		iiss.EmitIScoreClaimEvent(cc, icmodule.BigIntZero, icmodule.BigIntZero)
 		return nil
 	}
 	es, err := s.getExtensionState()
@@ -492,8 +488,7 @@ func (s *chainScore) Ex_getPRepTerm() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	blockHeight := s.cc.BlockHeight()
-	jso, err := es.GetPRepTermInJSON(blockHeight)
+	jso, err := es.GetPRepTermInJSON(s.newCallContext(s.cc))
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get PRepTerm")
 	}
@@ -513,7 +508,7 @@ func (s *chainScore) Ex_getNetworkInfo() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := es.State.GetNetworkInfoInJSON()
+	res, err := es.State.GetNetworkInfoInJSON(s.cc.Revision().Value())
 	if err != nil {
 		return nil, scoreresult.UnknownFailureError.Wrap(err, "Failed to get NetworkValue")
 	}
@@ -531,11 +526,12 @@ func (s *chainScore) Ex_getIISSInfo() (map[string]interface{}, error) {
 	term := es.State.GetTermSnapshot()
 	iissVersion := es.State.GetIISSVersion()
 
-	iissVariables := make(map[string]interface{})
+	var iissVariables map[string]interface{}
 	if iissVersion == icstate.IISSVersion2 {
+		iissVariables = make(map[string]interface{})
 		iissVariables["irep"] = term.Irep()
 		iissVariables["rrep"] = term.Rrep()
-	} else if iissVersion == icstate.IISSVersion3 {
+	} else if iissVersion >= icstate.IISSVersion3 {
 		iissVariables = term.RewardFund().ToJSON()
 	}
 
@@ -571,7 +567,7 @@ func (s *chainScore) Ex_getPRepStats() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return es.State.GetPRepStatsInJSON(rev, s.cc.BlockHeight())
+	return es.GetPRepStats(s.newCallContext(s.cc))
 }
 
 func (s *chainScore) Ex_getPRepStatsOf(address module.Address) (map[string]interface{}, error) {
@@ -585,7 +581,7 @@ func (s *chainScore) Ex_getPRepStatsOf(address module.Address) (map[string]inter
 	if err != nil {
 		return nil, err
 	}
-	return es.State.GetPRepStatsOfInJSON(s.cc.Revision().Value(), s.cc.BlockHeight(), address)
+	return es.GetPRepStatsOf(s.newCallContext(s.cc), address)
 }
 
 func (s *chainScore) Ex_disqualifyPRep(address module.Address) error {
@@ -657,14 +653,14 @@ func (s *chainScore) Ex_validateRewardFund(iglobal *common.HexInt) (bool, error)
 		return false, err
 	}
 	cc := s.newCallContext(s.cc)
-	if err = es.ValidateRewardFund(iglobal.Value(), cc.GetTotalSupply()); err != nil {
+	if err = es.ValidateRewardFund(iglobal.Value(), cc.GetTotalSupply(), cc.Revision().Value()); err != nil {
 		return false, err
 	} else {
 		return true, nil
 	}
 }
 
-func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
+func (s *chainScore) Ex_setRewardFund(iglobal *big.Int) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -672,9 +668,26 @@ func (s *chainScore) Ex_setRewardFund(iglobal *common.HexInt) error {
 	if err != nil {
 		return err
 	}
-	rf := es.State.GetRewardFund()
-	rf.Iglobal = iglobal.Value()
-	return es.State.SetRewardFund(rf)
+	revision := s.cc.Revision().Value()
+	if revision <= icmodule.RevisionIISS4R0 {
+		rf := es.State.GetRewardFundV1()
+		if err = rf.SetIGlobal(iglobal); err != nil {
+			return err
+		}
+		if err = es.State.SetRewardFund(rf); err != nil {
+			return err
+		}
+	}
+
+	if revision >= icmodule.RevisionIISS4R0 {
+		iiss.EmitRewardFundSetEvent(s.newCallContext(s.cc), iglobal)
+		rf := es.State.GetRewardFundV2()
+		if err = rf.SetIGlobal(iglobal); err != nil {
+			return err
+		}
+		return es.State.SetRewardFund(rf)
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *common.HexInt, irelay *common.HexInt, ivoter *common.HexInt) error {
@@ -685,12 +698,43 @@ func (s *chainScore) Ex_setRewardFundAllocation(iprep *common.HexInt, icps *comm
 	if err != nil {
 		return err
 	}
-	rf := es.State.GetRewardFund()
-	rf.Iprep = &iprep.Int
-	rf.Icps = &icps.Int
-	rf.Irelay = &irelay.Int
-	rf.Ivoter = &ivoter.Int
+	rf := es.State.GetRewardFundV1()
+	if err = rf.SetAllocation(
+		map[icstate.RFundKey]icmodule.Rate{
+			icstate.KeyIprep:  icmodule.ToRate(iprep.Int64()),
+			icstate.KeyIcps:   icmodule.ToRate(icps.Int64()),
+			icstate.KeyIrelay: icmodule.ToRate(irelay.Int64()),
+			icstate.KeyIvoter: icmodule.ToRate(ivoter.Int64()),
+		},
+	); err != nil {
+		return err
+	}
 	return es.State.SetRewardFund(rf)
+}
+
+func (s *chainScore) Ex_setRewardFundAllocation2(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	alloc, err := icstate.NewRewardFund2Allocation(values)
+	if err != nil {
+		return err
+	}
+	rf := es.State.GetRewardFundV2()
+	if err = rf.SetAllocation(alloc); err != nil {
+		return err
+	}
+	if err = es.State.SetRewardFund(rf); err != nil {
+		return err
+	}
+	for _, k := range rf.GetOrderAllocationKeys() {
+		iiss.EmitRewardFundAllocationSetEvent(s.newCallContext(s.cc), k, rf.GetAllocationByKey(k))
+	}
+	return nil
 }
 
 func (s *chainScore) Ex_getScoreOwner(score module.Address) (module.Address, error) {
@@ -715,8 +759,8 @@ func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) err
 	if err != nil {
 		return err
 	}
+	cc := s.newCallContext(s.cc)
 	if address != nil {
-		cc := s.newCallContext(s.cc)
 		owner, err := cc.GetScoreOwner(address)
 		if err != nil {
 			return err
@@ -725,6 +769,7 @@ func (s *chainScore) Ex_setNetworkScore(role string, address module.Address) err
 			return icmodule.IllegalArgumentError.Errorf("Only scores owned by governance can be designated")
 		}
 	}
+	iiss.EmitNetworkScoreSetEvent(cc, role, address)
 	return es.State.SetNetworkScore(role, address)
 }
 
@@ -792,27 +837,14 @@ func (s *chainScore) Ex_penalizeNonvoters(params []interface{}) error {
 }
 
 func (s *chainScore) Ex_setConsistentValidationSlashingRate(slashingRate *common.HexInt) error {
-	if err := s.checkGovernance(true); err != nil {
-		return err
-	}
-	if !slashingRate.IsInt64() {
-		return icmodule.IllegalArgumentError.Errorf("Invalid range")
-	}
-	es, err := s.getExtensionState()
-	if err != nil {
-		return err
-	}
-	if err = es.State.SetConsistentValidationPenaltySlashRatio(int(slashingRate.Int64())); err != nil {
-		if errors.IllegalArgumentError.Equals(err) {
-			return icmodule.IllegalArgumentError.Errorf("Invalid range")
-		}
-		return err
-	}
-	s.onSlashingRateChangedEvent("ConsistentValidationPenalty", slashingRate.Int64())
-	return nil
+	return s.setLegacySlashingRate(icmodule.PenaltyAccumulatedValidationFailure, slashingRate)
 }
 
 func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) error {
+	return s.setLegacySlashingRate(icmodule.PenaltyMissedNetworkProposalVote, slashingRate)
+}
+
+func (s *chainScore) setLegacySlashingRate(penaltyType icmodule.PenaltyType, slashingRate *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
 		return err
 	}
@@ -823,23 +855,196 @@ func (s *chainScore) Ex_setNonVoteSlashingRate(slashingRate *common.HexInt) erro
 	if err != nil {
 		return err
 	}
-	if err = es.State.SetNonVotePenaltySlashRatio(int(slashingRate.Int64())); err != nil {
+	cc := s.newCallContext(s.cc)
+	rate := icmodule.ToRate(slashingRate.Int64())
+	if err = es.State.SetSlashingRate(
+		cc.Revision().Value(), penaltyType, rate); err != nil {
 		if errors.IllegalArgumentError.Equals(err) {
 			return icmodule.IllegalArgumentError.Errorf("Invalid range")
 		}
 		return err
 	}
-	s.onSlashingRateChangedEvent("NonVotePenalty", slashingRate.Int64())
+	iiss.EmitSlashingRateSetEvent(cc, penaltyType, rate)
 	return nil
 }
 
-func (s *chainScore) onSlashingRateChangedEvent(name string, rate int64) {
-	s.cc.OnEvent(state.SystemAddress,
-		[][]byte{[]byte("SlashingRateChanged(str,int)"), []byte(name)},
-		[][]byte{intconv.Int64ToBytes(rate)},
-	)
+func (s *chainScore) Ex_setSlashingRates(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if len(values) == 0 {
+		return nil
+	}
+
+	rates := make(map[string]icmodule.Rate)
+	for _, v := range values {
+		pair, ok := v.(map[string]interface{})
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidElementType")
+		}
+		name, ok := pair["name"].(string)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidNameType")
+		}
+		value, ok := pair["value"].(*common.HexInt)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidRateType")
+		}
+		if !value.IsInt64() {
+			return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", value)
+		}
+		if _, ok = rates[name]; ok {
+			return icmodule.DuplicateError.Errorf("DuplicatePenaltyName(%s)", name)
+		}
+		rates[name] = icmodule.Rate(value.Int64())
+	}
+	return es.SetSlashingRates(s.newCallContext(s.cc), rates)
+}
+
+func (s *chainScore) Ex_getSlashingRates() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	return es.GetSlashingRates(s.newCallContext(s.cc))
+}
+
+func (s *chainScore) Ex_getMinimumBond() (*big.Int, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return icmodule.BigIntZero, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return icmodule.BigIntZero, err
+	}
+	bond := es.State.GetMinimumBond()
+	if bond == nil {
+		return icmodule.BigIntZero, icmodule.NotFoundError.New("MinimumBondNotFound")
+	}
+	return bond, nil
+}
+
+func (s *chainScore) Ex_setMinimumBond(nBond *big.Int) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.SetMinimumBond(s.newCallContext(s.cc), nBond)
 }
 
 func (s *chainScore) newCallContext(cc contract.CallContext) icmodule.CallContext {
 	return iiss.NewCallContext(cc, s.from)
+}
+
+func (s *chainScore) Ex_initCommissionRate(rate, maxRate, maxChangeRate int64) error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.InitCommissionInfo(
+		s.newCallContext(s.cc),
+		icmodule.Rate(rate),
+		icmodule.Rate(maxRate),
+		icmodule.Rate(maxChangeRate))
+}
+
+func (s *chainScore) Ex_setCommissionRate(rate int64) error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.SetCommissionRate(s.newCallContext(s.cc), icmodule.Rate(rate))
+}
+
+func (s *chainScore) Ex_requestUnjail() error {
+	if err := s.tryChargeCall(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.RequestUnjail(s.newCallContext(s.cc))
+}
+
+func (s *chainScore) Ex_handleDoubleSignReport(
+	dsType string, blockHeight int64, signer module.Address) error {
+	if err := s.checkSystem(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.HandleDoubleSignReport(
+		s.newCallContext(s.cc),
+		dsType,
+		blockHeight,
+		signer,
+	)
+}
+
+func (s *chainScore) Ex_setPRepCountConfig(values []interface{}) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	if len(values) == 0 {
+		return scoreresult.InvalidParameterError.Errorf("NoArgument")
+	}
+
+	counts := make(map[string]int64)
+	for _, v := range values {
+		pair, ok := v.(map[string]interface{})
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidElementType")
+		}
+		name, ok := pair["name"].(string)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidNameType")
+		}
+		value, ok := pair["value"].(*common.HexInt)
+		if !ok {
+			return scoreresult.InvalidParameterError.New("InvalidValueType")
+		}
+		if !value.IsInt64() {
+			return scoreresult.InvalidParameterError.Errorf("Int64Overflow(%#x)", value)
+		}
+		if _, ok = counts[name]; ok {
+			return icmodule.DuplicateError.Errorf("DuplicateName(%s)", name)
+		}
+		counts[name] = value.Int64()
+	}
+
+	return es.SetPRepCountConfig(s.newCallContext(s.cc), counts)
+}
+
+func (s *chainScore) Ex_getPRepCountConfig() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	return es.GetPRepCountConfig()
 }

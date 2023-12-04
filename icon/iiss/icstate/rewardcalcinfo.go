@@ -125,7 +125,7 @@ func (rc *RewardCalcInfo) Equal(o icobject.Impl) bool {
 		return rc.startHeight == rc2.startHeight &&
 			rc.prevHeight == rc2.prevHeight &&
 			rc.prevPeriod == rc2.prevPeriod &&
-			bytes.Compare(rc.prevHash, rc2.prevHash) == 0 &&
+			bytes.Equal(rc.prevHash, rc2.prevHash) &&
 			rc.prevReward.Cmp(rc2.prevReward) == 0
 	} else {
 		return false

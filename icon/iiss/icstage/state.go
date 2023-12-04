@@ -24,6 +24,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
@@ -36,20 +37,20 @@ const (
 )
 
 var (
-	IScoreClaimKey  = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
-	EventKey        = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
-	BlockProduceKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
-	ValidatorKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
-	BTPKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
-	HashKey         = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
-	GlobalKey       = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
-	EventSizeKey    = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
-	ValidatorsKey   = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(validatorsKey).Build())
+	IScoreClaimKey    = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x10})
+	EventKey          = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x20})
+	BlockProduceKey   = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x30})
+	ValidatorKey      = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x40})
+	BTPKey            = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x50})
+	CommissionRateKey = containerdb.ToKey(containerdb.RLPBuilder, []byte{0x60})
+	HashKey           = containerdb.ToKey(containerdb.PrefixedHashBuilder, []byte{0x70})
+	GlobalKey         = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(globalKey).Build()).Build()
+	EventSizeKey      = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(eventsKey).Build())
+	ValidatorsKey     = containerdb.ToKey(containerdb.RawBuilder, HashKey.Append(validatorsKey).Build())
 )
 
 type State struct {
-	validatorToIdx map[string]int
-	store          *icobject.ObjectStoreState
+	store *icobject.ObjectStoreState
 }
 
 func (s *State) GetSnapshot() *Snapshot {
@@ -130,7 +131,7 @@ func (s *State) AddEventBond(offset int, from module.Address, votes VoteList) (i
 	return s.addEventVote(TypeEventBond, offset, from, votes)
 }
 
-func (s *State) AddEventEnable(offset int, target module.Address, status EnableStatus) (int64, error) {
+func (s *State) AddEventEnable(offset int, target module.Address, status icmodule.EnableStatus) (int64, error) {
 	index := s.getEventSize()
 	key := EventKey.Append(offset, index).Build()
 	obj := NewEventEnable(common.AddressToPtr(target), status)
@@ -152,6 +153,21 @@ func (s *State) AddEventVotedReward(offset int) (int64, error) {
 	}
 
 	return index, s.setEventSize(index + 1)
+}
+
+func (s *State) GetCommissionRate(addr module.Address) (*CommissionRate, error) {
+	key := CommissionRateKey.Append(addr).Build()
+	obj, err := s.store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return ToCommissionRate(obj), nil
+}
+
+func (s *State) AddCommissionRate(addr module.Address, value icmodule.Rate) error {
+	key := CommissionRateKey.Append(addr).Build()
+	_, err := s.store.Set(key, icobject.New(TypeCommissionRate, NewCommissionRate(value)))
+	return err
 }
 
 func (s *State) getEventSize() int64 {
@@ -233,8 +249,9 @@ func (s *State) AddGlobalV1(revision int, startHeight int64, offsetLimit int, ir
 	return err
 }
 
-func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int, iprep *big.Int,
-	ivoter *big.Int, icps *big.Int, irelay *big.Int, electedPRepCount int, bondRequirement int,
+func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, iglobal *big.Int,
+	iprep, ivoter, icps, irelay icmodule.Rate,
+	electedPRepCount int, bondRequirement icmodule.Rate,
 ) error {
 	g := NewGlobalV2(
 		icstate.IISSVersion3,
@@ -249,6 +266,14 @@ func (s *State) AddGlobalV2(revision int, startHeight int64, offsetLimit int, ig
 		electedPRepCount,
 		bondRequirement,
 	)
+	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
+	return err
+}
+
+func (s *State) AddGlobalV3(startHeight int64, revision, offsetLimit, electedPRepCount int, bondRequirement icmodule.Rate,
+	rFund *icstate.RewardFund, minBond *big.Int,
+) error {
+	g := NewGlobalV3(icstate.IISSVersion4, startHeight, revision, offsetLimit, electedPRepCount, bondRequirement, rFund, minBond)
 	_, err := s.store.Set(GlobalKey, icobject.New(TypeGlobal, g))
 	return err
 }

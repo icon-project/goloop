@@ -33,7 +33,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"github.com/icon-project/goloop/service/state"
 )
 
 var (
@@ -386,7 +385,8 @@ func (s *State) GetNodeByOwner(owner module.Address) module.Address {
 	return pb.GetNode(owner)
 }
 
-func (s *State) OnBlockVote(owner module.Address, voted bool, blockHeight int64) error {
+func (s *State) OnBlockVote(sc icmodule.StateContext, owner module.Address, voted bool) error {
+	blockHeight := sc.BlockHeight()
 	if !voted {
 		s.logger.Debugf("Nil vote: bh=%d owner=%s", blockHeight, owner)
 	}
@@ -394,12 +394,13 @@ func (s *State) OnBlockVote(owner module.Address, voted bool, blockHeight int64)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	err := ps.OnBlockVote(blockHeight, voted)
+	err := ps.OnEvent(sc, icmodule.PRepEventBlockVote, voted)
 	s.logger.Tracef("OnBlockVote() bh=%d voted=%t owner=%v %+v", blockHeight, voted, owner, ps)
 	return err
 }
 
-func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.Address) error {
+func (s *State) OnMainPRepReplaced(sc icmodule.StateContext, oldOwner, newOwner module.Address) error {
+	blockHeight := sc.BlockHeight()
 	s.logger.Tracef("OnMainPRepReplaced() start: bh=%d old=%v new=%v", blockHeight, oldOwner, newOwner)
 	if newOwner == nil {
 		// No sub prep remains
@@ -410,79 +411,57 @@ func (s *State) OnMainPRepReplaced(blockHeight int64, oldOwner, newOwner module.
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", newOwner)
 	}
-	err := ps.OnMainPRepIn(s.GetConsistentValidationPenaltyMask())
+	err := ps.OnEvent(sc, icmodule.PRepEventMainIn, s.GetConsistentValidationPenaltyMask())
 	s.logger.Tracef("OnMainPRepReplaced()   end: bh=%d old=%v new=%v %+v", blockHeight, oldOwner, newOwner, ps)
 	return err
 }
 
-func (s *State) OnValidatorOut(blockHeight int64, owner module.Address) error {
+func (s *State) OnValidatorOut(sc icmodule.StateContext, owner module.Address) error {
 	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
 	}
-	err := ps.OnValidatorOut(blockHeight)
-	s.logger.Tracef("OnValidatorOut(): bh=%d owner=%v %+v", blockHeight, owner, ps)
+	err := ps.OnEvent(sc, icmodule.PRepEventValidatorOut)
+	s.logger.Tracef("OnValidatorOut(): bh=%d owner=%v %+v", sc.BlockHeight(), owner, ps)
 
 	return err
 }
 
-// GetPRepStatsList returns PRepStatus list ordered by bonded delegation
-func (s *State) GetPRepStatsList() ([]*PRepStats, error) {
-	br := s.GetBondRequirement()
-
+func (s *State) GetPRepStatuses() ([]*PRepStatusState, error) {
 	size := s.allPRepCache.Size()
-	statsList := make([]*PRepStats, 0)
+	pss := make([]*PRepStatusState, 0, size / 2)
 
 	for i := 0; i < size; i++ {
 		owner := s.allPRepCache.Get(i)
-		ps := s.GetPRepStatusByOwner(owner, false)
-		if ps.Status() == Active {
-			stats := NewPRepStats(owner, ps)
-			statsList = append(statsList, stats)
+		if ps := s.GetPRepStatusByOwner(owner, false); ps.Status() == Active {
+			pss = append(pss, ps)
 		}
 	}
 
-	sortPRepStatsList(statsList, br)
-	return statsList, nil
-}
-
-func sortPRepStatsList(statsList []*PRepStats, br int64) {
-	sort.Slice(statsList, func(i, j int) bool {
-		ret := statsList[i].GetBondedDelegation(br).Cmp(statsList[j].GetBondedDelegation(br))
-		if ret > 0 {
-			return true
-		} else if ret < 0 {
-			return false
-		}
-
-		ret = statsList[i].Delegated().Cmp(statsList[j].Delegated())
-		if ret > 0 {
-			return true
-		} else if ret < 0 {
-			return false
-		}
-
-		return bytes.Compare(statsList[i].Owner().Bytes(), statsList[j].Owner().Bytes()) > 0
-	})
+	return pss, nil
 }
 
 // ImposePenalty changes grade and set LastState to icstate.None
-func (s *State) ImposePenalty(owner module.Address, ps *PRepStatusState, blockHeight int64) error {
+func (s *State) ImposePenalty(
+	sc icmodule.StateContext, pt icmodule.PenaltyType, ps *PRepStatusState) error {
 	var err error
+	owner := ps.Owner()
+	blockHeight := sc.BlockHeight()
 
 	// Update status of the penalized main prep
-	s.logger.Debugf("OnPenaltyImposed() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
+	s.logger.Debugf("ImposePenalty() start: owner=%v bh=%d %+v", owner, blockHeight, ps)
 
+	// Update the state of PRepStatus
 	oldGrade := ps.Grade()
-	err = ps.OnPenaltyImposed(blockHeight)
-	s.logger.Debugf("OnPenaltyImposed() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
+	err = ps.OnEvent(sc, icmodule.PRepEventImposePenalty, pt)
+	s.logger.Debugf("ImposePenalty() end: owner=%v bh=%d %+v", owner, blockHeight, ps)
 	if err != nil {
 		return err
 	}
 
 	// If a penalized prep is a main prep, choose a new validator from prep snapshots
 	if oldGrade == GradeMain {
-		err = s.replaceMainPRepByOwner(owner, blockHeight)
+		err = s.replaceMainPRepByOwner(sc, owner)
 	}
 	return err
 }
@@ -517,7 +496,7 @@ func (s *State) ReducePRepBonded(owner module.Address, amount *big.Int) error {
 	return s.SetTotalBond(new(big.Int).Sub(s.GetTotalBond(), amount))
 }
 
-func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int64) error {
+func (s *State) DisablePRep(sc icmodule.StateContext, owner module.Address, status Status) error {
 	ps := s.GetPRepStatusByOwner(owner, false)
 	if ps == nil {
 		return errors.Errorf("PRep not found: %s", owner)
@@ -533,7 +512,7 @@ func (s *State) DisablePRep(owner module.Address, status Status, blockHeight int
 		return err
 	}
 	if oldGrade == GradeMain {
-		if err = s.replaceMainPRepByOwner(owner, blockHeight); err != nil {
+		if err = s.replaceMainPRepByOwner(sc, owner); err != nil {
 			return err
 		}
 	}
@@ -568,28 +547,13 @@ func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.In
 	br := s.GetBondRequirement()
 
 	if revision >= icmodule.RevisionDecentralize && preps.Size() >= predefinedMainPRepCount {
-		prep := preps.GetByIndex(predefinedMainPRepCount - 1).PRep()
+		prep := preps.GetByIndex(predefinedMainPRepCount - 1)
 		if prep == nil {
 			return false
 		}
 		return totalSupply.Cmp(new(big.Int).Mul(prep.GetBondedDelegation(br), big.NewInt(500))) <= 0
 	}
 	return false
-}
-
-func (s *State) GetPRepSet(bc state.BTPContext, revision int) PRepSet {
-	var dsaMask int64
-	if bc != nil && revision >= icmodule.RevisionBTP2 {
-		dsaMask = bc.GetActiveDSAMask()
-	}
-	preps := s.GetPReps(true)
-	prepSetEntries := make([]PRepSetEntry, 0, len(preps))
-	for _, prep := range preps {
-		pubKeyMask := prep.GetDSAMask()
-		entry := NewPRepSetEntry(prep, pubKeyMask&dsaMask == dsaMask)
-		prepSetEntries = append(prepSetEntries, entry)
-	}
-	return NewPRepSet(prepSetEntries)
 }
 
 func (s *State) GetPReps(activeOnly bool) []*PRep {
@@ -609,27 +573,43 @@ func (s *State) GetPReps(activeOnly bool) []*PRep {
 	return preps
 }
 
-func (s *State) GetPRepStatsInJSON(rev int, blockHeight int64) (map[string]interface{}, error) {
-	statsList, err := s.GetPRepStatsList()
+func (s *State) GetPRepStatsInJSON(sc icmodule.StateContext) (map[string]interface{}, error) {
+	// Gets the unsorted list of PRepStatus
+	pss, err := s.GetPRepStatuses()
 	if err != nil {
 		return nil, err
 	}
 
-	size := len(statsList)
+	// Sorts the list of PRepStatus
+	br := sc.GetBondRequirement()
+	sort.Slice(pss, func(i, j int) bool {
+		var cmp int
+		ps0, ps1 := pss[i], pss[j]
+
+		if cmp = ps0.GetPower(br).Cmp(ps1.GetPower(br)); cmp != 0 {
+			return cmp > 0
+		}
+		if cmp = ps0.Delegated().Cmp(ps1.Delegated()); cmp != 0 {
+			return cmp > 0
+		}
+		return bytes.Compare(ps0.Owner().Bytes(), ps1.Owner().Bytes()) > 0
+	})
+
+	// Convert each PRepStatus to json format
+	size := len(pss)
 	preps := make([]interface{}, size)
 	for i := 0; i < size; i++ {
-		stats := statsList[i]
-		preps[i] = stats.ToJSON(rev, blockHeight)
+		ps := pss[i]
+		preps[i] = ps.GetStatsInJSON(sc)
 	}
 
 	return map[string]interface{}{
-		"blockHeight": blockHeight,
+		"blockHeight": sc.BlockHeight(),
 		"preps":       preps,
 	}, nil
 }
 
-func (s *State) GetPRepStatsOfInJSON(
-	rev int, blockHeight int64, address module.Address) (map[string]interface{}, error) {
+func (s *State) GetPRepStatsOfInJSON(sc icmodule.StateContext, address module.Address) (map[string]interface{}, error) {
 	if address == nil {
 		return nil, scoreresult.InvalidParameterError.New("InvalidAddress")
 	}
@@ -639,19 +619,17 @@ func (s *State) GetPRepStatsOfInJSON(
 		return nil, scoreresult.InvalidParameterError.Errorf("PRepStatusNotFound(address=%s)", address)
 	}
 
-	stats := NewPRepStats(address, ps)
 	return map[string]interface{}{
-		"blockHeight": blockHeight,
+		"blockHeight": sc.BlockHeight(),
 		"preps": []interface{}{
-			stats.ToJSON(rev, blockHeight),
+			ps.GetStatsInJSON(sc),
 		},
 	}, nil
 }
 
-func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, end int, revision int) (map[string]interface{}, error) {
-	br := s.GetBondRequirement()
-	prepSet := s.GetPRepSet(bc, revision)
-	prepSet.SortForQuery(br, revision)
+func (s *State) GetPRepsInJSON(sc icmodule.StateContext, start, end int) (map[string]interface{}, error) {
+	activePReps := s.GetPReps(true)
+	SortByPower(sc, activePReps)
 
 	if start < 0 {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) < 0", start)
@@ -660,7 +638,7 @@ func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, en
 		return nil, errors.IllegalArgumentError.Errorf("end(%d) < 0", end)
 	}
 
-	size := prepSet.Size()
+	size := len(activePReps)
 	if start > end {
 		return nil, errors.IllegalArgumentError.Errorf("start(%d) > end(%d)", start, end)
 	}
@@ -677,20 +655,21 @@ func (s *State) GetPRepsInJSON(bc state.BTPContext, blockHeight int64, start, en
 	jso := make(map[string]interface{})
 	prepList := make([]interface{}, 0, end)
 
-	var dsaMask int64
-	if bc != nil && revision >= icmodule.RevisionBTP2 {
-		dsaMask = bc.GetActiveDSAMask()
-	}
 	for i := start - 1; i < end; i++ {
-		prep := prepSet.GetByIndex(i).PRep()
-		prepJSO := prep.ToJSON(blockHeight, br, dsaMask)
+		prep := activePReps[i]
+		prepJSO := prep.ToJSON(sc)
 		prepList = append(prepList, prepJSO)
 	}
 
+	totalDelegated := new(big.Int)
+	for _, prep := range activePReps {
+		totalDelegated.Add(totalDelegated, prep.Delegated())
+	}
+
 	jso["startRanking"] = start
-	jso["blockHeight"] = blockHeight
+	jso["blockHeight"] = sc.BlockHeight()
 	jso["totalStake"] = s.GetTotalStake()
-	jso["totalDelegated"] = prepSet.TotalDelegated()
+	jso["totalDelegated"] = totalDelegated
 	jso["preps"] = prepList
 	return jso, nil
 }
@@ -701,7 +680,9 @@ func (s *State) CheckValidationPenalty(ps *PRepStatusState, blockHeight int64) b
 }
 
 func checkValidationPenalty(ps *PRepStatusState, blockHeight, condition int64) bool {
-	return !ps.IsAlreadyPenalized() && ps.GetVFailCont(blockHeight) >= condition
+	return condition > 0 &&
+		!ps.IsAlreadyPenalized() &&
+		ps.GetVFailCont(blockHeight) >= condition
 }
 
 func (s *State) CheckConsistentValidationPenalty(revision int, ps *PRepStatusState) bool {
@@ -713,7 +694,7 @@ func (s *State) CheckConsistentValidationPenalty(revision int, ps *PRepStatusSta
 }
 
 func checkConsistentValidationPenalty(ps *PRepStatusState, condition int) bool {
-	return ps.GetVPenaltyCount() >= condition
+	return condition > 0 && ps.GetVPenaltyCount() >= condition
 }
 
 func (s *State) GetUnstakeLockPeriod(revision int, totalSupply *big.Int) int64 {
@@ -764,4 +745,25 @@ func (s *State) SetPRepIllegalDelegated(address module.Address, value *big.Int) 
 	} else {
 		return s.pRepIllegalDelegatedDB.Set(address, value)
 	}
+}
+
+func (s *State) InitCommissionInfo(owner module.Address, ci *CommissionInfo) error {
+	if owner == nil {
+		return scoreresult.InvalidParameterError.Errorf("InvalidOwner(%s)", owner)
+	}
+	if ci == nil {
+		return scoreresult.InvalidParameterError.New("InvalidCommissionInfo")
+	}
+	pb := s.GetPRepBaseByOwner(owner, false)
+	if pb == nil {
+		return icmodule.NotFoundError.Errorf("PRepBaseNotFound(%s)", owner)
+	}
+	ps := s.GetPRepStatusByOwner(owner, false)
+	if ps == nil {
+		return icmodule.NotFoundError.Errorf("PRepStatusNotFound(%s)", owner)
+	}
+	if !ps.IsActive() {
+		return icmodule.NotReadyError.Errorf("PRepNotActive(%s)", owner)
+	}
+	return pb.InitCommissionInfo(ci)
 }

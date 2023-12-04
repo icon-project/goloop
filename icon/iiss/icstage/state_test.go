@@ -130,16 +130,17 @@ func TestState_AddEvent(t *testing.T) {
 	vote2 := NewVote(addr2, big.NewInt(v2))
 
 	type args struct {
-		type_         int
-		offset        int
-		address       *common.Address
-		votes         VoteList
-		enableFlag    EnableStatus
-		irep          *big.Int
-		rrep          *big.Int
-		mainPRepCount int64
-		pRepCount     int64
-		validators    []*common.Address
+		type_          int
+		offset         int
+		address        *common.Address
+		votes          VoteList
+		enableFlag     icmodule.EnableStatus
+		irep           *big.Int
+		rrep           *big.Int
+		mainPRepCount  int64
+		pRepCount      int64
+		validators     []*common.Address
+		commissionRate icmodule.Rate
 	}
 
 	tests := []struct {
@@ -170,7 +171,7 @@ func TestState_AddEvent(t *testing.T) {
 				type_:      TypeEventEnable,
 				offset:     offset2,
 				address:    addr2,
-				enableFlag: ESDisablePermanent,
+				enableFlag: icmodule.ESDisablePermanent,
 			},
 		},
 	}
@@ -208,7 +209,6 @@ func TestState_AddEvent(t *testing.T) {
 	}
 }
 
-
 func checkAddEventVote(t *testing.T, s *State, index int64, obj trie.Object, offset int, address *common.Address, votes VoteList) {
 	key := EventKey.Append(offset, index).Build()
 	nObj, err := icobject.GetFromMutableForObject(s.store, key)
@@ -233,7 +233,7 @@ func checkAddEventBond(t *testing.T, s *State, offset int, address *common.Addre
 	checkAddEventVote(t, s, index, obj, offset, address, votes)
 }
 
-func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag EnableStatus) {
+func checkAddEventEnable(t *testing.T, s *State, offset int, address *common.Address, flag icmodule.EnableStatus) {
 	index, err := s.AddEventEnable(offset, address, flag)
 	assert.NoError(t, err)
 
@@ -249,7 +249,7 @@ func TestState_AddBlockProduce(t *testing.T) {
 	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
 
 	s := NewStateFromSnapshot(NewSnapshot(database, nil))
-	s.AddGlobalV1(icmodule.RevisionIISS, 0, 4, nil, nil, 0, 0)
+	assert.NoError(t, s.AddGlobalV1(icmodule.RevisionIISS, 0, 4, nil, nil, 0, 0))
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	addr2 := common.MustNewAddressFromString("hx2")
@@ -365,11 +365,11 @@ func TestState_AddGlobal(t *testing.T) {
 		electedPRepCount int
 		period           int
 		iglobal          *big.Int
-		iprep            *big.Int
-		ivoter           *big.Int
-		icps             *big.Int
-		irelay           *big.Int
-		bondRequirement  int
+		iprep            icmodule.Rate
+		ivoter           icmodule.Rate
+		icps             icmodule.Rate
+		irelay           icmodule.Rate
+		bondRequirement  icmodule.Rate
 	}
 
 	tests := []struct {
@@ -397,12 +397,12 @@ func TestState_AddGlobal(t *testing.T) {
 				startHeight:      0,
 				offsetLimit:      1000,
 				iglobal:          big.NewInt(100),
-				iprep:            big.NewInt(50),
-				ivoter:           big.NewInt(50),
-				icps:             big.NewInt(0),
-				irelay:           big.NewInt(0),
+				iprep:            icmodule.ToRate(50),
+				ivoter:           icmodule.ToRate(50),
+				icps:             icmodule.ToRate(0),
+				irelay:           icmodule.ToRate(0),
 				electedPRepCount: 100,
-				bondRequirement:  5,
+				bondRequirement:  icmodule.ToRate(5),
 			},
 		},
 	}
@@ -461,10 +461,10 @@ func TestState_AddGlobal(t *testing.T) {
 				assert.Equal(t, a.revision, global.GetRevision())
 				assert.Equal(t, a.offsetLimit, global.GetOffsetLimit())
 				assert.Equal(t, 0, a.iglobal.Cmp(global.GetIGlobal()))
-				assert.Equal(t, 0, a.iprep.Cmp(global.GetIPRep()))
-				assert.Equal(t, 0, a.ivoter.Cmp(global.GetIVoter()))
-				assert.Equal(t, 0, a.icps.Cmp(global.GetICps()))
-				assert.Equal(t, 0, a.irelay.Cmp(global.GetIRelay()))
+				assert.Equal(t, a.iprep, global.GetIPRep())
+				assert.Equal(t, a.ivoter, global.GetIVoter())
+				assert.Equal(t, a.icps, global.GetICps())
+				assert.Equal(t, a.irelay, global.GetIRelay())
 				assert.Equal(t, a.electedPRepCount, global.GetElectedPRepCount())
 				assert.Equal(t, a.bondRequirement, global.GetBondRequirement())
 			}
@@ -518,4 +518,87 @@ func TestState_AddLoadValidators(t *testing.T) {
 		assert.True(t, idxToAddr[i].Equal(v))
 		assert.Equal(t, addrToIdx[v.String()], i)
 	}
+}
+
+func TestState_AddCommissionRate(t *testing.T) {
+	database := icobject.AttachObjectFactory(db.NewMapDB(), NewObjectImpl)
+
+	s := NewStateFromSnapshot(NewSnapshot(database, nil))
+
+	addr1 := common.MustNewAddressFromString("hx1")
+	addr2 := common.MustNewAddressFromString("hx2")
+	v1 := icmodule.Rate(100)
+	v2 := icmodule.Rate(200)
+
+	type args struct {
+		addr  module.Address
+		value icmodule.Rate
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want icmodule.Rate
+	}{
+		{
+			"Set rate 100",
+			args{
+				addr1,
+				v1,
+			},
+			v1,
+		},
+		{
+			"Set rate 200",
+			args{
+				addr1,
+				v2,
+			},
+			v2,
+		},
+		{
+			"Set rate 200 to new address",
+			args{
+				addr2,
+				v2,
+			},
+			v2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := tt.args
+			err := s.AddCommissionRate(args.addr, args.value)
+			assert.NoError(t, err)
+
+			key := CommissionRateKey.Append(args.addr).Build()
+			obj, err := icobject.GetFromMutableForObject(s.store, key)
+			assert.NoError(t, err)
+			cr := ToCommissionRate(obj)
+			assert.Equal(t, tt.want, cr.Value())
+		})
+	}
+
+	ss := s.GetSnapshot()
+	count := 0
+	for iter := ss.Filter(CommissionRateKey.Build()); iter.Has(); iter.Next() {
+		o, key, err := iter.Get()
+		assert.NoError(t, err)
+		assert.NotNil(t, o)
+		cr := ToCommissionRate(o)
+		assert.NotNil(t, cr)
+
+		keySplit, _ := containerdb.SplitKeys(key)
+		assert.Equal(t, CommissionRateKey.Build(), keySplit[0])
+		keyAddress, err := common.NewAddress(keySplit[1])
+		assert.NoError(t, err)
+		addr := addr1
+		if count == 1 {
+			addr = addr2
+		}
+		assert.True(t, addr.Equal(keyAddress))
+
+		count += 1
+	}
+	assert.Equal(t, 2, count)
 }

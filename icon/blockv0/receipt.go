@@ -80,6 +80,7 @@ func CalcOriginalReceiptHash(
 	ma["blockHeight"] = intconv.FormatInt(height)
 	ma["txIndex"] = intconv.FormatInt(int64(txIndex))
 	bs, err := json.Marshal(ma)
+	log.Must(err)
 	bs, err = transaction.SerializeJSON(bs, nil, map[string]bool {
 		"failure": true,
 	})

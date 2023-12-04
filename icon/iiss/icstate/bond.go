@@ -86,9 +86,8 @@ func (b *Bond) Amount() *big.Int {
 	return b.Value.Value()
 }
 
-func (b *Bond) Slash(ratio int) *big.Int {
-	slashAmount := new(big.Int).Mul(b.Value.Value(), big.NewInt(int64(ratio)))
-	slashAmount.Div(slashAmount, big.NewInt(int64(100)))
+func (b *Bond) Slash(rate icmodule.Rate) *big.Int {
+	slashAmount := rate.MulBigInt(b.Value.Value())
 	nBigInt := new(big.Int).Sub(b.Value.Value(), slashAmount)
 	b.Value = new(common.HexInt).SetValue(nBigInt)
 	return slashAmount
@@ -102,12 +101,12 @@ func (b *Bond) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Bond{address=%s value=%s}", b.Address, b.Value)
+			_, _ = fmt.Fprintf(f, "Bond{address=%s value=%s}", b.Address, b.Value)
 		} else {
-			fmt.Fprintf(f, "Bond{%s %s}", b.Address, b.Value)
+			_, _ = fmt.Fprintf(f, "Bond{%s %s}", b.Address, b.Value)
 		}
 	case 's':
-		fmt.Fprint(f, b.String())
+		_, _ =fmt.Fprint(f, b.String())
 	}
 }
 
@@ -185,16 +184,16 @@ func (bs *Bonds) Delete(i int) error {
 	return nil
 }
 
-func (bs *Bonds) Slash(address module.Address, ratio int) (Bonds, *big.Int) {
+func (bs *Bonds) Slash(address module.Address, rate icmodule.Rate) (Bonds, *big.Int) {
 	amount := big.NewInt(0)
 	newBonds := make(Bonds, 0)
 
 	for _, b := range *bs {
 		if b.To().Equal(address) {
 			bond := b.Clone()
-			amount = bond.Slash(ratio)
+			amount = bond.Slash(rate)
 
-			if ratio < 100 {
+			if rate.Percent() < 100 {
 				newBonds = append(newBonds, bond)
 			}
 		} else {
@@ -208,7 +207,7 @@ func (bs *Bonds) ToJSON(v module.JSONVersion) []interface{} {
 	if !bs.Has() {
 		return nil
 	}
-	bonds := make([]interface{}, 0)
+	bonds := make([]interface{}, 0, len(*bs))
 
 	for _, b := range *bs {
 		jso := b.ToJSON()

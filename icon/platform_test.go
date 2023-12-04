@@ -17,7 +17,6 @@
 package icon
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -30,19 +29,21 @@ import (
 )
 
 func TestPlatform_BlockV1Proof(t *testing.T) {
-	base, err := ioutil.TempDir("", "platform*")
+	base, err := os.MkdirTemp("", "platform*")
 	assert.NoError(t, err)
-	defer os.RemoveAll(base)
+	defer func(t *testing.T) {
+		assert.NoError(t, os.RemoveAll(base))
+	}(t)
 
 	plt, err := NewPlatform(base, 1)
 	assert.NoError(t, err)
 
-	wallet := wallet.New()
+	w := wallet.New()
 
 	storage := plt.(lcimporter.BlockV1ProofStorage)
 	root := crypto.SHA3Sum256([]byte("test_data"))
 	height := int64(1234)
-	votes := blockv0.NewBlockVoteList(blockv0.NewBlockVote(wallet, height, 0, root, 0))
+	votes := blockv0.NewBlockVoteList(blockv0.NewBlockVote(w, height, 0, root, 0))
 	err = storage.SetBlockV1Proof(root, height, votes)
 	assert.NoError(t, err)
 

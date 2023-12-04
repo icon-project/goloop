@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ICON Foundation
+ * Copyright 2023 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,17 @@
 
 package iiss
 
-import "github.com/icon-project/goloop/common/errors"
+import (
+	"math/big"
 
-const CodeOffsetForICON = 100
-
-const (
-	CriticalCalculatorError = errors.CodeCritical + CodeOffsetForICON + iota
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/iiss/icreward"
 )
 
+type Calculator interface {
+	Stop()
+	IsRunningFor(dbase db.Database, back, reward []byte) bool
+	WaitResult(blockHeight int64) error
+	TotalReward() *big.Int
+	Result() *icreward.Snapshot
+}

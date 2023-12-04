@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
 )
 
 func TestPow10(t *testing.T) {
@@ -422,6 +423,112 @@ func TestValidateCountryAlpha3(t *testing.T) {
 			} else {
 				assert.Error(t, err)
 			}
+		})
+	}
+}
+
+func TestMinBigInt(t *testing.T) {
+	args := []struct {
+		v0, v1, min int64
+	}{
+		{0, 0, 0},
+		{0, 100, 0},
+		{100, 0, 0},
+		{100, 200, 100},
+		{100, 100, 100},
+		{200, 100, 100},
+		{-200, 0, -200},
+		{0, -200, -200},
+		{-100, -100, -100},
+		{-100, -200, -200},
+		{-200, -100, -200},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			v0 := big.NewInt(arg.v0)
+			v1 := big.NewInt(arg.v1)
+			min := big.NewInt(arg.min)
+			assert.Equal(t, min.Int64(), MinBigInt(v0, v1).Int64())
+		})
+	}
+}
+
+func TestCalcPower(t *testing.T) {
+	args := []struct {
+		br     icmodule.Rate
+		bonded int64
+		voted  int64
+		power  int64
+	}{
+		{0, 0, 0, 0},
+		{0, 1000, 1000, 1000},
+		{0, 1000, 3000, 3000},
+		{500, 1000, 3000, 3000},
+		{500, 100, 3000, 2000},
+		{500, 0, 3000, 0},
+		{10000, 100, 3000, 100},
+		{10000, 0, 3000, 0},
+		{10000, 10000, 20000, 10000},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			bonded := big.NewInt(arg.bonded)
+			voted := big.NewInt(arg.voted)
+			expPower := big.NewInt(arg.power)
+			power := CalcPower(arg.br, bonded, voted)
+			assert.Zero(t, expPower.Cmp(power))
+		})
+	}
+}
+
+func TestMatchAll(t *testing.T) {
+	args := []struct {
+		flags   int
+		flag    int
+		success bool
+	}{
+		{1, 1, true},
+		{2, 1, false},
+		{3, 1, true},
+		{3, 2, true},
+		{1, 3, false},
+		{2, 3, false},
+		{3, 3, true},
+		{0, 1, false},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, arg.success, ContainsAll(arg.flags, arg.flag))
+		})
+	}
+}
+
+func TestMatchAny(t *testing.T) {
+	args := []struct {
+		flags   int
+		flag    int
+		success bool
+	}{
+		{1, 1, true},
+		{2, 1, false},
+		{3, 1, true},
+		{3, 2, true},
+		{1, 3, true},
+		{2, 3, true},
+		{3, 3, true},
+		{0, 3, false},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, arg.success, ContainsAny(arg.flags, arg.flag))
 		})
 	}
 }

@@ -55,6 +55,9 @@ func (dg *Delegation) Equal(d2 *Delegation) bool {
 	if dg == d2 {
 		return true
 	}
+	if dg == nil || d2 == nil {
+		return false
+	}
 	return dg.Address.Equal(d2.Address) &&
 		dg.Value.Cmp(d2.Value.Value()) == 0
 }
@@ -84,12 +87,12 @@ func (dg *Delegation) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "Delegation{address=%s value=%s}", dg.Address, dg.Value)
+			_, _ = fmt.Fprintf(f, "Delegation{address=%s value=%s}", dg.Address, dg.Value)
 		} else {
-			fmt.Fprintf(f, "Delegation{%s %s}", dg.Address, dg.Value)
+			_, _ = fmt.Fprintf(f, "Delegation{%s %s}", dg.Address, dg.Value)
 		}
 	case 's':
-		fmt.Fprint(f, dg.String())
+		_, _ = fmt.Fprint(f, dg.String())
 	}
 }
 
@@ -304,10 +307,10 @@ func (d *IllegalDelegation) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		if f.Flag('+') {
-			fmt.Fprintf(f, "IllegalDelegation{address=%s delegations=%+v}",
+			_, _ = fmt.Fprintf(f, "IllegalDelegation{address=%s delegations=%+v}",
 				d.address, d.delegations)
 		} else {
-			fmt.Fprintf(f, "IllegalDelegation{%s %v}", d.address, d.delegations)
+			_, _ = fmt.Fprintf(f, "IllegalDelegation{%s %v}", d.address, d.delegations)
 		}
 	}
 }

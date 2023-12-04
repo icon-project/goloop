@@ -17,11 +17,13 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/common"
 	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/icon/icmodule"
 )
 
 func TestUnbonds(t *testing.T) {
@@ -50,7 +52,7 @@ func TestUnbonds_Slash(t *testing.T) {
 
 	type values struct {
 		target *common.Address
-		ratio  int
+		rate   icmodule.Rate
 	}
 
 	type wants struct {
@@ -68,7 +70,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"Invalid address",
 			values{
 				common.MustNewAddressFromString("hx321"),
-				10,
+				icmodule.ToRate(10),
 			},
 			wants{
 				0,
@@ -80,7 +82,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 10%",
 			values{
 				addr1,
-				10,
+				icmodule.ToRate(10),
 			},
 			wants{
 				int64(10),
@@ -92,7 +94,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 100%",
 			values{
 				addr1,
-				100,
+				icmodule.ToRate(100),
 			},
 			wants{
 				int64(90),
@@ -104,7 +106,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 10% last entry",
 			values{
 				addr2,
-				10,
+				icmodule.ToRate(10),
 			},
 			wants{
 				int64(20),
@@ -116,7 +118,7 @@ func TestUnbonds_Slash(t *testing.T) {
 			"slash 100% last entry",
 			values{
 				addr2,
-				100,
+				icmodule.ToRate(100),
 			},
 			wants{
 				int64(180),
@@ -130,7 +132,7 @@ func TestUnbonds_Slash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			in := tt.in
 			out := tt.out
-			newUbs, slashAmount, expire := ubl1.Slash(in.target, in.ratio)
+			newUbs, slashAmount, expire := ubl1.Slash(in.target, in.rate)
 			ubl1 = newUbs
 
 			assert.Equal(t, out.slashAmount, slashAmount.Int64())

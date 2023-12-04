@@ -18,7 +18,7 @@ package lcimporter_test
 
 import (
 	"encoding/hex"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -337,7 +337,7 @@ func newBlockConverterTestWithDB(t *testing.T, dbase db.Database) *blockConverte
 }
 
 func newBlockConverterTest2(t *testing.T, dbase db.Database, s lcimporter.Store, plt base.Platform) *blockConverterTest {
-	base, err := ioutil.TempDir("", "goloop-blockconverter-test")
+	base, err := os.MkdirTemp("", "goloop-blockconverter-test")
 	c, err := newTestChain(dbase, log.New())
 	assert.NoError(t, err)
 	assert.NoError(t, err)

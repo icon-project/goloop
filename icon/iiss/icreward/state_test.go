@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/containerdb"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 )
 
@@ -35,7 +36,7 @@ func TestState_NewState(t *testing.T) {
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	iScore := NewIScore(big.NewInt(10))
-	s.SetIScore(addr1, iScore)
+	assert.NoError(t, s.SetIScore(addr1, iScore))
 
 	is, err := s.GetIScore(addr1)
 	assert.NoError(t, err)
@@ -69,7 +70,7 @@ func TestState_SetVoted(t *testing.T) {
 
 	addr1 := common.MustNewAddressFromString("hx1")
 	voted1 := NewVoted()
-	voted1.SetEnable(true)
+	voted1.SetStatus(icmodule.ESEnable)
 	voted1.SetDelegated(big.NewInt(100))
 	voted1.SetBondedDelegation(big.NewInt(100))
 	err := s.SetVoted(addr1, voted1)
@@ -77,7 +78,7 @@ func TestState_SetVoted(t *testing.T) {
 
 	addr2 := common.MustNewAddressFromString("hx2")
 	voted2 := NewVoted()
-	voted2.SetEnable(false)
+	voted2.SetStatus(icmodule.ESDisablePermanent)
 	voted2.SetDelegated(big.NewInt(200))
 	voted2.SetBondedDelegation(big.NewInt(200))
 	err = s.SetVoted(addr2, voted2)
@@ -91,7 +92,7 @@ func TestState_SetVoted(t *testing.T) {
 	assert.True(t, voted2.Equal(v2))
 
 	ss := s.GetSnapshot()
-	ss.Flush()
+	assert.NoError(t, ss.Flush())
 
 	prefix := VotedKey.Build()
 	for iter := ss.Filter(prefix); iter.Has(); iter.Next() {

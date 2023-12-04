@@ -17,7 +17,6 @@
 package icstate
 
 import (
-	"github.com/icon-project/goloop/icon/icmodule"
 	"math/big"
 	"testing"
 
@@ -25,6 +24,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss/icobject"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
 )
@@ -256,14 +256,14 @@ func TestAccount_SlashStake(t *testing.T) {
 
 func TestAccount_SlashBond(t *testing.T) {
 	a := getTestAccount() //[{hx3, 10}, {hx4, 10}]
-	amount := a.SlashBond(common.MustNewAddressFromString("hx3"), 10)
+	amount := a.SlashBond(common.MustNewAddressFromString("hx3"), icmodule.ToRate(10))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	b1 := a.Bonds()[0]
 	assert.Equal(t, 0, b1.Amount().Cmp(big.NewInt(9)))
 	bl := len(a.Bonds())
 	assert.Equal(t, 2, bl)
 
-	amount = a.SlashBond(common.MustNewAddressFromString("hx4"), 100)
+	amount = a.SlashBond(common.MustNewAddressFromString("hx4"), icmodule.ToRate(100))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
 	bl = len(a.Bonds())
 	assert.Equal(t, 1, bl)
@@ -272,7 +272,7 @@ func TestAccount_SlashBond(t *testing.T) {
 func TestAccount_SlashUnbond(t *testing.T) {
 	a := getTestAccount() //[{hx5, value: 10, expire: 20}, {hx6, value: 10, expire: 30}]
 
-	amount, eh := a.SlashUnbond(common.MustNewAddressFromString("hx5"), 10)
+	amount, eh := a.SlashUnbond(common.MustNewAddressFromString("hx5"), icmodule.ToRate(10))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(1)))
 	assert.Equal(t, int64(-1), eh)
 	u1 := a.Unbonds()[0]
@@ -280,7 +280,7 @@ func TestAccount_SlashUnbond(t *testing.T) {
 	ul := len(a.Unbonds())
 	assert.Equal(t, 2, ul)
 
-	amount, eh = a.SlashUnbond(common.MustNewAddressFromString("hx6"), 100)
+	amount, eh = a.SlashUnbond(common.MustNewAddressFromString("hx6"), icmodule.ToRate(100))
 	assert.Equal(t, 0, amount.Cmp(big.NewInt(10)))
 	assert.Equal(t, int64(30), eh)
 	ul = len(a.Unbonds())
@@ -300,6 +300,7 @@ func equalTimerJobSlice(expected []TimerJobInfo, actual []TimerJobInfo) bool {
 }
 
 func TestAccountState_ReversedExpireHeight(t *testing.T) {
+	var err error
 	slotMax := 3
 	revision := icmodule.RevisionICON2R0
 	a := &AccountState{}
@@ -311,9 +312,12 @@ func TestAccountState_ReversedExpireHeight(t *testing.T) {
 	v2 := big.NewInt(15)
 	v3 := big.NewInt(20)
 	v4 := big.NewInt(30)
-	a.IncreaseUnstake(v1, eh1, slotMax, revision)
-	a.IncreaseUnstake(v2, eh2, slotMax, revision)
-	a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	_, err = a.IncreaseUnstake(v1, eh1, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v2, eh2, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	assert.NoError(t, err)
 
 	unstakes := a.unstakes
 	// [(v1, eh1), (v3, eh3), (v2, eh2)]
@@ -324,7 +328,8 @@ func TestAccountState_ReversedExpireHeight(t *testing.T) {
 	assert.Equal(t, eh3, unstakes[1].Expire)
 	assert.Equal(t, eh2, unstakes[2].Expire)
 
-	a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	_, err = a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	assert.NoError(t, err)
 	unstakes = a.unstakes
 	// [(v1, eh1), (v3, eh3), (v2 + v4, eh2)]
 	assert.Equal(t, v1, unstakes[0].Value)
@@ -336,6 +341,7 @@ func TestAccountState_ReversedExpireHeight(t *testing.T) {
 }
 
 func TestAccountState_OverlappedExpireHeight(t *testing.T) {
+	var err error
 	slotMax := 3
 	revision := icmodule.RevisionICON2R0
 	a := &AccountState{}
@@ -347,9 +353,12 @@ func TestAccountState_OverlappedExpireHeight(t *testing.T) {
 	v2 := big.NewInt(15)
 	v3 := big.NewInt(20)
 	v4 := big.NewInt(30)
-	a.IncreaseUnstake(v1, eh1, slotMax, revision)
-	a.IncreaseUnstake(v2, eh2, slotMax, revision)
-	a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	_, err = a.IncreaseUnstake(v1, eh1, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v2, eh2, slotMax, revision)
+	assert.NoError(t, err)
+	_, err = a.IncreaseUnstake(v3, eh3, slotMax, revision)
+	assert.NoError(t, err)
 
 	unstakes := a.unstakes
 	// [(v1, eh1), (v2, eh2), (v3, eh3 = eh2)]
@@ -360,7 +369,8 @@ func TestAccountState_OverlappedExpireHeight(t *testing.T) {
 	assert.Equal(t, eh2, unstakes[1].Expire)
 	assert.Equal(t, eh3, unstakes[2].Expire)
 
-	a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	_, err = a.IncreaseUnstake(v4, eh4, slotMax, revision)
+	assert.NoError(t, err)
 	unstakes = a.unstakes
 	// [(v1, eh1), (v2, eh2), (v3 + v4, eh3 = eh2)]
 	assert.Equal(t, v1, unstakes[0].Value)
@@ -370,7 +380,8 @@ func TestAccountState_OverlappedExpireHeight(t *testing.T) {
 	assert.Equal(t, eh2, unstakes[1].Expire)
 	assert.Equal(t, eh3, unstakes[2].Expire)
 
-	a.RemoveUnstake(eh2)
+	_, err = a.RemoveUnstake(eh2)
+	assert.NoError(t, err)
 	unstakes = a.unstakes
 	// [(v1, eh1)]
 	assert.Equal(t, 1, len(unstakes))
