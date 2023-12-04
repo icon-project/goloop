@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	stdlog "log"
 	"os"
 	"path"
@@ -68,7 +67,7 @@ func (config *GoChainConfig) Type() string {
 
 func (config *GoChainConfig) Set(name string) error {
 	config.FilePath, _ = filepath.Abs(name)
-	if bs, e := ioutil.ReadFile(name); e == nil {
+	if bs, e := os.ReadFile(name); e == nil {
 		if err := json.Unmarshal(bs, config); err != nil {
 			return err
 		}
@@ -183,7 +182,7 @@ func main() {
 func Execute(cmd *cobra.Command, args []string) {
 
 	if len(keyStoreFile) > 0 {
-		if ks, err := ioutil.ReadFile(keyStoreFile); err != nil {
+		if ks, err := os.ReadFile(keyStoreFile); err != nil {
 			log.Panicf("Fail to open KeyStore file=%s err=%+v", keyStoreFile, err)
 		} else {
 			cfg.KeyStoreData = ks
@@ -193,7 +192,7 @@ func Execute(cmd *cobra.Command, args []string) {
 
 	keyStorePass := []byte(cfg.KeyStorePass)
 	if len(keyStoreSecret) > 0 {
-		if ks, err := ioutil.ReadFile(keyStoreSecret); err != nil {
+		if ks, err := os.ReadFile(keyStoreSecret); err != nil {
 			log.Panicf("Fail to open KeySecret file=%s err=%+v", keyStoreSecret, err)
 		} else {
 			keyStorePass = ks
@@ -239,7 +238,7 @@ func Execute(cmd *cobra.Command, args []string) {
 	wallet, _ := wallet.NewFromPrivateKey(priK)
 
 	if len(genesisStorage) > 0 {
-		storage, err := ioutil.ReadFile(genesisStorage)
+		storage, err := os.ReadFile(genesisStorage)
 		if err != nil {
 			log.Panicf("Fail to open genesisStorage=%s err=%+v\n", genesisStorage, err)
 		}
@@ -303,7 +302,7 @@ func Execute(cmd *cobra.Command, args []string) {
 		if err := json.Indent(ks, cfg.KeyStoreData, "", "  "); err != nil {
 			log.Panicf("Fail to indenting key data err=%+v", err)
 		}
-		if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0600); err != nil {
+		if err := os.WriteFile(saveKeyStore, ks.Bytes(), 0600); err != nil {
 			log.Panicf("Fail to save key store to the file=%s err=%+v", saveKeyStore, err)
 		}
 	}

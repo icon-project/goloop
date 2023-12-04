@@ -3,8 +3,8 @@ package cli
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -26,7 +26,7 @@ func newKeystoreGenCmd(c string) *cobra.Command {
 		if err != nil {
 			log.Panicf("Fail to generate keystore err=%+v", err)
 		}
-		if err := ioutil.WriteFile(*out, ks, 0600); err != nil {
+		if err := os.WriteFile(*out, ks, 0600); err != nil {
 			log.Panicf("Fail to write keystore err=%+v", err)
 		}
 		fmt.Printf("%s ==> %s\n",
@@ -46,11 +46,11 @@ func newVerifyCmd(c string) *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		for _, arg := range args {
 			var pb []byte
-			if kb, err := ioutil.ReadFile(arg); err != nil {
+			if kb, err := os.ReadFile(arg); err != nil {
 				log.Panicf("fail to open keystore file err=%+v", err)
 			} else {
 				if *secret != "" {
-					if pb, err = ioutil.ReadFile(*secret); err != nil {
+					if pb, err = os.ReadFile(*secret); err != nil {
 						log.Panicf("fail to open KeySecret err=%+v", err)
 					}
 				} else {
@@ -83,11 +83,11 @@ func newReEncryptCmd(c string) *cobra.Command {
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		var pb []byte
-		if kb, err := ioutil.ReadFile(*keystorePath); err != nil {
+		if kb, err := os.ReadFile(*keystorePath); err != nil {
 			log.Panicf("fail to open keystore file err=%+v", err)
 		} else {
 			if *secret != "" {
-				if pb, err = ioutil.ReadFile(*secret); err != nil {
+				if pb, err = os.ReadFile(*secret); err != nil {
 					log.Panicf("fail to open KeySecret err=%+v", err)
 				}
 			} else {
@@ -101,7 +101,7 @@ func newReEncryptCmd(c string) *cobra.Command {
 			if err != nil {
 				log.Panicf("Fail to generate keystore err=%+v", err)
 			}
-			if err := ioutil.WriteFile(*out, ks, 0600); err != nil {
+			if err := os.WriteFile(*out, ks, 0600); err != nil {
 				log.Panicf("Fail to write keystore err=%+v", err)
 			}
 			fmt.Printf("%s ==> %s\n",
@@ -131,11 +131,11 @@ func publickeyFromKeyStore(c string) *cobra.Command {
 	pass := flags.StringP("password", "p", "gochain", "Password for the keystore")
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		var pb []byte
-		if kb, err := ioutil.ReadFile(*keystorePath); err != nil {
+		if kb, err := os.ReadFile(*keystorePath); err != nil {
 			log.Panicf("fail to open keystore file err=%+v", err)
 		} else {
 			if *secret != "" {
-				if pb, err = ioutil.ReadFile(*secret); err != nil {
+				if pb, err = os.ReadFile(*secret); err != nil {
 					log.Panicf("fail to open KeySecret err=%+v", err)
 				}
 			} else {

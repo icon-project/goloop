@@ -863,10 +863,25 @@ func (t *transition) onPlatformExecutionEnd(ctx contract.Context, er base.Execut
 	return t.plt.OnExecutionEnd(ctx, er, ctx.GetTraceLogger(module.EPhaseExecutionEnd))
 }
 
+func (t *transition) minimumTxVersion(wc state.WorldContext) int {
+	as := wc.GetAccountState(state.SystemID)
+	nbv := int(scoredb.NewVarDB(as, state.VarNextBlockVersion).Int64())
+	if nbv == 0 {
+		nbv = t.plt.DefaultBlockVersionFor(t.chain.CID())
+	}
+	switch {
+	case nbv >= module.BlockVersion2:
+		return module.TransactionVersion3
+	default:
+		return module.TransactionVersion2
+	}
+}
+
 func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange) error {
 	if l == nil {
 		return nil
 	}
+	minVersion := t.minimumTxVersion(wc)
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.canceled() {
 			return ErrTransitionInterrupted
@@ -878,6 +893,9 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 		}
 		tx := txi.(transaction.Transaction)
 
+		if tx.Version() < minVersion {
+			return transaction.InvalidTxValue.Errorf("InvalidTxVersion(id=%#x,version=%d)", tx.ID(), tx.Version())
+		}
 		if !tx.ValidateNetwork(t.chain.NID()) {
 			return errors.InvalidNetworkError.New("InvalidNetworkID")
 		}

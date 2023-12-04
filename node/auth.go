@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -230,7 +229,7 @@ func (a *Auth) _export() error {
 		if b, err := json.Marshal(users); err != nil {
 			return err
 		}else {
-			if err = ioutil.WriteFile(a.filePath, b, 0644); err != nil {
+			if err = os.WriteFile(a.filePath, b, 0644); err != nil {
 				return err
 			}
 		}
@@ -254,7 +253,7 @@ func NewAuth(filePath, prefix string) *Auth {
 				}
 			}
 		}
-		if b, err := ioutil.ReadFile(filePath); err != nil {
+		if b, err := os.ReadFile(filePath); err != nil {
 			panic(err)
 		} else {
 			var users []string

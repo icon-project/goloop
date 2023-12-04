@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -22,7 +21,7 @@ func mustParseAddress(arg string) module.Address {
 	if err := addr.SetString(arg); err == nil {
 		return addr
 	} else {
-		data, err := ioutil.ReadFile(arg)
+		data, err := os.ReadFile(arg)
 		if err != nil {
 			log.Panicf("%s isn't address or keystore file", arg)
 		}
@@ -164,7 +163,7 @@ func newGenesisGenCmd(c string) *cobra.Command {
 		if err != nil {
 			log.Panicf("Fail to make genesis err=%+v", err)
 		}
-		if err := ioutil.WriteFile(*out, bs, 0600); err != nil {
+		if err := os.WriteFile(*out, bs, 0600); err != nil {
 			log.Panicf("Fail to write genesis data to file %s err=%+v",
 				*out, err)
 		}
@@ -185,7 +184,7 @@ func newGenesisEditCmd(c string) *cobra.Command {
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		raw, err := ioutil.ReadFile(filePath)
+		raw, err := os.ReadFile(filePath)
 		if err != nil {
 			log.Fatalf("Fail to open file=%s err=%+v", filePath, err)
 		}
@@ -240,7 +239,7 @@ func newGenesisEditCmd(c string) *cobra.Command {
 			}
 
 			fi, _ := os.Stat(filePath)
-			if err := ioutil.WriteFile(filePath, bs, fi.Mode().Perm()); err != nil {
+			if err := os.WriteFile(filePath, bs, fi.Mode().Perm()); err != nil {
 				log.Panicf("Fail to write genesis data to file %s err=%+v",
 					filePath, err)
 			}

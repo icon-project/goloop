@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -101,7 +100,7 @@ func (gs *genesisStorageWithDataDir) Get(key []byte) ([]byte, error) {
 	sKey := string(key)
 	if f, ok := gs.dataMap[sKey]; ok {
 		p := path.Join(gs.dataPath, f)
-		if bs, err := ioutil.ReadFile(p); err != nil {
+		if bs, err := os.ReadFile(p); err != nil {
 			return nil, err
 		} else {
 			hash := crypto.SHA3Sum256(bs)
@@ -134,7 +133,7 @@ func readAllOfZipFile(f *zip.File) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	bs, err := ioutil.ReadAll(rc)
+	bs, err := io.ReadAll(rc)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +196,7 @@ func writeToZip(writer *zip.Writer, p, n string) error {
 		return nil
 	}
 
-	fis, err := ioutil.ReadDir(p2)
+	fis, err := os.ReadDir(p2)
 	if err != nil {
 		return errors.Wrap(err, "writeToZip: FAIL on ReadDir")
 	}
@@ -246,14 +245,14 @@ func processTemplate(c *templateContext, s string) (r string, e error) {
 			s = s[0:m[0]] + "0x" + hex.EncodeToString(data) + s[m[1]:]
 
 		case "read":
-			data, err := ioutil.ReadFile(p)
+			data, err := os.ReadFile(p)
 			if err != nil {
 				return s, err
 			}
 			s = s[0:m[0]] + "0x" + hex.EncodeToString(data) + s[m[1]:]
 
 		case "hash":
-			data, err := ioutil.ReadFile(p)
+			data, err := os.ReadFile(p)
 			if err != nil {
 				return s, err
 			}
@@ -331,7 +330,7 @@ func WriteFromPath(w io.Writer, p string) error {
 	defer gsw.Close()
 
 	// load and decode genesis
-	genesis, err := ioutil.ReadFile(genesisTemplate)
+	genesis, err := os.ReadFile(genesisTemplate)
 	if err != nil {
 		return errors.Wrapf(err, "Fail to read %s", genesisTemplate)
 	}

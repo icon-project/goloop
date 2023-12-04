@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime"
 	"net/http"
 	"time"
@@ -47,7 +47,7 @@ func (e *HttpError) Response() string {
 
 func NewHttpError(r *http.Response) error {
 	var response string
-	if rb, err := ioutil.ReadAll(r.Body); err != nil {
+	if rb, err := io.ReadAll(r.Body); err != nil {
 		response = fmt.Sprintf("Fail to read body err=%+v", err)
 	} else {
 		response = string(rb)

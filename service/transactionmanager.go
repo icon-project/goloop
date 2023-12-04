@@ -193,6 +193,9 @@ func (m *TransactionManager) VerifyTx(tx transaction.Transaction) error {
 		return errors.InvalidNetworkError.Errorf(
 			"ValidateNetwork(nid=%#x) fail", m.nid)
 	}
+	if tx.Version() < transaction.Version3 {
+		return InvalidTransactionError.New("IllegalTransactionVersion")
+	}
 	if err := tx.Verify(); err != nil {
 		return InvalidTransactionError.Wrap(err,
 			"Failed to verify transaction")
