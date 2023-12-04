@@ -42,9 +42,9 @@ func Test_ExtraMainPReps(t *testing.T) {
 	csi = NewConsensusInfoBySim(sim)
 
 	// Set revision to 17 to activate extra main preps
-	rcpt, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.RevisionExtraMainPReps)
+	receipts, err := sim.GoBySetRevision(csi, env.Governance(), icmodule.RevisionExtraMainPReps)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	err = sim.GoToTermEnd(csi)
 	assert.NoError(t, err)
 
@@ -62,9 +62,9 @@ func Test_ExtraMainPReps(t *testing.T) {
 	}
 	for i := 0; i < size; i++ {
 		bonder := env.bonders[i]
-		rcpt, err = sim.GoBySetBond(csi, bonder, emptyBonds)
+		receipts, err = sim.GoBySetBond(csi, bonder, emptyBonds)
 		assert.NoError(t, err)
-		assert.True(t, CheckReceiptSuccess(rcpt))
+		assert.True(t, CheckReceiptSuccess(receipts[1]))
 
 		assert.False(t, bonders[icutils.ToKey(bonder)])
 		bonders[icutils.ToKey(bonder)] = true
@@ -78,9 +78,9 @@ func Test_ExtraMainPReps(t *testing.T) {
 		bonderList := sim.GetBonderList(owner)
 
 		assert.False(t, bonders[icutils.ToKey(bonderList[0])])
-		rcpt, err = sim.GoBySetBond(csi, bonderList[0], emptyBonds)
+		receipts, err = sim.GoBySetBond(csi, bonderList[0], emptyBonds)
 		assert.NoError(t, err)
-		assert.True(t, CheckReceiptSuccess(rcpt))
+		assert.True(t, CheckReceiptSuccess(receipts[1]))
 
 		// Move to the next term
 		assert.NoError(t, sim.GoToTermEnd(csi))

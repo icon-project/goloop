@@ -36,7 +36,7 @@ func TestSimulatorImpl_SetPRepCountConfig(t *testing.T) {
 	)
 	var err error
 	var csi module.ConsensusInfo
-	var rcpt Receipt
+	var receipts []Receipt
 
 	cfg := NewSimConfigWithParams(map[SimConfigOption]interface{}{
 		SCOTermPeriod: termPeriod,
@@ -60,9 +60,9 @@ func TestSimulatorImpl_SetPRepCountConfig(t *testing.T) {
 		"sub":   newSubPRepCount,
 		"extra": newExtraMainPRepCount,
 	}
-	rcpt, err = sim.GoBySetPRepCountConfig(csi, env.Governance(), counts)
+	receipts, err = sim.GoBySetPRepCountConfig(csi, env.Governance(), counts)
 	assert.NoError(t, err)
-	CheckReceiptSuccess(rcpt)
+	CheckReceiptSuccess(receipts[1])
 
 	assert.NoError(t, sim.GoToTermEnd(csi))
 

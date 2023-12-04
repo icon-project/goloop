@@ -218,7 +218,7 @@ func (sim *simulatorImpl) Transfer(from, to module.Address, amount *big.Int) Tra
 }
 
 func (sim *simulatorImpl) GoByTransfer(
-	csi module.ConsensusInfo, from, to module.Address, amount *big.Int) (Receipt, error) {
+	csi module.ConsensusInfo, from, to module.Address, amount *big.Int) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeTransfer, from, to, amount)
 }
 
@@ -234,7 +234,7 @@ func (sim *simulatorImpl) SetRevision(from module.Address, revision module.Revis
 }
 
 func (sim *simulatorImpl) GoBySetRevision(
-	csi module.ConsensusInfo, from module.Address, revision module.Revision) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, revision module.Revision) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetRevision, from, revision)
 }
 
@@ -272,7 +272,7 @@ func (sim *simulatorImpl) SetStake(from module.Address, amount *big.Int) Transac
 }
 
 func (sim *simulatorImpl) GoBySetStake(
-	csi module.ConsensusInfo, from module.Address, amount *big.Int) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, amount *big.Int) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetStake, from, amount)
 }
 
@@ -304,10 +304,11 @@ func (sim *simulatorImpl) onExecutionBegin(wc WorldContext) error {
 	return sim.plt.OnExecutionBegin(wc, sim.logger)
 }
 
-func (sim *simulatorImpl) onBaseTx(wc WorldContext) error {
+func (sim *simulatorImpl) onBaseTx(wc WorldContext) (Receipt, error) {
 	cc := NewCallContext(wc, state.SystemAddress)
 	es := wc.GetExtensionState().(*iiss.ExtensionStateImpl)
-	return es.HandleConsensusInfo(cc)
+	err := es.HandleConsensusInfo(cc)
+	return NewReceipt(cc.BlockHeight(), err, cc.Events()), err
 }
 
 func (sim *simulatorImpl) onExecutionEnd(wc WorldContext) error {
@@ -338,6 +339,12 @@ func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, blk Block) ([]Rece
 	var err error
 	var receipts []Receipt
 
+	size := 1
+	if blk != nil {
+		size += len(blk.Txs())
+	}
+	receipts = make([]Receipt, size)
+
 	wss := sim.wss
 	blockHeight := sim.blockHeight + 1
 	wc := NewWorldContext(newWorldState(wss, false), blockHeight, sim.Revision(), csi, sim.stepPrice)
@@ -345,19 +352,19 @@ func (sim *simulatorImpl) GoByBlock(csi module.ConsensusInfo, blk Block) ([]Rece
 	if err = sim.onExecutionBegin(wc); err != nil {
 		return nil, err
 	}
-	if err = sim.onBaseTx(wc); err != nil {
+
+	// Execute a base transaction firstly in block
+	if receipts[0], err = sim.onBaseTx(wc); err != nil {
 		return nil, err
 	}
 
 	// Execute transactions in a given block
 	if blk != nil {
-		receipts = make([]Receipt, len(blk.Txs()))
-
 		for i, tx := range blk.Txs() {
 			wss = wc.GetSnapshot()
 			cc := NewCallContext(wc, tx.From())
 			err = sim.executeTx(cc, tx)
-			receipts[i] = NewReceipt(blockHeight, err, cc.Events())
+			receipts[i+1] = NewReceipt(blockHeight, err, cc.Events())
 
 			if err != nil {
 				if err = wc.Reset(wss); err != nil {
@@ -393,13 +400,9 @@ func (sim *simulatorImpl) GoByTransaction(csi module.ConsensusInfo, txs ...Trans
 }
 
 func (sim *simulatorImpl) goByOneTransaction(
-	csi module.ConsensusInfo, txType TxType, from module.Address, args ...interface{}) (Receipt, error) {
+	csi module.ConsensusInfo, txType TxType, from module.Address, args ...interface{}) ([]Receipt, error) {
 	tx := NewTransaction(txType, from, args...)
-	if receipts, err := sim.GoByTransaction(csi, tx); err == nil {
-		return receipts[0], err
-	} else {
-		return nil, err
-	}
+	return sim.GoByTransaction(csi, tx)
 }
 
 func (sim *simulatorImpl) executeTx(cc *callContext, tx Transaction) error {
@@ -456,7 +459,7 @@ func (sim *simulatorImpl) RegisterPRep(from module.Address, info *icstate.PRepIn
 }
 
 func (sim *simulatorImpl) GoByRegisterPRep(
-	csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeRegisterPRep, from, info)
 }
 
@@ -474,7 +477,7 @@ func (sim *simulatorImpl) UnregisterPRep(from module.Address) Transaction {
 }
 
 func (sim *simulatorImpl) GoByUnregisterPRep(
-	csi module.ConsensusInfo, from module.Address) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeUnregisterPRep, from)
 }
 
@@ -486,7 +489,7 @@ func (sim *simulatorImpl) DisqualifyPRep(from module.Address, address module.Add
 	return NewTransaction(TypeDisqualifyPRep, from, address)
 }
 
-func (sim *simulatorImpl) GoByDisqualifyPRep(csi module.ConsensusInfo, from, address module.Address) (Receipt, error) {
+func (sim *simulatorImpl) GoByDisqualifyPRep(csi module.ConsensusInfo, from, address module.Address) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeDisqualifyPRep, from, address)
 }
 
@@ -501,7 +504,7 @@ func (sim *simulatorImpl) SetPRep(from module.Address, info *icstate.PRepInfo) T
 }
 
 func (sim *simulatorImpl) GoBySetPRep(
-	csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, info *icstate.PRepInfo) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetPRep, from, info)
 }
 
@@ -522,7 +525,7 @@ func (sim *simulatorImpl) SetDelegation(from module.Address, ds icstate.Delegati
 }
 
 func (sim *simulatorImpl) GoBySetDelegation(
-	csi module.ConsensusInfo, from module.Address, ds *icstate.Delegations) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, ds *icstate.Delegations) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetDelegation, from, ds)
 }
 
@@ -543,7 +546,7 @@ func (sim *simulatorImpl) SetBond(from module.Address, bonds icstate.Bonds) Tran
 }
 
 func (sim *simulatorImpl) GoBySetBond(
-	csi module.ConsensusInfo, from module.Address, bonds icstate.Bonds) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, bonds icstate.Bonds) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetBond, from, bonds)
 }
 
@@ -570,7 +573,7 @@ func (sim *simulatorImpl) SetBonderList(from module.Address, bl icstate.BonderLi
 }
 
 func (sim *simulatorImpl) GoBySetBonderList(
-	csi module.ConsensusInfo, from module.Address, bl icstate.BonderList) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, bl icstate.BonderList) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetBonderList, from, bl)
 }
 
@@ -585,7 +588,7 @@ func (sim *simulatorImpl) ClaimIScore(from module.Address) Transaction {
 }
 
 func (sim *simulatorImpl) GoByClaimIScore(
-	csi module.ConsensusInfo, from module.Address) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeClaimIScore, from)
 }
 
@@ -724,7 +727,7 @@ func (sim *simulatorImpl) SetSlashingRates(from module.Address, rates map[string
 }
 
 func (sim *simulatorImpl) GoBySetSlashingRates(
-	csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, rates map[string]icmodule.Rate) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetSlashingRates, from, rates)
 }
 
@@ -744,7 +747,7 @@ func (sim *simulatorImpl) SetMinimumBond(from module.Address, bond *big.Int) Tra
 }
 
 func (sim *simulatorImpl) GoBySetMinimumBond(
-	csi module.ConsensusInfo, from module.Address, bond *big.Int) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, bond *big.Int) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetMinimumBond, from, bond)
 }
 
@@ -764,7 +767,7 @@ func (sim *simulatorImpl) InitCommissionRate(
 }
 
 func (sim *simulatorImpl) GoByInitCommissionRate(
-	csi module.ConsensusInfo, from module.Address, rate, maxRate, maxChangeRate icmodule.Rate) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, rate, maxRate, maxChangeRate icmodule.Rate) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeInitCommissionRate, from, rate, maxRate, maxChangeRate)
 }
 
@@ -781,7 +784,7 @@ func (sim *simulatorImpl) SetCommissionRate(from module.Address, rate icmodule.R
 }
 
 func (sim *simulatorImpl) GoBySetCommissionRate(
-	csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetCommissionRate, from, rate)
 }
 
@@ -796,7 +799,7 @@ func (sim *simulatorImpl) RequestUnjail(from module.Address) Transaction {
 }
 
 func (sim *simulatorImpl) GoByRequestUnjail(
-	csi module.ConsensusInfo, from module.Address) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeRequestUnjail, from)
 }
 
@@ -810,7 +813,7 @@ func (sim *simulatorImpl) HandleDoubleSignReport(
 }
 
 func (sim *simulatorImpl) GoByHandleDoubleSignReport(csi module.ConsensusInfo,
-	from module.Address, dsType string, dsBlockHeight int64, signer module.Address) (Receipt, error) {
+	from module.Address, dsType string, dsBlockHeight int64, signer module.Address) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeHandleDoubleSignReport, from, dsType, dsBlockHeight, signer)
 }
 
@@ -832,7 +835,7 @@ func (sim *simulatorImpl) SetPRepCountConfig(from module.Address, counts map[str
 }
 
 func (sim *simulatorImpl) GoBySetPRepCountConfig(
-	csi module.ConsensusInfo, from module.Address, counts map[string]int64) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, counts map[string]int64) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetPRepCountConfig, from, counts)
 }
 
@@ -853,7 +856,7 @@ func (sim *simulatorImpl) SetRewardFundAllocation2(
 }
 
 func (sim *simulatorImpl) GoBySetRewardFundAllocation2(
-	csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) (Receipt, error) {
+	csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) ([]Receipt, error) {
 	return sim.goByOneTransaction(csi, TypeSetRewardFundAllocation2, from, values)
 }
 

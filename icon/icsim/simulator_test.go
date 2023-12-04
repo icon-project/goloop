@@ -205,9 +205,9 @@ func TestSimulator_SlashIsDisabledOnRev13AndEnabledOnRev14(t *testing.T) {
 
 	// env.users[0] transfers 2000 ICX to env.preps[0]
 	amount := icutils.ToLoop(2000)
-	rcpt, err := sim.GoByTransfer(nil, env.users[0], prep0, amount)
+	receipts, err = sim.GoByTransfer(nil, env.users[0], prep0, amount)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	assert.Zero(t, amount.Cmp(sim.GetBalance(prep0)))
 
 	// prep0 stakes 2000 ICX to bond to itself

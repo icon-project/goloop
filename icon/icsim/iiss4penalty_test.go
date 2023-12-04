@@ -81,7 +81,7 @@ func TestSimulatorImpl_SetSlashingRate(t *testing.T) {
 	// Check eventLogs for slashingRate
 	// There is no eventLog for ValidationFailurePenalty, as its rate is not changed
 	m := make(map[string]bool)
-	events := receipts[0].Events()
+	events := receipts[1].Events()
 	assert.Equal(t, 4, len(events))
 	for _, e := range events {
 		signature, indexed, data, err := e.DecodeParams()
@@ -119,7 +119,6 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 
 	// Initialize simulation environment based on a specific revision
 	var tx Transaction
-	var rcpt Receipt
 	var csi module.ConsensusInfo
 	initRevision := icmodule.ValueToRevision(icmodule.RevisionIISS4R0)
 	env, err := NewEnv(cfg, initRevision)
@@ -160,7 +159,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 
 	// Check eventLogs for slashingRate
 	// There is no eventLog for ValidationFailurePenalty which rate is not changed
-	events := receipts[0].Events()
+	events := receipts[1].Events()
 	assert.Equal(t, 4, len(events))
 	for _, e := range events {
 		signature, indexed, data, err := e.DecodeParams()
@@ -181,11 +180,11 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.Zero(t, minBond.Sign())
 
 	minBond = icutils.ToLoop(10_000)
-	rcpt, err = sim.GoBySetMinimumBond(csi, gov, minBond)
+	receipts, err = sim.GoBySetMinimumBond(csi, gov, minBond)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 
-	events = rcpt.Events()
+	events = receipts[1].Events()
 	assert.Equal(t, 1, len(events))
 	expData := []any{minBond}
 	assert.NoError(t, events[0].Assert(state.SystemAddress, iiss.EventMinimumBondSet, nil, expData))
@@ -200,9 +199,9 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 		icstate.KeyIrelay: icmodule.ToRate(0),
 		icstate.KeyIwage:  icmodule.ToRate(5),
 	}
-	rcpt, err = sim.GoBySetRewardFundAllocation2(csi, gov, values)
+	receipts, err = sim.GoBySetRewardFundAllocation2(csi, gov, values)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 
 	rf := sim.GetRewardFundAllocation2()
 	for k, v := range values {
@@ -229,9 +228,9 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 
 	// SetRevision: IISS4R0 -> IISS4R1
 	revision := icmodule.ValueToRevision(icmodule.RevisionIISS4R1)
-	rcpt, err = sim.GoBySetRevision(csi, gov, revision)
+	receipts, err = sim.GoBySetRevision(csi, gov, revision)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	assert.Equal(t, revision, sim.Revision())
 
 	assert.NoError(t, sim.GoToTermEnd(csi))
@@ -275,9 +274,9 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
 
-	rcpt, err = sim.GoByRequestUnjail(csi, owner)
+	receipts, err = sim.GoByRequestUnjail(csi, owner)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckUnjailingPRep(prep))
 
@@ -323,9 +322,9 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 
 	// RequestUnjail
 	csi = NewConsensusInfoBySim(sim)
-	rcpt, err = sim.GoByRequestUnjail(csi, owner)
+	receipts, err = sim.GoByRequestUnjail(csi, owner)
 	assert.NoError(t, err)
-	assert.True(t, CheckReceiptSuccess(rcpt))
+	assert.True(t, CheckReceiptSuccess(receipts[1]))
 
 	prep = sim.GetPRep(owner)
 	assert.True(t, CheckUnjailingPRep(prep))
