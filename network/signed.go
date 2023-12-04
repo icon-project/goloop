@@ -14,12 +14,27 @@ type Signed[T any] struct {
 }
 
 func (s *Signed[T]) MarshalBinary() (data []byte, err error) {
-	return codec.BC.MarshalToBytes(s)
+	v := struct {
+		Message   T
+		Signature []byte
+	}{
+		Message:   s.Message,
+		Signature: s.Signature,
+	}
+	return codec.BC.MarshalToBytes(v)
 }
 
 func (s *Signed[T]) UnmarshalBinary(data []byte) error {
-	_, err := codec.BC.UnmarshalFromBytes(data, s)
-	return err
+	v := struct {
+		Message   T
+		Signature []byte
+	}{}
+	if _, err := codec.BC.UnmarshalFromBytes(data, &v); err != nil {
+		return err
+	}
+	s.Message = v.Message
+	s.Signature = v.Signature
+	return nil
 }
 
 func (s *Signed[T]) MessageHash() ([]byte, error) {

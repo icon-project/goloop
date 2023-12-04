@@ -14,12 +14,27 @@ type MultiSigned[T any] struct {
 }
 
 func (s *MultiSigned[T]) MarshalBinary() (data []byte, err error) {
-	return codec.BC.MarshalToBytes(s)
+	v := struct {
+		Message    T
+		Signatures [][]byte
+	}{
+		Message:    s.Message,
+		Signatures: s.Signatures,
+	}
+	return codec.BC.MarshalToBytes(v)
 }
 
 func (s *MultiSigned[T]) UnmarshalBinary(data []byte) error {
-	_, err := codec.BC.UnmarshalFromBytes(data, s)
-	return err
+	v := struct {
+		Message    T
+		Signatures [][]byte
+	}{}
+	if _, err := codec.BC.UnmarshalFromBytes(data, &v); err != nil {
+		return err
+	}
+	s.Message = v.Message
+	s.Signatures = v.Signatures
+	return nil
 }
 
 func (s *MultiSigned[T]) MessageHash() ([]byte, error) {
