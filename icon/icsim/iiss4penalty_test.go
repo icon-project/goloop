@@ -397,6 +397,17 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	bh := int64(500)
 	prep = sim.GetPRepByOwner(owner)
 	node := prep.NodeAddress()
+	oldTotalSupply := sim.TotalSupply()
+	ass := sim.GetAccountSnapshot(bonders[0])
+	oldBondedSum := new(big.Int)
+	oldBondeds := make([]*big.Int, 0, 1)
+	for _, bond := range ass.Bonds() {
+		if owner.Equal(bond.Address) {
+			oldBondedSum.Add(oldBondedSum, bond.Amount())
+			oldBondeds = append(oldBondeds, bond.Amount())
+		}
+	}
+
 	receipts, err = sim.GoByHandleDoubleSignReport(
 		csi, state.SystemAddress, module.DSTVote, bh, node)
 	assert.NoError(t, err)
@@ -406,4 +417,22 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	prep = sim.GetPRepByOwner(owner)
 	assert.True(t, CheckPenalizedPRep(prep))
 	assert.False(t, prep.IsDoubleSignReportable(nil, sim.BlockHeight()))
+
+	slashedSum := new(big.Int)
+	rate, err = sim.GetSlashingRate(icmodule.PenaltyDoubleSign)
+	if rate > 0 {
+		assert.NoError(t, err)
+		ass = sim.GetAccountSnapshot(bonders[0])
+		i := 0
+		for _, bond := range ass.Bonds() {
+			if owner.Equal(bond.Address) {
+				oldBonded = oldBondeds[i]
+				slashed = new(big.Int).Sub(oldBonded, bond.Amount())
+				assert.Zero(t, slashed.Cmp(rate.MulBigInt(oldBonded)))
+				slashedSum.Add(slashedSum, slashed)
+				i++
+			}
+		}
+		assert.Zero(t, sim.TotalSupply().Cmp(new(big.Int).Sub(oldTotalSupply, slashedSum)))
+	}
 }
