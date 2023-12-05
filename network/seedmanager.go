@@ -3,6 +3,8 @@ package network
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
+	"fmt"
 	"sync"
 	"time"
 
@@ -47,6 +49,19 @@ func (sr *SeedRequest) Equal(v *SeedRequest) bool {
 		sr.Height == v.Height
 }
 
+func (sr SeedRequest) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "SR{Type:%v,Issuer:%v,NetAddress:%v,Height:%v}",
+			sr.Type, hex.EncodeToString(sr.Issuer), sr.NetAddress, sr.Height)
+	case 's':
+		fmt.Fprintf(f, "{Type:%v,Issuer:%v,NetAddress:%v,Height:%v}",
+			sr.Type, hex.EncodeToString(sr.Issuer), sr.NetAddress, sr.Height)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
+}
+
 // SeedVerificationRequest is used for short-term-seed authorization request by seed
 type SeedVerificationRequest struct {
 	SR *Signed[SeedRequest]
@@ -66,6 +81,17 @@ func (svr *SeedVerificationRequest) Height() int64 {
 
 func (svr *SeedVerificationRequest) Equal(v *SeedVerificationRequest) bool {
 	return bytes.Equal(svr.SR.Signature, v.SR.Signature)
+}
+
+func (svr SeedVerificationRequest) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "SVR{SR:%v}", svr.SR)
+	case 's':
+		fmt.Fprintf(f, "{SR:%s}", svr.SR)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
 }
 
 // SeedVerificationPart is used for authorization response of SeedVerificationRequest by validator.
@@ -93,6 +119,17 @@ func (svp *SeedVerificationPart) IsExpire(height int64) bool {
 func (svp *SeedVerificationPart) Equal(v *SeedVerificationPart) bool {
 	return bytes.Equal(svp.SVR.Signature, v.SVR.Signature) &&
 		svp.Expire == v.Expire
+}
+
+func (svp SeedVerificationPart) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "SVP{SVR:%v,Expire:%v}", svp.SVR, svp.Expire)
+	case 's':
+		fmt.Fprintf(f, "{SVR:%s,Expire:%v}", svp.SVR, svp.Expire)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
 }
 
 type SeedVerification struct {

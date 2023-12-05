@@ -1,6 +1,9 @@
 package network
 
 import (
+	"encoding/hex"
+	"fmt"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -11,6 +14,7 @@ import (
 type Signed[T any] struct {
 	Message   T
 	Signature []byte
+	signer    module.PeerID
 }
 
 func (s *Signed[T]) MarshalBinary() (data []byte, err error) {
@@ -58,7 +62,9 @@ func (s *Signed[T]) Recover() (module.PeerID, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewPeerIDFromAddress(common.NewAccountAddressFromPublicKey(pubk)), nil
+	signer := NewPeerIDFromAddress(common.NewAccountAddressFromPublicKey(pubk))
+	s.signer = signer
+	return signer, nil
 }
 
 func (s *Signed[T]) Sign(w module.Wallet) error {
@@ -71,7 +77,25 @@ func (s *Signed[T]) Sign(w module.Wallet) error {
 		return err
 	}
 	s.Signature = signature
+	s.signer = NewPeerIDFromAddress(w.Address())
 	return nil
+}
+
+func (s *Signed[T]) Signer() module.PeerID {
+	return s.signer
+}
+
+func (s *Signed[T]) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "Signed{Message:%v,Signature:%s,Signer:%v}",
+			s.Message, hex.EncodeToString(s.Signature), s.signer)
+	case 's':
+		fmt.Fprintf(f, "{Message:%v,Signature:%s,Signer:%v}",
+			s.Message, hex.EncodeToString(s.Signature), s.signer)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
 }
 
 func NewSignedFromBytes[T any](b []byte) (*Signed[T], module.PeerID, error) {

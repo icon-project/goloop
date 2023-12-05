@@ -1,6 +1,9 @@
 package network
 
 import (
+	"encoding/hex"
+	"fmt"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -11,6 +14,7 @@ import (
 type MultiSigned[T any] struct {
 	Message    T
 	Signatures [][]byte
+	signers    []module.PeerID
 }
 
 func (s *MultiSigned[T]) MarshalBinary() (data []byte, err error) {
@@ -64,6 +68,7 @@ func (s *MultiSigned[T]) Recover() ([]module.PeerID, error) {
 		}
 		signers = append(signers, NewPeerIDFromAddress(common.NewAccountAddressFromPublicKey(pubk)))
 	}
+	s.signers = signers
 	return signers, nil
 }
 
@@ -77,7 +82,29 @@ func (s *MultiSigned[T]) Sign(w module.Wallet) error {
 		return err
 	}
 	s.Signatures = append(s.Signatures, signature)
+	s.signers = append(s.signers, NewPeerIDFromAddress(w.Address()))
 	return nil
+}
+
+func (s *MultiSigned[T]) Signers() []module.PeerID {
+	return s.signers[:]
+}
+
+func (s MultiSigned[T]) Format(f fmt.State, verb rune) {
+	var signatures []string
+	for _, signature := range s.Signatures {
+		signatures = append(signatures, hex.EncodeToString(signature))
+	}
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "MultiSigned{Message:%v,Signatures:%v,Signers:%v}",
+			s.Message, signatures, s.signers)
+	case 's':
+		fmt.Fprintf(f, "Signed{Message:%v,Signatures:%v,Signers:%v}",
+			s.Message, signatures, s.signers)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
 }
 
 func NewMultiSignedFromBytes[T any](b []byte) (*MultiSigned[T], []module.PeerID, error) {

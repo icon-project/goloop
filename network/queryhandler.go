@@ -70,6 +70,17 @@ type RttMessage struct {
 	Average time.Duration
 }
 
+func (rm RttMessage) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "RttMessage{Last:%v,Average:%v}", rm.Last, rm.Average)
+	case 's':
+		fmt.Fprintf(f, "{Last:%v,Average:%v}", rm.Last, rm.Average)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
+}
+
 func (h *queryHandler) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: h.self.Role()}
 	pkt := newPacket(p2pProtoControl, p2pProtoQueryReq, h.mc.encode(m), h.self.ID())

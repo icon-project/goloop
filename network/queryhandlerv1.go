@@ -1,6 +1,7 @@
 package network
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -28,14 +29,47 @@ type QueryItem struct {
 	Version int64
 }
 
+func (qi QueryItem) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "QueryItem{ID:%v,Version:%v}", qi.ID, qi.Version)
+	case 's':
+		fmt.Fprintf(f, "{ID:%v,Version:%v}", qi.ID, qi.Version)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
+}
+
 type QueryResultItem struct {
 	ID     QueryItemID
 	Error  errors.Code
 	Result []byte
 }
 
+func (qri QueryResultItem) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "QueryResultItem{ID:%v,Error:%v,Result:%v}", qri.ID, qri.Error, hex.EncodeToString(qri.Result))
+	case 's':
+		fmt.Fprintf(f, "{ID:%v,Error:%v,Result:%v}", qri.ID, qri.Error, hex.EncodeToString(qri.Result))
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
+}
+
 type QueryErrorResult struct {
 	Message string
+}
+
+func (qer QueryErrorResult) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "QueryErrorResult{Message:%v}", qer.Message)
+	case 's':
+		fmt.Fprintf(f, "{Message:%v}", qer.Message)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
 }
 
 type QueryMessageV1 struct {
@@ -44,15 +78,48 @@ type QueryMessageV1 struct {
 	Items []QueryItem
 }
 
+func (qm QueryMessageV1) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "QueryMessageV1{Role:%v,RTT:%v,Items:%v}", qm.Role, qm.RTT, qm.Items)
+	case 's':
+		fmt.Fprintf(f, "{Role:%s,RTT:%s,Items:%s}", qm.Role, qm.RTT, qm.Items)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
+}
+
 type QueryResultMessageV1 struct {
 	Role        RoleSync
 	RTT         RttMessage
 	ResultItems []QueryResultItem
 }
 
+func (qrm QueryResultMessageV1) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "QueryResultMessageV1{Role:%v,RTT:%v,ResultItems:%v}", qrm.Role, qrm.RTT, qrm.ResultItems)
+	case 's':
+		fmt.Fprintf(f, "{Role:%s,RTT:%s,ResultItems:%s}", qrm.Role, qrm.RTT, qrm.ResultItems)
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
+}
+
 type RoleSync struct {
 	Role  PeerRoleFlag
 	Proof []byte
+}
+
+func (rs RoleSync) Format(f fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		fmt.Fprintf(f, "RoleSync{Role:%v,Proof:%v}", rs.Role, hex.EncodeToString(rs.Proof))
+	case 's':
+		fmt.Fprintf(f, "{Role:%v,Proof:%v}", rs.Role, hex.EncodeToString(rs.Proof))
+	default:
+		panic(fmt.Sprintf("UknownRune(rune=%c)", verb))
+	}
 }
 
 type QueryItemID int
