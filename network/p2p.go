@@ -113,7 +113,6 @@ type messageCodec interface {
 }
 
 func newPeerToPeer(channel string, self *Peer, d *Dialer, sm *SeedManager, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
-	rr := newRoleResolver(self, l)
 	rh := newRTTHandler(l)
 	p2p := &PeerToPeer{
 		peerHandler: newPeerHandler(
@@ -129,15 +128,15 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, sm *SeedManager, mtr *
 		//
 		self: self,
 		//
-		rr: rr,
 		rh: rh,
 		//
 		mtr: mtr,
 	}
+	p2p.rr = newRoleResolver(self, p2p.onAllowedPeerIDSetUpdate, l)
 	p2p.pm = newPeerManager(p2p, self, p2p.onEvent, p2p._onClose, l)
 	p2p.as = newAddressSyncer(d, p2p.pm, l)
-	p2p.qh = newQueryHandler(p2p, self, p2p.pm, rr, p2p.as, rh, l)
-	p2p.qhv1 = newQueryHandlerV1(p2p, self, p2p.pm, rr, p2p.as, rh, sm, l)
+	p2p.qh = newQueryHandler(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, l)
+	p2p.qhv1 = newQueryHandlerV1(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, p2p.sm, l)
 	return p2p
 }
 
@@ -399,9 +398,7 @@ func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
 }
 
 func (p2p *PeerToPeer) updateAllowed(version int64, r PeerRoleFlag, peers ...module.PeerID) {
-	if p2p.rr.updateAllowed(version, r, peers...) {
-		p2p.onAllowedPeerIDSetUpdate(p2p.rr.getAllowed(r), r)
-	}
+	p2p.rr.updateAllowed(version, r, peers...)
 }
 
 func (p2p *PeerToPeer) onAllowedPeerIDSetUpdate(s *PeerIDSet, r PeerRoleFlag) {

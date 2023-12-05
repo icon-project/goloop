@@ -13,11 +13,13 @@ type roleResolver struct {
 	allowedSeeds *PeerIDSet
 	allowedPeers *PeerIDSet
 
+	onAllowedUpdateCb func(*PeerIDSet)
+
 	l log.Logger
 }
 
-func newRoleResolver(self *Peer, l log.Logger) *roleResolver {
-	return &roleResolver{
+func newRoleResolver(self *Peer, onAllowedUpdateCb func(*PeerIDSet, PeerRoleFlag), l log.Logger) *roleResolver {
+	rr := &roleResolver{
 		self:         self,
 		trustSeeds:   NewNetAddressSet(),
 		allowedRoots: NewPeerIDSet(),
@@ -25,6 +27,16 @@ func newRoleResolver(self *Peer, l log.Logger) *roleResolver {
 		allowedPeers: NewPeerIDSet(),
 		l:            l,
 	}
+	rr.allowedRoots.onUpdate = func(s *PeerIDSet) {
+		onAllowedUpdateCb(s, p2pRoleRoot)
+	}
+	rr.allowedSeeds.onUpdate = func(s *PeerIDSet) {
+		onAllowedUpdateCb(s, p2pRoleSeed)
+	}
+	rr.allowedPeers.onUpdate = func(s *PeerIDSet) {
+		onAllowedUpdateCb(s, p2pRoleNone)
+	}
+	return rr
 }
 
 func (rr *roleResolver) onPeer(p *Peer) {
@@ -102,6 +114,7 @@ func (rr *roleResolver) updateAllowed(version int64, r PeerRoleFlag, peers ...mo
 	s := rr.getAllowed(r)
 	if s.version < version {
 		s.version = version
+		rr.l.Debugf("updateAllowed version:%v r:%v peers:%v", version, r, peers)
 		return s.ClearAndAdd(peers...)
 	} else {
 		rr.l.Debugln("SetRole", "ignore", version, "must greater than", s.version)
