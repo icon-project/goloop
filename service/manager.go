@@ -948,3 +948,11 @@ func (m *manager) SendDoubleSignReport(result []byte, vh []byte, data []module.D
 	}
 	return m.dsm.Add(data, ctx)
 }
+
+func (m *manager) SeedState(result []byte) (module.SeedState, error) {
+	ws, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return nil, err
+	}
+	return m.plt.NewSeedState(ws)
+}

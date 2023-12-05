@@ -144,6 +144,7 @@ const (
 	SeedRoleAuthorizationPolicyByState SeedRoleAuthorizationPolicy = 1 << iota
 	SeedRoleAuthorizationPolicyByAuthorizer
 	SeedRoleAuthorizationPolicyByValidatorVotes
+	SeedRoleAuthorizationPolicyReserved
 )
 
 func (p *SeedRoleAuthorizationPolicy) Set(v SeedRoleAuthorizationPolicy, enable bool) {

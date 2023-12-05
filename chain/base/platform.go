@@ -44,6 +44,7 @@ type Platform interface {
 	NewConsensus(c Chain, walDir string) (module.Consensus, error)
 	CommitVoteSetDecoder() module.CommitVoteSetDecoder
 	Term()
+	NewSeedState(wc state.WorldSnapshot) (module.SeedState, error)
 }
 
 type ExecutionResult interface {

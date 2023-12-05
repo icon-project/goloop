@@ -589,8 +589,7 @@ func (s *SeedManager) Start() error {
 	}
 	s.w = s.c.Wallet()
 	bm := s.c.BlockManager()
-	//TODO module.SeedStateSupply : Chain or ServiceManager
-	sss := s.c.ServiceManager().(module.SeedStateSupply)
+	sss := s.c.ServiceManager()
 
 	blk, err := bm.GetLastBlock()
 	if err != nil {
