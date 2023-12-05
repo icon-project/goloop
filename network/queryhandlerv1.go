@@ -45,9 +45,9 @@ type QueryMessageV1 struct {
 }
 
 type QueryResultMessageV1 struct {
-	Role  RoleSync
-	RTT   RttMessage
-	Items []QueryResultItem
+	Role        RoleSync
+	RTT         RttMessage
+	ResultItems []QueryResultItem
 }
 
 type RoleSync struct {
@@ -162,11 +162,12 @@ func (h *queryHandlerV1) handleQuery(pkt *Packet, p *Peer) {
 		h.l.Infoln("handleQuery", err, p)
 		return
 	}
-	h.l.Traceln("hanqdleQuery", qm, p)
+	h.l.Traceln("handleQuery", qm, p)
 
 	if qm.Role.Role.Has(p2pRoleSeed) && len(qm.Role.Proof) > 0 {
-		err = h.sm.handleSV(qm.Role.Proof, p.ID())
-		h.l.Infoln("handleQuery", "invalid role proof", err, p)
+		if err = h.sm.handleSV(qm.Role.Proof, p.ID()); err != nil {
+			h.l.Infoln("handleQuery", "invalid role proof", err, p)
+		}
 	}
 	rr := h.rr.resolveRole(qm.Role.Role, p.ID(), true)
 	if rr != qm.Role.Role {
@@ -220,7 +221,7 @@ func (h *queryHandlerV1) handleQuery(pkt *Packet, p *Peer) {
 			}
 		}
 		qri.Result = h.mc.encode(result)
-		qrm.Items = append(qrm.Items, qri)
+		qrm.ResultItems = append(qrm.ResultItems, qri)
 	}
 
 	rpkt := newPacket(p2pProtoControlV1, p2pProtoQueryRespV1, h.mc.encode(qrm), id)
@@ -273,8 +274,9 @@ func (h *queryHandlerV1) handleQueryResult(pkt *Packet, p *Peer) {
 	h.rh.stopRtt(p)
 	h.rh.checkAccuracy(p, qrm.RTT.Last)
 	if qrm.Role.Role.Has(p2pRoleSeed) && len(qrm.Role.Proof) > 0 {
-		err = h.sm.handleSV(qrm.Role.Proof, p.ID())
-		h.l.Infoln("handleQueryResult", "invalid role proof", err, p)
+		if err = h.sm.handleSV(qrm.Role.Proof, p.ID()); err != nil {
+			h.l.Infoln("handleQueryResult", "invalid role proof", err, p)
+		}
 	}
 	rr := h.rr.resolveRole(qrm.Role.Role, p.ID(), true)
 	if rr != qrm.Role.Role {
@@ -294,7 +296,7 @@ func (h *queryHandlerV1) handleQueryResult(pkt *Packet, p *Peer) {
 	}
 
 	r := h.self.Role()
-	for _, qri := range qrm.Items {
+	for _, qri := range qrm.ResultItems {
 		if qri.Error != errors.Success {
 			qer := QueryErrorResult{}
 			if err = h.mc.decode(qri.Result, &qer); err != nil {

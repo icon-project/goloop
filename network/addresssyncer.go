@@ -117,7 +117,8 @@ func (as *addressSyncer) _dial(na NetAddress) error {
 func (as *addressSyncer) dial(r PeerRoleFlag) int {
 	s := as.m[r]
 	n := 0
-	for _, na := range s.Array() {
+	arr := s.Array()
+	for _, na := range arr {
 		if !as.pm.hasNetAddress(na) {
 			as.l.Debugf("dial to role:%v %v", r, na)
 			if err := as._dial(na); err != nil {

@@ -53,7 +53,7 @@ func (s *MultiSigned[T]) Recover() ([]module.PeerID, error) {
 	var (
 		sig     *crypto.Signature
 		pubk    *crypto.PublicKey
-		singers []module.PeerID
+		signers []module.PeerID
 	)
 	for _, signature := range s.Signatures {
 		if sig, err = crypto.ParseSignature(signature); err != nil {
@@ -62,9 +62,9 @@ func (s *MultiSigned[T]) Recover() ([]module.PeerID, error) {
 		if pubk, err = sig.RecoverPublicKey(h); err != nil {
 			return nil, err
 		}
-		singers = append(singers, NewPeerIDFromAddress(common.NewAccountAddressFromPublicKey(pubk)))
+		signers = append(signers, NewPeerIDFromAddress(common.NewAccountAddressFromPublicKey(pubk)))
 	}
-	return singers, nil
+	return signers, nil
 }
 
 func (s *MultiSigned[T]) Sign(w module.Wallet) error {
