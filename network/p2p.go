@@ -1018,7 +1018,7 @@ func (p2p *PeerToPeer) discoverParents(pr PeerRoleFlag) (complete bool) {
 
 func (p2p *PeerToPeer) discoverUncles(ur PeerRoleFlag) (complete bool) {
 	hasRole := PeerPredicates.HasRole(ur)
-	ps := p2p.pm.findPeers(hasRole, p2pConnTypeUncle)
+	ps := p2p.pm.findPeers(hasRole.Not(), p2pConnTypeUncle)
 	for _, p := range ps {
 		if !(ur == p2pRoleSeed && p2p.rr.isTrustSeed(p)) {
 			p2p.logger.Debugln("discoverUncles", "not allowed connection", p.id)
