@@ -137,6 +137,9 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, sm *SeedManager, mtr *
 	p2p.as = newAddressSyncer(d, p2p.pm, l)
 	p2p.qh = newQueryHandler(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, l)
 	p2p.qhv1 = newQueryHandlerV1(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, p2p.sm, l)
+
+	p2p.onPacketCbFuncs[p2pProtoControl.Uint16()] = p2p.onCtrPacket
+	p2p.onPacketCbFuncs[p2pProtoControlV1.Uint16()] = p2p.onCtrPacketV1
 	return p2p
 }
 
@@ -310,6 +313,26 @@ func (p2p *PeerToPeer) _onClose(p *Peer, removed bool) {
 }
 
 //callback from Peer.receiveRoutine
+func (p2p *PeerToPeer) onCtrPacket(pkt *Packet, p *Peer) {
+	handled := p2p.pm.onPacket(pkt, p)
+	if !handled {
+		handled = p2p.qh.onPacket(pkt, p)
+	}
+	if !handled {
+		p.CloseByError(ErrNotRegisteredProtocol)
+	}
+}
+
+func (p2p *PeerToPeer) onCtrPacketV1(pkt *Packet, p *Peer) {
+	handled := p2p.pm.onPacket(pkt, p)
+	if !handled {
+		handled = p2p.qhv1.onPacket(pkt, p)
+	}
+	if !handled {
+		p.CloseByError(ErrNotRegisteredProtocol)
+	}
+}
+
 func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 	//if !p2p.IsStarted() {
 	//	return
@@ -319,69 +342,42 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		p.CloseByError(ErrNotRegisteredProtocol)
 		return
 	}
-	if pkt.protocol.ID() == module.ProtoP2P.ID() {
-		switch pkt.protocol {
-		case p2pProtoControl:
-			handled := p2p.pm.onPacket(pkt, p)
-			if !handled {
-				handled = p2p.qh.onPacket(pkt, p)
+	if pkt.protocol.ID() != module.ProtoP2P.ID() && p.ConnType() == p2pConnTypeNone {
+		p2p.logger.Infoln("onPacket", "Drop, undetermined PeerConnectionType", pkt.protocol, pkt.subProtocol)
+		return
+	}
+
+	if p2p.ID().Equal(pkt.src) {
+		p2p.logger.Infoln("onPacket", "Drop, Invalid self-src", pkt.src, pkt.protocol, pkt.subProtocol)
+		return
+	}
+
+	isSourcePeer := p.ID().Equal(pkt.src)
+	isOneHop := pkt.ttl != 0 || pkt.dest == p2pDestPeer
+	if isOneHop && !isSourcePeer {
+		p2p.logger.Infoln("onPacket", "Drop, Invalid 1hop-src:", pkt.src, ",expected:", p.ID(), pkt.protocol, pkt.subProtocol)
+		return
+	}
+
+	isBroadcast := pkt.dest == p2pDestAny && pkt.ttl == 0
+	if isBroadcast && isSourcePeer && !p.HasRole(p2pRoleRoot) {
+		p2p.logger.Infoln("onPacket", "Drop, Not authorized", p.ID(), pkt.protocol, pkt.subProtocol)
+		return
+	}
+
+	if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
+		if isOneHop {
+			cbFunc(pkt, p)
+		} else {
+			if !p2p.packetPool.PutWith(pkt, func(packet *Packet) {
+				cbFunc(packet, p)
+			}) {
+				p2p.logger.Traceln("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.ID())
 			}
-			if !handled {
-				p.CloseByError(ErrNotRegisteredProtocol)
-			}
-		case p2pProtoControlV1:
-			handled := p2p.pm.onPacket(pkt, p)
-			if !handled {
-				handled = p2p.qhv1.onPacket(pkt, p)
-			}
-			if !handled {
-				p.CloseByError(ErrNotRegisteredProtocol)
-			}
-		default:
-			//cannot be reached
-			p2p.logger.Infoln("onPacket", "Close, not supported p2p control protocol", pkt.protocol, pkt.subProtocol)
-			p.CloseByError(ErrNotRegisteredProtocol)
-			return
 		}
 	} else {
-		if p.ConnType() == p2pConnTypeNone {
-			p2p.logger.Infoln("onPacket", "Drop, undetermined PeerConnectionType", pkt.protocol, pkt.subProtocol)
-			return
-		}
-
-		if p2p.ID().Equal(pkt.src) {
-			p2p.logger.Infoln("onPacket", "Drop, Invalid self-src", pkt.src, pkt.protocol, pkt.subProtocol)
-			return
-		}
-
-		isSourcePeer := p.ID().Equal(pkt.src)
-		isOneHop := pkt.ttl != 0 || pkt.dest == p2pDestPeer
-		if isOneHop && !isSourcePeer {
-			p2p.logger.Infoln("onPacket", "Drop, Invalid 1hop-src:", pkt.src, ",expected:", p.ID(), pkt.protocol, pkt.subProtocol)
-			return
-		}
-
-		isBroadcast := pkt.dest == p2pDestAny && pkt.ttl == 0
-		if isBroadcast && isSourcePeer && !p.HasRole(p2pRoleRoot) {
-			p2p.logger.Infoln("onPacket", "Drop, Not authorized", p.ID(), pkt.protocol, pkt.subProtocol)
-			return
-		}
-
-		if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
-			if isOneHop {
-				cbFunc(pkt, p)
-			} else {
-				if !p2p.packetPool.PutWith(pkt, func(packet *Packet) {
-					cbFunc(packet, p)
-				}) {
-					p2p.logger.Traceln("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.ID())
-				}
-			}
-		} else {
-			//cannot be reached
-			p2p.logger.Infoln("onPacket", "Close, not exists callback function", p.ID(), pkt.protocol, pkt.subProtocol)
-			p.CloseByError(ErrNotRegisteredProtocol)
-		}
+		p2p.logger.Infoln("onPacket", "Close, not exists callback function", p.ID(), pkt.protocol, pkt.subProtocol)
+		p.CloseByError(ErrNotRegisteredProtocol)
 	}
 }
 
