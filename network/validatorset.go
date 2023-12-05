@@ -15,7 +15,6 @@ type ValidatorSet struct {
 	height int64
 }
 
-//TODO temporary
 func (s *ValidatorSet) Get(i int) module.PeerID {
 	if s == nil || i < 0 || len(s.l) <= i {
 		return nil
@@ -158,8 +157,9 @@ func (c *ValidatorSetCache) _first() *ValidatorSet {
 func (c *ValidatorSetCache) Update(v *ValidatorSet) bool {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
+	updated := !c._last().Equal(v)
 	c._add(v)
-	return c._last().Equal(v)
+	return updated
 }
 
 func (c *ValidatorSetCache) Last() *ValidatorSet {
