@@ -49,7 +49,7 @@ func (sr *SeedRequest) Equal(v *SeedRequest) bool {
 
 // SeedVerificationRequest is used for short-term-seed authorization request by seed
 type SeedVerificationRequest struct {
-	SR Signed[SeedRequest]
+	SR *Signed[SeedRequest]
 }
 
 func (svr *SeedVerificationRequest) SRType() SRType {
@@ -70,7 +70,7 @@ func (svr *SeedVerificationRequest) Equal(v *SeedVerificationRequest) bool {
 
 // SeedVerificationPart is used for authorization response of SeedVerificationRequest by validator.
 type SeedVerificationPart struct {
-	SVR    Signed[SeedVerificationRequest]
+	SVR    *Signed[SeedVerificationRequest]
 	Expire int64
 }
 
@@ -420,15 +420,21 @@ func (s *SeedManager) onBlockUpdate(blk module.Block) error {
 	}
 	if s.srTimer == nil {
 		//TODO [TBD] SR duplication
-		sv := &SeedVerification{}
+		sv := &SeedVerification{
+			MultiSigned: MultiSigned[SeedVerificationPart]{
+				Message: SeedVerificationPart{
+					SVR: &Signed[SeedVerificationRequest]{},
+				},
+			},
+		}
 		sr, err := s.newSR(height, srap)
 		if err != nil {
 			return err
 		}
-		sv.Message.SVR.Message.SR = *sr
+		sv.Message.SVR.Message.SR = sr
 		s.svBuf[height] = sv
-			svr := &sv.Message.SVR
 		if _, ok := s.svMap[s.id]; ok {
+			svr := sv.Message.SVR
 			if err = svr.Sign(s.w); err != nil {
 				return errors.Wrapf(err, "fail to SVR.Sign err:%v", err)
 			}
@@ -474,7 +480,7 @@ func (s *SeedManager) authorize(svr *Signed[SeedVerificationRequest], srSigner m
 	if !ok {
 		svp = &Signed[SeedVerificationPart]{
 			Message: SeedVerificationPart{
-				SVR:    *svr,
+				SVR:    svr,
 				Expire: s.vsp.Height() + s.seedState().Term(),
 			},
 		}
@@ -727,7 +733,7 @@ func (s *SeedManager) handleSR(pkt *Packet, p *Peer) error {
 	}
 
 	svr := &Signed[SeedVerificationRequest]{}
-	svr.Message.SR = *sr
+	svr.Message.SR = sr
 	if err = svr.Sign(s.w); err != nil {
 		return errors.Wrapf(err, "fail to SVR.Sign err:%v", err)
 	}
@@ -755,7 +761,7 @@ func (s *SeedManager) verifySVR(svr *Signed[SeedVerificationRequest], svrSigner 
 	if err != nil {
 		return nil, errors.Wrapf(err, "fail to SVR.SR.Recover err:%v", err)
 	}
-	if err = s.verifySR(&svr.Message.SR, srSigner, toAuthorize); err != nil {
+	if err = s.verifySR(svr.Message.SR, srSigner, toAuthorize); err != nil {
 		return nil, err
 	}
 	if !s.isSeed(svrSigner) {
@@ -805,7 +811,7 @@ func (s *SeedManager) verifySVP(svp *Signed[SeedVerificationPart], svpSigner mod
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "fail to SVP.SVR.Recover err:%v", err)
 	}
-	srSigner, err := s.verifySVR(&svp.Message.SVR, svrSigner, false)
+	srSigner, err := s.verifySVR(svp.Message.SVR, svrSigner, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -868,7 +874,7 @@ func (s *SeedManager) verifySV(sv *SeedVerification) (module.PeerID, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "fail to SV.SVR.Recover err:%v", err)
 	}
-	srSigner, err := s.verifySVR(&sv.Message.SVR, svrSigner, false)
+	srSigner, err := s.verifySVR(sv.Message.SVR, svrSigner, false)
 	if err != nil {
 		return nil, err
 	}
