@@ -138,8 +138,10 @@ type NetworkError interface {
 type SeedRoleAuthorizationPolicy int
 
 const (
-	SeedRoleAuthorizationPolicyNone SeedRoleAuthorizationPolicy = 1 << iota
-	SeedRoleAuthorizationPolicyByState
+	SeedRoleAuthorizationPolicyNone SeedRoleAuthorizationPolicy = 0
+)
+const (
+	SeedRoleAuthorizationPolicyByState SeedRoleAuthorizationPolicy = 1 << iota
 	SeedRoleAuthorizationPolicyByAuthorizer
 	SeedRoleAuthorizationPolicyByValidatorVotes
 )
