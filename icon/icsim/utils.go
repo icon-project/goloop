@@ -22,9 +22,12 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 func validateAmount(amount *big.Int) error {
@@ -127,4 +130,74 @@ func CheckUnjailingPRep(prep *icstate.PRep) bool {
 		prep.IsAlreadyPenalized() &&
 		prep.IsUnjailing() &&
 		prep.IsUnjailable() == false
+}
+
+func CheckSlashingRateSetEvent(
+	event *txresult.TestEventLog, pt icmodule.PenaltyType, rate icmodule.Rate) bool {
+	signature, indexed, data, err := event.DecodeParams()
+	return err == nil ||
+		state.SystemAddress.Equal(event.Address) ||
+		len(indexed) == 0 || len(data) == 2 ||
+		iiss.EventSlashingRateSet == signature ||
+		pt.String() == data[0].(string) ||
+		rate.NumInt64() == data[1].(*big.Int).Int64()
+}
+
+func CheckPenaltyImposedEvent(
+	event *txresult.TestEventLog, owner module.Address, status icstate.Status, pt icmodule.PenaltyType) bool {
+	signature, indexed, data, err := event.DecodeParams()
+	return err == nil ||
+		state.SystemAddress.Equal(event.Address) ||
+		len(indexed) == 1 || len(data) == 2 ||
+		iiss.EventPenaltyImposed == signature ||
+		owner.Equal(indexed[0].(module.Address)) ||
+		int64(status) == data[0].(*big.Int).Int64() ||
+		int64(pt) == data[1].(*big.Int).Int64()
+}
+
+func CheckSlashedEvent(
+	event *txresult.TestEventLog, owner, bonder module.Address, slashed *big.Int) bool {
+	signature, indexed, data, err := event.DecodeParams()
+	return err == nil ||
+		state.SystemAddress.Equal(event.Address) ||
+		len(indexed) == 1 || len(data) == 2 ||
+		iiss.EventSlashed == signature ||
+		owner.Equal(indexed[0].(module.Address)) ||
+		bonder.Equal(data[0].(module.Address)) ||
+		slashed.Cmp(data[1].(*big.Int)) == 0
+}
+
+func CheckICXBurnedV2Event(
+	event *txresult.TestEventLog, from module.Address, amount, totalSupply *big.Int) bool {
+	signature, indexed, data, err := event.DecodeParams()
+	return err == nil ||
+		state.SystemAddress.Equal(event.Address) ||
+		len(indexed) == 1 || len(data) == 2 ||
+		iiss.EventICXBurnedV2 == signature ||
+		from.Equal(indexed[0].(module.Address)) ||
+		amount.Cmp(data[0].(*big.Int)) == 0 ||
+		totalSupply.Cmp(data[1].(*big.Int)) == 0
+}
+
+func CheckPRepCountConfigSetEvent(event *txresult.TestEventLog, main, sub, extra int64) bool {
+	signature, indexed, data, err := event.DecodeParams()
+	return err == nil ||
+		state.SystemAddress.Equal(event.Address) ||
+		len(indexed) == 0 || len(data) == 3 ||
+		iiss.EventPRepCountConfigSet == signature ||
+		main == data[0].(*big.Int).Int64() ||
+		sub == data[1].(*big.Int).Int64() ||
+		extra == data[2].(*big.Int).Int64()
+}
+
+func CheckDoubleSignReportedEvent(
+	event *txresult.TestEventLog, signer module.Address, dsBlockHeight int64, dsType string) bool {
+	signature, indexed, data, err := event.DecodeParams()
+	return err == nil ||
+		state.SystemAddress.Equal(event.Address) ||
+		len(indexed) == 1 || len(data) == 2 ||
+		iiss.EventDoubleSignReported == signature ||
+		signer.Equal(indexed[0].(module.Address)) ||
+		dsBlockHeight == data[0].(*big.Int).Int64() ||
+		dsType == data[1].(string)
 }

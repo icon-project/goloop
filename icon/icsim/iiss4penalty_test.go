@@ -22,7 +22,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -81,25 +80,14 @@ func TestSimulatorImpl_SetSlashingRate(t *testing.T) {
 
 	// Check eventLogs for slashingRate
 	// There is no eventLog for ValidationFailurePenalty, as its rate is not changed
-	m := make(map[string]bool)
 	events := receipts[1].Events()
-	assert.Equal(t, 4, len(events))
-	for _, e := range events {
-		signature, indexed, data, err := e.DecodeParams()
-		assert.NoError(t, err)
-
-		assert.True(t, e.Address.Equal(state.SystemAddress))
-		assert.Equal(t, signature, iiss.EventSlashingRateSet)
-		assert.Zero(t, len(indexed))
-		assert.Equal(t, 2, len(data))
-
-		// duplicate eventLog check
-		penaltyName := data[0].(string)
-		assert.False(t, m[penaltyName])
-		m[penaltyName] = true
-
-		rate := icmodule.Rate(data[1].(*big.Int).Int64())
-		assert.Equal(t, expRates[penaltyName], rate)
+	for i, pt := range []icmodule.PenaltyType{
+		icmodule.PenaltyPRepDisqualification,
+		icmodule.PenaltyAccumulatedValidationFailure,
+		icmodule.PenaltyMissedNetworkProposalVote,
+		icmodule.PenaltyDoubleSign,
+	}{
+		assert.True(t, CheckSlashingRateSetEvent(events[i], pt, expRates[pt.String()]))
 	}
 }
 
@@ -364,38 +352,13 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	// Check the receipt of baseTx on imposing penalty
 	// PenaltyImposed, PenaltyImposed, Slashed, ICXBurnedV2
 	events = receipts[0].Events()
-	e := events[0]
-	signature, indexed, data, err := e.DecodeParams()
-	assert.NoError(t, err)
-	assert.Equal(t, iiss.EventPenaltyImposed, signature)
-	assert.True(t, owner.Equal(indexed[0].(*common.Address)))
-	assert.Equal(t, int64(icstate.Active), data[0].(*big.Int).Int64())
-	assert.Equal(t, int64(icmodule.PenaltyValidationFailure), data[1].(*big.Int).Int64())
-
-	e = events[1]
-	signature, indexed, data, err = e.DecodeParams()
-	assert.NoError(t, err)
-	assert.Equal(t, iiss.EventPenaltyImposed, signature)
-	assert.True(t, owner.Equal(indexed[0].(*common.Address)))
-	assert.Equal(t, int64(icstate.Active), data[0].(*big.Int).Int64())
-	assert.Equal(t, int64(icmodule.PenaltyAccumulatedValidationFailure), data[1].(*big.Int).Int64())
-
-	e = events[2]
+	assert.True(t, CheckPenaltyImposedEvent(
+		events[0], owner, icstate.Active, icmodule.PenaltyValidationFailure))
+	assert.True(t, CheckPenaltyImposedEvent(
+		events[1], owner, icstate.Active, icmodule.PenaltyAccumulatedValidationFailure))
 	bonders := sim.GetBonderList(owner)
-	signature, indexed, data, err = e.DecodeParams()
-	assert.NoError(t, err)
-	assert.Equal(t, iiss.EventSlashed, signature)
-	assert.True(t, owner.Equal(indexed[0].(*common.Address)))
-	assert.True(t, bonders[0].Equal(data[0].(module.Address)))
-	assert.Zero(t, slashed.Cmp(data[1].(*big.Int)))
-
-	e = events[3]
-	signature, indexed, data, err = e.DecodeParams()
-	assert.NoError(t, err)
-	assert.Equal(t, iiss.EventICXBurnedV2, signature)
-	assert.True(t, state.SystemAddress.Equal(indexed[0].(module.Address)))
-	assert.Zero(t, slashed.Cmp(data[0].(*big.Int)))
-	assert.Zero(t, sim.TotalSupply().Cmp(data[1].(*big.Int)))
+	assert.True(t, CheckSlashedEvent(events[2], owner, bonders[0], slashed))
+	assert.True(t, CheckICXBurnedV2Event(events[3], state.SystemAddress, slashed, sim.TotalSupply()))
 
 	// SetPRepCountConfig
 	receipts, err = sim.GoBySetPRepCountConfig(csi, gov, map[string]int64{"main": 19, "sub": 81, "extra": 9})
@@ -404,14 +367,7 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	assert.Equal(t, 25, len(sim.ValidatorList()))
 
 	events = receipts[1].Events()
-	e = events[0]
-	signature, indexed, data, err = e.DecodeParams()
-	assert.NoError(t, err)
-	assert.Equal(t, iiss.EventPRepCountConfigSet, signature)
-	assert.Zero(t, len(indexed))
-	assert.Equal(t, int64(19), data[0].(*big.Int).Int64())
-	assert.Equal(t, int64(81), data[1].(*big.Int).Int64())
-	assert.Equal(t, int64(9), data[2].(*big.Int).Int64())
+	assert.True(t, CheckPRepCountConfigSetEvent(events[0], 19, 81, 9))
 
 	assert.NoError(t, sim.GoToTermEnd(csi))
 
@@ -437,4 +393,17 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 		prep = sim.GetPRepByNode(v.Address())
 		assert.True(t, pssList[i].Owner().Equal(prep.Owner()))
 	}
+
+	bh := int64(500)
+	prep = sim.GetPRepByOwner(owner)
+	node := prep.NodeAddress()
+	receipts, err = sim.GoByHandleDoubleSignReport(
+		csi, state.SystemAddress, module.DSTVote, bh, node)
+	assert.NoError(t, err)
+	events = receipts[1].Events()
+	assert.True(t, CheckDoubleSignReportedEvent(events[0], node, bh, module.DSTVote))
+
+	prep = sim.GetPRepByOwner(owner)
+	assert.True(t, CheckPenalizedPRep(prep))
+	assert.False(t, prep.IsDoubleSignReportable(nil, sim.BlockHeight()))
 }
