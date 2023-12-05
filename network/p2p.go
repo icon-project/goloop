@@ -89,6 +89,7 @@ type PeerToPeer struct {
 	as   *addressSyncer
 	qh   *queryHandler
 	qhv1 *queryHandlerV1
+	sm   *SeedManager
 
 	//monitor
 	mtr *metric.NetworkMetric
@@ -112,7 +113,7 @@ type messageCodec interface {
 	decode([]byte, interface{}) error
 }
 
-func newPeerToPeer(channel string, self *Peer, d *Dialer, sm *SeedManager, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
+func newPeerToPeer(c module.Chain, channel string, self *Peer, d *Dialer, mtr *metric.NetworkMetric, l log.Logger) *PeerToPeer {
 	rh := newRTTHandler(l)
 	p2p := &PeerToPeer{
 		peerHandler: newPeerHandler(
@@ -136,6 +137,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, sm *SeedManager, mtr *
 	p2p.pm = newPeerManager(p2p, self, p2p.onEvent, p2p._onClose, l)
 	p2p.as = newAddressSyncer(d, p2p.pm, l)
 	p2p.qh = newQueryHandler(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, l)
+	p2p.sm = newSeedManager(c, self, p2p.pm, p2p.rr, p2p.Send, l)
 	p2p.qhv1 = newQueryHandlerV1(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, p2p.sm, l)
 
 	p2p.onPacketCbFuncs[p2pProtoControl.Uint16()] = p2p.onCtrPacket
@@ -150,12 +152,15 @@ func (p2p *PeerToPeer) IsStarted() bool {
 	return p2p.run
 }
 
-func (p2p *PeerToPeer) Start() {
+func (p2p *PeerToPeer) Start() error {
 	defer p2p.mtx.Unlock()
 	p2p.mtx.Lock()
 
 	if p2p.run {
-		return
+		return nil
+	}
+	if err := p2p.sm.Start(); err != nil {
+		return err
 	}
 	p2p.run = true
 	p2p.stopCh = make(chan bool)
@@ -163,6 +168,7 @@ func (p2p *PeerToPeer) Start() {
 	go p2p.sendRoutine()
 	go p2p.alternateSendRoutine()
 	go p2p.discoverRoutine()
+	return nil
 }
 
 func (p2p *PeerToPeer) Stop() {
@@ -174,6 +180,8 @@ func (p2p *PeerToPeer) Stop() {
 	}
 	p2p.logger.Debugln("Stop", "try close p2p.stopCh")
 	close(p2p.stopCh)
+
+	p2p.sm.Stop()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -327,6 +335,9 @@ func (p2p *PeerToPeer) onCtrPacketV1(pkt *Packet, p *Peer) {
 	handled := p2p.pm.onPacket(pkt, p)
 	if !handled {
 		handled = p2p.qhv1.onPacket(pkt, p)
+	}
+	if !handled {
+		handled = p2p.sm.onPacket(pkt, p)
 	}
 	if !handled {
 		p.CloseByError(ErrNotRegisteredProtocol)

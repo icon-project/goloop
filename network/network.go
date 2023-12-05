@@ -50,13 +50,12 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		netAddress: NetAddress(nt.Address()),
 		role:       NewPeerRoleFlag(roles...),
 	}
-	//TODO Chain.SeedRoleAuthorizationPolicy()
-	sm := newSeedManager(c, p, module.SeedRoleAuthorizationPolicyNone, m.logger)
+
 	m.p2p = newPeerToPeer(
+		c,
 		m.channel,
 		p,
 		m.t.GetDialer(m.channel),
-		sm,
 		m.mtr,
 		m.logger)
 

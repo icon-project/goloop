@@ -157,7 +157,7 @@ func (p SeedRoleAuthorizationPolicy) Enabled(v SeedRoleAuthorizationPolicy) bool
 }
 
 type SeedStateSupply interface {
-	SeedState(result []byte) SeedState
+	SeedState(result []byte) (SeedState, error)
 }
 
 type SeedState interface {
@@ -173,8 +173,4 @@ type SeedState interface {
 	IsCandidate(id PeerID) bool
 	// Term duration of seed role
 	Term() int64
-}
-
-type RouteResolver interface {
-	Resolve(id PeerID) (PeerID, int)
 }
