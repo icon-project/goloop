@@ -354,6 +354,9 @@ func onRevIISS4R1(s *chainScore, _, _ int) error {
 	if err := es.State.SetIISSVersion(icstate.IISSVersion4); err != nil {
 		return err
 	}
+	if err := es.State.SetConsistentValidationPenaltyCondition(3); err != nil {
+		return err
+	}
 
 	return nil
 }
