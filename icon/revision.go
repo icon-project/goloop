@@ -317,7 +317,6 @@ func onRevBlockAccounts2(s *chainScore, _, _ int) error {
 	return nil
 }
 
-// onRevision23 handles states in PreIISS4 phase
 func onRevIISS4R0(s *chainScore, rev, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
@@ -346,7 +345,6 @@ func onRevIISS4R0(s *chainScore, rev, _ int) error {
 	return nil
 }
 
-// onRevision24 handles states in IISS4 phase
 func onRevIISS4R1(s *chainScore, _, _ int) error {
 	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
 
