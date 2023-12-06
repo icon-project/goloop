@@ -107,7 +107,7 @@
 
 Returns the revision of the network.
 
-```python
+```
 def getRevision() -> int:
 ```
 
@@ -121,7 +121,7 @@ def getRevision() -> int:
 
 Returns the price of step in loop.
 
-```python
+```
 def getStepPrice() -> int:
 ```
 
@@ -135,7 +135,7 @@ def getStepPrice() -> int:
 
 Returns the step cost of given step type `type`.
 
-```python
+```
 def getStepCost(type: str) -> int:
 ```
 
@@ -155,7 +155,7 @@ def getStepCost(type: str) -> int:
 
 Returns the step costs of all step types.
 
-```python
+```
 def getStepCosts() -> dict:
 ```
 
@@ -169,7 +169,7 @@ def getStepCosts() -> dict:
 
 Returns the maximum value of step limit for the given `contextType`.
 
-```python
+```
 def getMaxStepLimit(contextType: str) -> int:
 ```
 
@@ -189,7 +189,7 @@ def getMaxStepLimit(contextType: str) -> int:
 
 Returns the status of the SCORE.
 
-```python
+```
 def getScoreStatus(address: Address) -> dict:
 ```
 
@@ -216,7 +216,7 @@ def getScoreStatus(address: Address) -> dict:
 
 Returns addresses of blocked SCOREs.
 
-```python
+```
 def getBlockedScores() -> List[Address]:
 ```
 
@@ -230,7 +230,7 @@ def getBlockedScores() -> List[Address]:
 
 Returns the owner of the SCORE.
 
-```python
+```
 def getScoreOwner(address: Address) -> Address:
 ```
 
@@ -250,7 +250,7 @@ def getScoreOwner(address: Address) -> Address:
 
 Returns whether it's blocked or not
 
-```python
+```
 def isBlocked(address: Address) -> bool:
 ```
 
@@ -270,7 +270,7 @@ def isBlocked(address: Address) -> bool:
 
 Updates the revision of the network. Governance only.
 
-```python
+```
 def setRevision(code: int) -> None:
 ```
 
@@ -282,7 +282,7 @@ def setRevision(code: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def RevisionSet(code: int) -> None:
 ```
@@ -297,7 +297,7 @@ def RevisionSet(code: int) -> None:
 
 Updates the price of step in loop. Governance only.
 
-```python
+```
 def setStepPrice(price: int) -> None:
 ```
 
@@ -309,7 +309,7 @@ def setStepPrice(price: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def StepPriceSet(price: int) -> None:
 ```
@@ -324,7 +324,7 @@ def StepPriceSet(price: int) -> None:
 
 Updates the step cost of given `type` step type. Governance only.
 
-```python
+```
 def setStepCost(type: str, cost: int) -> None:
 ```
 
@@ -337,7 +337,7 @@ def setStepCost(type: str, cost: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def StepCostSet(type: str, cost: int) -> None:
 ```
@@ -353,7 +353,7 @@ def StepCostSet(type: str, cost: int) -> None:
 
 Updates the maximum step limit of given `contextType`. Governance only.
 
-```python
+```
 def setMaxStepLimit(contextType: str, limit: int) -> None:
 ```
 
@@ -366,7 +366,7 @@ def setMaxStepLimit(contextType: str, limit: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def MaxStepLimitSet(contextType: str, limit: int) -> None:
 ```
@@ -382,7 +382,7 @@ def MaxStepLimitSet(contextType: str, limit: int) -> None:
 
 Disables the SCORE. Allowed only from the SCORE owner.
 
-```python
+```
 def disableScore(address: Address) -> None:
 ```
 
@@ -398,7 +398,7 @@ def disableScore(address: Address) -> None:
 
 Enables the SCORE. Allowed only from the SCORE owner.
 
-```python
+```
 def enableScore(address: Address) -> None:
 ```
 
@@ -414,7 +414,7 @@ def enableScore(address: Address) -> None:
 
 Blocks the SCORE. Governance only.
 
-```python
+```
 def blockScore(address: Address) -> None:
 ```
 
@@ -426,7 +426,7 @@ def blockScore(address: Address) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -442,7 +442,7 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 Unblocks the SCORE. Governance only.
 
-```python
+```
 def unblockScore(address: Address) -> None:
 ```
 
@@ -454,7 +454,7 @@ def unblockScore(address: Address) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -470,13 +470,13 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 Burns the balance of the sender. Set amount with `value` of `icx_sendTransaction`.
 
-```python
+```
 def burn() -> None:
 ```
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def ICXBurnedV2(address: Address, amount: int, total_supply: int) -> None:
 ```
@@ -495,7 +495,7 @@ Updates the owner of the SCORE. Allowed only from the SCORE owner.
 
 - Not allowed for blocked or disabled SCORE.
 
-```python
+```
 def setScoreOwner(score: Address, owner: Address) -> None:
 ```
 
@@ -514,7 +514,7 @@ It blocks the account (EoA). It's only for governance.
 If it's already blocked, then it ignores silently.
 Otherwise, it emit the event.
 
-```python
+```
 def blockAccount(address: Address) -> None:
 ```
 
@@ -526,7 +526,7 @@ def blockAccount(address: Address) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -539,7 +539,7 @@ It unblocks the account (EoA). It's only for governance.
 If it's already unblocked, then it silently ignores.
 Otherwise, it emit the event.
 
-```python
+```
 def unblockAccount(address: Address) -> None:
 ```
 
@@ -551,7 +551,7 @@ def unblockAccount(address: Address) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -566,7 +566,7 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 Returns the stake status of the given `address`.
 
-```python
+```
 def getStake(address: Address) -> dict:
 ```
 
@@ -589,7 +589,7 @@ def getStake(address: Address) -> dict:
 
 Returns the delegation status of the given `address`.
 
-```python
+```
 def getDelegation(address: Address) -> dict:
 ```
 
@@ -613,7 +613,7 @@ def getDelegation(address: Address) -> dict:
 
 Returns the bond status of the given `address`.
 
-```python
+```
 def getBond(address: Address) -> dict:
 ```
 
@@ -638,7 +638,7 @@ def getBond(address: Address) -> dict:
 
 Returns the amount of I-Score that `address` has received as a reward.
 
-```python
+```
 def queryIScore(address: Address) -> dict:
 ```
 
@@ -662,7 +662,7 @@ def queryIScore(address: Address) -> dict:
 
 Returns P-Rep register information of the given `address`.
 
-```python
+```
 def getPRep(address: Address) -> dict:
 ```
 
@@ -682,7 +682,7 @@ def getPRep(address: Address) -> dict:
 
 Returns the status of all registered P-Rep candidates in descending order by power amount.
 
-```python
+```
 def getPReps(startRanking: int, endRanking: int) -> dict:
 ```
 
@@ -709,7 +709,7 @@ def getPReps(startRanking: int, endRanking: int) -> dict:
 
 Returns the list of all Main P-Reps in descending order by power amount.
 
-```python
+```
 def getMainPReps() -> dict:
 ```
 
@@ -728,7 +728,7 @@ def getMainPReps() -> dict:
 
 Returns the list of all Sub P-Reps in descending order by power amount.
 
-```python
+```
 def getSubPReps() -> dict:
 ```
 
@@ -747,7 +747,7 @@ def getSubPReps() -> dict:
 
 Returns estimated unstake lock period.
 
-```python
+```
 def estimateUnstakeLockPeriod() -> dict:
 ```
 
@@ -763,7 +763,7 @@ def estimateUnstakeLockPeriod() -> dict:
 
 Returns information for the current term.
 
-```python
+```
 def getPRepTerm() -> dict:
 ```
 
@@ -796,7 +796,7 @@ def getPRepTerm() -> dict:
 
 Returns the list of allowed bonders for the given `address`.
 
-```python
+```
 def getBonderList(address: Address) -> dict:
 ```
 
@@ -818,7 +818,7 @@ def getBonderList(address: Address) -> dict:
 
 Returns the list of block validation statistics for all active PReps
 
-```python
+```
 def getPRepStats() -> dict:
 ```
 
@@ -835,7 +835,7 @@ def getPRepStats() -> dict:
 
 Returns the configuration and status of the network.
 
-```python
+```
 def getNetworkInfo() -> dict:
 ```
 
@@ -866,7 +866,7 @@ def getNetworkInfo() -> dict:
 
 Returns the list of network SCOREs
 
-```python
+```
 def getNetworkScores() -> dict:
 ```
 
@@ -882,7 +882,7 @@ def getNetworkScores() -> dict:
 
 Returns the list of block validation statistics for the given PRep
 
-```python
+```
 def getPRepStatsOf(address: Address) -> dict:
 ```
 
@@ -905,7 +905,7 @@ def getPRepStatsOf(address: Address) -> dict:
 
 Returns slashing rates for given `names`
 
-```python
+```
 def getSlashingRates(names: List[str]) -> dict:
 ```
 
@@ -927,7 +927,7 @@ def getSlashingRates(names: List[str]) -> dict:
 
 Returns the minimum bond amount required to earn the minimum wage
 
-```python
+```
 def getMinimumBond() -> int:
 ```
 
@@ -943,7 +943,7 @@ def getMinimumBond() -> int:
 
 Stakes some amount of ICX.
 
-```python
+```
 def setStake(value: int) -> None:
 ```
 
@@ -963,7 +963,7 @@ Delegates some amount of stake to P-Reps.
 - The transaction which has duplicated P-Rep addresses will be failed
 - This transaction overwrites the previous delegate information
 
-```python
+```
 def setDelegation(delegations: List[Vote]) -> None:
 ```
 
@@ -975,7 +975,7 @@ def setDelegation(delegations: List[Vote]) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def DelegationSet(address: Address, delegations: bytes) -> None:
 ```
@@ -995,7 +995,7 @@ Bonds some amount of stake to P-Reps.
 - The transaction which has duplicated P-Rep addresses will be failed
 - This transaction overwrites the previous bond information
 
-```python
+```
 def setBond(bonds: List[Vote]) -> None:
 ```
 
@@ -1007,7 +1007,7 @@ def setBond(bonds: List[Vote]) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def BondSet(address: Address, bonds: bytes) -> None:
 ```
@@ -1023,13 +1023,13 @@ def BondSet(address: Address, bonds: bytes) -> None:
 
 Claims the total reward that a ICONist has received.
 
-```python
+```
 def claimIScore() -> None:
 ```
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def IScoreClaimedV2(address: Address, iscore: int, icx: int) -> None:
 ```
@@ -1048,7 +1048,7 @@ Registers an ICONist as a P-Rep.
 
 - 2000 ICX are required as a registration fee
 
-```python
+```
 def registerPRep(name: str, email: str, website: str, country: str, city: str, details: str, p2pEndpoint: str,
                  nodeAddress: Address) -> None:
 ```
@@ -1068,7 +1068,7 @@ def registerPRep(name: str, email: str, website: str, country: str, city: str, d
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def PRepRegistered(address: Address) -> None:
 ```
@@ -1083,7 +1083,7 @@ def PRepRegistered(address: Address) -> None:
 
 Updates P-Rep's register information.
 
-```python
+```
 def setPRep(name: str, email: str, website: str, country: str, city: str, details: str, p2pEndpoint: str,
             nodeAddress: Address) -> None:
 ```
@@ -1103,7 +1103,7 @@ def setPRep(name: str, email: str, website: str, country: str, city: str, detail
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def PRepSet(address: Address) -> None:
 ```
@@ -1118,13 +1118,13 @@ def PRepSet(address: Address) -> None:
 
 Unregisters the P-Rep.
 
-```python
+```
 def unregisterPRep() -> None:
 ```
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def PRepUnregistered(address: Address) -> None:
 ```
@@ -1139,7 +1139,7 @@ def PRepUnregistered(address: Address) -> None:
 
 Disqualify the P-Rep. Governance Only.
 
-```python
+```
 def disqualifyPRep(address: Address) -> None:
 ```
 
@@ -1161,7 +1161,7 @@ Updates allowed bonder list of P-Rep.
 - Maximum number of allowed ICONist to bond is 10
 - This transaction overwrites the previous bonder list information
 
-```python
+```
 def setBonderList(bonderList: List[Address]) -> None:
 ```
 
@@ -1177,7 +1177,7 @@ def setBonderList(bonderList: List[Address]) -> None:
 
 Updates the size of the reward fund. Governance only.
 
-```python
+```
 def setRewardFund(iglobal: int) -> None:
 ```
 
@@ -1189,7 +1189,7 @@ def setRewardFund(iglobal: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def RewardFundSet(iglobal: int) -> None:
 ```
@@ -1206,7 +1206,7 @@ Updates allocation of reward fund. Governance only.
 
 - Sum of all allocation rates must be 100
 
-```python
+```
 def setRewardFundAllocation(iprep: int, icps: int, irelay: int, ivoter: int) -> None:
 ```
 
@@ -1225,7 +1225,7 @@ def setRewardFundAllocation(iprep: int, icps: int, irelay: int, ivoter: int) -> 
 
 Penalizes P-Reps for not voting on Network Proposal. Governance Only.
 
-```python
+```
 def penalizeNonvoters(address: Address) -> None:
 ```
 
@@ -1246,7 +1246,7 @@ Updates address of Network SCORE. Governance Only.
 
 - Only SCORE owned by Governance can be Network SCORE
 
-```python
+```
 def setNetworkScore(role: str, address: Address) -> None:
 ```
 
@@ -1259,7 +1259,7 @@ def setNetworkScore(role: str, address: Address) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def NetworkScoreSet(role: str, address: Address) -> None:
 ```
@@ -1275,7 +1275,7 @@ def NetworkScoreSet(role: str, address: Address) -> None:
 
 Updates allocation of reward fund. Governance only.
 
-```python
+```
 def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 ```
 
@@ -1287,7 +1287,7 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def RewardFundAllocationSet(type: str, value: int) -> None:
 ```
@@ -1303,7 +1303,7 @@ def RewardFundAllocationSet(type: str, value: int) -> None:
 
 Updates the minimum amount of bond that can earn minimum wage. Governance only.
 
-```python
+```
 def setMinimumBond(bond: int) -> None:
 ```
 
@@ -1315,7 +1315,7 @@ def setMinimumBond(bond: int) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def MinimumBondChanged(bond: int) -> None:
 ```
@@ -1332,7 +1332,7 @@ Initializes commission rate parameters of the P-Rep.
 
 - After initialization, `maxCommissionRate` and `maxCommissionChangeRate` can't be changed
 
-```python
+```
 def initCommissionRate(rate: int, maxRate: int, maxChangeRate: int) -> None:
 ```
 
@@ -1346,7 +1346,7 @@ def initCommissionRate(rate: int, maxRate: int, maxChangeRate: int) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def CommissionRateInitialized(address: Address, rate: int, maxRate: int, maxChangeRate: int) -> None:
 ```
@@ -1363,7 +1363,7 @@ def CommissionRateInitialized(address: Address, rate: int, maxRate: int, maxChan
 
 Updates commission rate of the P-Rep.
 
-```python
+```
 def setCommissionRate(rate: int) -> None:
 ```
 
@@ -1375,7 +1375,7 @@ def setCommissionRate(rate: int) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def CommissionRateChanged(address: Address, rate: int) -> None:
 ```
@@ -1390,7 +1390,7 @@ def CommissionRateChanged(address: Address, rate: int) -> None:
 
 Updates slashing rates of penalties. Governance only.
 
-```python
+```
 def setSlashingRates(rate: int) -> None:
 ```
 
@@ -1402,7 +1402,7 @@ def setSlashingRates(rate: int) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def SlashingRateChangedV2(type: str, rate: int) -> None:
 ```
@@ -1418,7 +1418,7 @@ def SlashingRateChangedV2(type: str, rate: int) -> None:
 
 Requests unjail
 
-```python
+```
 def requestUnjail() -> None:
 ```
 
@@ -1432,7 +1432,7 @@ def requestUnjail() -> None:
 
 Returns BTP Network Type ID of the given `name`.
 
-```python
+```
 def getBTPNetworkTypeID(name: str) -> int:
 ```
 
@@ -1454,7 +1454,7 @@ def getBTPNetworkTypeID(name: str) -> int:
 
 Returns a compressed public key for the P-Rep node address.
 
-```python
+```
 def getPRepNodePublicKey(address: Address) -> bytes:
 ```
 
@@ -1476,7 +1476,7 @@ def getPRepNodePublicKey(address: Address) -> bytes:
 
 Opens a BTP Network. Governance only.
 
-```python
+```
 def openBTPNetwork(networkTypeName: str, name: str, owner: Address) -> int:
 ```
 
@@ -1494,7 +1494,7 @@ def openBTPNetwork(networkTypeName: str, name: str, owner: Address) -> int:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=2)
 def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None:
 ```
@@ -1504,7 +1504,7 @@ def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None:
 | networkTypeName | str  | name of the activated BTP Network Type |
 | networkTypeId   | int  | ID of the activated BTP Network Type   |
 
-```python
+```
 @eventlog(indexed=2)
 def BTPNetworkOpened(networkTypeId: int, networkId: int) -> None:
 ```
@@ -1520,7 +1520,7 @@ def BTPNetworkOpened(networkTypeId: int, networkId: int) -> None:
 
 Closes a BTP Network. Governance only.
 
-```python
+```
 def closeBTPNetwork(id: int) -> None:
 ```
 
@@ -1532,7 +1532,7 @@ def closeBTPNetwork(id: int) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=2)
 def BTPNetworkClosed(networkTypeId: int, networkId: int) -> None:
 ```
@@ -1548,7 +1548,7 @@ def BTPNetworkClosed(networkTypeId: int, networkId: int) -> None:
 
 Sends a BTP message over the BTP Network. Only the owner of a BTP Network can send a BTP message.
 
-```python
+```
 def sendBTPMessage(networkId: int, message: bytes) -> None:
 ```
 
@@ -1561,7 +1561,7 @@ def sendBTPMessage(networkId: int, message: bytes) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=2)
 def BTPMessage(networkId: int, messageSN: int) -> None:
 ```
@@ -1577,7 +1577,7 @@ def BTPMessage(networkId: int, messageSN: int) -> None:
 
 Registers an initial public key for the P-Rep node address.
 
-```python
+```
 def registerPRepNodePublicKey(address: Address, pubKey: bytes) -> None:
 ```
 
@@ -1594,7 +1594,7 @@ def registerPRepNodePublicKey(address: Address, pubKey: bytes) -> None:
 
 Updates a public key for the P-Rep node address.
 
-```python
+```
 def setPRepNodePublicKey(pubKey: bytes) -> None:
 ```
 
@@ -1768,7 +1768,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## PenaltyImposed(Address,int,int)
 
-```python
+```
 @eventlog(indexed=1)
 def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
 ```
