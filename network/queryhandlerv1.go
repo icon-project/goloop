@@ -21,6 +21,8 @@ var (
 		p2pConnTypeFriend: {QueryItemChildren, QueryItemNephews, QueryItemOther},
 		p2pConnTypeParent: {QueryItemChildren, QueryItemNephews},
 		p2pConnTypeUncle:  {QueryItemChildren, QueryItemNephews},
+		p2pConnTypeOther:  {QueryItemChildren, QueryItemNephews},
+		p2pConnTypeNone:   {QueryItemChildren, QueryItemNephews},
 	}
 )
 
