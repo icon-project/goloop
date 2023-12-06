@@ -133,7 +133,7 @@ func (c *ValidatorSetCache) _get(lHash []byte) *ValidatorSet {
 }
 
 func (c *ValidatorSetCache) _last() *ValidatorSet {
-	if c.write == 0 {
+	if c.size == 0 {
 		return nil
 	}
 	idx := c.write - 1
@@ -144,7 +144,7 @@ func (c *ValidatorSetCache) _last() *ValidatorSet {
 }
 
 func (c *ValidatorSetCache) _first() *ValidatorSet {
-	if c.write == 0 {
+	if c.size == 0 {
 		return nil
 	}
 	idx := c.write + 1
