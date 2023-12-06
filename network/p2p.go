@@ -898,26 +898,9 @@ func (p2p *PeerToPeer) query(r PeerRoleFlag) (needMoreSeeds bool) {
 	ps := make([]*Peer, 0)
 	if r.Has(p2pRoleRoot) {
 		friends := p2p.pm.findPeers(nil, p2pConnTypeFriend)
-		for _, p := range friends {
-			if !p.In() {
-				ps = append(ps, p)
-			}
-		}
 		ps = append(ps, p2p.pm.findPeers(PeerPredicates.In(false), p2pConnTypeOther)...)
-
 		numOfFailureNode := (p2p.rr.getAllowed(p2pRoleRoot).Len() - 1) / 3
 		needMoreSeeds = (2*numOfFailureNode) > len(friends) || (p2p.pm.lenPeers(p2pConnTypeChildren, p2pConnTypeNephew) < 1)
-
-		if len(ps) < numOfFailureNode {
-			for _, p := range friends {
-				if numOfFailureNode <= len(ps) {
-					break
-				}
-				if p.In() {
-					ps = append(ps, p)
-				}
-			}
-		}
 	} else {
 		ps = p2p.pm.findPeers(nil, p2pConnTypeParent, p2pConnTypeUncle)
 		if r == p2pRoleSeed {
