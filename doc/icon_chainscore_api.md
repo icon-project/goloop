@@ -47,6 +47,7 @@
             + [getPRepStatsOf](#getprepstatsof)
             + [getSlashingRates](#getslashingrates)
             + [getMinimumBond](#getminimumbond)
+            + [getPRepCountConfig](#getprepcountconfig)
         * Writable APIs
             + [setStake](#setstake)
             + [setDelegation](#setdelegation)
@@ -67,6 +68,8 @@
             + [setCommissionRate](#setcommissionrate)
             + [setSlashingRates](#setslashingrates)
             + [requestUnjail](#requestunjail)
+            + [setPRepCountConfig](#setprepcountconfig)
+            + [handleDoubleSignReport](#handledoublesignreport)
     - [BTP](#btp)
         * ReadOnly APIs
             + [getBTPNetworkTypeID](#getbtpnetworktypeid)
@@ -903,37 +906,53 @@ def getPRepStatsOf(address: Address) -> dict:
 
 ### getSlashingRates
 
-Returns slashing rates for given `names`
+Returns slashing rates for all penalties
 
 ```
-def getSlashingRates(names: List[str]) -> dict:
+def getSlashingRates() -> dict:
 ```
-
-*Parameters:*
-
-| Name  | Type        | Description                                                     |
-|:------|:------------|:----------------------------------------------------------------|
-| names | List\[str\] | list of names to query. Pass an empty list to query all values. |
 
 *Returns:*
 
-| Key                             | Type | Description                          |
-|:--------------------------------|:-----|:-------------------------------------|
-| ${[PENALTY_TYPE](#penaltytype)} | int  | slashing rate value from 0 to 10,000 |
+| Key                          | Type | Description                                            |
+|:-----------------------------|:-----|:-------------------------------------------------------|
+| prepDisqualification         | int  | slashing rate for prepDisqualification penalty         |
+| accumulatedValidationFailure | int  | slashing rate for accumulatedValidationFailure penalty |
+| validationFailure            | int  | slashing rate for validationFailure penalty            |
+| missedNetworkProposalVote    | int  | slashing rate for missedNetworkProposalVote penalty    |
+| doubleSign                   | int  | slashing rate for doubleSign penalty                   |
 
 *Revision:* 24 ~
 
 ### getMinimumBond
 
-Returns the minimum bond amount required to earn the minimum wage
-
+Returns the minimum amount of bond required for a P-Rep to earn the minimum wage
+ 
 ```
 def getMinimumBond() -> int:
 ```
 
 *Returns:*
 
-* the minimum bond amount
+* the minimum amount of bond in loop unit
+
+*Revision:* 24 ~
+
+### getPRepCountConfig
+
+Returns the information on P-Rep count configuration
+
+```
+def getPRepCountConfig() -> dict:
+```
+
+*Returns:*
+
+| Key   | Type | Description                 |
+|:------|:-----|:----------------------------|
+| main  | int  | number of main P-Reps       |
+| sub   | int  | number of sub P-Reps        |
+| extra | int  | number of extra main P-Reps |
 
 *Revision:* 24 ~
 
@@ -1286,7 +1305,7 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 | values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)<br>sum of values must be 10,000 |
 
 *Event Log:*
-- from revision 24
+
 ```
 @eventlog(indexed=0)
 def RewardFundAllocationSet(type: str, value: int) -> None:
@@ -1295,13 +1314,15 @@ def RewardFundAllocationSet(type: str, value: int) -> None:
 | Name  | Type | Description                                                                |
 |:------|:-----|:---------------------------------------------------------------------------|
 | name  | str  | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey) |
-| value | int  | allocation value                                                           |
+| value | int  | allocation value ranging from 0 (0%) ~ 10,000 (100%)                       |
 
 *Revision:* 24 ~
 
 ### setMinimumBond
 
-Updates the minimum amount of bond that can earn minimum wage. Governance only.
+* Specifies the minimum amount of bond required for a P-Rep to earn the minimum wage
+* Governance Only
+* It is assumed to 0 if not specified.
 
 ```
 def setMinimumBond(bond: int) -> None:
@@ -1309,28 +1330,29 @@ def setMinimumBond(bond: int) -> None:
 
 *Parameters:*
 
-| Name                                                      | Type | Description                                                                          |
-|:----------------------------------------------------------|:-----|:-------------------------------------------------------------------------------------|
-| ${[REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)} | int  | rate allocated to the reward fund. (0 ~ 10,000). <br>sum of all rates must be 10,000 |
+| Name | Type | Description                         |
+|:-----|:-----|:------------------------------------|
+| bond | int  | minimum amount of bond in loop unit |
 
 *Event Log:*
 
 ```
 @eventlog(indexed=0)
-def MinimumBondChanged(bond: int) -> None:
+def MinimumBondSet(bond: int) -> None:
 ```
 
-| Name | Type | Description         |
-|:-----|:-----|:--------------------|
-| bond | int  | minimum bond amount |
+| Name | Type | Description                         |
+|:-----|:-----|:------------------------------------|
+| bond | int  | minimum amount of bond in loop unit |
 
 *Revision:* 24 ~
 
 ### initCommissionRate
 
-Initializes commission rate parameters of the P-Rep.
-
-- After initialization, `maxCommissionRate` and `maxCommissionChangeRate` can't be changed
+* Initializes commission rate parameters of the P-Rep.
+* Called by a P-Rep owner
+* After initialization, `maxCommissionRate` and `maxCommissionChangeRate` can't be changed.
+* All rates are assumed to be 0% if not initialized.
 
 ```
 def initCommissionRate(rate: int, maxRate: int, maxChangeRate: int) -> None:
@@ -1348,20 +1370,24 @@ def initCommissionRate(rate: int, maxRate: int, maxChangeRate: int) -> None:
 
 ```
 @eventlog(indexed=1)
-def CommissionRateInitialized(address: Address, rate: int, maxRate: int, maxChangeRate: int) -> None:
+def CommissionRateInitialized(owner: Address, rate: int, maxRate: int, maxChangeRate: int) -> None:
 ```
 
-| Name          | Type | Description                                               |
-|:--------------|:-----|:----------------------------------------------------------|
-| rate          | int  | commission rate                                           |
-| maxRate       | int  | maximum commission rate that P-Rep can configure          |
-| maxChangeRate | int  | maximum rate of change of `commission rate` in one `Term` |
+| Name          | Type    | Description                                               |
+|:--------------|:--------|:----------------------------------------------------------|
+| owner         | Address | address of P-Rep owner                                    |
+| rate          | int     | commission rate                                           |
+| maxRate       | int     | maximum commission rate that P-Rep can configure          |
+| maxChangeRate | int     | maximum rate of change of `commission rate` in one `Term` |
 
 *Revision:* 24 ~
 
 ### setCommissionRate
 
-Updates commission rate of the P-Rep.
+* Updates commission rate of the P-Rep.
+* Called by a P-Rep owner
+* New commission rate will take effect next term.
+* No limit for reducing the rate
 
 ```
 def setCommissionRate(rate: int) -> None:
@@ -1373,16 +1399,21 @@ def setCommissionRate(rate: int) -> None:
 |:-----|:-----|:----------------|
 | rate | int  | commission rate |
 
+* 0 <= rate <= 10,000
+* rate <= maxCommissionRate
+* rate <= oldRate + maxCommissionChangeRate
+
 *Event Log:*
 
 ```
 @eventlog(indexed=1)
-def CommissionRateChanged(address: Address, rate: int) -> None:
+def CommissionRateSet(owner: Address, rate: int) -> None:
 ```
 
-| Name | Type | Description     |
-|:-----|:-----|:----------------|
-| rate | int  | commission rate |
+| Name  | Type    | Description                |
+|:------|:--------|:---------------------------|
+| owner | Address | address of the P-Rep owner |
+| rate  | int     | commission rate            |
 
 *Revision:* 24 ~
 
@@ -1391,36 +1422,113 @@ def CommissionRateChanged(address: Address, rate: int) -> None:
 Updates slashing rates of penalties. Governance only.
 
 ```
-def setSlashingRates(rate: int) -> None:
+def setSlashingRates(rates: List[NamedValue]) -> None:
 ```
 
 *Parameters:*
 
-| Name  | Type                              | Description                                                                        |
-|:------|:----------------------------------|:-----------------------------------------------------------------------------------|
-| rates | List\[[NamedValue](#namedvalue)\] | available `name` is [PENALTY_TYPE](#penaltytype)<br>range of `value` is 0 ~ 10,000 |
+| Name  | Type                              | Description                                 |
+|:------|:----------------------------------|:--------------------------------------------|
+| rates | List\[[NamedValue](#namedvalue)\] | list of each penalty name and its rate pair |
+
+Fields in [NamedValue](#namedvalue)
+
+| Field | Type | Description                                                       |
+|:------|:-----|:------------------------------------------------------------------|
+| name  | str  | penalty name. Refer to [PENALTY_TYPE](#penaltytype) section       |
+| value | int  | slashingRate for each penalty ranging from 0 (0%) ~ 10,000 (100%) |
 
 *Event Log:*
 
 ```
 @eventlog(indexed=0)
-def SlashingRateChangedV2(type: str, rate: int) -> None:
+def SlashingRateSet(penaltyName: str, rate: int) -> None:
 ```
 
-| Name | Type | Description   |
-|:-----|:-----|:--------------|
-| type | str  | penalty type  |
-| rate | int  | slashing rate |
+| Name        | Type | Description                                                 |
+|:------------|:-----|:------------------------------------------------------------|
+| penaltyName | str  | penalty name. Refer to [PENALTY_TYPE](#penaltytype) section |
+| rate        | int  | slashing rate ranging from 0 ~ 10,000                       |
 
 *Revision:* 24 ~
 
 ### requestUnjail
 
-Requests unjail
+* Requests unjail
+* Called by a PRep owner
 
 ```
 def requestUnjail() -> None:
 ```
+
+*Revision:* 25 ~
+
+### setPRepCountConfig
+
+* Configures the numbers of main, sub and extra main P-Reps
+* Governance Only
+
+```
+def setPRepCountConfig(counts List[NamedValue]) -> None:    
+```
+
+*Parameters:*
+
+| Name   | Type                              | Description                           |
+|:-------|:----------------------------------|:--------------------------------------|
+| counts | List\[[NamedValue](#namedvalue)\] | list of P-Rep type and its count pair |
+
+Fields in [NamedValue](#namedvalue)
+
+| Field | Type | Description                                |
+|:------|:-----|:-------------------------------------------|
+| name  | str  | available name: `main`, `sub`, `extra`     |                         
+| value | int  | number of P-Reps specified by `name` field |
+
+*Event Log:*
+
+```
+@eventlog(indexed=0)
+def PRepCountConfigSet(main: int, sub: int, extra: int)
+```
+
+| Name  | Type | Description                 |
+|:------|:-----|:----------------------------|
+| main  | int  | number of main P-Reps       |
+| sub   | int  | number of sub P-Reps        |
+| extra | int  | number of extra main P-Reps |
+
+*Revision:* 24 ~
+
+### handleDoubleSignReport
+
+* Reports DoubleSign event
+* System Only
+
+```
+def handleDoubleSignReport(type string, blockHeight int, signer Address) -> None:
+```
+
+*Parameters:*
+
+| Name        | Type    | Description                                               |
+|:------------|:--------|:----------------------------------------------------------|
+| type        | string  | doubleSign type: `proposal`, `vote`                       |
+| blockHeight | int     | blockHeight when the doubleSign event occurred            |
+| signer      | Address | address of the validator that caused the doubleSign event |
+
+*Event Log:*
+
+```
+@eventlog(indexed=1)
+def DoubleSignReported(owner Address, blockHeight int, type: str)
+```
+
+| Name        | Type    | Description                                                            |
+|:------------|:--------|:-----------------------------------------------------------------------|
+| owner       | Address | address of the P-Rep owner whose validator caused the doubleSign event |
+| blockHeight | int     | blockHeight when the doubleSign event occurred                         |
+| type        | str     | `proposal`, `vote`                                                     |
 
 *Revision:* 25 ~
 
@@ -1783,13 +1891,13 @@ def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
 
 ## PENALTY_TYPE
 
-| value                          | revision | Description                                    |
-|:-------------------------------|:---------|:-----------------------------------------------|
-| "disqualification"             | 6 ~      | P-Rep disqualification penalty                 |
-| "accumulatedValidationFailure" | 6 ~      | accumulated block validation failure penalty   |
-| "validationFailure"            | 6 ~      | block validation failure penalty               |
-| "missedNetworkProposalVote"    | 6 ~      | missed Network Proposal vote penalty           |
-| "doubleVote"                   | 25 ~     | submit multiple votes to same height and round |
+| id | name                           | revision | Description                                    |
+|:---|:-------------------------------|:---------|:-----------------------------------------------|
+| 1  | "prepDisqualification"         | 6 ~      | P-Rep disqualification penalty                 |
+| 2  | "accumulatedValidationFailure" | 6 ~      | accumulated block validation failure penalty   |
+| 3  | "validationFailure"            | 6 ~      | block validation failure penalty               |
+| 4  | "missedNetworkProposalVote"    | 6 ~      | missed Network Proposal vote penalty           |
+| 5  | "doubleSign"                   | 25 ~     | submit multiple votes to same height and round |
 
 ## NETWORK_SCORE_TYPE
 
