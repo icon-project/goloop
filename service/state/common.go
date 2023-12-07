@@ -107,3 +107,12 @@ func IsValidStepType(s string) bool {
 		return false
 	}
 }
+
+func IsValidStepLimitType(s string) bool {
+	switch s {
+	case StepLimitTypeInvoke, StepLimitTypeQuery:
+		return true
+	default:
+		return false
+	}
+}

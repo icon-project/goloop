@@ -3,7 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -50,13 +50,13 @@ func Chunk() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			r := c.Request()
 			if len(r.TransferEncoding) > 0 && r.TransferEncoding[0] == "chunked" {
-				b, err := ioutil.ReadAll(r.Body)
+				b, err := io.ReadAll(r.Body)
 				if err != nil {
 					panic(err)
 				}
 				rd := bytes.NewReader(b)
 				r.ContentLength = int64(len(b))
-				r.Body = ioutil.NopCloser(rd)
+				r.Body = io.NopCloser(rd)
 			}
 			return next(c)
 		}

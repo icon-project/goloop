@@ -3,7 +3,6 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -62,7 +61,7 @@ func (n *Node) loadChainConfig(chainDir string) (*chain.Config, error) {
 	}
 	log.Println("Load channel config ", cfgFile)
 
-	b, err := ioutil.ReadFile(cfgFile)
+	b, err := os.ReadFile(cfgFile)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +74,7 @@ func (n *Node) loadChainConfig(chainDir string) (*chain.Config, error) {
 	cfg.NIDForP2P = n.cfg.NIDForP2P
 
 	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
-	genesis, err := ioutil.ReadFile(gsFile)
+	genesis, err := os.ReadFile(gsFile)
 	if err != nil {
 		return nil, errors.CriticalIOError.Wrapf(err,
 			"Fail to read chain genesis zip file %s err=%+v", gsFile, err)
@@ -297,7 +296,7 @@ func (n *Node) _mkChainDir(cid int) (string, error) {
 			return chainDir, nil
 		}
 	}
-	return ioutil.TempDir(nodeDir, strconv.FormatInt(int64(cid), 16)+"_")
+	return os.MkdirTemp(nodeDir, strconv.FormatInt(int64(cid), 16)+"_")
 }
 
 func (n *Node) _get(cid int) (*Chain, error) {
@@ -422,7 +421,7 @@ func (n *Node) JoinChain(
 	}
 
 	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
-	if err := ioutil.WriteFile(gsFile, genesis, 0644); err != nil {
+	if err := os.WriteFile(gsFile, genesis, 0644); err != nil {
 		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}
@@ -565,13 +564,13 @@ func (n *Node) GetBackups() ([]BackupInfo, error) {
 	defer n.mtx.Unlock()
 
 	backupDir := n.cfg.ResolveAbsolute(n.cfg.BackupDir)
-	fis, err := ioutil.ReadDir(backupDir)
+	fis, err := os.ReadDir(backupDir)
 	if err != nil {
 		return nil, err
 	}
 	infos := make([]BackupInfo, 0, len(fis))
 	for _, fi := range fis {
-		if fi.Mode().IsRegular() {
+		if fi.Type().IsRegular() {
 			if strings.HasPrefix(fi.Name(), chain.TemporalBackupFile) {
 				continue
 			}
@@ -579,9 +578,13 @@ func (n *Node) GetBackups() ([]BackupInfo, error) {
 			if err != nil {
 				continue
 			}
+			state, err := fi.Info()
+			if err != nil {
+				continue
+			}
 			infos = append(infos, BackupInfo{
 				Name:       fi.Name(),
-				Size:       fi.Size(),
+				Size:       state.Size(),
 				BackupInfo: *info,
 			})
 		}
@@ -979,7 +982,7 @@ func NewNode(
 	}
 
 	// Load chains
-	fs, err := ioutil.ReadDir(nodeDir)
+	fs, err := os.ReadDir(nodeDir)
 	if err != nil {
 		log.Panicf("Fail to read directory %s err=%+v", cfg.BaseDir, err)
 	}

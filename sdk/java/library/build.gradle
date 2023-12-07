@@ -9,13 +9,13 @@ java {
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
-    bouncycastleVersion = '1.70'
+    bouncycastleVersion = '1.77'
     jacksonVersion = '2.13.4.2'
     okhttpVersion = '4.10.0'
 }
 
 dependencies {
-    implementation "org.bouncycastle:bcprov-jdk15on:$bouncycastleVersion"
+    implementation "org.bouncycastle:bcprov-jdk18on:$bouncycastleVersion"
     implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
     implementation "com.squareup.okhttp3:okhttp:$okhttpVersion"
 }

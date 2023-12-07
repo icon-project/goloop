@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strconv"
@@ -27,13 +26,13 @@ import (
 
 func ReadFile(name string) ([]byte, error) {
 	if name == "-" {
-		if bs, err := ioutil.ReadAll(os.Stdin); err != nil {
+		if bs, err := io.ReadAll(os.Stdin); err != nil {
 			return nil, errors.Wrap(err, "Fail to read stdin")
 		} else {
 			return bs, nil
 		}
 	} else {
-		if bs, err := ioutil.ReadFile(name); err != nil {
+		if bs, err := os.ReadFile(name); err != nil {
 			return nil, errors.Wrapf(err, "Fail to read file=%s", name)
 		} else {
 			return bs, nil
@@ -426,7 +425,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			if len(args) == 2 {
 				fileName = args[1]
 			}
-			err = ioutil.WriteFile(fileName, b, 0644)
+			err = os.WriteFile(fileName, b, 0644)
 			if err != nil {
 				return fmt.Errorf("fail to write file err:%+v", err)
 			}

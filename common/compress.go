@@ -2,7 +2,7 @@ package common
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 
 	"github.com/icon-project/goloop/common/lzw"
 )
@@ -24,7 +24,7 @@ func Decompress(bs []byte) []byte {
 	}
 	wb := bytes.NewBuffer(bs)
 	fd := lzw.NewReader(wb, lzw.MSB, 8)
-	c, _ := ioutil.ReadAll(fd)
+	c, _ := io.ReadAll(fd)
 	_ = fd.Close()
 	return c
 }

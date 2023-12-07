@@ -80,6 +80,9 @@ public class Validator {
             throw fail(e, "malformed class file");
         }
         String cur = jar.mainClassName;
+        if (cur == null) {
+            throw fail("No main class name");
+        }
         Map<Member, MemberDecl> mmap = new HashMap<>();
         Set<String> visited = new HashSet<>();
         while (cur != null) {
@@ -92,6 +95,9 @@ public class Validator {
                 mmap.putIfAbsent(m.getMember(), m);
             }
             visited.add(cur);
+            if (cv.getSuperName() == null) {
+                throw fail("No super class");
+            }
             cur = Utilities.internalNameToFullyQualifiedName(cv.getSuperName());
             if (visited.contains(cur)) {
                 fail("cyclic inheritance in main class " + jar.mainClassName);

@@ -20,7 +20,6 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"sync"
@@ -93,7 +92,7 @@ func (m *RestoreManager) Start(node *Node, file string, baseDir string, overwrit
 			"StillRestoring(%s)", path.Base(m.file))
 	}
 
-	tmpDir, err := ioutil.TempDir(baseDir, RestoreDirectoryPrefix)
+	tmpDir, err := os.MkdirTemp(baseDir, RestoreDirectoryPrefix)
 	if err != nil {
 		return err
 	}

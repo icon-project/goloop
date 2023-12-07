@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -18,8 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/icon-project/goloop/server"
 	"github.com/labstack/echo/v4"
+
+	"github.com/icon-project/goloop/server"
 )
 
 const (
@@ -157,7 +157,7 @@ func decodeResponseBody(resp *http.Response, respPtr interface{}) error {
 		switch ptr := respPtr.(type) {
 		case *string:
 			var b []byte
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return fmt.Errorf("failed read err=%+v", err)
 			}
@@ -188,7 +188,7 @@ func FileDownload(resp *http.Response) (b []byte, fileName string, err error) {
 		fileName = fileName[len("filename="):]
 		fileName = strings.Trim(fileName, "\"")
 		defer resp.Body.Close()
-		b, err = ioutil.ReadAll(resp.Body)
+		b, err = io.ReadAll(resp.Body)
 		if err != nil {
 			err = fmt.Errorf("failed read err=%+v", err)
 			return
@@ -400,7 +400,7 @@ func (e *RestError) Response() string {
 
 func NewRestError(r *http.Response) error {
 	var response string
-	if rb, err := ioutil.ReadAll(r.Body); err != nil {
+	if rb, err := io.ReadAll(r.Body); err != nil {
 		response = fmt.Sprintf("Fail to read body err=%+v", err)
 	} else {
 		response = string(rb)

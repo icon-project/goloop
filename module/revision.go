@@ -38,6 +38,7 @@ const (
 	FixMapValues
 	ReportDoubleSign
 	FixJCLSteps
+	ReportConfigureEvents
 	LastRevisionBit
 
 	UseNIDInConsensusMessage = ReportDoubleSign

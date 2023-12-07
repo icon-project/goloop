@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
 	stdlog "log"
 	"os"
 
@@ -408,7 +407,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	//overwrite read(env.KeyStoreSecret)
 	//overwrite read(flag.KeyStoreSecret)
 	if keyStoreSecret := vc.GetString("key_secret"); keyStoreSecret != "" {
-		if ksp, err := ioutil.ReadFile(keyStoreSecret); err != nil {
+		if ksp, err := os.ReadFile(keyStoreSecret); err != nil {
 			return errors.Errorf("fail to open KeySecret file=%s err=%+v", keyStoreSecret, err)
 		} else {
 			cfg.KeyStorePass = string(ksp)
