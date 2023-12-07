@@ -109,15 +109,10 @@ func (h *queryHandler) handleQuery(pkt *Packet, p *Peer) {
 		Children: h.pm.getNetAddresses(p2pConnTypeChildren),
 		Nephews:  h.pm.getNetAddresses(p2pConnTypeNephew),
 	}
-	rr := h.rr.resolveRole(qm.Role, p.ID(), true)
+	rr := h.rr.resolveAndApply(p, qm.Role)
 	if rr != qm.Role {
 		m.Message = fmt.Sprintf("not equal resolved role %d, expected %d", rr, qm.Role)
 		h.l.Infoln("handleQuery", m.Message, p)
-	}
-	p.setRecvRole(qm.Role)
-	if !p.EqualsRole(rr) {
-		p.setRole(rr)
-		h.as.applyPeerRole(p)
 	}
 	if rr.Has(p2pRoleSeed) || rr.Has(p2pRoleRoot) {
 		m.Roots = h.as.getNetAddresses(p2pRoleRoot)
@@ -183,16 +178,10 @@ func (h *queryHandler) handleQueryResult(pkt *Packet, p *Peer) {
 
 	p.ResetConnsByNetAddresses(p2pConnTypeChildren, qrm.Children)
 	p.ResetConnsByNetAddresses(p2pConnTypeChildren, qrm.Nephews)
-
-	rr := h.rr.resolveRole(qrm.Role, p.ID(), true)
+	rr := h.rr.resolveAndApply(p, qrm.Role)
 	if rr != qrm.Role {
 		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, qrm.Role)
 		h.l.Infoln("handleQueryResult", msg, p)
-	}
-	p.setRecvRole(qrm.Role)
-	if !p.EqualsRole(rr) {
-		p.setRole(rr)
-		h.as.applyPeerRole(p)
 	}
 	if !rr.Has(p2pRoleSeed) && !rr.Has(p2pRoleRoot) {
 		if !h.rr.isTrustSeed(p) {

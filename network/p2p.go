@@ -133,9 +133,9 @@ func newPeerToPeer(c module.Chain, channel string, self *Peer, d *Dialer, mtr *m
 		//
 		mtr: mtr,
 	}
-	p2p.rr = newRoleResolver(self, p2p.onAllowedPeerIDSetUpdate, l)
 	p2p.pm = newPeerManager(p2p, self, p2p.onEvent, p2p._onClose, l)
 	p2p.as = newAddressSyncer(d, p2p.pm, l)
+	p2p.rr = newRoleResolver(self, p2p.onEvent, p2p.pm, p2p.as, l)
 	p2p.qh = newQueryHandler(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, l)
 	p2p.sm = newSeedManager(c, self, p2p.pm, p2p.rr, p2p.Send, l)
 	p2p.qhv1 = newQueryHandlerV1(p2p, self, p2p.pm, p2p.rr, p2p.as, rh, p2p.sm, l)
@@ -265,13 +265,7 @@ func (p2p *PeerToPeer) unsetEventCbFunc(k uint16) {
 //callback from PeerDispatcher.onPeer
 func (p2p *PeerToPeer) onPeer(p *Peer) {
 	p2p.logger.Debugln("onPeer", p)
-	if !p2p.rr.isAllowed(p2pRoleNone, p.ID()) {
-		p2p.onEvent(p2pEventNotAllowed, p)
-		p.CloseByError(fmt.Errorf("onPeer not allowed connection"))
-		return
-	}
-	p2p.rr.onPeer(p)
-	if p2p.pm.onPeer(p) && !p.In() {
+	if p2p.rr.onPeer(p) && p2p.pm.onPeer(p) && !p.In() {
 		p2p.sendQuery(p)
 	}
 }
@@ -393,51 +387,15 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 }
 
 func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
-	rr := p2p.rr.resolveRole(r, p2p.ID(), false)
+	rr := p2p.rr.resolveAndApply(p2p.self, r)
 	if rr != r {
 		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, r)
 		p2p.logger.Debugln("setRole", msg)
-	}
-	if !p2p.self.EqualsRole(rr) {
-		p2p.self.setRole(rr)
-		p2p.as.applyPeerRole(p2p.self)
 	}
 }
 
 func (p2p *PeerToPeer) updateAllowed(version int64, r PeerRoleFlag, peers ...module.PeerID) {
 	p2p.rr.updateAllowed(version, r, peers...)
-}
-
-func (p2p *PeerToPeer) onAllowedPeerIDSetUpdate(s *PeerIDSet, r PeerRoleFlag) {
-	switch r {
-	case p2pRoleNone:
-		pp := func(p *Peer) bool {
-			return !s.Contains(p.ID())
-		}
-		ps := p2p.pm.findPeers(pp)
-		for _, p := range ps {
-			p2p.onEvent(p2pEventNotAllowed, p)
-			p.CloseByError(fmt.Errorf("onUpdate not allowed connection"))
-		}
-	default:
-		pp := func(p *Peer) bool {
-			return p.HasRole(r) != s.Contains(p.ID())
-		}
-		h := func(p *Peer) {
-			if p.HasRole(r) {
-				p.removeRole(r)
-			} else {
-				p.addRole(r)
-			}
-			p2p.as.applyPeerRole(p)
-		}
-		for _, p := range p2p.pm.findPeers(pp) {
-			h(p)
-		}
-		if pp(p2p.self) {
-			h(p2p.self)
-		}
-	}
 }
 
 func (p2p *PeerToPeer) Role() PeerRoleFlag {

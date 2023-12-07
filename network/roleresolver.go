@@ -1,6 +1,9 @@
 package network
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -13,36 +16,84 @@ type roleResolver struct {
 	allowedSeeds *PeerIDSet
 	allowedPeers *PeerIDSet
 
-	onAllowedUpdateCb func(*PeerIDSet)
+	onEventCb eventCbFunc
+	pm        *peerManager
+	as        *addressSyncer
+	mtx       sync.Mutex
 
 	l log.Logger
 }
 
-func newRoleResolver(self *Peer, onAllowedUpdateCb func(*PeerIDSet, PeerRoleFlag), l log.Logger) *roleResolver {
+func newRoleResolver(
+	self *Peer,
+	onEventCb eventCbFunc,
+	pm *peerManager,
+	as *addressSyncer,
+	l log.Logger) *roleResolver {
 	rr := &roleResolver{
 		self:         self,
 		trustSeeds:   NewNetAddressSet(),
 		allowedRoots: NewPeerIDSet(),
 		allowedSeeds: NewPeerIDSet(),
 		allowedPeers: NewPeerIDSet(),
+		onEventCb:    onEventCb,
+		pm:           pm,
+		as:           as,
 		l:            l,
 	}
-	rr.allowedRoots.onUpdate = func(s *PeerIDSet) {
-		onAllowedUpdateCb(s, p2pRoleRoot)
-	}
-	rr.allowedSeeds.onUpdate = func(s *PeerIDSet) {
-		onAllowedUpdateCb(s, p2pRoleSeed)
-	}
+	rr.allowedRoots.onUpdate = rr.resolveAndApplyAll
+	rr.allowedSeeds.onUpdate = rr.resolveAndApplyAll
 	rr.allowedPeers.onUpdate = func(s *PeerIDSet) {
-		onAllowedUpdateCb(s, p2pRoleNone)
+		if s.IsEmpty() {
+			return
+		}
+		ps := rr.pm.findPeers(func(p *Peer) bool {
+			return rr.isNotAllowed(p2pRoleNone, p.ID())
+		})
+		for _, p := range ps {
+			rr.onEventCb(p2pEventNotAllowed, p)
+			p.CloseByError(fmt.Errorf("onUpdate not allowed connection"))
+		}
 	}
 	return rr
 }
 
-func (rr *roleResolver) onPeer(p *Peer) {
+func (rr *roleResolver) resolveAndApplyAll(_ *PeerIDSet) {
+	rr.mtx.Lock()
+	defer rr.mtx.Unlock()
+	rr.pm.findPeers(func(p *Peer) bool {
+		rr._resolveAndApply(p)
+		return false
+	})
+	rr._resolveAndApply(rr.self)
+}
+
+func (rr *roleResolver) _resolveAndApply(p *Peer) PeerRoleFlag {
+	r := rr.resolveRole(p.RecvRole(), p.ID())
+	if !p.EqualsRole(r) {
+		p.setRole(r)
+		rr.as.applyPeerRole(p)
+	}
+	return r
+}
+
+func (rr *roleResolver) resolveAndApply(p *Peer, tr PeerRoleFlag) PeerRoleFlag {
+	rr.mtx.Lock()
+	defer rr.mtx.Unlock()
+	p.setRecvRole(tr)
+	return rr._resolveAndApply(p)
+}
+
+func (rr *roleResolver) onPeer(p *Peer) bool {
+	if rr.isNotAllowed(p2pRoleNone, p.ID()) {
+		rr.onEventCb(p2pEventNotAllowed, p)
+		p.CloseByError(fmt.Errorf("onPeer not allowed connection"))
+		return false
+	}
 	if rr.isTrustSeed(p) {
 		rr.trustSeeds.SetAndRemoveByData(p.DialNetAddress(), string(p.NetAddress()))
 	}
+	return true
 }
 
 func (rr *roleResolver) onClose(p *Peer) {
@@ -69,32 +120,24 @@ func (rr *roleResolver) isTrustSeed(p *Peer) bool {
 	return rr.trustSeeds.Contains(p.DialNetAddress())
 }
 
-func (rr *roleResolver) resolveRole(r PeerRoleFlag, id module.PeerID, onlyUnSet bool) PeerRoleFlag {
-	if onlyUnSet {
-		if r.Has(p2pRoleRoot) && !rr.allowedRoots.IsEmpty() && !rr.allowedRoots.Contains(id) {
+func (rr *roleResolver) resolveRole(r PeerRoleFlag, id module.PeerID) PeerRoleFlag {
+	if r.Has(p2pRoleRoot) {
+		if rr.isNotAllowed(p2pRoleRoot, id) {
 			r.UnSetFlag(p2pRoleRoot)
 		}
-		if r.Has(p2pRoleSeed) && !rr.allowedSeeds.IsEmpty() && !rr.allowedSeeds.Contains(id) {
-			r.UnSetFlag(p2pRoleSeed)
-		}
-	} else {
-		if rr.allowedRoots.Contains(id) {
-			r.SetFlag(p2pRoleRoot)
-		} else if r.Has(p2pRoleRoot) && !rr.allowedRoots.IsEmpty() {
-			r.UnSetFlag(p2pRoleRoot)
-		}
-		if rr.allowedSeeds.Contains(id) {
-			r.SetFlag(p2pRoleSeed)
-		} else if r.Has(p2pRoleSeed) && !rr.allowedSeeds.IsEmpty() {
-			r.UnSetFlag(p2pRoleSeed)
-		}
+	} else if rr.allowedRoots.Contains(id) {
+		r.SetFlag(p2pRoleRoot)
+	}
+
+	if r.Has(p2pRoleSeed) && rr.isNotAllowed(p2pRoleSeed, id) {
+		r.UnSetFlag(p2pRoleSeed)
 	}
 	return r
 }
 
-func (rr *roleResolver) isAllowed(r PeerRoleFlag, id module.PeerID) bool {
+func (rr *roleResolver) isNotAllowed(r PeerRoleFlag, id module.PeerID) bool {
 	s := rr.getAllowed(r)
-	return s.IsEmpty() || s.Contains(id)
+	return !s.IsEmpty() && !s.Contains(id)
 }
 
 func (rr *roleResolver) getAllowed(r PeerRoleFlag) *PeerIDSet {

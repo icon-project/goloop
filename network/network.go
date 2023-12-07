@@ -45,10 +45,12 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 		logger:           c.Logger().WithFields(log.Fields{log.FieldKeyModule: "NM"}),
 		mtr:              metric.NewNetworkMetric(c.MetricContext()),
 	}
+	r := NewPeerRoleFlag(roles...)
 	p := &Peer{
 		id:         nt.PeerID(),
 		netAddress: NetAddress(nt.Address()),
-		role:       NewPeerRoleFlag(roles...),
+		role:       r,
+		recvRole:   r,
 	}
 
 	m.p2p = newPeerToPeer(

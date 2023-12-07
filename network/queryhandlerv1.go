@@ -238,15 +238,10 @@ func (h *queryHandlerV1) handleQuery(pkt *Packet, p *Peer) {
 			h.l.Infoln("handleQuery", "invalid role proof", err, p)
 		}
 	}
-	rr := h.rr.resolveRole(qm.Role.Role, p.ID(), true)
+	rr := h.rr.resolveAndApply(p, qm.Role.Role)
 	if rr != qm.Role.Role {
 		errMsg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, qm.Role)
 		h.l.Infoln("handleQuery", errMsg, p)
-	}
-	p.setRecvRole(qm.Role.Role)
-	if !p.EqualsRole(rr) {
-		p.setRole(rr)
-		h.as.applyPeerRole(p)
 	}
 	isPeerRootOrSeed := rr.Has(p2pRoleSeed) || rr.Has(p2pRoleRoot)
 	r := h.self.Role()
@@ -347,15 +342,10 @@ func (h *queryHandlerV1) handleQueryResult(pkt *Packet, p *Peer) {
 			h.l.Infoln("handleQueryResult", "invalid role proof", err, p)
 		}
 	}
-	rr := h.rr.resolveRole(qrm.Role.Role, p.ID(), true)
+	rr := h.rr.resolveAndApply(p, qrm.Role.Role)
 	if rr != qrm.Role.Role {
 		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, qrm.Role.Role)
 		h.l.Infoln("handleQueryResult", msg, p)
-	}
-	p.setRecvRole(qrm.Role.Role)
-	if !p.EqualsRole(rr) {
-		p.setRole(rr)
-		h.as.applyPeerRole(p)
 	}
 	isPeerRootOrSeed := rr.Has(p2pRoleSeed) || rr.Has(p2pRoleRoot)
 	if !isPeerRootOrSeed && !h.rr.isTrustSeed(p) {

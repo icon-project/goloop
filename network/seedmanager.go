@@ -233,7 +233,7 @@ func newSeedManager(
 		send:   relayableSendFunc,
 		id:     self.ID(),
 		na:     self.NetAddress(),
-		cr:     self.Role(),
+		cr:     self.RecvRole(),
 		vsp:    NewValidatorSetCache(DefaultSVIssuerExpireDelay),
 		seeds:  NewPeerIDSet(),
 		svpMap: make(map[module.PeerID]*Signed[SeedVerificationPart]),
