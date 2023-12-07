@@ -149,7 +149,7 @@ func Test_set_PeerIDSet(t *testing.T) {
 	assert.False(t, s.Contains(v3), "false")
 
 	v4 := generatePeerID()
-	s.Merge(v2, v2_1, v3, v4)
+	s.Adds(v2, v2_1, v3, v4)
 	assert.Equal(t, 4, s.Len(), "4")
 	assert.True(t, s.Contains(v3), "true")
 	assert.True(t, s.Contains(v4), "true")

@@ -25,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
@@ -109,4 +110,8 @@ func (t *platform) NewConsensus(c base.Chain, walDir string) (module.Consensus, 
 
 func (t *platform) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return nil
+}
+
+func (t *platform) NewSeedState(wc state.WorldSnapshot) (module.SeedState, error) {
+	return network.NewSeedState(wc)
 }

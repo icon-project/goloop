@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
@@ -41,6 +42,7 @@ type Peer struct {
 	idMtx         sync.RWMutex
 	netAddress    NetAddress
 	netAddressMtx sync.RWMutex
+	peerAddress   PeerAddress
 	dial          NetAddress
 	in            bool
 	channel       string
@@ -51,8 +53,7 @@ type Peer struct {
 	role          PeerRoleFlag
 	roleMtx       sync.RWMutex
 	recvRole      PeerRoleFlag
-	children      *NetAddressSet
-	nephews       *NetAddressSet
+	conns         map[PeerConnectionType]*GenericSet[PeerAddress]
 	pis           *ProtocolInfos
 	pisMtx        sync.RWMutex
 	attr          map[string]interface{}
@@ -74,7 +75,7 @@ type packetCbFunc func(pkt *Packet, p *Peer)
 type closeCbFunc func(p *Peer)
 
 func newPeer(conn net.Conn, in bool, dial NetAddress, l log.Logger) *Peer {
-	return &Peer{
+	p := &Peer{
 		conn:        conn,
 		reader:      NewPacketReader(conn),
 		writer:      NewPacketWriter(conn),
@@ -85,12 +86,15 @@ func newPeer(conn net.Conn, in bool, dial NetAddress, l log.Logger) *Peer {
 		close:       make(chan error),
 		closeReason: make([]string, 0),
 		closeErr:    make([]error, 0),
-		children:    NewNetAddressSet(),
-		nephews:     NewNetAddressSet(),
+		conns:       make(map[PeerConnectionType]*GenericSet[PeerAddress]),
 		attr:        make(map[string]interface{}),
 		dial:        dial,
 		logger:      l,
 	}
+	for _, connType := range queryItemToConnType {
+		p.conns[connType] = NewGenericSet[PeerAddress]()
+	}
+	return p
 }
 
 func (p *Peer) ResetConn(conn net.Conn) {
@@ -104,7 +108,7 @@ func (p *Peer) String() string {
 		return ""
 	}
 	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, rrole:%v, type:%v, rtype:%v, rtt:%v, children:%d, nephews:%d}",
-		p.ID(), p.ConnString(), p.NetAddress(), p.In(), p.Channel(), p.Role(), p.RecvRole(), p.ConnType(), p.RecvConnType(), p.rtt.String(), p.children.Len(), p.nephews.Len())
+		p.ID(), p.ConnString(), p.NetAddress(), p.In(), p.Channel(), p.Role(), p.RecvRole(), p.ConnType(), p.RecvConnType(), p.rtt.String(), p.conns[p2pConnTypeChildren].Len(), p.conns[p2pConnTypeNephew].Len())
 }
 func (p *Peer) ConnString() string {
 	if p == nil {
@@ -141,12 +145,19 @@ func (p *Peer) setNetAddress(na NetAddress) {
 	p.netAddressMtx.Lock()
 	defer p.netAddressMtx.Unlock()
 	p.netAddress = na
+	p.peerAddress = NewPeerAddress(p.id, na)
 }
 
 func (p *Peer) NetAddress() NetAddress {
 	p.netAddressMtx.RLock()
 	defer p.netAddressMtx.RUnlock()
 	return p.netAddress
+}
+
+func (p *Peer) PeerAddress() PeerAddress {
+	p.netAddressMtx.RLock()
+	defer p.netAddressMtx.RUnlock()
+	return p.peerAddress
 }
 
 func (p *Peer) setChannel(c string) {
@@ -263,6 +274,59 @@ func (p *Peer) HasRecvRole(r PeerRoleFlag) bool {
 	defer p.roleMtx.RUnlock()
 	p.roleMtx.RLock()
 	return p.recvRole.Has(r)
+}
+
+func (p *Peer) Conns(connType PeerConnectionType) *GenericSet[PeerAddress] {
+	return p.conns[connType]
+}
+
+func (p *Peer) ResetConnsByNetAddresses(connType PeerConnectionType, l []NetAddress) {
+	var tl []PeerAddress
+	for _, v := range l {
+		tl = append(tl, NewPeerAddress(nil, v))
+	}
+	p.conns[connType].Reset(tl...)
+}
+
+func (p *Peer) UpdateConns(connType PeerConnectionType, dr DiffResult[PeerAddress]) {
+	if s, ok := p.conns[connType]; ok {
+		s.SetByDiff(dr)
+	}
+}
+
+func (p *Peer) FindConns(f GenericPredicate[PeerAddress], connTypes ...PeerConnectionType) []PeerAddress {
+	var l []PeerAddress
+	if len(connTypes) == 0 {
+		for _, v := range p.conns {
+			l = append(l, v.Find(f)...)
+		}
+	} else {
+		for _, k := range connTypes {
+			if v, ok := p.conns[k]; ok {
+				l = append(l, v.Find(f)...)
+			}
+		}
+	}
+	return l
+}
+
+func (p *Peer) FindConn(f GenericPredicate[PeerAddress], connTypes ...PeerConnectionType) (PeerAddress, bool) {
+	if len(connTypes) == 0 {
+		for _, v := range p.conns {
+			if pa, found := v.FindOne(GenericPredicate[PeerAddress](f)); found {
+				return pa, found
+			}
+		}
+	} else {
+		for _, k := range connTypes {
+			if v, ok := p.conns[k]; ok {
+				if pa, found := v.FindOne(f); found {
+					return pa, found
+				}
+			}
+		}
+	}
+	return "", false
 }
 
 func (p *Peer) _close() (err error) {
@@ -733,3 +797,41 @@ var (
 )
 
 type PeerConnectionType byte
+
+type PeerAddress string
+
+func (pa PeerAddress) PeerID() module.PeerID {
+	id, _, _ := pa.parse()
+	return id
+}
+func (pa PeerAddress) NetAddress() NetAddress {
+	_, na, _ := pa.parse()
+	return na
+}
+func (pa PeerAddress) Validate() error {
+	_, na, err := pa.parse()
+	if err != nil {
+		return err
+	}
+	return na.Validate()
+}
+
+func (pa PeerAddress) parse() (module.PeerID, NetAddress, error) {
+	s := strings.Split(string(pa), "@")
+	if len(s) != 2 {
+		return nil, "", errors.Errorf("invalid PeerAddress:%s", pa)
+	}
+	id, err := NewPeerIDFromString(s[0])
+	if err != nil {
+		return nil, "", err
+	}
+	return id, NetAddress(s[1]), nil
+}
+
+func NewPeerAddress(id module.PeerID, na NetAddress) PeerAddress {
+	s := ""
+	if id != nil {
+		s = id.String()
+	}
+	return PeerAddress(fmt.Sprintf("%s@%s", s, na))
+}

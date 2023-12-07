@@ -4,18 +4,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
 func Test_PeerToPeer_resolveConnection(t *testing.T) {
 	p2p := &PeerToPeer{
-		self:         &Peer{id: generatePeerID()},
-		trustSeeds:   NewNetAddressSet(),
-		seeds:        NewNetAddressSet(),
-		roots:        NewNetAddressSet(),
-		allowedRoots: NewPeerIDSet(),
-		allowedSeeds: NewPeerIDSet(),
-		allowedPeers: NewPeerIDSet(),
+		self: &Peer{id: generatePeerID()},
 	}
+	p2p.pm = &peerManager{self: p2p.self}
+	p2p.as = newAddressSyncer(nil, p2p.pm, log.GlobalLogger())
+	p2p.rr = newRoleResolver(p2p.self, p2p.onEvent, p2p.pm, p2p.as, log.GlobalLogger())
 	type reqGiven struct {
 		r  PeerRoleFlag
 		pr PeerRoleFlag
@@ -79,7 +78,7 @@ func Test_PeerToPeer_resolveConnection(t *testing.T) {
 	}
 	for _, arg := range reqArgs {
 		p2p.setRole(arg.given.r)
-		rc, notAllowed, invalidReq := p2p.resolveConnectionRequest(arg.given.pr, arg.given.c)
+		rc, notAllowed, invalidReq := p2p.pm.resolveConnectionRequest(arg.given.pr, arg.given.c)
 		assert.Equal(t, arg.expected.rc, rc)
 		assert.Equal(t, arg.expected.notAllowed, notAllowed)
 		assert.Equal(t, arg.expected.invalidReq, invalidReq)
@@ -160,7 +159,7 @@ func Test_PeerToPeer_resolveConnection(t *testing.T) {
 	}
 	for _, arg := range respArgs {
 		p2p.setRole(arg.given.r)
-		rc, rejectResp, invalidResp := p2p.resolveConnectionResponse(arg.given.prr, arg.given.req, arg.given.resp)
+		rc, rejectResp, invalidResp := p2p.pm.resolveConnectionResponse(arg.given.prr, arg.given.req, arg.given.resp)
 		assert.Equal(t, arg.expected.rc, rc)
 		assert.Equal(t, arg.expected.rejectResp, rejectResp)
 		assert.Equal(t, arg.expected.invalidResp, invalidResp)

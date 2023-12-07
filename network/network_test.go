@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -24,6 +27,8 @@ const (
 	testNumNotAllowedPeer = 2
 	testProtoPriority     = 1
 	testNumChild          = 4
+	testNumSeedByAuth     = 1
+	testNumSeedByVote     = 1
 
 	testValidator  = "TestValidator"
 	testSeed       = "TestSeed"
@@ -31,6 +36,10 @@ const (
 	testAllowed    = "TestAllowed"
 	testNotAllowed = "TestNotAllowed"
 	testChild      = "TestChild"
+	testSeedByAuth = "TestSeedByAuth"
+	testSeedByVote = "TestSeedByVote"
+
+	testSeedTerm = 10
 )
 
 var (
@@ -283,12 +292,17 @@ func (r *testReactor) Response(msg string, id module.PeerID) string {
 
 type dummyChain struct {
 	module.Chain
+	w         module.Wallet
 	nid       int
 	metricCtx context.Context
 	logger    log.Logger
 	nm        module.NetworkManager
+	bm        module.BlockManager
+	sm        module.ServiceManager
+	srap      module.SeedRoleAuthorizationPolicy
 }
 
+func (c *dummyChain) Wallet() module.Wallet                 { return c.w }
 func (c *dummyChain) NID() int                              { return c.nid }
 func (c *dummyChain) CID() int                              { return c.nid }
 func (c *dummyChain) NetID() int                            { return c.nid }
@@ -297,6 +311,208 @@ func (c *dummyChain) MetricContext() context.Context        { return c.metricCtx
 func (c *dummyChain) ChildrenLimit() int                    { return -1 }
 func (c *dummyChain) NephewsLimit() int                     { return -1 }
 func (c *dummyChain) NetworkManager() module.NetworkManager { return c.nm }
+func (c *dummyChain) BlockManager() module.BlockManager     { return c.bm }
+func (c *dummyChain) ServiceManager() module.ServiceManager { return c.sm }
+
+func (c *dummyChain) SeedRoleAuthorizationPolicy() module.SeedRoleAuthorizationPolicy { return c.srap }
+
+func newDummyChain(w module.Wallet, l log.Logger) *dummyChain {
+	return &dummyChain{w: w, nid: 1, metricCtx: context.Background(), bm: &dummyBlockManager{}, sm: &dummyServiceManager{}, logger: l}
+}
+
+type dummyValidator struct {
+	module.Validator
+	a module.Address
+}
+
+func (d *dummyValidator) Address() module.Address {
+	return d.a
+}
+
+type dummyValidatorList struct {
+	module.ValidatorList
+	l   []*dummyValidator
+	h   []byte
+	mtx sync.RWMutex
+}
+
+func (d *dummyValidatorList) _hash() {
+	var b []byte
+	for _, v := range d.l {
+		b = append(b, v.a.Bytes()...)
+	}
+	d.h = crypto.SHA3Sum256(b)
+}
+
+func (d *dummyValidatorList) Hash() []byte {
+	if d == nil {
+		return nil
+	}
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return d.h
+}
+
+func (d *dummyValidatorList) Len() int {
+	if d == nil {
+		return 0
+	}
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return len(d.l)
+}
+
+func (d *dummyValidatorList) Get(i int) (module.Validator, bool) {
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	if len(d.l) <= i || i < 0 {
+		return nil, false
+	}
+	return d.l[i], true
+}
+
+func (d *dummyValidatorList) add(a module.Address) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	v := &dummyValidator{a: a}
+	d.l = append(d.l, v)
+	d._hash()
+}
+
+type dummyBlock struct {
+	module.Block
+	height int64
+	nv     *dummyValidatorList
+}
+
+func (d *dummyBlock) Height() int64 {
+	return d.height
+}
+
+func (d *dummyBlock) Result() []byte {
+	return []byte(fmt.Sprintf("%v", d.height))
+}
+
+func (d *dummyBlock) NextValidators() module.ValidatorList {
+	return d.nv
+}
+
+func (d *dummyBlock) NextValidatorsHash() []byte {
+	return d.nv.Hash()
+}
+
+type dummyBlockManager struct {
+	module.BlockManager
+	nv  *dummyValidatorList
+	blk *dummyBlock
+	mtx sync.RWMutex
+}
+
+func (d *dummyBlockManager) GetLastBlock() (module.Block, error) {
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	if d.blk == nil {
+		d.blk = &dummyBlock{
+			height: 1,
+			nv:     d.nv,
+		}
+	}
+	return d.blk, nil
+}
+
+func (d *dummyBlockManager) WaitForBlock(height int64) (<-chan module.Block, error) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	if height < 1 {
+		return nil, errors.NotFoundError.Errorf("no block for %d", height)
+	}
+	d.blk = &dummyBlock{
+		height: height,
+		nv:     d.nv,
+	}
+	<-time.After(time.Second)
+	ch := make(chan module.Block, 1)
+	ch <- d.blk
+	return ch, nil
+}
+
+type dummyServiceManager struct {
+	module.ServiceManager
+	ss *dummySeedState
+}
+
+func (d *dummyServiceManager) SeedState(result []byte) (module.SeedState, error) {
+	return d.ss, nil
+}
+
+type dummySeedState struct {
+	ap    module.SeedRoleAuthorizationPolicy
+	seeds []module.PeerID
+	as    *PeerIDSet
+	cs    *PeerIDSet
+	term  int64
+	mtx   sync.RWMutex
+}
+
+func (d *dummySeedState) AuthorizationPolicy() module.SeedRoleAuthorizationPolicy {
+	if d == nil {
+		return module.SeedRoleAuthorizationPolicyNone
+	}
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return d.ap
+}
+
+func (d *dummySeedState) setAuthorizationPolicy(ap module.SeedRoleAuthorizationPolicy) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	d.ap = ap
+}
+
+func (d *dummySeedState) Seeds() []module.PeerID {
+	if d == nil {
+		return nil
+	}
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return d.seeds
+}
+
+func (d *dummySeedState) addSeed(id module.PeerID) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	d.seeds = append(d.seeds, id)
+}
+
+func (d *dummySeedState) IsAuthorizer(id module.PeerID) bool {
+	if d.as == nil {
+		return false
+	}
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return d.as.Contains(id)
+}
+
+func (d *dummySeedState) IsCandidate(id module.PeerID) bool {
+	if d.cs == nil || d.cs.IsEmpty() {
+		return true
+	}
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return d.cs.Contains(id)
+}
+
+func (d *dummySeedState) Term() int64 {
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return d.term
+}
+
+func (d *dummySeedState) setTerm(term int64) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	d.term = term
+}
 
 type dummyReactor struct{}
 
@@ -325,7 +541,7 @@ func generateNetwork(name string, n int, t *testing.T, roles ...module.Role) []*
 		nodeLogger.SetConsoleLevel(lv)
 		nt := NewTransport(getAvailableLocalhostAddress(t), w, nodeLogger)
 		chainLogger := nodeLogger.WithFields(log.Fields{log.FieldKeyCID: "1"})
-		c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
+		c := newDummyChain(w, chainLogger)
 		nm := NewManager(c, nt, "", roles...)
 		c.nm = nm
 		var emptyProtocols []module.ProtocolInfo
@@ -552,9 +768,13 @@ func baseNetwork(t *testing.T) (m map[string][]*testReactor, ch chan context.Con
 	n := testNumValidator + testNumSeed + testNumCitizen
 	na := m[testSeed][0].p2p.NetAddress()
 	ch = make(chan context.Context, 2*n)
+	nv := &dummyValidatorList{}
+	ss := &dummySeedState{}
 	for _, v := range m {
 		for _, r := range v {
 			r.ch = ch
+			r.c.BlockManager().(*dummyBlockManager).nv = nv
+			r.c.ServiceManager().(*dummyServiceManager).ss = ss
 			if r.p2p.NetAddress() != na {
 				r.nm.SetTrustSeeds(string(na))
 			}
@@ -588,7 +808,7 @@ func Test_manager(t *testing.T) {
 	logger := testLogger()
 	nt := NewTransport(getAvailableLocalhostAddress(t), w, logger)
 	chainLogger := logger.WithFields(log.Fields{log.FieldKeyCID: "1"})
-	c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
+	c := newDummyChain(w, chainLogger)
 	nm := NewManager(c, nt, "", module.RoleValidator).(*manager)
 	type registerReactorParam struct {
 		name     string
@@ -810,7 +1030,7 @@ func Test_network_allowedPeer(t *testing.T) {
 	remove := allowed[testNumAllowedPeer-1]
 	go func() {
 		for _, r := range m[testAllowed] {
-			r.nm.RemoveRole(module.RoleNormal, remove)
+			r.nm.SetRole(2, module.RoleNormal, allowed...)
 		}
 	}()
 	evtMap, err = waitEvent(ch, n-1, 2*time.Second, p2pEventNotAllowed, remove)
@@ -879,4 +1099,91 @@ func Test_network_trustSeeds(t *testing.T) {
 	listenerClose(t, m)
 	t.Log(time.Now(), "Finish")
 
+}
+
+func Test_network_seed(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	m, ch := baseNetwork(t)
+	seed := m[testSeed][0]
+	nv := seed.c.BlockManager().(*dummyBlockManager).nv
+	ss := seed.c.ServiceManager().(*dummyServiceManager).ss
+	ss.as = NewPeerIDSet()
+	ap := ss.ap
+	ap.Set(module.SeedRoleAuthorizationPolicyByState, true)
+	ap.Set(module.SeedRoleAuthorizationPolicyByAuthorizer, true)
+	ap.Set(module.SeedRoleAuthorizationPolicyByValidatorVotes, true)
+	ss.setAuthorizationPolicy(ap)
+	ss.setTerm(testSeedTerm)
+	for _, v := range m {
+		for _, r := range v {
+			if r.p2p.Role().Has(p2pRoleRoot) {
+				r.c.Logger().Debugf("addRoot:%v", r.c.Wallet().Address())
+				nv.add(r.c.Wallet().Address())
+				ss.as.Add(r.p2p.ID())
+			}
+			if r.p2p.Role().Has(p2pRoleSeed) {
+				r.c.Logger().Debugf("addSeed:%v", r.p2p.ID())
+				ss.addSeed(r.p2p.ID())
+			}
+		}
+	}
+
+	na := seed.p2p.NetAddress()
+	m[testSeedByAuth] = generateNetwork(testSeedByAuth, testNumSeedByAuth, t, module.RoleSeed)
+	for _, r := range m[testSeedByAuth] {
+		r.c.(*dummyChain).srap = module.SeedRoleAuthorizationPolicyByAuthorizer
+	}
+	m[testSeedByVote] = generateNetwork(testSeedByVote, testNumSeedByVote, t, module.RoleSeed)
+	for _, r := range m[testSeedByVote] {
+		r.c.(*dummyChain).srap = module.SeedRoleAuthorizationPolicyByValidatorVotes
+	}
+	n := testNumSeedByAuth + testNumSeedByVote
+	ch2 := make(chan context.Context, n)
+	for k := range m {
+		if k == testSeedByAuth || k == testSeedByVote {
+			for _, r := range m[k] {
+				go func(r *testReactor) {
+					bm := r.c.BlockManager().(*dummyBlockManager)
+					bm.nv = nv
+					blk, _ := seed.c.BlockManager().GetLastBlock()
+					bm.blk = blk.(*dummyBlock)
+					r.c.ServiceManager().(*dummyServiceManager).ss = ss
+					r.nm.SetTrustSeeds(string(na))
+					r.ch = ch2
+					failIfError(t, r.nt.Listen(), "fail to listen", r.name)
+					failIfError(t, r.nm.Start(), "fail to start", r.name)
+				}(r)
+			}
+		}
+	}
+	connMap, maxD, err := waitConnection(ch2, map[PeerRoleFlag][]int{
+		p2pRoleNone: []int{0, math.MaxInt, 0, math.MaxInt, 0, 0},
+		p2pRoleSeed: []int{0, 1, 0, DefaultUnclesLimit, 0, 0},
+	}, n, 10*DefaultSeedPeriod)
+	t.Log(time.Now(), "max:", maxD, connMap)
+	failIfError(t, err, "waitConnection", connMap)
+
+	t.Log(time.Now(), "Messaging")
+	msg := m[testValidator][0].Broadcast("Test1")
+	n = testNumValidator - 1 + testNumSeed + testNumCitizen
+	err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
+	assert.NoError(t, err, "Broadcast", "Test1")
+	n = testNumSeedByAuth + testNumSeedByVote
+	err = wait(ch2, ProtoTestNetworkBroadcast, msg, n, time.Second)
+	assert.NoError(t, err, "Broadcast to short term seed", "Test1")
+
+	msg = m[testSeedByAuth][0].Multicast("Test2")
+	n = testNumValidator
+	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second)
+	assert.NoError(t, err, "Multicast", "Test2")
+
+	msg = m[testSeedByVote][0].Multicast("Test3")
+	n = testNumValidator
+	err = wait(ch, ProtoTestNetworkMulticast, msg, n, time.Second)
+	assert.NoError(t, err, "Multicast", "Test3")
+
+	listenerClose(t, m)
+	t.Log(time.Now(), "Finish")
 }

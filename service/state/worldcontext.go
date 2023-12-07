@@ -42,6 +42,11 @@ const (
 	VarSystemDepositUsage = "system_deposit_usage"
 
 	VarDSRContextHistory = "dsr_context_history"
+
+	VarSeedPolicy     = "seed_policy"
+	VarSeeds          = "seeds"
+	VarSeedCandidates = "seed_candidates"
+	VarSeedTerm       = "seed_term"
 )
 
 const (

@@ -415,4 +415,7 @@ type ServiceManager interface {
 	// If the data has votes for the height H, then result is base state deciding whether it has double signs.
 	// So, result and vh should come from previous block at the height H-1.
 	SendDoubleSignReport(result []byte, vh []byte, data []DoubleSignData) error
+
+	// SeedState returns state for seed management
+	SeedState(result []byte) (SeedState, error)
 }

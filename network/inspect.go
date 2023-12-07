@@ -27,25 +27,25 @@ func Inspect(c module.Chain, informal bool) map[string]interface{} {
 func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 	m := make(map[string]interface{})
 	m["self"] = peerToMap(mgr.p2p.self, informal)
-	m["seeds"] = mgr.p2p.seeds.Map()
-	m["roots"] = mgr.p2p.roots.Map()
-	m["friends"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeFriend), informal)
+	m["seeds"] = mgr.p2p.as.m[p2pRoleSeed].Map()
+	m["roots"] = mgr.p2p.as.m[p2pRoleRoot].Map()
+	m["friends"] = peerArrayToMapArray(mgr.p2p.pm.findPeers(nil, p2pConnTypeFriend), informal)
 	var parent *Peer
-	parents := mgr.p2p.findPeers(nil, p2pConnTypeParent)
+	parents := mgr.p2p.pm.findPeers(nil, p2pConnTypeParent)
 	if len(parents) > 0 {
 		parent = parents[0]
 	}
 	m["parent"] = peerToMap(parent, informal)
-	m["children"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeChildren), informal)
-	m["uncles"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeUncle), informal)
-	m["nephews"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeNephew), informal)
-	m["others"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeOther), informal)
-	m["orphanages"] = peerArrayToMapArray(mgr.p2p.findPeers(nil, p2pConnTypeNone), informal)
+	m["children"] = peerArrayToMapArray(mgr.p2p.pm.findPeers(nil, p2pConnTypeChildren), informal)
+	m["uncles"] = peerArrayToMapArray(mgr.p2p.pm.findPeers(nil, p2pConnTypeUncle), informal)
+	m["nephews"] = peerArrayToMapArray(mgr.p2p.pm.findPeers(nil, p2pConnTypeNephew), informal)
+	m["others"] = peerArrayToMapArray(mgr.p2p.pm.findPeers(nil, p2pConnTypeOther), informal)
+	m["orphanages"] = peerArrayToMapArray(mgr.p2p.pm.findPeers(nil, p2pConnTypeNone), informal)
 	if informal {
-		m["transiting"] = peerSetToMapArray(mgr.p2p.transiting, informal)
-		m["reject"] = peerSetToMapArray(mgr.p2p.reject, informal)
+		m["transiting"] = peerSetToMapArray(mgr.p2p.pm.transiting, informal)
+		m["reject"] = peerSetToMapArray(mgr.p2p.pm.reject, informal)
 	}
-	m["trustSeeds"] = mgr.p2p.trustSeeds.Map()
+	m["trustSeeds"] = mgr.p2p.rr.getTrustSeedsMap()
 	return m
 }
 

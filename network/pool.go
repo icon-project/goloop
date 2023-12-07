@@ -45,10 +45,7 @@ func (p *PacketPool) _contains(pkt *Packet) bool {
 	return false
 }
 
-func (p *PacketPool) Put(pkt *Packet) bool {
-	defer p.mtx.Unlock()
-	p.mtx.Lock()
-
+func (p *PacketPool) _put(pkt *Packet) bool {
 	if p._contains(pkt) {
 		return false
 	}
@@ -64,6 +61,22 @@ func (p *PacketPool) Put(pkt *Packet) bool {
 		p.len[p.cur] = 0
 	}
 	return true
+}
+
+func (p *PacketPool) Put(pkt *Packet) bool {
+	defer p.mtx.Unlock()
+	p.mtx.Lock()
+	return p._put(pkt)
+}
+
+func (p *PacketPool) PutWith(pkt *Packet, f func(*Packet)) bool {
+	defer p.mtx.Unlock()
+	p.mtx.Lock()
+	r := p._put(pkt)
+	if r && f != nil {
+		f(pkt)
+	}
+	return r
 }
 
 func (p *PacketPool) Clear() {

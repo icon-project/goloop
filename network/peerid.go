@@ -6,6 +6,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -113,4 +114,15 @@ func NewPeerIDFromAddress(a module.Address) module.PeerID {
 
 func NewPeerIDFromPublicKey(k *crypto.PublicKey) module.PeerID {
 	return cache.Get(common.NewAccountAddressFromPublicKey(k))
+}
+
+func NewPeerIDFromString(s string) (module.PeerID, error) {
+	a, err := common.NewAddressFromString(s)
+	if err != nil {
+		return nil, err
+	}
+	if a.IsContract() {
+		return nil, errors.Errorf("invalid PeerID:%s", s)
+	}
+	return cache.Get(a), nil
 }
