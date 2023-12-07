@@ -95,10 +95,16 @@
     * [NamedValue](#namedvalue)
 - [Event logs](#event-logs)
     * [PenaltyImposed(Address,int,int)](#penaltyimposedaddressintint)
+    * [Slashed](#slashedaddressaddressint)
+    * [TermStarted](#termstartedintintint)
 - [Predefined variables](#predefined-variables)
-    * [PENALTY_TYPE](#penaltytype)
+    * [PENALTY_TYPE_ID](#penaltytypeid)
+    * [PENALTY_TYPE_NAME](#penaltytypename)
     * [NETWORK_SCORE_TYPE](#networkscoretype)
     * [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)
+    * [JAIL_FLAG](#jailflag)
+    * [PREP_STATUS](#prepstatus)
+    * [PREP_GRADE](#prepgrade)
 
 </details>
 
@@ -515,7 +521,7 @@ def setScoreOwner(score: Address, owner: Address) -> None:
 
 It blocks the account (EoA). It's only for governance.
 If it's already blocked, then it ignores silently.
-Otherwise, it emit the event.
+Otherwise, it emits the event.
 
 ```
 def blockAccount(address: Address) -> None:
@@ -540,7 +546,7 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 It unblocks the account (EoA). It's only for governance.
 If it's already unblocked, then it silently ignores.
-Otherwise, it emit the event.
+Otherwise, it emits the event.
 
 ```
 def unblockAccount(address: Address) -> None:
@@ -784,12 +790,12 @@ def getPRepTerm() -> dict:
 | totalPower       | int                                   | total power amount of `preps`                               |
 | period           | int                                   | term period                                                 |
 | rewardFund       | [RewardFund](#rewardfund)             | reward fund information for the term                        |
-| bondRequirement  | int                                   | bondRequriement for the term                                |
+| bondRequirement  | int                                   | bondRequirement for the term                                |
 | revision         | int                                   | revision for the term                                       |
 | isDecentralized  | bool                                  | `true` if network is decentralized                          |
 | mainPRepCount    | int                                   | Main P-Reps count for the term                              |
 | iissVersion      | int                                   | IISS version for the term                                   |
-| irep             | int                                   | (Optional. revision < 25) Irep for the term                  |
+| irep             | int                                   | (Optional. revision < 25) Irep for the term                 |
 | rrep             | int                                   | (Optional. revision < 25) Rrep for the term                 |
 | minimumBond      | int                                   | (Optional. revision >= 25) minimum bond amount for the term |
 
@@ -1164,9 +1170,9 @@ def disqualifyPRep(address: Address) -> None:
 
 *Parameters:*
 
-| Name    | Type    | Description                            |
-|:--------|:--------|:---------------------------------------|
-| address | Address | address of the P-Rep to be disqulified |
+| Name    | Type    | Description                              |
+|:--------|:--------|:-----------------------------------------|
+| address | Address | owner address of the P-Rep to disqualify |
 
 *Event Log:*
 [PenaltyImposed(Address,int,int)](#penaltyimposedaddressintint)
@@ -1255,6 +1261,7 @@ def penalizeNonvoters(address: Address) -> None:
 | preps | List\[Address\] | addresses of P-Reps to be penalized |
 
 *Event Log:*
+
 [PenaltyImposed(Address,int,int)](#penaltyimposedaddressintint)
 
 *Revision:* 15 ~
@@ -1433,10 +1440,10 @@ def setSlashingRates(rates: List[NamedValue]) -> None:
 
 Fields in [NamedValue](#namedvalue)
 
-| Field | Type | Description                                                       |
-|:------|:-----|:------------------------------------------------------------------|
-| name  | str  | penalty name. Refer to [PENALTY_TYPE](#penaltytype) section       |
-| value | int  | slashingRate for each penalty ranging from 0 (0%) ~ 10,000 (100%) |
+| Field | Type | Description                                                          |
+|:------|:-----|:---------------------------------------------------------------------|
+| name  | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penaltytypename) section |
+| value | int  | slashingRate for each penalty ranging from 0 (0%) ~ 10,000 (100%)    |
 
 *Event Log:*
 
@@ -1445,10 +1452,10 @@ Fields in [NamedValue](#namedvalue)
 def SlashingRateSet(penaltyName: str, rate: int) -> None:
 ```
 
-| Name        | Type | Description                                                 |
-|:------------|:-----|:------------------------------------------------------------|
-| penaltyName | str  | penalty name. Refer to [PENALTY_TYPE](#penaltytype) section |
-| rate        | int  | slashing rate ranging from 0 ~ 10,000                       |
+| Name        | Type | Description                                                          |
+|:------------|:-----|:---------------------------------------------------------------------|
+| penaltyName | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penaltytypename) section |
+| rate        | int  | slashing rate ranging from 0 ~ 10,000                                |
 
 *Revision:* 24 ~
 
@@ -1782,20 +1789,23 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 | delegated              | int        | delegation amount that a P-Rep receives from ICONist                                                                                                                                                      |
 | details                | str        | URL including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
 | email                  | str        | P-Rep email                                                                                                                                                                                               |
-| grade                  | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                                                                                                                                           |
+| grade                  | int        | [PREP_GRADE](#prepgrade)                                                                                                                                                                                  |
 | hasPublicKey           | bool       | (Optional) P-Rep has valid public keys for all active BTP Network type                                                                                                                                    |
 | irep                   | int        | incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value                                                                                                               |
 | irepUpdateBlockHeight  | int        | block height when a P-Rep changed I-Rep value                                                                                                                                                             |
 | lastHeight             | int        | latest block height at which the P-Rep's voting status changed                                                                                                                                            |
 | name                   | str        | P-Rep name                                                                                                                                                                                                |
-| nodeAddress            | str        | node Key for only consensus                                                                                                                                                                               |
+| nodeAddress            | Address    | node Key for only consensus                                                                                                                                                                               |
 | p2pEndpoint            | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
-| penalty                | int        | 0: None, 1: Disqualification, 2: Low Productivity, 3: Block Validation, 4: NonVote                                                                                                                        |
+| penalty                | int        | [PENALTY_TYPE_ID](#penaltytypeid)                                                                                                                                                                         | 
 | power                  | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20))                                                                                                          |
-| status                 | int        | 0: active, 1: unregistered                                                                                                                                                                                |
+| status                 | int        | [PREP_STATUS](#prepstatus)                                                                                                                                                                                |
 | totalBlocks            | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
 | validatedBlocks        | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
 | website                | str        | P-Rep homepage URL                                                                                                                                                                                        |
+| jailFlags              | int        | [JAIL_FLAG](#jailflag) representing jail system related status for a given P-Rep                                                                                                                          |
+| unjailRequestHeight    | int        | latest blockHeight when the P-Rep owner sent a `requestUnjail` transaction                                                                                                                                |
+| minDoubleSignHeight    | int        | only doubleSign reports that are newer than minDoubleSignHeight are accepted                                                                                                                              |
 
 ## PRepSnapshot
 
@@ -1812,7 +1822,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 |:-------------|:-----------|:---------------------------------------------------------------------------------|
 | fail         | int        | number of blocks that this PRep failed to validate until lastHeight              |
 | failCont     | int        | number of consecutive blocks that this PRep failed to validate until lastHeight  |
-| grade        | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                  |
+| grade        | int        | [PREP_GRADE](#prepgrade)                                                         |
 | lastHeight   | int        | Latest blockHeight when lastState change happened                                |
 | lastState    | int        | 0: None, 1: Ready, 2: Success, 3: Failure                                        |
 | owner        | Address    | PRep owner address                                                               |
@@ -1820,7 +1830,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 | realFail     | int        | number of blocks that this PRep failed to validate                               |
 | realFailCont | int        | number of blocks that this PRep failed to validate consecutively                 |
 | realTotal    | int        | number of blocks that this PRep was supposed to validate                         |
-| status       | int        | 0: Active, 1: Unregistered, 2: Disqualified                                      |
+| status       | int        | [PREP_STATUS](#prepstatus)                                                       |
 | total        | int        | number of blocks that this PRep was supposed to validate until lastHeight        |
 
 ## ContractStatus
@@ -1878,26 +1888,63 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ```
 @eventlog(indexed=1)
-def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
+def PenaltyImposed(address: Address, status: int, penalty_type: int)
 ```
 
-| Name         | Type    | Description                                                                                                                                                            |
-|:-------------|:--------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| address      | Address | address of penalized P-Rep                                                                                                                                             |
-| status       | int     | status of penalized P-Rep                                                                                                                                              |
-| penalty_type | int     | type of penalty<br />1: Disqualification<br />2: Accumulated Validation Failure<br />3: Validation Failure<br />4: Missed Network Proposal Vote<br />5: Double signing |
+| Name         | Type    | Description                       |
+|:-------------|:--------|:----------------------------------|
+| address      | Address | owner address of penalized P-Rep  |
+| status       | int     | [PREP_STATUS](#prepstatus)        |
+| penalty_type | int     | [PENALTY_TYPE_ID](#penaltytypeid) |
+
+## Slashed(Address,Address,int)
+
+```
+@eventlog(indexed=1)
+def Slashed(owner: Address, bonder: Address, amount: int)
+```
+
+| Name   | Type    | Description                     |
+|:-------|:--------|:--------------------------------|
+| owner  | Address | owner address of slashed P-Rep  |
+| bonder | Address | bonder address of slashed P-Rep |
+| amount | int     | slashed bond amount             |
+
+## TermStarted(int,int,int)
+
+```
+@eventlog(indexed=0)
+def TermStarted(sequence: int, startHeight: int, endHeight: int)
+```
+
+| Name        | Type | Description                                |
+|:------------|:-----|:-------------------------------------------|
+| sequence    | int  | term sequence number from decentralization |
+| startHeight | int  | blockHeight when this term begins          |
+| endHeight   | int  | blockHeight when this term ends            |
 
 # Predefined variables
 
-## PENALTY_TYPE
+## PENALTY_TYPE_ID
 
-| id | name                           | revision | Description                                    |
-|:---|:-------------------------------|:---------|:-----------------------------------------------|
-| 1  | "prepDisqualification"         | 6 ~      | P-Rep disqualification penalty                 |
-| 2  | "accumulatedValidationFailure" | 6 ~      | accumulated block validation failure penalty   |
-| 3  | "validationFailure"            | 6 ~      | block validation failure penalty               |
-| 4  | "missedNetworkProposalVote"    | 6 ~      | missed Network Proposal vote penalty           |
-| 5  | "doubleSign"                   | 25 ~     | submit multiple votes to same height and round |
+| value | revision | Description                                  |
+|:------|:---------|:---------------------------------------------|
+| 0     | 6 ~      | No penalty                                   |
+| 1     | 6 ~      | P-Rep disqualification penalty               |
+| 2     | 6 ~      | accumulated block validation failure penalty |
+| 3     | 6 ~      | validation failure penalty                   |
+| 4     | 6 ~      | missed Network Proposal vote penalty         |
+| 5     | 25 ~     | double sign penalty                          |
+
+## PENALTY_TYPE_NAME
+
+| value                          | revision | Description                                  |
+|:-------------------------------|:---------|:---------------------------------------------|
+| "prepDisqualification"         | 6 ~      | P-Rep disqualification penalty               |
+| "accumulatedValidationFailure" | 6 ~      | accumulated block validation failure penalty |
+| "validationFailure"            | 6 ~      | validation failure penalty                   |
+| "missedNetworkProposalVote"    | 6 ~      | missed Network Proposal vote penalty         |
+| "doubleSign"                   | 25 ~     | double sign penalty                          |
 
 ## NETWORK_SCORE_TYPE
 
@@ -1915,3 +1962,28 @@ def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
 | "Icps"   | 13 ~     | key for CPS reward                         |
 | "Irelay" | 13 ~     | key for BTP relay reward                   |
 | "Iwage"  | 23 ~     | key for P-Rep minimum wage                 |
+
+## JAIL_FLAG
+
+| value | revision | Description                       |
+|:------|:---------|:----------------------------------|
+| 1     | 25 ~     | inJail flag                       |
+| 2     | 25 ~     | unjailing flag                    |
+| 4     | 25 ~     | accumulatedValidationFailure flag | 
+| 8     | 25 ~     | doubleSign flag                   |
+
+## PREP_STATUS
+
+| value | revision | Description  |
+|:------|:---------|:-------------|
+| 0     | 6 ~      | active       |
+| 1     | 6 ~      | unregistered |
+| 2     | 6 ~      | disqualified |
+
+## PREP_GRADE
+
+| value | revision | Description     |
+|:------|:---------|:----------------|
+| 0     | 6 ~      | main P-Rep      |
+| 1     | 6 ~      | sub P-Rep       |
+| 2     | 6 ~      | P-Rep candidate |
