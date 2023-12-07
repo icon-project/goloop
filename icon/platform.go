@@ -36,6 +36,7 @@ import (
 	"github.com/icon-project/goloop/icon/blockv1"
 	"github.com/icon-project/goloop/icon/icconsensus"
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/icnetwork"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/iccache"
 	"github.com/icon-project/goloop/icon/iiss/icutils"
@@ -322,4 +323,8 @@ func (p *platform) ShowDiff(ctx service.DiffContext, name string, e, r []byte) e
 
 func (p *platform) DoubleSignDecoder() module.DoubleSignDataDecoder {
 	return consensus.DecodeDoubleSignData
+}
+
+func (p *platform) NewSeedState(wc state.WorldSnapshot) (module.SeedState, error) {
+	return icnetwork.NewSeedState(wc)
 }
