@@ -1492,6 +1492,13 @@ Fields in [NamedValue](#namedvalue)
 | name  | str  | available name: `main`, `sub`, `extra`     |                         
 | value | int  | number of P-Reps specified by `name` field |
 
+Constraints
+
+* 0 < `main` <= 1000
+* 0 <= `sub` <= 1000
+* 0 <= `extra` <= `sub`
+* `extra` <= (`main` - 1) / 2
+
 *Event Log:*
 
 ```
