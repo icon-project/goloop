@@ -47,6 +47,7 @@
             + [getPRepStatsOf](#getprepstatsof)
             + [getSlashingRates](#getslashingrates)
             + [getMinimumBond](#getminimumbond)
+            + [getPRepCountConfig](#getprepcountconfig)
         * Writable APIs
             + [setStake](#setstake)
             + [setDelegation](#setdelegation)
@@ -67,6 +68,8 @@
             + [setCommissionRate](#setcommissionrate)
             + [setSlashingRates](#setslashingrates)
             + [requestUnjail](#requestunjail)
+            + [setPRepCountConfig](#setprepcountconfig)
+            + [handleDoubleSignReport](#handledoublesignreport)
     - [BTP](#btp)
         * ReadOnly APIs
             + [getBTPNetworkTypeID](#getbtpnetworktypeid)
@@ -92,10 +95,16 @@
     * [NamedValue](#namedvalue)
 - [Event logs](#event-logs)
     * [PenaltyImposed(Address,int,int)](#penaltyimposedaddressintint)
+    * [Slashed](#slashedaddressaddressint)
+    * [TermStarted](#termstartedintintint)
 - [Predefined variables](#predefined-variables)
-    * [PENALTY_TYPE](#penaltytype)
-    * [NETWORK_SCORE_TYPE](#networkscoretype)
-    * [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)
+    * [PENALTY_TYPE_ID](#penalty_type_id)
+    * [PENALTY_TYPE_NAME](#penalty_type_name)
+    * [NETWORK_SCORE_TYPE](#network_score_type)
+    * [REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)
+    * [JAIL_FLAG](#jail_flag)
+    * [PREP_STATUS](#prep_status)
+    * [PREP_GRADE](#prep_grade)
 
 </details>
 
@@ -107,7 +116,7 @@
 
 Returns the revision of the network.
 
-```python
+```
 def getRevision() -> int:
 ```
 
@@ -121,7 +130,7 @@ def getRevision() -> int:
 
 Returns the price of step in loop.
 
-```python
+```
 def getStepPrice() -> int:
 ```
 
@@ -135,7 +144,7 @@ def getStepPrice() -> int:
 
 Returns the step cost of given step type `type`.
 
-```python
+```
 def getStepCost(type: str) -> int:
 ```
 
@@ -155,7 +164,7 @@ def getStepCost(type: str) -> int:
 
 Returns the step costs of all step types.
 
-```python
+```
 def getStepCosts() -> dict:
 ```
 
@@ -169,7 +178,7 @@ def getStepCosts() -> dict:
 
 Returns the maximum value of step limit for the given `contextType`.
 
-```python
+```
 def getMaxStepLimit(contextType: str) -> int:
 ```
 
@@ -189,7 +198,7 @@ def getMaxStepLimit(contextType: str) -> int:
 
 Returns the status of the SCORE.
 
-```python
+```
 def getScoreStatus(address: Address) -> dict:
 ```
 
@@ -216,7 +225,7 @@ def getScoreStatus(address: Address) -> dict:
 
 Returns addresses of blocked SCOREs.
 
-```python
+```
 def getBlockedScores() -> List[Address]:
 ```
 
@@ -230,7 +239,7 @@ def getBlockedScores() -> List[Address]:
 
 Returns the owner of the SCORE.
 
-```python
+```
 def getScoreOwner(address: Address) -> Address:
 ```
 
@@ -250,7 +259,7 @@ def getScoreOwner(address: Address) -> Address:
 
 Returns whether it's blocked or not
 
-```python
+```
 def isBlocked(address: Address) -> bool:
 ```
 
@@ -270,7 +279,7 @@ def isBlocked(address: Address) -> bool:
 
 Updates the revision of the network. Governance only.
 
-```python
+```
 def setRevision(code: int) -> None:
 ```
 
@@ -282,7 +291,7 @@ def setRevision(code: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def RevisionSet(code: int) -> None:
 ```
@@ -297,7 +306,7 @@ def RevisionSet(code: int) -> None:
 
 Updates the price of step in loop. Governance only.
 
-```python
+```
 def setStepPrice(price: int) -> None:
 ```
 
@@ -309,7 +318,7 @@ def setStepPrice(price: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def StepPriceSet(price: int) -> None:
 ```
@@ -324,7 +333,7 @@ def StepPriceSet(price: int) -> None:
 
 Updates the step cost of given `type` step type. Governance only.
 
-```python
+```
 def setStepCost(type: str, cost: int) -> None:
 ```
 
@@ -337,7 +346,7 @@ def setStepCost(type: str, cost: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def StepCostSet(type: str, cost: int) -> None:
 ```
@@ -353,7 +362,7 @@ def StepCostSet(type: str, cost: int) -> None:
 
 Updates the maximum step limit of given `contextType`. Governance only.
 
-```python
+```
 def setMaxStepLimit(contextType: str, limit: int) -> None:
 ```
 
@@ -366,7 +375,7 @@ def setMaxStepLimit(contextType: str, limit: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def MaxStepLimitSet(contextType: str, limit: int) -> None:
 ```
@@ -382,7 +391,7 @@ def MaxStepLimitSet(contextType: str, limit: int) -> None:
 
 Disables the SCORE. Allowed only from the SCORE owner.
 
-```python
+```
 def disableScore(address: Address) -> None:
 ```
 
@@ -398,7 +407,7 @@ def disableScore(address: Address) -> None:
 
 Enables the SCORE. Allowed only from the SCORE owner.
 
-```python
+```
 def enableScore(address: Address) -> None:
 ```
 
@@ -414,7 +423,7 @@ def enableScore(address: Address) -> None:
 
 Blocks the SCORE. Governance only.
 
-```python
+```
 def blockScore(address: Address) -> None:
 ```
 
@@ -426,7 +435,7 @@ def blockScore(address: Address) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -442,7 +451,7 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 Unblocks the SCORE. Governance only.
 
-```python
+```
 def unblockScore(address: Address) -> None:
 ```
 
@@ -454,7 +463,7 @@ def unblockScore(address: Address) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -470,13 +479,13 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 Burns the balance of the sender. Set amount with `value` of `icx_sendTransaction`.
 
-```python
+```
 def burn() -> None:
 ```
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def ICXBurnedV2(address: Address, amount: int, total_supply: int) -> None:
 ```
@@ -495,7 +504,7 @@ Updates the owner of the SCORE. Allowed only from the SCORE owner.
 
 - Not allowed for blocked or disabled SCORE.
 
-```python
+```
 def setScoreOwner(score: Address, owner: Address) -> None:
 ```
 
@@ -512,9 +521,9 @@ def setScoreOwner(score: Address, owner: Address) -> None:
 
 It blocks the account (EoA). It's only for governance.
 If it's already blocked, then it ignores silently.
-Otherwise, it emit the event.
+Otherwise, it emits the event.
 
-```python
+```
 def blockAccount(address: Address) -> None:
 ```
 
@@ -526,7 +535,7 @@ def blockAccount(address: Address) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -537,9 +546,9 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 It unblocks the account (EoA). It's only for governance.
 If it's already unblocked, then it silently ignores.
-Otherwise, it emit the event.
+Otherwise, it emits the event.
 
-```python
+```
 def unblockAccount(address: Address) -> None:
 ```
 
@@ -551,7 +560,7 @@ def unblockAccount(address: Address) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def AccountBlockedSet(address: Address, yn: bool) -> None:
 ```
@@ -566,7 +575,7 @@ def AccountBlockedSet(address: Address, yn: bool) -> None:
 
 Returns the stake status of the given `address`.
 
-```python
+```
 def getStake(address: Address) -> dict:
 ```
 
@@ -589,7 +598,7 @@ def getStake(address: Address) -> dict:
 
 Returns the delegation status of the given `address`.
 
-```python
+```
 def getDelegation(address: Address) -> dict:
 ```
 
@@ -613,7 +622,7 @@ def getDelegation(address: Address) -> dict:
 
 Returns the bond status of the given `address`.
 
-```python
+```
 def getBond(address: Address) -> dict:
 ```
 
@@ -638,7 +647,7 @@ def getBond(address: Address) -> dict:
 
 Returns the amount of I-Score that `address` has received as a reward.
 
-```python
+```
 def queryIScore(address: Address) -> dict:
 ```
 
@@ -662,7 +671,7 @@ def queryIScore(address: Address) -> dict:
 
 Returns P-Rep register information of the given `address`.
 
-```python
+```
 def getPRep(address: Address) -> dict:
 ```
 
@@ -682,7 +691,7 @@ def getPRep(address: Address) -> dict:
 
 Returns the status of all registered P-Rep candidates in descending order by power amount.
 
-```python
+```
 def getPReps(startRanking: int, endRanking: int) -> dict:
 ```
 
@@ -709,7 +718,7 @@ def getPReps(startRanking: int, endRanking: int) -> dict:
 
 Returns the list of all Main P-Reps in descending order by power amount.
 
-```python
+```
 def getMainPReps() -> dict:
 ```
 
@@ -728,7 +737,7 @@ def getMainPReps() -> dict:
 
 Returns the list of all Sub P-Reps in descending order by power amount.
 
-```python
+```
 def getSubPReps() -> dict:
 ```
 
@@ -747,7 +756,7 @@ def getSubPReps() -> dict:
 
 Returns estimated unstake lock period.
 
-```python
+```
 def estimateUnstakeLockPeriod() -> dict:
 ```
 
@@ -763,7 +772,7 @@ def estimateUnstakeLockPeriod() -> dict:
 
 Returns information for the current term.
 
-```python
+```
 def getPRepTerm() -> dict:
 ```
 
@@ -781,12 +790,12 @@ def getPRepTerm() -> dict:
 | totalPower       | int                                   | total power amount of `preps`                               |
 | period           | int                                   | term period                                                 |
 | rewardFund       | [RewardFund](#rewardfund)             | reward fund information for the term                        |
-| bondRequirement  | int                                   | bondRequriement for the term                                |
+| bondRequirement  | int                                   | bondRequirement for the term                                |
 | revision         | int                                   | revision for the term                                       |
 | isDecentralized  | bool                                  | `true` if network is decentralized                          |
 | mainPRepCount    | int                                   | Main P-Reps count for the term                              |
 | iissVersion      | int                                   | IISS version for the term                                   |
-| irep             | int                                   | (Optional. revision < 25) Irep for the term                  |
+| irep             | int                                   | (Optional. revision < 25) Irep for the term                 |
 | rrep             | int                                   | (Optional. revision < 25) Rrep for the term                 |
 | minimumBond      | int                                   | (Optional. revision >= 25) minimum bond amount for the term |
 
@@ -796,7 +805,7 @@ def getPRepTerm() -> dict:
 
 Returns the list of allowed bonders for the given `address`.
 
-```python
+```
 def getBonderList(address: Address) -> dict:
 ```
 
@@ -818,7 +827,7 @@ def getBonderList(address: Address) -> dict:
 
 Returns the list of block validation statistics for all active PReps
 
-```python
+```
 def getPRepStats() -> dict:
 ```
 
@@ -835,7 +844,7 @@ def getPRepStats() -> dict:
 
 Returns the configuration and status of the network.
 
-```python
+```
 def getNetworkInfo() -> dict:
 ```
 
@@ -866,15 +875,15 @@ def getNetworkInfo() -> dict:
 
 Returns the list of network SCOREs
 
-```python
+```
 def getNetworkScores() -> dict:
 ```
 
 *Returns:*
 
-| Key                                        | Type    | Description              |
-|:-------------------------------------------|:--------|:-------------------------|
-| ${[NETWORK_SCORE_TYPE](#networkscoretype)} | Address | address of network SCORE |
+| Key                                          | Type    | Description              |
+|:---------------------------------------------|:--------|:-------------------------|
+| ${[NETWORK_SCORE_TYPE](#network_score_type)} | Address | address of network SCORE |
 
 *Revision:* 15 ~
 
@@ -882,7 +891,7 @@ def getNetworkScores() -> dict:
 
 Returns the list of block validation statistics for the given PRep
 
-```python
+```
 def getPRepStatsOf(address: Address) -> dict:
 ```
 
@@ -903,37 +912,53 @@ def getPRepStatsOf(address: Address) -> dict:
 
 ### getSlashingRates
 
-Returns slashing rates for given `names`
+Returns slashing rates for all penalties
 
-```python
-def getSlashingRates(names: List[str]) -> dict:
 ```
-
-*Parameters:*
-
-| Name  | Type        | Description                                                     |
-|:------|:------------|:----------------------------------------------------------------|
-| names | List\[str\] | list of names to query. Pass an empty list to query all values. |
+def getSlashingRates() -> dict:
+```
 
 *Returns:*
 
-| Key                             | Type | Description                          |
-|:--------------------------------|:-----|:-------------------------------------|
-| ${[PENALTY_TYPE](#penaltytype)} | int  | slashing rate value from 0 to 10,000 |
+| Key                          | Type | Description                                            |
+|:-----------------------------|:-----|:-------------------------------------------------------|
+| prepDisqualification         | int  | slashing rate for prepDisqualification penalty         |
+| accumulatedValidationFailure | int  | slashing rate for accumulatedValidationFailure penalty |
+| validationFailure            | int  | slashing rate for validationFailure penalty            |
+| missedNetworkProposalVote    | int  | slashing rate for missedNetworkProposalVote penalty    |
+| doubleSign                   | int  | slashing rate for doubleSign penalty                   |
 
 *Revision:* 24 ~
 
 ### getMinimumBond
 
-Returns the minimum bond amount required to earn the minimum wage
-
-```python
+Returns the minimum amount of bond required for a P-Rep to earn the minimum wage
+ 
+```
 def getMinimumBond() -> int:
 ```
 
 *Returns:*
 
-* the minimum bond amount
+* the minimum amount of bond in loop unit
+
+*Revision:* 24 ~
+
+### getPRepCountConfig
+
+Returns the information on P-Rep count configuration
+
+```
+def getPRepCountConfig() -> dict:
+```
+
+*Returns:*
+
+| Key   | Type | Description                 |
+|:------|:-----|:----------------------------|
+| main  | int  | number of main P-Reps       |
+| sub   | int  | number of sub P-Reps        |
+| extra | int  | number of extra main P-Reps |
 
 *Revision:* 24 ~
 
@@ -943,7 +968,7 @@ def getMinimumBond() -> int:
 
 Stakes some amount of ICX.
 
-```python
+```
 def setStake(value: int) -> None:
 ```
 
@@ -963,7 +988,7 @@ Delegates some amount of stake to P-Reps.
 - The transaction which has duplicated P-Rep addresses will be failed
 - This transaction overwrites the previous delegate information
 
-```python
+```
 def setDelegation(delegations: List[Vote]) -> None:
 ```
 
@@ -975,7 +1000,7 @@ def setDelegation(delegations: List[Vote]) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def DelegationSet(address: Address, delegations: bytes) -> None:
 ```
@@ -995,7 +1020,7 @@ Bonds some amount of stake to P-Reps.
 - The transaction which has duplicated P-Rep addresses will be failed
 - This transaction overwrites the previous bond information
 
-```python
+```
 def setBond(bonds: List[Vote]) -> None:
 ```
 
@@ -1007,7 +1032,7 @@ def setBond(bonds: List[Vote]) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=1)
 def BondSet(address: Address, bonds: bytes) -> None:
 ```
@@ -1023,13 +1048,13 @@ def BondSet(address: Address, bonds: bytes) -> None:
 
 Claims the total reward that a ICONist has received.
 
-```python
+```
 def claimIScore() -> None:
 ```
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
 def IScoreClaimedV2(address: Address, iscore: int, icx: int) -> None:
 ```
@@ -1048,7 +1073,7 @@ Registers an ICONist as a P-Rep.
 
 - 2000 ICX are required as a registration fee
 
-```python
+```
 def registerPRep(name: str, email: str, website: str, country: str, city: str, details: str, p2pEndpoint: str,
                  nodeAddress: Address) -> None:
 ```
@@ -1068,7 +1093,7 @@ def registerPRep(name: str, email: str, website: str, country: str, city: str, d
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def PRepRegistered(address: Address) -> None:
 ```
@@ -1083,7 +1108,7 @@ def PRepRegistered(address: Address) -> None:
 
 Updates P-Rep's register information.
 
-```python
+```
 def setPRep(name: str, email: str, website: str, country: str, city: str, details: str, p2pEndpoint: str,
             nodeAddress: Address) -> None:
 ```
@@ -1103,7 +1128,7 @@ def setPRep(name: str, email: str, website: str, country: str, city: str, detail
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def PRepSet(address: Address) -> None:
 ```
@@ -1118,13 +1143,13 @@ def PRepSet(address: Address) -> None:
 
 Unregisters the P-Rep.
 
-```python
+```
 def unregisterPRep() -> None:
 ```
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
 def PRepUnregistered(address: Address) -> None:
 ```
@@ -1139,15 +1164,15 @@ def PRepUnregistered(address: Address) -> None:
 
 Disqualify the P-Rep. Governance Only.
 
-```python
+```
 def disqualifyPRep(address: Address) -> None:
 ```
 
 *Parameters:*
 
-| Name    | Type    | Description                            |
-|:--------|:--------|:---------------------------------------|
-| address | Address | address of the P-Rep to be disqulified |
+| Name    | Type    | Description                              |
+|:--------|:--------|:-----------------------------------------|
+| address | Address | owner address of the P-Rep to disqualify |
 
 *Event Log:*
 [PenaltyImposed(Address,int,int)](#penaltyimposedaddressintint)
@@ -1161,7 +1186,7 @@ Updates allowed bonder list of P-Rep.
 - Maximum number of allowed ICONist to bond is 10
 - This transaction overwrites the previous bonder list information
 
-```python
+```
 def setBonderList(bonderList: List[Address]) -> None:
 ```
 
@@ -1177,7 +1202,7 @@ def setBonderList(bonderList: List[Address]) -> None:
 
 Updates the size of the reward fund. Governance only.
 
-```python
+```
 def setRewardFund(iglobal: int) -> None:
 ```
 
@@ -1189,7 +1214,7 @@ def setRewardFund(iglobal: int) -> None:
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def RewardFundSet(iglobal: int) -> None:
 ```
@@ -1206,7 +1231,7 @@ Updates allocation of reward fund. Governance only.
 
 - Sum of all allocation rates must be 100
 
-```python
+```
 def setRewardFundAllocation(iprep: int, icps: int, irelay: int, ivoter: int) -> None:
 ```
 
@@ -1225,7 +1250,7 @@ def setRewardFundAllocation(iprep: int, icps: int, irelay: int, ivoter: int) -> 
 
 Penalizes P-Reps for not voting on Network Proposal. Governance Only.
 
-```python
+```
 def penalizeNonvoters(address: Address) -> None:
 ```
 
@@ -1236,6 +1261,7 @@ def penalizeNonvoters(address: Address) -> None:
 | preps | List\[Address\] | addresses of P-Reps to be penalized |
 
 *Event Log:*
+
 [PenaltyImposed(Address,int,int)](#penaltyimposedaddressintint)
 
 *Revision:* 15 ~
@@ -1246,7 +1272,7 @@ Updates address of Network SCORE. Governance Only.
 
 - Only SCORE owned by Governance can be Network SCORE
 
-```python
+```
 def setNetworkScore(role: str, address: Address) -> None:
 ```
 
@@ -1254,20 +1280,20 @@ def setNetworkScore(role: str, address: Address) -> None:
 
 | Name    | Type            | Description                                                                                        |
 |:--------|:----------------|:---------------------------------------------------------------------------------------------------|
-| role    | str             | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype)                 |
+| role    | str             | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#network_score_type)               |
 | address | List\[Address\] | (Optional from revision 17) address of Network SCORE. Do not pass `address` to clear Network SCORE |
 
 *Event Log:*
 - from revision 24
-```python
+```
 @eventlog(indexed=0)
 def NetworkScoreSet(role: str, address: Address) -> None:
 ```
 
-| Name    | Type     | Description                                                                        |
-|:--------|:---------|:-----------------------------------------------------------------------------------|
-| role    | str      | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype) |
-| address | Address  | address of Network SCORE.                                                          |
+| Name    | Type     | Description                                                                          |
+|:--------|:---------|:-------------------------------------------------------------------------------------|
+| role    | str      | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#network_score_type) |
+| address | Address  | address of Network SCORE.                                                            |
 
 *Revision:* 15 ~
 
@@ -1275,64 +1301,67 @@ def NetworkScoreSet(role: str, address: Address) -> None:
 
 Updates allocation of reward fund. Governance only.
 
-```python
+```
 def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 ```
 
 *Parameters:*
 
-| Name   | Type                              | Description                                                                                                |
-|:-------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------|
-| values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)<br>sum of values must be 10,000 |
+| Name   | Type                              | Description                                                                                                   |
+|:-------|:----------------------------------|:--------------------------------------------------------------------------------------------------------------|
+| values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)<br>sum of values must be 10,000 |
 
 *Event Log:*
-- from revision 24
-```python
+
+```
 @eventlog(indexed=0)
 def RewardFundAllocationSet(type: str, value: int) -> None:
 ```
 
-| Name  | Type | Description                                                                |
-|:------|:-----|:---------------------------------------------------------------------------|
-| name  | str  | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey) |
-| value | int  | allocation value                                                           |
+| Name  | Type | Description                                                                   |
+|:------|:-----|:------------------------------------------------------------------------------|
+| name  | str  | available `name` is [REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key) |
+| value | int  | allocation value ranging from 0 (0%) ~ 10,000 (100%)                          |
 
 *Revision:* 24 ~
 
 ### setMinimumBond
 
-Updates the minimum amount of bond that can earn minimum wage. Governance only.
+* Specifies the minimum amount of bond required for a P-Rep to earn the minimum wage
+* Governance Only
+* It is assumed to 0 if not specified.
 
-```python
+```
 def setMinimumBond(bond: int) -> None:
 ```
 
 *Parameters:*
 
-| Name                                                      | Type | Description                                                                          |
-|:----------------------------------------------------------|:-----|:-------------------------------------------------------------------------------------|
-| ${[REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)} | int  | rate allocated to the reward fund. (0 ~ 10,000). <br>sum of all rates must be 10,000 |
+| Name | Type | Description                         |
+|:-----|:-----|:------------------------------------|
+| bond | int  | minimum amount of bond in loop unit |
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
-def MinimumBondChanged(bond: int) -> None:
+def MinimumBondSet(bond: int) -> None:
 ```
 
-| Name | Type | Description         |
-|:-----|:-----|:--------------------|
-| bond | int  | minimum bond amount |
+| Name | Type | Description                         |
+|:-----|:-----|:------------------------------------|
+| bond | int  | minimum amount of bond in loop unit |
 
 *Revision:* 24 ~
 
 ### initCommissionRate
 
-Initializes commission rate parameters of the P-Rep.
+* Initializes commission rate parameters of the P-Rep.
+* Called by a P-Rep owner
+* After initialization, `maxCommissionRate` and `maxCommissionChangeRate` can't be changed.
+* All rates are assumed to be 0% if not initialized.
 
-- After initialization, `maxCommissionRate` and `maxCommissionChangeRate` can't be changed
-
-```python
+```
 def initCommissionRate(rate: int, maxRate: int, maxChangeRate: int) -> None:
 ```
 
@@ -1346,24 +1375,28 @@ def initCommissionRate(rate: int, maxRate: int, maxChangeRate: int) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
-def CommissionRateInitialized(address: Address, rate: int, maxRate: int, maxChangeRate: int) -> None:
+def CommissionRateInitialized(owner: Address, rate: int, maxRate: int, maxChangeRate: int) -> None:
 ```
 
-| Name          | Type | Description                                               |
-|:--------------|:-----|:----------------------------------------------------------|
-| rate          | int  | commission rate                                           |
-| maxRate       | int  | maximum commission rate that P-Rep can configure          |
-| maxChangeRate | int  | maximum rate of change of `commission rate` in one `Term` |
+| Name          | Type    | Description                                               |
+|:--------------|:--------|:----------------------------------------------------------|
+| owner         | Address | address of P-Rep owner                                    |
+| rate          | int     | commission rate                                           |
+| maxRate       | int     | maximum commission rate that P-Rep can configure          |
+| maxChangeRate | int     | maximum rate of change of `commission rate` in one `Term` |
 
 *Revision:* 24 ~
 
 ### setCommissionRate
 
-Updates commission rate of the P-Rep.
+* Updates commission rate of the P-Rep.
+* Called by a P-Rep owner
+* New commission rate will take effect next term.
+* No limit for reducing the rate
 
-```python
+```
 def setCommissionRate(rate: int) -> None:
 ```
 
@@ -1373,16 +1406,21 @@ def setCommissionRate(rate: int) -> None:
 |:-----|:-----|:----------------|
 | rate | int  | commission rate |
 
+* 0 <= rate <= 10,000
+* rate <= maxCommissionRate
+* rate <= oldRate + maxCommissionChangeRate
+
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=1)
-def CommissionRateChanged(address: Address, rate: int) -> None:
+def CommissionRateSet(owner: Address, rate: int) -> None:
 ```
 
-| Name | Type | Description     |
-|:-----|:-----|:----------------|
-| rate | int  | commission rate |
+| Name  | Type    | Description                |
+|:------|:--------|:---------------------------|
+| owner | Address | address of the P-Rep owner |
+| rate  | int     | commission rate            |
 
 *Revision:* 24 ~
 
@@ -1390,37 +1428,121 @@ def CommissionRateChanged(address: Address, rate: int) -> None:
 
 Updates slashing rates of penalties. Governance only.
 
-```python
-def setSlashingRates(rate: int) -> None:
+```
+def setSlashingRates(rates: List[NamedValue]) -> None:
 ```
 
 *Parameters:*
 
-| Name  | Type                              | Description                                                                        |
-|:------|:----------------------------------|:-----------------------------------------------------------------------------------|
-| rates | List\[[NamedValue](#namedvalue)\] | available `name` is [PENALTY_TYPE](#penaltytype)<br>range of `value` is 0 ~ 10,000 |
+| Name  | Type                              | Description                                 |
+|:------|:----------------------------------|:--------------------------------------------|
+| rates | List\[[NamedValue](#namedvalue)\] | list of each penalty name and its rate pair |
+
+Fields in [NamedValue](#namedvalue)
+
+| Field | Type | Description                                                            |
+|:------|:-----|:-----------------------------------------------------------------------|
+| name  | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penalty_type_name) section |
+| value | int  | slashingRate for each penalty ranging from 0 (0%) ~ 10,000 (100%)      |
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=0)
-def SlashingRateChangedV2(type: str, rate: int) -> None:
+def SlashingRateSet(penaltyName: str, rate: int) -> None:
 ```
 
-| Name | Type | Description   |
-|:-----|:-----|:--------------|
-| type | str  | penalty type  |
-| rate | int  | slashing rate |
+| Name        | Type | Description                                                            |
+|:------------|:-----|:-----------------------------------------------------------------------|
+| penaltyName | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penalty_type_name) section |
+| rate        | int  | slashing rate ranging from 0 ~ 10,000                                  |
 
 *Revision:* 24 ~
 
 ### requestUnjail
 
-Requests unjail
+* Requests unjail
+* Called by a PRep owner
 
-```python
+```
 def requestUnjail() -> None:
 ```
+
+*Revision:* 25 ~
+
+### setPRepCountConfig
+
+* Configures the numbers of main, sub and extra main P-Reps
+* Governance Only
+
+```
+def setPRepCountConfig(counts List[NamedValue]) -> None:    
+```
+
+*Parameters:*
+
+| Name   | Type                              | Description                           |
+|:-------|:----------------------------------|:--------------------------------------|
+| counts | List\[[NamedValue](#namedvalue)\] | list of P-Rep type and its count pair |
+
+Fields in [NamedValue](#namedvalue)
+
+| Field | Type | Description                                |
+|:------|:-----|:-------------------------------------------|
+| name  | str  | available name: `main`, `sub`, `extra`     |                         
+| value | int  | number of P-Reps specified by `name` field |
+
+Constraints
+
+* 0 < `main` <= 1000
+* 0 <= `sub` <= 1000
+* 0 <= `extra` <= `sub`
+* `extra` <= (`main` - 1) / 2
+
+*Event Log:*
+
+```
+@eventlog(indexed=0)
+def PRepCountConfigSet(main: int, sub: int, extra: int)
+```
+
+| Name  | Type | Description                 |
+|:------|:-----|:----------------------------|
+| main  | int  | number of main P-Reps       |
+| sub   | int  | number of sub P-Reps        |
+| extra | int  | number of extra main P-Reps |
+
+*Revision:* 24 ~
+
+### handleDoubleSignReport
+
+* Reports DoubleSign event
+* System Only
+
+```
+def handleDoubleSignReport(type string, blockHeight int, signer Address) -> None:
+```
+
+*Parameters:*
+
+| Name        | Type    | Description                                               |
+|:------------|:--------|:----------------------------------------------------------|
+| type        | string  | doubleSign type: `proposal`, `vote`                       |
+| blockHeight | int     | blockHeight when the doubleSign event occurred            |
+| signer      | Address | address of the validator that caused the doubleSign event |
+
+*Event Log:*
+
+```
+@eventlog(indexed=1)
+def DoubleSignReported(owner Address, blockHeight int, type: str)
+```
+
+| Name        | Type    | Description                                                            |
+|:------------|:--------|:-----------------------------------------------------------------------|
+| owner       | Address | address of the P-Rep owner whose validator caused the doubleSign event |
+| blockHeight | int     | blockHeight when the doubleSign event occurred                         |
+| type        | str     | `proposal`, `vote`                                                     |
 
 *Revision:* 25 ~
 
@@ -1432,7 +1554,7 @@ def requestUnjail() -> None:
 
 Returns BTP Network Type ID of the given `name`.
 
-```python
+```
 def getBTPNetworkTypeID(name: str) -> int:
 ```
 
@@ -1454,7 +1576,7 @@ def getBTPNetworkTypeID(name: str) -> int:
 
 Returns a compressed public key for the P-Rep node address.
 
-```python
+```
 def getPRepNodePublicKey(address: Address) -> bytes:
 ```
 
@@ -1476,7 +1598,7 @@ def getPRepNodePublicKey(address: Address) -> bytes:
 
 Opens a BTP Network. Governance only.
 
-```python
+```
 def openBTPNetwork(networkTypeName: str, name: str, owner: Address) -> int:
 ```
 
@@ -1494,7 +1616,7 @@ def openBTPNetwork(networkTypeName: str, name: str, owner: Address) -> int:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=2)
 def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None:
 ```
@@ -1504,7 +1626,7 @@ def BTPNetworkTypeActivated(networkTypeName: str, networkTypeId: int) -> None:
 | networkTypeName | str  | name of the activated BTP Network Type |
 | networkTypeId   | int  | ID of the activated BTP Network Type   |
 
-```python
+```
 @eventlog(indexed=2)
 def BTPNetworkOpened(networkTypeId: int, networkId: int) -> None:
 ```
@@ -1520,7 +1642,7 @@ def BTPNetworkOpened(networkTypeId: int, networkId: int) -> None:
 
 Closes a BTP Network. Governance only.
 
-```python
+```
 def closeBTPNetwork(id: int) -> None:
 ```
 
@@ -1532,7 +1654,7 @@ def closeBTPNetwork(id: int) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=2)
 def BTPNetworkClosed(networkTypeId: int, networkId: int) -> None:
 ```
@@ -1548,7 +1670,7 @@ def BTPNetworkClosed(networkTypeId: int, networkId: int) -> None:
 
 Sends a BTP message over the BTP Network. Only the owner of a BTP Network can send a BTP message.
 
-```python
+```
 def sendBTPMessage(networkId: int, message: bytes) -> None:
 ```
 
@@ -1561,7 +1683,7 @@ def sendBTPMessage(networkId: int, message: bytes) -> None:
 
 *Event Log:*
 
-```python
+```
 @eventlog(indexed=2)
 def BTPMessage(networkId: int, messageSN: int) -> None:
 ```
@@ -1577,7 +1699,7 @@ def BTPMessage(networkId: int, messageSN: int) -> None:
 
 Registers an initial public key for the P-Rep node address.
 
-```python
+```
 def registerPRepNodePublicKey(address: Address, pubKey: bytes) -> None:
 ```
 
@@ -1594,7 +1716,7 @@ def registerPRepNodePublicKey(address: Address, pubKey: bytes) -> None:
 
 Updates a public key for the P-Rep node address.
 
-```python
+```
 def setPRepNodePublicKey(pubKey: bytes) -> None:
 ```
 
@@ -1665,29 +1787,37 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## PRep
 
-| Key                    | Value Type | Description                                                                                                                                                                                               |
-|:-----------------------|:-----------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| address                | Address    | P-Rep address                                                                                                                                                                                             |
-| bonded                 | int        | bond amount that a P-Rep receives from ICONist                                                                                                                                                            |
-| city                   | str        | "Seoul", "New York", "Paris"                                                                                                                                                                              |
-| country                | str        | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                                                                                                                                    |
-| delegated              | int        | delegation amount that a P-Rep receives from ICONist                                                                                                                                                      |
-| details                | str        | URL including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
-| email                  | str        | P-Rep email                                                                                                                                                                                               |
-| grade                  | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                                                                                                                                           |
-| hasPublicKey           | bool       | (Optional) P-Rep has valid public keys for all active BTP Network type                                                                                                                                    |
-| irep                   | int        | incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value                                                                                                               |
-| irepUpdateBlockHeight  | int        | block height when a P-Rep changed I-Rep value                                                                                                                                                             |
-| lastHeight             | int        | latest block height at which the P-Rep's voting status changed                                                                                                                                            |
-| name                   | str        | P-Rep name                                                                                                                                                                                                |
-| nodeAddress            | str        | node Key for only consensus                                                                                                                                                                               |
-| p2pEndpoint            | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
-| penalty                | int        | 0: None, 1: Disqualification, 2: Low Productivity, 3: Block Validation, 4: NonVote                                                                                                                        |
-| power                  | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20))                                                                                                          |
-| status                 | int        | 0: active, 1: unregistered                                                                                                                                                                                |
-| totalBlocks            | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
-| validatedBlocks        | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
-| website                | str        | P-Rep homepage URL                                                                                                                                                                                        |
+The list of fields below is subject to change based on revisions
+
+| Key                     | Value Type | Description                                                                                                                                                                                               |
+|:------------------------|:-----------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| address                 | Address    | P-Rep address                                                                                                                                                                                             |
+| bonded                  | int        | bond amount that a P-Rep receives from ICONist                                                                                                                                                            |
+| city                    | str        | example: "Seoul", "New York", "Paris"                                                                                                                                                                     |
+| country                 | str        | [ISO 3166-1 ALPHA-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)                                                                                                                                    |
+| delegated               | int        | delegation amount that a P-Rep receives from ICONist                                                                                                                                                      |
+| details                 | str        | URL including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
+| email                   | str        | P-Rep email                                                                                                                                                                                               |
+| grade                   | int        | [PREP_GRADE](#prep_grade)                                                                                                                                                                                 |
+| irep                    | int        | incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value                                                                                                               |
+| irepUpdateBlockHeight   | int        | block height when a P-Rep changed I-Rep value                                                                                                                                                             |
+| lastHeight              | int        | latest block height at which the P-Rep's voting status changed                                                                                                                                            |
+| name                    | str        | P-Rep name                                                                                                                                                                                                |
+| nodeAddress             | Address    | node Key for only consensus                                                                                                                                                                               |
+| p2pEndpoint             | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
+| penalty                 | int        | [PENALTY_TYPE_ID](#penaltytypeid)                                                                                                                                                                         | 
+| power                   | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20))                                                                                                          |
+| status                  | int        | [PREP_STATUS](#prep_status)                                                                                                                                                                               |
+| totalBlocks             | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
+| validatedBlocks         | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
+| website                 | str        | P-Rep homepage URL                                                                                                                                                                                        |
+| hasPublicKey            | bool       | (Optional) P-Rep has valid public keys for all active BTP Network type                                                                                                                                    |
+| jailFlags               | int        | [JAIL_FLAG](#jail_flag) representing jail system related status for a given P-Rep                                                                                                                         |
+| unjailRequestHeight     | int        | latest blockHeight when the P-Rep owner sent a `requestUnjail` transaction                                                                                                                                |
+| minDoubleSignHeight     | int        | only doubleSign reports that are newer than minDoubleSignHeight are accepted                                                                                                                              |
+| commissionRate          | int        | commissionRate ranging from 0 ~ 10,000                                                                                                                                                                    |
+| maxCommissionRate       | int        | maximum commissionRate ranging from 0 ~ 10,000                                                                                                                                                            |
+| maxCommissionChangeRate | int        | maximum commissionChangeRate ranging from 0 ~ 10,000 that P-Rep owner can raise per term                                                                                                                  |
 
 ## PRepSnapshot
 
@@ -1704,7 +1834,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 |:-------------|:-----------|:---------------------------------------------------------------------------------|
 | fail         | int        | number of blocks that this PRep failed to validate until lastHeight              |
 | failCont     | int        | number of consecutive blocks that this PRep failed to validate until lastHeight  |
-| grade        | int        | 0: Main P-Rep, 1: Sub P-Rep, 2: P-Rep candidate                                  |
+| grade        | int        | [PREP_GRADE](#prep_grade)                                                        |
 | lastHeight   | int        | Latest blockHeight when lastState change happened                                |
 | lastState    | int        | 0: None, 1: Ready, 2: Success, 3: Failure                                        |
 | owner        | Address    | PRep owner address                                                               |
@@ -1712,7 +1842,7 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 | realFail     | int        | number of blocks that this PRep failed to validate                               |
 | realFailCont | int        | number of blocks that this PRep failed to validate consecutively                 |
 | realTotal    | int        | number of blocks that this PRep was supposed to validate                         |
-| status       | int        | 0: Active, 1: Unregistered, 2: Disqualified                                      |
+| status       | int        | [PREP_STATUS](#prep_status)                                                      |
 | total        | int        | number of blocks that this PRep was supposed to validate until lastHeight        |
 
 ## ContractStatus
@@ -1752,10 +1882,10 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## RewardFund
 
-| KEY                                                       | VALUE type | Description                                                                                   |
-|:----------------------------------------------------------|:-----------|:----------------------------------------------------------------------------------------------|
-| Iglobal                                                   | int        | Iglobal amount                                                                                |
-| ${[REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)} | int        | allocation rate.<br>sum of all rates is 10,000 if revision is less than 25, and 100 otherwise |
+| KEY                                                          | VALUE type | Description                                                                                   |
+|:-------------------------------------------------------------|:-----------|:----------------------------------------------------------------------------------------------|
+| Iglobal                                                      | int        | Iglobal amount                                                                                |
+| ${[REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)} | int        | allocation rate.<br>sum of all rates is 10,000 if revision is less than 25, and 100 otherwise |
 
 ## NamedValue
 
@@ -1768,28 +1898,65 @@ def setPRepNodePublicKey(pubKey: bytes) -> None:
 
 ## PenaltyImposed(Address,int,int)
 
-```python
+```
 @eventlog(indexed=1)
-def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
+def PenaltyImposed(address: Address, status: int, penalty_type: int)
 ```
 
-| Name         | Type    | Description                                                                                                                                                            |
-|:-------------|:--------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| address      | Address | address of penalized P-Rep                                                                                                                                             |
-| status       | int     | status of penalized P-Rep                                                                                                                                              |
-| penalty_type | int     | type of penalty<br />1: Disqualification<br />2: Accumulated Validation Failure<br />3: Validation Failure<br />4: Missed Network Proposal Vote<br />5: Double signing |
+| Name         | Type    | Description                         |
+|:-------------|:--------|:------------------------------------|
+| address      | Address | owner address of penalized P-Rep    |
+| status       | int     | [PREP_STATUS](#prep_status)         |
+| penalty_type | int     | [PENALTY_TYPE_ID](#penalty_type_id) |
+
+## Slashed(Address,Address,int)
+
+```
+@eventlog(indexed=1)
+def Slashed(owner: Address, bonder: Address, amount: int)
+```
+
+| Name   | Type    | Description                     |
+|:-------|:--------|:--------------------------------|
+| owner  | Address | owner address of slashed P-Rep  |
+| bonder | Address | bonder address of slashed P-Rep |
+| amount | int     | slashed bond amount             |
+
+## TermStarted(int,int,int)
+
+```
+@eventlog(indexed=0)
+def TermStarted(sequence: int, startHeight: int, endHeight: int)
+```
+
+| Name        | Type | Description                                |
+|:------------|:-----|:-------------------------------------------|
+| sequence    | int  | term sequence number from decentralization |
+| startHeight | int  | blockHeight when this term begins          |
+| endHeight   | int  | blockHeight when this term ends            |
 
 # Predefined variables
 
-## PENALTY_TYPE
+## PENALTY_TYPE_ID
 
-| value                          | revision | Description                                    |
-|:-------------------------------|:---------|:-----------------------------------------------|
-| "disqualification"             | 6 ~      | P-Rep disqualification penalty                 |
-| "accumulatedValidationFailure" | 6 ~      | accumulated block validation failure penalty   |
-| "validationFailure"            | 6 ~      | block validation failure penalty               |
-| "missedNetworkProposalVote"    | 6 ~      | missed Network Proposal vote penalty           |
-| "doubleVote"                   | 25 ~     | submit multiple votes to same height and round |
+| value | revision | Description                                  |
+|:------|:---------|:---------------------------------------------|
+| 0     | 6 ~      | No penalty                                   |
+| 1     | 6 ~      | P-Rep disqualification penalty               |
+| 2     | 6 ~      | accumulated block validation failure penalty |
+| 3     | 6 ~      | validation failure penalty                   |
+| 4     | 6 ~      | missed Network Proposal vote penalty         |
+| 5     | 25 ~     | double sign penalty                          |
+
+## PENALTY_TYPE_NAME
+
+| value                          | revision | Description                                  |
+|:-------------------------------|:---------|:---------------------------------------------|
+| "prepDisqualification"         | 6 ~      | P-Rep disqualification penalty               |
+| "accumulatedValidationFailure" | 6 ~      | accumulated block validation failure penalty |
+| "validationFailure"            | 6 ~      | validation failure penalty                   |
+| "missedNetworkProposalVote"    | 6 ~      | missed Network Proposal vote penalty         |
+| "doubleSign"                   | 25 ~     | double sign penalty                          |
 
 ## NETWORK_SCORE_TYPE
 
@@ -1807,3 +1974,28 @@ def PenaltyImposed(address: Address, status: int, penalty_type: int) -> None:
 | "Icps"   | 13 ~     | key for CPS reward                         |
 | "Irelay" | 13 ~     | key for BTP relay reward                   |
 | "Iwage"  | 23 ~     | key for P-Rep minimum wage                 |
+
+## JAIL_FLAG
+
+| value | revision | Description                       |
+|:------|:---------|:----------------------------------|
+| 1     | 25 ~     | inJail flag                       |
+| 2     | 25 ~     | unjailing flag                    |
+| 4     | 25 ~     | accumulatedValidationFailure flag | 
+| 8     | 25 ~     | doubleSign flag                   |
+
+## PREP_STATUS
+
+| value | revision | Description  |
+|:------|:---------|:-------------|
+| 0     | 6 ~      | active       |
+| 1     | 6 ~      | unregistered |
+| 2     | 6 ~      | disqualified |
+
+## PREP_GRADE
+
+| value | revision | Description     |
+|:------|:---------|:----------------|
+| 0     | 6 ~      | main P-Rep      |
+| 1     | 6 ~      | sub P-Rep       |
+| 2     | 6 ~      | P-Rep candidate |
