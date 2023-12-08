@@ -98,13 +98,13 @@
     * [Slashed](#slashedaddressaddressint)
     * [TermStarted](#termstartedintintint)
 - [Predefined variables](#predefined-variables)
-    * [PENALTY_TYPE_ID](#penaltytypeid)
-    * [PENALTY_TYPE_NAME](#penaltytypename)
-    * [NETWORK_SCORE_TYPE](#networkscoretype)
-    * [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)
-    * [JAIL_FLAG](#jailflag)
-    * [PREP_STATUS](#prepstatus)
-    * [PREP_GRADE](#prepgrade)
+    * [PENALTY_TYPE_ID](#penalty_type_id)
+    * [PENALTY_TYPE_NAME](#penalty_type_name)
+    * [NETWORK_SCORE_TYPE](#network_score_type)
+    * [REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)
+    * [JAIL_FLAG](#jail_flag)
+    * [PREP_STATUS](#prep_status)
+    * [PREP_GRADE](#prep_grade)
 
 </details>
 
@@ -881,9 +881,9 @@ def getNetworkScores() -> dict:
 
 *Returns:*
 
-| Key                                        | Type    | Description              |
-|:-------------------------------------------|:--------|:-------------------------|
-| ${[NETWORK_SCORE_TYPE](#networkscoretype)} | Address | address of network SCORE |
+| Key                                          | Type    | Description              |
+|:---------------------------------------------|:--------|:-------------------------|
+| ${[NETWORK_SCORE_TYPE](#network_score_type)} | Address | address of network SCORE |
 
 *Revision:* 15 ~
 
@@ -1280,7 +1280,7 @@ def setNetworkScore(role: str, address: Address) -> None:
 
 | Name    | Type            | Description                                                                                        |
 |:--------|:----------------|:---------------------------------------------------------------------------------------------------|
-| role    | str             | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype)                 |
+| role    | str             | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#network_score_type)               |
 | address | List\[Address\] | (Optional from revision 17) address of Network SCORE. Do not pass `address` to clear Network SCORE |
 
 *Event Log:*
@@ -1290,10 +1290,10 @@ def setNetworkScore(role: str, address: Address) -> None:
 def NetworkScoreSet(role: str, address: Address) -> None:
 ```
 
-| Name    | Type     | Description                                                                        |
-|:--------|:---------|:-----------------------------------------------------------------------------------|
-| role    | str      | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#networkscoretype) |
-| address | Address  | address of Network SCORE.                                                          |
+| Name    | Type     | Description                                                                          |
+|:--------|:---------|:-------------------------------------------------------------------------------------|
+| role    | str      | type of Network SCORE. available `role` is [NETWORK_SCORE_TYPE](#network_score_type) |
+| address | Address  | address of Network SCORE.                                                            |
 
 *Revision:* 15 ~
 
@@ -1307,9 +1307,9 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 
 *Parameters:*
 
-| Name   | Type                              | Description                                                                                                |
-|:-------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------|
-| values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)<br>sum of values must be 10,000 |
+| Name   | Type                              | Description                                                                                                   |
+|:-------|:----------------------------------|:--------------------------------------------------------------------------------------------------------------|
+| values | List\[[NamedValue](#namedvalue)\] | available `name` is [REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)<br>sum of values must be 10,000 |
 
 *Event Log:*
 
@@ -1318,10 +1318,10 @@ def setRewardFundAllocation2(values: List[NamedValue]) -> None:
 def RewardFundAllocationSet(type: str, value: int) -> None:
 ```
 
-| Name  | Type | Description                                                                |
-|:------|:-----|:---------------------------------------------------------------------------|
-| name  | str  | available `name` is [REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey) |
-| value | int  | allocation value ranging from 0 (0%) ~ 10,000 (100%)                       |
+| Name  | Type | Description                                                                   |
+|:------|:-----|:------------------------------------------------------------------------------|
+| name  | str  | available `name` is [REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key) |
+| value | int  | allocation value ranging from 0 (0%) ~ 10,000 (100%)                          |
 
 *Revision:* 24 ~
 
@@ -1440,10 +1440,10 @@ def setSlashingRates(rates: List[NamedValue]) -> None:
 
 Fields in [NamedValue](#namedvalue)
 
-| Field | Type | Description                                                          |
-|:------|:-----|:---------------------------------------------------------------------|
-| name  | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penaltytypename) section |
-| value | int  | slashingRate for each penalty ranging from 0 (0%) ~ 10,000 (100%)    |
+| Field | Type | Description                                                            |
+|:------|:-----|:-----------------------------------------------------------------------|
+| name  | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penalty_type_name) section |
+| value | int  | slashingRate for each penalty ranging from 0 (0%) ~ 10,000 (100%)      |
 
 *Event Log:*
 
@@ -1452,10 +1452,10 @@ Fields in [NamedValue](#namedvalue)
 def SlashingRateSet(penaltyName: str, rate: int) -> None:
 ```
 
-| Name        | Type | Description                                                          |
-|:------------|:-----|:---------------------------------------------------------------------|
-| penaltyName | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penaltytypename) section |
-| rate        | int  | slashing rate ranging from 0 ~ 10,000                                |
+| Name        | Type | Description                                                            |
+|:------------|:-----|:-----------------------------------------------------------------------|
+| penaltyName | str  | penalty name. Refer to [PENALTY_TYPE_NAME](#penalty_type_name) section |
+| rate        | int  | slashing rate ranging from 0 ~ 10,000                                  |
 
 *Revision:* 24 ~
 
@@ -1798,7 +1798,7 @@ The list of fields below is subject to change based on revisions
 | delegated               | int        | delegation amount that a P-Rep receives from ICONist                                                                                                                                                      |
 | details                 | str        | URL including P-Rep detail information. See [JSON Standard for P-Rep Detailed Information](https://docs.icon.community/v/icon1/references/reference-manuals/json-standard-for-p-rep-detailed-information) |
 | email                   | str        | P-Rep email                                                                                                                                                                                               |
-| grade                   | int        | [PREP_GRADE](#prepgrade)                                                                                                                                                                                  |
+| grade                   | int        | [PREP_GRADE](#prep_grade)                                                                                                                                                                                 |
 | irep                    | int        | incentive rep used to calculate the reward for P-Rep<br>Limit: +- 20% of the previous value                                                                                                               |
 | irepUpdateBlockHeight   | int        | block height when a P-Rep changed I-Rep value                                                                                                                                                             |
 | lastHeight              | int        | latest block height at which the P-Rep's voting status changed                                                                                                                                            |
@@ -1807,12 +1807,12 @@ The list of fields below is subject to change based on revisions
 | p2pEndpoint             | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
 | penalty                 | int        | [PENALTY_TYPE_ID](#penaltytypeid)                                                                                                                                                                         | 
 | power                   | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20))                                                                                                          |
-| status                  | int        | [PREP_STATUS](#prepstatus)                                                                                                                                                                                |
+| status                  | int        | [PREP_STATUS](#prep_status)                                                                                                                                                                               |
 | totalBlocks             | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
 | validatedBlocks         | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
 | website                 | str        | P-Rep homepage URL                                                                                                                                                                                        |
 | hasPublicKey            | bool       | (Optional) P-Rep has valid public keys for all active BTP Network type                                                                                                                                    |
-| jailFlags               | int        | [JAIL_FLAG](#jailflag) representing jail system related status for a given P-Rep                                                                                                                          |
+| jailFlags               | int        | [JAIL_FLAG](#jail_flag) representing jail system related status for a given P-Rep                                                                                                                         |
 | unjailRequestHeight     | int        | latest blockHeight when the P-Rep owner sent a `requestUnjail` transaction                                                                                                                                |
 | minDoubleSignHeight     | int        | only doubleSign reports that are newer than minDoubleSignHeight are accepted                                                                                                                              |
 | commissionRate          | int        | commissionRate ranging from 0 ~ 10,000                                                                                                                                                                    |
@@ -1834,7 +1834,7 @@ The list of fields below is subject to change based on revisions
 |:-------------|:-----------|:---------------------------------------------------------------------------------|
 | fail         | int        | number of blocks that this PRep failed to validate until lastHeight              |
 | failCont     | int        | number of consecutive blocks that this PRep failed to validate until lastHeight  |
-| grade        | int        | [PREP_GRADE](#prepgrade)                                                         |
+| grade        | int        | [PREP_GRADE](#prep_grade)                                                        |
 | lastHeight   | int        | Latest blockHeight when lastState change happened                                |
 | lastState    | int        | 0: None, 1: Ready, 2: Success, 3: Failure                                        |
 | owner        | Address    | PRep owner address                                                               |
@@ -1842,7 +1842,7 @@ The list of fields below is subject to change based on revisions
 | realFail     | int        | number of blocks that this PRep failed to validate                               |
 | realFailCont | int        | number of blocks that this PRep failed to validate consecutively                 |
 | realTotal    | int        | number of blocks that this PRep was supposed to validate                         |
-| status       | int        | [PREP_STATUS](#prepstatus)                                                       |
+| status       | int        | [PREP_STATUS](#prep_status)                                                      |
 | total        | int        | number of blocks that this PRep was supposed to validate until lastHeight        |
 
 ## ContractStatus
@@ -1882,10 +1882,10 @@ The list of fields below is subject to change based on revisions
 
 ## RewardFund
 
-| KEY                                                       | VALUE type | Description                                                                                   |
-|:----------------------------------------------------------|:-----------|:----------------------------------------------------------------------------------------------|
-| Iglobal                                                   | int        | Iglobal amount                                                                                |
-| ${[REWARD_FUND_ALLOCATION_KEY](#rewardfundallocationkey)} | int        | allocation rate.<br>sum of all rates is 10,000 if revision is less than 25, and 100 otherwise |
+| KEY                                                          | VALUE type | Description                                                                                   |
+|:-------------------------------------------------------------|:-----------|:----------------------------------------------------------------------------------------------|
+| Iglobal                                                      | int        | Iglobal amount                                                                                |
+| ${[REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)} | int        | allocation rate.<br>sum of all rates is 10,000 if revision is less than 25, and 100 otherwise |
 
 ## NamedValue
 
@@ -1903,11 +1903,11 @@ The list of fields below is subject to change based on revisions
 def PenaltyImposed(address: Address, status: int, penalty_type: int)
 ```
 
-| Name         | Type    | Description                       |
-|:-------------|:--------|:----------------------------------|
-| address      | Address | owner address of penalized P-Rep  |
-| status       | int     | [PREP_STATUS](#prepstatus)        |
-| penalty_type | int     | [PENALTY_TYPE_ID](#penaltytypeid) |
+| Name         | Type    | Description                         |
+|:-------------|:--------|:------------------------------------|
+| address      | Address | owner address of penalized P-Rep    |
+| status       | int     | [PREP_STATUS](#prep_status)         |
+| penalty_type | int     | [PENALTY_TYPE_ID](#penalty_type_id) |
 
 ## Slashed(Address,Address,int)
 
