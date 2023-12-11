@@ -567,52 +567,70 @@ func TestState_SetNonVotePenaltySlashRate(t *testing.T) {
 }
 
 func TestState_SetSlashingRate(t *testing.T) {
-	type arg struct {
+	args := []struct {
 		penaltyType icmodule.PenaltyType
+		initRate    icmodule.Rate
 		rate        icmodule.Rate
-	}
-	var args []arg
-	for pt := icmodule.PenaltyNone + 1; pt < icmodule.PenaltyReserved; pt++ {
-		args = append(args, arg{pt, icmodule.Rate(1)})
+	}{
+		{
+			icmodule.PenaltyPRepDisqualification,
+			icmodule.ToRate(100), icmodule.ToRate(100),
+		},
+		{
+			icmodule.PenaltyAccumulatedValidationFailure,
+			icmodule.ToRate(0), icmodule.Rate(1),
+		},
+		{
+			icmodule.PenaltyValidationFailure,
+			icmodule.ToRate(0), icmodule.Rate(0),
+		},
+		{
+			icmodule.PenaltyMissedNetworkProposalVote,
+			icmodule.ToRate(0), icmodule.Rate(1),
+		},
+		{
+			icmodule.PenaltyDoubleSign,
+			icmodule.ToRate(0), icmodule.Rate(1000),
+		},
 	}
 
 	// Not exists -> Rate(1)
-	rev := icmodule.RevisionIISS4R1
-	state := newDummyState(false)
+	for _, rev := range []int{icmodule.RevisionIISS4R0, icmodule.RevisionIISS4R1} {
+		state := newDummyState(false)
 
-	for i, in := range args {
-		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
-		t.Run(name, func(t *testing.T) {
-			rate, err := state.GetSlashingRate(rev, in.penaltyType)
-			assert.NoError(t, err)
-			assert.Equal(t, icmodule.Rate(0), rate)
+		for i, in := range args {
+			name := fmt.Sprintf("case1-%02d-%s", i, in.penaltyType)
+			t.Run(name, func(t *testing.T) {
+				rate, err := state.GetSlashingRate(rev, in.penaltyType)
+				assert.NoError(t, err)
+				assert.Equal(t, in.initRate, rate)
 
-			err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
-			assert.NoError(t, err)
+				err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
+				assert.NoError(t, err)
 
-			rate, err = state.GetSlashingRate(rev, in.penaltyType)
-			assert.NoError(t, err)
-			assert.Equal(t, in.rate, rate)
-		})
-	}
+				rate, err = state.GetSlashingRate(rev, in.penaltyType)
+				assert.NoError(t, err)
+				assert.Equal(t, in.rate, rate)
+			})
+		}
 
-	// Rate(1) -> Rate(10)
-	for i, in := range args {
-		name := fmt.Sprintf("name-%02d-%s", i, in.penaltyType)
-		t.Run(name, func(t *testing.T) {
-			oldRate := in.rate
-			in.rate = icmodule.Rate(70)
-			rate, err := state.GetSlashingRate(rev, in.penaltyType)
-			assert.NoError(t, err)
-			assert.Equal(t, oldRate, rate)
+		for i, in := range args {
+			name := fmt.Sprintf("case2-%02d-%s", i, in.penaltyType)
+			t.Run(name, func(t *testing.T) {
+				oldRate := in.rate
+				in.rate = icmodule.Rate(70)
+				rate, err := state.GetSlashingRate(rev, in.penaltyType)
+				assert.NoError(t, err)
+				assert.Equal(t, oldRate, rate)
 
-			err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
-			assert.NoError(t, err)
+				err = state.SetSlashingRate(rev, in.penaltyType, in.rate)
+				assert.NoError(t, err)
 
-			rate, err = state.GetSlashingRate(rev, in.penaltyType)
-			assert.NoError(t, err)
-			assert.Equal(t, in.rate, rate)
-		})
+				rate, err = state.GetSlashingRate(rev, in.penaltyType)
+				assert.NoError(t, err)
+				assert.Equal(t, in.rate, rate)
+			})
+		}
 	}
 }
 
@@ -668,8 +686,8 @@ func TestState_SetRRep(t *testing.T) {
 
 func TestState_GetPRepCountConfig(t *testing.T) {
 	const (
-		main = 22
-		sub = 78
+		main  = 22
+		sub   = 78
 		extra = 3
 	)
 	state := newDummyState(false)
