@@ -341,8 +341,7 @@ func onRevIISS4R0(s *chainScore, rev, _ int) error {
 			}
 		}
 	}
-
-	return nil
+	return es.State.SetSlashingRate(rev, icmodule.PenaltyPRepDisqualification, icmodule.ToRate(100))
 }
 
 func onRevIISS4R1(s *chainScore, _, _ int) error {

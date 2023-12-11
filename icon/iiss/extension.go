@@ -596,8 +596,10 @@ func (es *ExtensionStateImpl) DisqualifyPRep(cc icmodule.CallContext, address mo
 	ps := es.State.GetPRepStatusByOwner(address, false)
 	// Record PenaltyImposed eventlog
 	EmitPenaltyImposedEvent(cc, ps, pt)
-	rate, _ := es.State.GetSlashingRate(cc.Revision().Value(), pt)
-	return es.slash(cc, address, rate)
+	if rate, _ := es.State.GetSlashingRate(cc.Revision().Value(), pt); rate > 0 {
+		return es.slash(cc, address, rate)
+	}
+	return nil
 }
 
 func (es *ExtensionStateImpl) PenalizeNonVoters(cc icmodule.CallContext, address module.Address) error {
