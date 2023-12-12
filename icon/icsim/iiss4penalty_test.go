@@ -86,7 +86,7 @@ func TestSimulatorImpl_SetSlashingRate(t *testing.T) {
 		icmodule.PenaltyAccumulatedValidationFailure,
 		icmodule.PenaltyMissedNetworkProposalVote,
 		icmodule.PenaltyDoubleSign,
-	}{
+	} {
 		assert.True(t, CheckSlashingRateSetEvent(events[i], pt, expRates[pt.String()]))
 	}
 }
@@ -147,9 +147,9 @@ func TestSimulatorImpl_IISS4PenaltySystem(t *testing.T) {
 	}
 
 	// Check eventLogs for slashingRate
-	// There is no eventLog for ValidationFailurePenalty which rate is not changed
+	// There is no eventLog for ValidationFailurePenalty and PRepDisqualificationPenalty which rates are not changed
 	events := receipts[1].Events()
-	assert.Equal(t, 4, len(events))
+	assert.Equal(t, 3, len(events))
 	for _, e := range events {
 		signature, indexed, data, err := e.DecodeParams()
 		assert.NoError(t, err)

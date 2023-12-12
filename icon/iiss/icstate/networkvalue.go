@@ -417,6 +417,8 @@ func (s *State) GetSlashingRate(revision int, penaltyType icmodule.PenaltyType) 
 			return s.getConsistentValidationPenaltySlashRate(), nil
 		case icmodule.PenaltyMissedNetworkProposalVote:
 			return s.getNonVotePenaltySlashRate(), nil
+		case icmodule.PenaltyPRepDisqualification:
+			return icmodule.ToRate(100), nil
 		}
 	}
 	return s.getSlashingRate(penaltyType)
@@ -430,6 +432,8 @@ func (s *State) getSlashingRate(penaltyType icmodule.PenaltyType) (icmodule.Rate
 	db := s.getDictDB(DictSlashingRate)
 	if v := db.Get(int(penaltyType)); v != nil {
 		rate = icmodule.Rate(v.Int64())
+	} else if penaltyType == icmodule.PenaltyPRepDisqualification {
+		rate = icmodule.ToRate(100)
 	}
 	return rate, nil
 }
