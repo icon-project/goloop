@@ -18,7 +18,6 @@ package icon
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path"
@@ -282,7 +281,7 @@ func (p *platform) SetBlockV1Proof(root []byte, size int64, votes *blockv0.Block
 		return err
 	}
 	file := path.Join(p.base, BlockV1ProofFile)
-	return ioutil.WriteFile(file, bs, os.FileMode(0500))
+	return os.WriteFile(file, bs, os.FileMode(0500))
 }
 
 func NewPlatform(base string, cid int) (base.Platform, error) {

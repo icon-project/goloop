@@ -19,7 +19,7 @@ package icon
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"os"
 
@@ -1139,7 +1139,7 @@ func (s *chainScore) loadIconConfig() *config {
 		s.log.Infof("Failed to open configuration file %+v. Use default config", err)
 		return iconConfig
 	}
-	bs, err := ioutil.ReadAll(f)
+	bs, err := io.ReadAll(f)
 	if err != nil {
 		s.log.Infof("Failed to read configuration file %+v. Use default config", err)
 		return iconConfig
@@ -1195,7 +1195,7 @@ func (s *chainScore) Install(param []byte) error {
 		revision = icmodule.Revision1
 
 		// prepare Governance SCORE
-		governance, err := ioutil.ReadFile("icon_governance.zip")
+		governance, err := os.ReadFile("icon_governance.zip")
 		if err != nil || len(governance) == 0 {
 			return transaction.InvalidGenesisError.Wrap(err, "FailOnGovernance")
 		}
@@ -1235,7 +1235,7 @@ func (s *chainScore) Install(param []byte) error {
 		}
 		systemConfig = state.SysConfigScorePackageValidator
 		revision = icmodule.Revision1
-		governance, err := ioutil.ReadFile("icon_governance.zip")
+		governance, err := os.ReadFile("icon_governance.zip")
 		if err != nil || len(governance) == 0 {
 			return transaction.InvalidGenesisError.Wrap(err, "FailOnGovernance")
 		}
