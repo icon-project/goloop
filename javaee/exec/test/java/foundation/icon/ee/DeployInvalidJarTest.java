@@ -50,7 +50,7 @@ public class DeployInvalidJarTest extends SimpleTest {
     }
 
     @Test
-    void illegalFormat() {
+    void noEntry() {
         var jar = Jars.make(Score.class);
         jar[2] = (byte)~jar[2];
         jar[3] = (byte)~jar[3];
@@ -60,6 +60,6 @@ public class DeployInvalidJarTest extends SimpleTest {
             var c = new ContractAddress(sm, address);
             c.invoke("run");
         }
-        Assertions.assertEquals(Status.IllegalFormat, res.getStatus());
+        Assertions.assertEquals(Status.PackageError, res.getStatus());
     }
 }

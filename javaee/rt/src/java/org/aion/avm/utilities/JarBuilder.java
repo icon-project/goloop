@@ -14,6 +14,7 @@ import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
+import java.util.zip.ZipInputStream;
 
 /**
  * A utility to build in-memory JAR representations for tests and examples.
@@ -28,6 +29,9 @@ public class JarBuilder {
 
     // The API Info file name
     private static final String APIS_NAME = "META-INF/APIS";
+
+    // Limit the manifest file size
+    private static final int MAX_MANIFEST_SIZE = 512;
 
     private void buildJarImpl(Map<String, byte[]> classMap,
             Class<?> ...otherClasses) throws IOException {
@@ -107,6 +111,25 @@ public class JarBuilder {
             throw new AssertionError(e);
         }
         return builder.toBytes();
+    }
+
+    public static void checkManifest(byte[] jarBytes) throws IOException {
+        try {
+            ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(jarBytes));
+            ZipEntry e = zis.getNextEntry();
+            if (e != null && e.getName().equalsIgnoreCase("META-INF/")) {
+                e = zis.getNextEntry();
+            }
+            if (e != null && "META-INF/MANIFEST.MF".equalsIgnoreCase(e.getName())) {
+                if (e.getSize() > MAX_MANIFEST_SIZE) {
+                    throw new IOException("Manifest file too big: " + e.getSize());
+                }
+            } else {
+                throw new IOException("No manifest file");
+            }
+        } catch (IllegalArgumentException | IOException e) {
+            throw new ZipException(e.toString());
+        }
     }
 
     public static byte[] getAPIsBytesFromJAR(byte[] jarBytes) throws IOException {

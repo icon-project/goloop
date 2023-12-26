@@ -58,6 +58,7 @@ public class Validator {
         byte[] apisBytes;
         LoadedJar jar;
         try {
+            JarBuilder.checkManifest(codeBytes);
             apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
             if (apisBytes == null) {
                 throw fail("Cannot get APIS");
