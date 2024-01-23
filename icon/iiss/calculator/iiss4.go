@@ -50,12 +50,16 @@ func (r *iiss4Reward) Calculate() error {
 		return err
 	}
 
-	if err = r.processPrepReward(); err != nil {
-		return err
-	}
+	if r.g.GetElectedPRepCount() == 0 {
+		r.Logger().Debugf("there is no elected PRep. skip reward calculation")
+	} else {
+		if err = r.processPrepReward(); err != nil {
+			return err
+		}
 
-	if err = r.processVoterReward(); err != nil {
-		return err
+		if err = r.processVoterReward(); err != nil {
+			return err
+		}
 	}
 
 	if err = processBTP(r); err != nil {
