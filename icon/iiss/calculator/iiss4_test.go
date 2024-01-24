@@ -564,6 +564,18 @@ func TestReward(t *testing.T) {
 		}
 	})
 
+	// no elected PReps
+	org := r.pi.electedPRepCount
+	r.pi.electedPRepCount = 0
+	err = r.processPrepReward()
+	assert.NoError(t, err)
+	for _, p := range r.pi.rank {
+		assert.Equal(t, 0, p.commission.Sign())
+		assert.Equal(t, 0, p.voterReward.Sign())
+		assert.Equal(t, 0, p.wage.Sign())
+	}
+	r.pi.electedPRepCount = org
+
 	// processPrepReward()
 	err = r.processPrepReward()
 	assert.NoError(t, err)
