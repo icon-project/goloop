@@ -348,6 +348,10 @@ func fundToPeriodIScore(reward *big.Int, period int64) *big.Int {
 // CalculateReward calculates commission, wage and voter reward of the PRep.
 func (p *PRepInfo) CalculateReward(totalReward, totalMinWage, minBond *big.Int) error {
 	p.log.Debugf("CalculateReward()")
+	if p.electedPRepCount == 0 {
+		p.log.Debugf("skip PRepInfo.CalculateReward()")
+		return nil
+	}
 	tReward := fundToPeriodIScore(totalReward, p.GetTermPeriod())
 	minWage := fundToPeriodIScore(totalMinWage, p.GetTermPeriod())
 	p.log.Debugf("RewardFund: PRep: %d, wage: %d", tReward, minWage)

@@ -417,3 +417,11 @@ func prepReward(prep *PRep, totalReward, totalPower int64, offsetLimit int) (rew
 	commission = prep.commissionRate.MulInt64(reward)
 	return
 }
+
+func TestPRepInfo_CalculateReward_without_elected_prep(t *testing.T) {
+	pInfo := newTestPRepInfo(nil, icmodule.ToRate(5), 100, 0)
+	assert.NotPanics(t, func() {
+		err := pInfo.CalculateReward(big.NewInt(1_000), big.NewInt(1_000), big.NewInt(300))
+		assert.NoError(t, err)
+	})
+}
