@@ -1882,10 +1882,10 @@ The list of fields below is subject to change based on revisions
 
 ## RewardFund
 
-| KEY                                                          | VALUE type | Description                                                                                   |
-|:-------------------------------------------------------------|:-----------|:----------------------------------------------------------------------------------------------|
-| Iglobal                                                      | int        | Iglobal amount                                                                                |
-| ${[REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)} | int        | allocation rate.<br>sum of all rates is 10,000 if revision is less than 25, and 100 otherwise |
+| KEY                                                          | VALUE type | Description                                                                                 |
+|:-------------------------------------------------------------|:-----------|:--------------------------------------------------------------------------------------------|
+| Iglobal                                                      | int        | Iglobal amount                                                                              |
+| ${[REWARD_FUND_ALLOCATION_KEY](#reward_fund_allocation_key)} | int        | allocation rate.<br>If revision >= 24, the sum of all rates is 10,000, otherwise it is 100  |
 
 ## NamedValue
 
