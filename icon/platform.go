@@ -319,6 +319,6 @@ func (p *platform) ShowDiff(ctx service.DiffContext, name string, e, r []byte) e
 	}
 }
 
-func (p *platform) DoubleSignDecoder() module.DoubleSignDataDecoder {
+func (p *platform) DoubleSignDataDecoder() module.DoubleSignDataDecoder {
 	return consensus.DecodeDoubleSignData
 }
