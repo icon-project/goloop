@@ -176,7 +176,7 @@ func (v *Voter) applyVoting(voting icstate.Voting, period *big.Int) {
 }
 
 func (v *Voter) ApplyVoting(voting icreward.Voting, period int64) {
-	v.log.Debugf("Add voting to %s: %+v, %d", v.owner, voting, period)
+	v.log.Tracef("Add voting to %s: %+v, %d", v.owner, voting, period)
 	pr := big.NewInt(period)
 	iter := voting.Iterator()
 	for ; iter.Has(); iter.Next() {
@@ -189,7 +189,7 @@ func (v *Voter) ApplyVoting(voting icreward.Voting, period int64) {
 }
 
 func (v *Voter) ApplyEvent(event *VoteEvent, period int) {
-	v.log.Debugf("Add event to %s: %+v, %d", v.owner, event, period)
+	v.log.Tracef("Add event to %s: %+v, %d", v.owner, event, period)
 	pr := big.NewInt(int64(period))
 	for _, vote := range event.Votes() {
 		v.applyVoting(vote, pr)
@@ -199,18 +199,18 @@ func (v *Voter) ApplyEvent(event *VoteEvent, period int) {
 func (v *Voter) CalculateReward(pInfo *PRepInfo) *big.Int {
 	iScore := new(big.Int)
 
-	v.log.Debugf("Voter reward of %s", v.owner)
+	v.log.Tracef("Voter reward of %s", v.owner)
 	for k, av := range v.accumulatedVotes {
 		prep := pInfo.GetPRep(k)
 		if prep != nil && prep.IsRewardable(pInfo.ElectedPRepCount()) {
 			r := new(big.Int).Mul(av, prep.VoterReward())
 			r.Div(r, prep.AccumulatedVoted())
-			v.log.Debugf("vote reward for %s: %d = %d * %d / %d",
+			v.log.Tracef("vote reward for %s: %d = %d * %d / %d",
 				prep.Owner(), r, prep.VoterReward(), av, prep.AccumulatedVoted())
 			iScore.Add(iScore, r)
 		}
 	}
-	v.log.Debugf("Voter reward of %s = %d", v.owner, iScore)
+	v.log.Tracef("Voter reward of %s = %d", v.owner, iScore)
 
 	return iScore
 }

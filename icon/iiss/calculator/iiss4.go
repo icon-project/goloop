@@ -51,7 +51,7 @@ func (r *iiss4Reward) Calculate() error {
 	}
 
 	if r.g.GetElectedPRepCount() == 0 {
-		r.Logger().Debugf("there is no elected PRep. skip reward calculation")
+		r.Logger().Info("there is no elected PRep. skip reward calculation")
 	} else {
 		if err = r.processPrepReward(); err != nil {
 			return err
@@ -132,11 +132,11 @@ func (r *iiss4Reward) processEvents() error {
 		switch type_ {
 		case icstage.TypeEventEnable:
 			obj := icstage.ToEventEnable(o)
-			r.Logger().Debugf("get event at %d %+v", int(r.g.GetStartHeight())+keyOffset, obj)
+			r.Logger().Tracef("get event at %d %+v", int(r.g.GetStartHeight())+keyOffset, obj)
 			r.pi.SetStatus(obj.Target(), obj.Status())
 		case icstage.TypeEventDelegation, icstage.TypeEventBond:
 			obj := icstage.ToEventVote(o)
-			r.Logger().Debugf("get event at %d %+v", int(r.g.GetStartHeight())+keyOffset, obj)
+			r.Logger().Tracef("get event at %d %+v", int(r.g.GetStartHeight())+keyOffset, obj)
 			vType := vtDelegate
 			if type_ == icstage.TypeEventBond {
 				vType = vtBond

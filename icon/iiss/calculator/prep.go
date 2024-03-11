@@ -277,7 +277,7 @@ func (p *PRepInfo) Add(target module.Address, status icmodule.EnableStatus, dele
 }
 
 func (p *PRepInfo) SetStatus(target module.Address, status icmodule.EnableStatus) {
-	p.log.Debugf("SetStatus: %s to %d", target, status)
+	p.log.Tracef("SetStatus: %s to %d", target, status)
 	key := icutils.ToKey(target)
 	if prep, ok := p.preps[key]; ok {
 		prep.SetStatus(status)
@@ -321,7 +321,7 @@ func (p *PRepInfo) ApplyVote(vType VoteType, votes icstage.VoteList, offset int)
 			prep = p.Add(vote.To(), icmodule.ESDisablePermanent, new(big.Int), new(big.Int), 0, false)
 		}
 		prep.ApplyVote(vType, vote.Amount(), p.offsetLimit-offset, p.bondRequirement)
-		p.log.Debugf("ApplyVote %+v: by %d, %d %+v, %d * %d",
+		p.log.Tracef("ApplyVote %+v: by %d, %d %+v, %d * %d",
 			prep, vType, offset, vote, vote.Amount(), p.offsetLimit-offset)
 	}
 }
