@@ -42,20 +42,13 @@ func TestStats_increase(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		var old, current *big.Int
-		value := big.NewInt(tt.value)
-		old = stats.GetValue(tt.rType)
-		stats.IncreaseReward(tt.rType, value)
-		current = stats.GetValue(tt.rType)
-		assert.Equal(t, value, new(big.Int).Sub(current, old))
-	}
-
-	for _, tt := range tests {
 		old := stats.GetValue(tt.rType)
+		count := stats.GetCount(tt.rType)
 		value := big.NewInt(tt.value)
 		stats.IncreaseReward(tt.rType, value)
 		current := stats.GetValue(tt.rType)
 		assert.Equal(t, value, new(big.Int).Sub(current, old))
+		assert.Equal(t, count+1, stats.GetCount(tt.rType))
 	}
 }
 
@@ -100,8 +93,10 @@ func TestStats_Total(t *testing.T) {
 			[]sValue{
 				sValue{RTPRep, 2000},
 				sValue{RTVoter, 4000},
+				sValue{RTVoter, 1},
+				sValue{RTVoter, 2},
 			},
-			6000,
+			6003,
 		},
 		{
 			[]sValue{
@@ -115,9 +110,25 @@ func TestStats_Total(t *testing.T) {
 
 	for i, tt := range tests {
 		stats := NewStats()
+		values := map[RewardType]int64{
+			RTBlockProduce: 0,
+			RTPRep:         0,
+			RTVoter:        0,
+		}
+		counts := map[RewardType]int64{
+			RTBlockProduce: 0,
+			RTPRep:         0,
+			RTVoter:        0,
+		}
 		for _, v := range tt.values {
 			stats.IncreaseReward(v.rType, big.NewInt(v.value))
+			values[v.rType] += v.value
+			counts[v.rType]++
 		}
 		assert.Equal(t, tt.want, stats.Total().Int64(), fmt.Sprintf("Index: %d", i))
+		for k, _ := range stats.count {
+			assert.Equal(t, counts[k], stats.GetCount(k))
+			assert.Equal(t, values[k], stats.GetValue(k).Int64())
+		}
 	}
 }
