@@ -124,6 +124,10 @@ func SetStepCost(cc CallContext, name string, cost *big.Int, prune bool) (bool, 
 	if !state.IsValidStepType(name) {
 		return false, scoreresult.InvalidParameterError.Errorf("InvalidStepType(name=%s)", name)
 	}
+	if !cost.IsInt64() {
+		return false, scoreresult.InvalidParameterError.Errorf(
+			"InvalidStepPrice(Int64Overflow v=%s)", cost)
+	}
 	deleteCost := cost.Sign()==0 && prune
 
 	as := cc.GetAccountState(state.SystemID)
@@ -189,6 +193,10 @@ func SetMaxStepLimit(cc CallContext, name string, cost *big.Int) (bool, error) {
 	if cost.Sign() < 0 {
 		return false, scoreresult.InvalidParameterError.Errorf(
 			"InvalidMaxStepLimit(negative v=%v)", cost)
+	}
+	if !cost.IsInt64() {
+		return false, scoreresult.InvalidParameterError.Errorf(
+			"InvalidMaxStepLimit(Int64Overflow v=%v)", cost)
 	}
 	costIsZero := cost.Sign()==0
 
