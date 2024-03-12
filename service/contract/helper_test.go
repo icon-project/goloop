@@ -186,6 +186,14 @@ func TestStepCost(t *testing.T) {
 	cost = GetStepCost(cc, n1)
 	assert.EqualValues(t, c1, cost)
 
+	// set n1 as value overflowing int64
+	o1 := big.NewInt(0);
+	_, ok = o1.SetString("10000000000000000", 16)
+	assert.True(t, ok)
+	ok, err = SetStepCost(cc, n1, o1, false)
+	assert.Error(t, err)
+	assert.False(t, ok)
+
 	c2 := big.NewInt(-4000)
 
 	// set n1 as c2 (update)
@@ -304,6 +312,14 @@ func TestMaxStepLimit(t *testing.T) {
 
 	// set n1 as cx (invalid)
 	ok, err = SetMaxStepLimit(cc, n1, cx)
+	assert.Error(t, err)
+	assert.False(t, ok)
+
+	// set n1 as value overflowing int64
+	o1 := big.NewInt(0);
+	_, ok = o1.SetString("10000000000000000", 16)
+	assert.True(t, ok)
+	ok, err = SetMaxStepLimit(cc, n1, o1)
 	assert.Error(t, err)
 	assert.False(t, ok)
 
