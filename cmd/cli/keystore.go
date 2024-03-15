@@ -15,9 +15,9 @@ import (
 )
 
 func readPassword(prompt string) ([]byte, error) {
-	fmt.Printf(prompt)
+	fmt.Print(prompt)
 	pb, err := term.ReadPassword(syscall.Stdin)
-	fmt.Printf("\n")
+	fmt.Print("\n")
 	return pb, err
 }
 
