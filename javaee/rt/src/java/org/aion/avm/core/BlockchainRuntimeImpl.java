@@ -479,17 +479,25 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             logger.trace("Context.logEvent indexed.len={} data.len={}",
                     indexed.length(), data.length());
         }
-        int len = Address.LENGTH;
+        var stepCost = externalState.getStepCost();
+        // charge initial base cost
+        IInstrumentation.charge(stepCost.eventLog(Address.LENGTH));
         byte[][] bindexed = new byte[indexed.length()][];
         for (int i=0; i<bindexed.length; i++) {
+            if (i > 3) { /* exceed max indexed count */
+                throw new IllegalArgumentException();
+            }
             IObject v = (IObject)indexed.get(i);
             if (!isValidEventValue(v))
                 throw new IllegalArgumentException();
             bindexed[i] = ValueCodec.encode(v);
-            len += bindexed[i].length;
+            IInstrumentation.charge(stepCost.log() * bindexed[i].length);
             if (logger.isTraceEnabled()) {
                 logger.trace("indexed[{}]={}", i, i == 0 ? new String(bindexed[i]) : Bytes.toHexString(bindexed[i]));
             }
+        }
+        if (indexed.length() + data.length() >= Byte.MAX_VALUE) {
+            throw new IllegalArgumentException();
         }
         byte[][] bdata = new byte[data.length()][];
         for (int i=0; i<bdata.length; i++) {
@@ -497,13 +505,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             if (!isValidEventValue(v))
                 throw new IllegalArgumentException();
             bdata[i] = ValueCodec.encode(v);
-            len += bdata[i].length;
+            IInstrumentation.charge(stepCost.log() * bdata[i].length);
             if (logger.isTraceEnabled()) {
                 logger.trace("data[{}]={}", i, Bytes.toHexString(bdata[i]));
             }
         }
-        var stepCost = externalState.getStepCost();
-        IInstrumentation.charge(stepCost.eventLog(len));
         externalState.event(bindexed, bdata);
     }
 

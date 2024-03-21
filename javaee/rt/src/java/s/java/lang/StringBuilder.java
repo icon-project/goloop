@@ -155,7 +155,9 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
     public StringBuilder avm_replace(int start, int end, String str) {
         int strLen = (null != str) ? str.internalLength() : 0;
         int oldLen = java.lang.Math.max(internalLength() - start, 0);
-        int newLen = internalLength() + strLen - java.lang.Math.max(end - start, 0);
+        int newStart = java.lang.Math.max(start, 0);
+        int newEnd = java.lang.Math.min(end, internalLength());
+        int newLen = internalLength() + strLen - java.lang.Math.max(newEnd - newStart, 0);
         EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.StringBuilder_avm_replace, oldLen, newLen);
         java.lang.String underlying = (null != str)
                 ? str.getUnderlying()

@@ -5,11 +5,40 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"syscall"
+
+	"golang.org/x/term"
 
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/common/wallet"
 )
+
+func readPassword(prompt string) ([]byte, error) {
+	fmt.Print(prompt)
+	pb, err := term.ReadPassword(syscall.Stdin)
+	fmt.Print("\n")
+	return pb, err
+}
+
+func getPasswordFromFlags(prompt string, interactive *bool, secret, pass *string) []byte {
+	var pb []byte
+	var err error
+
+	if *interactive {
+		if pb, err = readPassword(prompt); err != nil {
+			log.Panicf("Fail to read password err=%+v", err)
+		}
+	} else if *secret != "" {
+		if pb, err = os.ReadFile(*secret); err != nil {
+			log.Panicf("fail to open KeySecret err=%+v", err)
+		}
+	} else {
+		pb = []byte(*pass)
+	}
+
+	return pb
+}
 
 func newKeystoreGenCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{
@@ -18,11 +47,14 @@ func newKeystoreGenCmd(c string) *cobra.Command {
 	}
 	flags := cmd.PersistentFlags()
 	out := flags.StringP("out", "o", "keystore.json", "Output file path")
+	interactive := flags.BoolP("interactive", "i", false, "Interactive mode for password input")
+	secret := flags.StringP("secret", "s", "", "KeySecret file path")
 	pass := flags.StringP("password", "p", "gochain", "Password for the keystore")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
+		pb := getPasswordFromFlags("Password: ", interactive, secret, pass)
 		w := wallet.New()
-		ks, err := wallet.KeyStoreFromWallet(w, []byte(*pass))
+		ks, err := wallet.KeyStoreFromWallet(w, pb)
 		if err != nil {
 			log.Panicf("Fail to generate keystore err=%+v", err)
 		}
@@ -37,26 +69,20 @@ func newKeystoreGenCmd(c string) *cobra.Command {
 
 func newVerifyCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: c,
+		Use:   c,
 		Short: "Verify keystore with the password",
 	}
 	flags := cmd.PersistentFlags()
+	interactive := flags.BoolP("interactive", "i", false, "Interactive mode for password input")
 	secret := flags.StringP("secret", "s", "", "KeySecret file path")
 	pass := flags.StringP("password", "p", "gochain", "Password for the keystore")
+
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		for _, arg := range args {
-			var pb []byte
 			if kb, err := os.ReadFile(arg); err != nil {
 				log.Panicf("fail to open keystore file err=%+v", err)
 			} else {
-				if *secret != "" {
-					if pb, err = os.ReadFile(*secret); err != nil {
-						log.Panicf("fail to open KeySecret err=%+v", err)
-					}
-				} else {
-					pb = []byte(*pass)
-				}
-
+				pb := getPasswordFromFlags("Password: ", interactive, secret, pass)
 				_, err := wallet.NewFromKeyStore(kb, pb)
 				if err != nil {
 					fmt.Printf("FAIL err=%v\n", err)
@@ -76,28 +102,33 @@ func newReEncryptCmd(c string) *cobra.Command {
 	}
 	flags := cmd.PersistentFlags()
 	keystorePath := flags.StringP("keystore", "k", "keystore.json", "Keystore file path")
+	interactive := flags.BoolP("interactive", "i", false, "Interactive mode for password input")
 	secret := flags.StringP("secret", "s", "", "KeySecret file path")
 	pass := flags.StringP("password", "p", "gochain", "Password for the old keystore")
 	out := flags.StringP("out", "o", "keystore_new.json", "Output file path")
 	npass := flags.StringP("newpassword", "n", "gochain", "Password for the new keystore")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		var pb []byte
 		if kb, err := os.ReadFile(*keystorePath); err != nil {
 			log.Panicf("fail to open keystore file err=%+v", err)
 		} else {
-			if *secret != "" {
-				if pb, err = os.ReadFile(*secret); err != nil {
-					log.Panicf("fail to open KeySecret err=%+v", err)
-				}
-			} else {
-				pb = []byte(*pass)
-			}
+			pb := getPasswordFromFlags("Old Password: ", interactive, secret, pass)
 			w, err := wallet.NewFromKeyStore(kb, pb)
 			if err != nil {
 				log.Panicf("Fail to decrypt KeyStore err=%+v", err)
 			}
-			ks, err := wallet.KeyStoreFromWallet(w, []byte(*npass))
+
+			var npb []byte
+			if *interactive {
+				// Read a new password from standard input under interactive mode
+				if npb, err = readPassword("New Password: "); err != nil {
+					log.Panicf("Fail to read password err=%+v", err)
+				}
+			} else {
+				npb = []byte(*npass)
+			}
+
+			ks, err := wallet.KeyStoreFromWallet(w, npb)
 			if err != nil {
 				log.Panicf("Fail to generate keystore err=%+v", err)
 			}
@@ -127,21 +158,14 @@ func publickeyFromKeyStore(c string) *cobra.Command {
 	}
 	flags := cmd.PersistentFlags()
 	keystorePath := flags.StringP("keystore", "k", "keystore.json", "Keystore file path")
+	interactive := flags.BoolP("interactive", "i", false, "Interactive mode for password input")
 	secret := flags.StringP("secret", "s", "", "KeySecret file path")
 	pass := flags.StringP("password", "p", "gochain", "Password for the keystore")
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		var pb []byte
 		if kb, err := os.ReadFile(*keystorePath); err != nil {
 			log.Panicf("fail to open keystore file err=%+v", err)
 		} else {
-			if *secret != "" {
-				if pb, err = os.ReadFile(*secret); err != nil {
-					log.Panicf("fail to open KeySecret err=%+v", err)
-				}
-			} else {
-				pb = []byte(*pass)
-			}
-
+			pb := getPasswordFromFlags("Password: ", interactive, secret, pass)
 			w, err := wallet.NewFromKeyStore(kb, pb)
 			if err != nil {
 				log.Panicf("Fail to decrypt KeyStore err=%+v", err)

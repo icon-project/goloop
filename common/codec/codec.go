@@ -651,12 +651,7 @@ func (d *decoderImpl) decodeValue(v reflect.Value) error {
 			}
 			elem.Set(reflect.MakeSlice(elem.Type(), 0, 16))
 			for i := 0; true; i++ {
-				if elem.Cap() < i+1 {
-					ns := reflect.MakeSlice(elem.Type(), elem.Len(), elem.Cap()+16)
-					reflect.Copy(ns, elem)
-					elem.Set(ns)
-				}
-				elem.SetLen(i + 1)
+				elem.Set(reflect.Append(elem, reflect.Zero(elem.Type().Elem())))
 				err := d2.decodeNullableValue(elem.Index(i).Addr())
 				if err != nil {
 					if err == io.EOF {
