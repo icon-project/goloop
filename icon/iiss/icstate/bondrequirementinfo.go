@@ -81,8 +81,10 @@ func NewBondRequirementInfo(rate, nextRate icmodule.Rate) *BondRequirementInfo {
 	}
 }
 
-func NewBondRequirementInfoFromByte(bs []byte) *BondRequirementInfo {
+func NewBondRequirementInfoFromByte(bs []byte) (*BondRequirementInfo, error) {
 	info := new(BondRequirementInfo)
-	codec.BC.MustUnmarshalFromBytes(bs, info)
-	return info
+	if _, err := codec.BC.UnmarshalFromBytes(bs, info); err != nil {
+		return nil, err
+	}
+	return info, nil
 }

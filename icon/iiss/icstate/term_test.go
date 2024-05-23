@@ -606,7 +606,7 @@ func TestGenesisTerm(t *testing.T) {
 	state := newDummyState(false)
 
 	assert.NoError(t, state.SetTermPeriod(tp))
-	assert.NoError(t, state.SetBondRequirement(br))
+	assert.NoError(t, state.SetBondRequirement(revision, br))
 	assert.NoError(t, state.SetIRep(irep))
 	assert.NoError(t, state.SetRRep(rrep))
 	assert.NoError(t, state.SetRewardFund(rf))
@@ -653,7 +653,7 @@ func TestNewNextTerm(t *testing.T) {
 	// Initialize State
 	state := newDummyState(false)
 	assert.NoError(t, state.SetTermPeriod(tp))
-	assert.NoError(t, state.SetBondRequirement(br))
+	assert.NoError(t, state.SetBondRequirement(icmodule.RevisionIISS, br))
 	assert.NoError(t, state.SetIRep(irep))
 	assert.NoError(t, state.SetRRep(rrep))
 	assert.NoError(t, state.SetRewardFund(rf))

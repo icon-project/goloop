@@ -37,6 +37,7 @@ const (
 	VarIISSVersion                          = "iiss_version"
 	VarTermPeriod                           = "term_period"
 	VarBondRequirement                      = "bond_requirement"
+	VarBondRequirement2                     = "bond_requirement2"
 	VarUnbondingPeriodMultiplier            = "unbonding_period_multiplier"
 	VarLockMinMultiplier                    = "lockMinMultiplier"
 	VarLockMaxMultiplier                    = "lockMaxMultiplier"
@@ -242,16 +243,64 @@ func (s *State) SetTotalStake(value *big.Int) error {
 	return setValue(s.store, VarTotalStake, value)
 }
 
-func (s *State) GetBondRequirement() icmodule.Rate {
+func (s *State) GetBondRequirement(revision int) icmodule.Rate {
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return s.getBondRequirementV1()
+	} else {
+		return s.getBondRequirementV2()
+	}
+}
+
+func (s *State) getBondRequirementV1() icmodule.Rate {
 	v := getValue(s.store, VarBondRequirement).Int64()
 	return icmodule.ToRate(v)
 }
 
-func (s *State) SetBondRequirement(br icmodule.Rate) error {
+func (s *State) getBondRequirementV2() icmodule.Rate {
+	bs := getValue(s.store, VarBondRequirement2).Bytes()
+	if bs == nil {
+		return s.getBondRequirementV1()
+	}
+	brInfo, err := NewBondRequirementInfoFromByte(bs)
+	if brInfo == nil {
+		// TODO: What to do if brInfo is nil
+		s.logger.Panicf("FailedToGetBondRequirementInfo(err=%s)", err.Error())
+	}
+	return brInfo.Rate()
+}
+
+func (s *State) GetBondRequirementInfo(revision int) *BondRequirementInfo {
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		// BondRequirementInfo is enabled after RevisionSetBondRequirementRate
+		return nil
+	}
+
+	bs := getValue(s.store, VarBondRequirement2).Bytes()
+	if bs == nil {
+		rate := s.getBondRequirementV1()
+		return NewBondRequirementInfo(rate, rate)
+	}
+	if info, err := NewBondRequirementInfoFromByte(bs); err == nil {
+		return info
+	}
+	return nil
+}
+
+func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
 	if !br.IsValid() {
 		return errors.IllegalArgumentError.New("Bond Requirement should range from 0% to 100%")
 	}
-	return setValue(s.store, VarBondRequirement, br.Percent())
+
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return setValue(s.store, VarBondRequirement, br.Percent())
+	} else {
+		brInfo := s.GetBondRequirementInfo(revision)
+		if brInfo == nil {
+			return errors.InvalidStateError.Errorf("GetBondRequirementInfoFailure(rev=%d)", revision)
+		}
+		brInfo.SetNextRate(br)
+		return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
+	}
 }
 
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
@@ -482,7 +531,7 @@ func (s *State) SetMinimumBond(bond *big.Int) error {
 }
 
 func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, error) {
-	br := s.GetBondRequirement()
+	br := s.GetBondRequirement(revision)
 	jso := make(map[string]interface{})
 	jso["mainPRepCount"] = s.GetMainPRepCount()
 	jso["extraMainPRepCount"] = s.GetExtraMainPRepCount()

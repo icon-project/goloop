@@ -17,6 +17,7 @@
 package icstate
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -33,7 +34,8 @@ func TestNewBondRequirementInfo(t *testing.T) {
 	bs := info.Bytes()
 	assert.True(t, len(bs) > 0)
 
-	info2 := NewBondRequirementInfoFromByte(bs)
+	info2, err := NewBondRequirementInfoFromByte(bs)
+	assert.NoError(t, err)
 	assert.True(t, info != info2)
 	assert.True(t, info.Equal(info2))
 	assert.True(t, info2.Equal(info))
@@ -49,4 +51,25 @@ func TestNewBondRequirementInfo(t *testing.T) {
 	assert.False(t, info3.Equal(info))
 	assert.False(t, info3.Equal(info2))
 	assert.True(t, info3.Equal(info3))
+}
+
+func TestBondRequirementInfo_SetRate(t *testing.T) {
+	rates := []icmodule.Rate{
+		icmodule.ToRate(0),
+		icmodule.ToRate(5),
+		icmodule.ToRate(2),
+	}
+
+	info := NewBondRequirementInfo(icmodule.ToRate(0), icmodule.ToRate(0))
+	assert.Zero(t, info.Rate())
+	assert.Zero(t, info.NextRate())
+
+	for i, rate := range rates {
+		name := fmt.Sprintf("name-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			info.SetRate(rate)
+			assert.Equal(t, rate, info.Rate())
+			assert.Zero(t, info.NextRate())
+		})
+	}
 }

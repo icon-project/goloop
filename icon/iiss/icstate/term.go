@@ -124,8 +124,8 @@ type termDataCommon struct {
 	period          int64
 	revision        int
 	isDecentralized bool
-	totalSupply     *big.Int // not nil
-	totalDelegated  *big.Int // total delegated amount of all active P-Reps. not nil
+	totalSupply     *big.Int    // not nil
+	totalDelegated  *big.Int    // total delegated amount of all active P-Reps. not nil
 	rewardFund      *RewardFund // not nil
 	bondRequirement icmodule.Rate
 	mainPRepCount   int
@@ -411,7 +411,7 @@ func (term *termData) equal(other *termData) bool {
 
 func (term *termData) clone() termData {
 	td := termData{
-		termDataCommon:	term.termDataCommon.clone(),
+		termDataCommon: term.termDataCommon.clone(),
 	}
 	switch term.Version() {
 	case termVersion1:
@@ -660,7 +660,7 @@ func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, p
 				totalSupply:     totalSupply,
 				totalDelegated:  state.GetTotalDelegation(),
 				rewardFund:      state.GetRewardFund(rev),
-				bondRequirement: state.GetBondRequirement(),
+				bondRequirement: state.GetBondRequirement(rev),
 				revision:        rev,
 				isDecentralized: isDecentralized,
 			},
@@ -693,7 +693,7 @@ func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
 				totalSupply:     icmodule.BigIntZero,
 				totalDelegated:  icmodule.BigIntZero,
 				rewardFund:      state.GetRewardFundV1().Clone(),
-				bondRequirement: state.GetBondRequirement(),
+				bondRequirement: state.GetBondRequirement(revision),
 				revision:        revision,
 				isDecentralized: false,
 			},

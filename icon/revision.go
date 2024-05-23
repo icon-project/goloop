@@ -75,9 +75,7 @@ func (s *chainScore) handleRevisionChange(r1, r2 int) error {
 	return nil
 }
 
-func onRevIISS(s *chainScore, _, toRev int) error {
-	// goloop engine
-
+func onRevIISS(s *chainScore, rev, toRev int) error {
 	as := s.cc.GetAccountState(state.SystemID)
 
 	// enable Fee sharing 2.0
@@ -118,7 +116,7 @@ func onRevIISS(s *chainScore, _, toRev int) error {
 	if err := es.State.SetSubPRepCount(iconConfig.SubPRepCount.Int64()); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(icmodule.ToRate(iconConfig.BondRequirement.Int64())); err != nil {
+	if err := es.State.SetBondRequirement(rev, icmodule.ToRate(iconConfig.BondRequirement.Int64())); err != nil {
 		return err
 	}
 	if err := es.State.SetLockVariables(iconConfig.LockMinMultiplier.Value(), iconConfig.LockMaxMultiplier.Value()); err != nil {
@@ -171,8 +169,8 @@ func onRevIISS(s *chainScore, _, toRev int) error {
 			return err
 		}
 	}
-	if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.DefaultBondRequirement) {
-		if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.IISS2BondRequirement)); err != nil {
+	if es.State.GetBondRequirement(rev) == icmodule.ToRate(icmodule.DefaultBondRequirement) {
+		if err := es.State.SetBondRequirement(rev, icmodule.ToRate(icmodule.IISS2BondRequirement)); err != nil {
 			return err
 		}
 	}
@@ -238,7 +236,7 @@ func onRevICON2R0(s *chainScore, _, _ int) error {
 	return nil
 }
 
-func onRevICON2R1(s *chainScore, _, _ int) error {
+func onRevICON2R1(s *chainScore, rev, _ int) error {
 	if s.cc.ChainID() == CIDForMainNet {
 		// The time when predefined accounts will be blocked is changed from rev10 to rev14
 		s.blockAccounts()
@@ -260,8 +258,8 @@ func onRevICON2R1(s *chainScore, _, _ int) error {
 		return err
 	}
 
-	if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.IISS2BondRequirement) {
-		if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
+	if es.State.GetBondRequirement(rev) == icmodule.ToRate(icmodule.IISS2BondRequirement) {
+		if err := es.State.SetBondRequirement(rev, icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
 			return err
 		}
 	}
