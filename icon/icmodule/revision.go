@@ -45,6 +45,7 @@ const (
 	Revision23
 	Revision24
 	Revision25
+	Revision26
 	RevisionReserved
 )
 
@@ -120,6 +121,8 @@ const (
 	RevisionChainScoreEventLog = Revision24
 
 	RevisionIISS4R1 = Revision25
+
+	RevisionSetBondRequirementRate = Revision26
 )
 
 var revisionFlags []module.Revision
