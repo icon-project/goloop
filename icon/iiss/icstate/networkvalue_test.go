@@ -806,3 +806,17 @@ func TestState_GetBondRequirement(t *testing.T) {
 	assert.Equal(t, rate, brInfo.Rate())
 	assert.Equal(t, nextRate, brInfo.NextRate())
 }
+
+func TestState_MigrateBondRequirement(t *testing.T) {
+	s := newDummyState(false)
+
+	rev := icmodule.RevisionSetBondRequirementRate - 1
+	rate := icmodule.ToRate(10)
+	assert.NoError(t, s.SetBondRequirement(rev, rate))
+	assert.Equal(t, rate, s.GetBondRequirement(rev))
+	assert.Error(t, s.MigrateBondRequirement(rev))
+
+	rev = icmodule.RevisionSetBondRequirementRate
+	assert.NoError(t, s.MigrateBondRequirement(rev))
+	assert.Equal(t, rate, s.GetBondRequirement(rev))
+}

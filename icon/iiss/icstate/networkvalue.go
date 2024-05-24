@@ -303,6 +303,15 @@ func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
 	}
 }
 
+func (s *State) MigrateBondRequirement(revision int) error {
+	if revision != icmodule.RevisionSetBondRequirementRate {
+		return errors.InvalidStateError.Errorf("BondRequirementRateMigrationNotAllowed(rev=%d)", revision)
+	}
+	rate := s.getBondRequirementV1()
+	brInfo := NewBondRequirementInfo(rate, rate)
+	return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
+}
+
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
 	if value <= 0 {
 		return errors.IllegalArgumentError.New("unbondingPeriodMultiplier must be positive number")

@@ -42,6 +42,7 @@ var revHandlerTable = []revHandlerItem{
 	{icmodule.RevisionBlockAccounts2, onRevBlockAccounts2},
 	{icmodule.RevisionIISS4R0, onRevIISS4R0},
 	{icmodule.RevisionIISS4R1, onRevIISS4R1},
+	{icmodule.RevisionSetBondRequirementRate, onRevSetBondRequirementRate},
 }
 
 // DO NOT update revHandlerMap manually
@@ -355,4 +356,9 @@ func onRevIISS4R1(s *chainScore, _, _ int) error {
 	}
 
 	return nil
+}
+
+func onRevSetBondRequirementRate(s *chainScore, rev, _ int) error {
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	return es.State.MigrateBondRequirement(rev)
 }
