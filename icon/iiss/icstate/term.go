@@ -630,6 +630,10 @@ func (term *TermState) SetRrep(rrep *big.Int) {
 // It assumes that state and totalSupply are not nil.
 func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, preps PRepSet) *TermState {
 	rev := sc.RevisionValue()
+	// If the next bond requirement rate has been set,
+	// br reflects the new bond requirement for the next term
+	br := sc.GetBondRequirement()
+
 	// Previous term
 	tss := state.GetTermSnapshot()
 	if tss == nil {
@@ -660,7 +664,7 @@ func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, p
 				totalSupply:     totalSupply,
 				totalDelegated:  state.GetTotalDelegation(),
 				rewardFund:      state.GetRewardFund(rev),
-				bondRequirement: state.GetBondRequirement(rev),
+				bondRequirement: br,
 				revision:        rev,
 				isDecentralized: isDecentralized,
 			},
@@ -676,7 +680,7 @@ func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, p
 	// Update PRepSnapshots
 	if isDecentralized {
 		termState.mainPRepCount = preps.GetPRepSize(GradeMain)
-		termState.prepSnapshots = preps.ToPRepSnapshots(sc.GetBondRequirement())
+		termState.prepSnapshots = preps.ToPRepSnapshots(br)
 	}
 
 	return termState

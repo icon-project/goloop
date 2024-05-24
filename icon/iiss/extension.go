@@ -961,6 +961,10 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var err error
 
 	revision := wc.Revision().Value()
+	// BondRequirement is set to the next rate
+	if err = es.State.ShiftBondRequirement(revision); err != nil {
+		return err
+	}
 	pcCfg := es.State.GetPRepCountConfig(revision)
 
 	totalSupply := wc.GetTotalSupply()

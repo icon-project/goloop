@@ -312,6 +312,20 @@ func (s *State) MigrateBondRequirement(revision int) error {
 	return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
 }
 
+func (s *State) ShiftBondRequirement(revision int) error {
+	if revision >= icmodule.RevisionSetBondRequirementRate {
+		brInfo := s.GetBondRequirementInfo(revision)
+		if brInfo == nil {
+			return errors.CriticalUnknownError.Errorf("BondRequirementInfoIsNil(rev=%d)", revision)
+		}
+		if brInfo.Rate() != brInfo.NextRate() {
+			brInfo.SetRate(brInfo.NextRate())
+			return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
+		}
+	}
+	return nil
+}
+
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
 	if value <= 0 {
 		return errors.IllegalArgumentError.New("unbondingPeriodMultiplier must be positive number")
