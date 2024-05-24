@@ -870,6 +870,14 @@ var chainMethods = []*chainMethod{
 			scoreapi.Dict,
 		},
 	}, icmodule.RevisionIISS4R0, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setBondRequirementRate",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"rate", scoreapi.Integer, nil, nil},
+		},
+		nil,
+	}, icmodule.RevisionSetBondRequirementRate, 0},
 }
 
 func applyStepLimits(fee *FeeConfig, as state.AccountState) error {
