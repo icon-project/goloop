@@ -73,3 +73,26 @@ func TestBondRequirementInfo_SetRate(t *testing.T) {
 		})
 	}
 }
+
+func TestBondRequirementInfo_ToJSON(t *testing.T) {
+	args := []struct {
+		rate     icmodule.Rate
+		nextRate icmodule.Rate
+	}{
+		{icmodule.Rate(0), icmodule.Rate(0)},
+		{icmodule.ToRate(40), icmodule.ToRate(41)},
+		{icmodule.ToRate(100), icmodule.ToRate(100)},
+	}
+
+	for i, arg := range args {
+		name := fmt.Sprintf("case-%02d", i)
+		t.Run(name, func(t *testing.T) {
+			brInfo := NewBondRequirementInfo(arg.rate, arg.nextRate)
+			expected := map[string]interface{}{
+				"current": arg.rate,
+				"next":    arg.nextRate,
+			}
+			assert.Equal(t, expected, brInfo.ToJSON())
+		})
+	}
+}

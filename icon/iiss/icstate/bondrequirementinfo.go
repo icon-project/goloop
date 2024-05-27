@@ -73,6 +73,13 @@ func (info *BondRequirementInfo) Bytes() []byte {
 	return codec.BC.MustMarshalToBytes(info)
 }
 
+func (info *BondRequirementInfo) ToJSON() map[string]interface{} {
+	return map[string]interface{}{
+		"current": info.rate,
+		"next":    info.nextRate,
+	}
+}
+
 func NewBondRequirementInfo(rate, nextRate icmodule.Rate) *BondRequirementInfo {
 	return &BondRequirementInfo{
 		version:  0,
