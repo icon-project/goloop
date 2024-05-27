@@ -2074,3 +2074,14 @@ func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, ra
 	}
 	return err
 }
+
+func (es *ExtensionStateImpl) GetBondRequirementRateInJSON(cc icmodule.CallContext) (map[string]interface{}, error) {
+	revision := cc.Revision().Value()
+	brInfo := es.State.GetBondRequirementInfo(revision)
+	if brInfo == nil {
+		return nil, errors.InvalidStateError.Errorf("FailedToGetBondRequirementInfo")
+	}
+	jso := brInfo.ToJSON()
+	jso["blockHeight"] = cc.BlockHeight()
+	return jso, nil
+}

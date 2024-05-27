@@ -1059,3 +1059,14 @@ func (s *chainScore) Ex_setBondRequirementRate(rate int64) error {
 	}
 	return es.SetBondRequirementRate(s.newCallContext(s.cc), icmodule.Rate(rate))
 }
+
+func (s *chainScore) Ex_getBondRequirementRate() (map[string]interface{}, error) {
+	if err := s.tryChargeCall(true); err != nil {
+		return nil, err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return nil, err
+	}
+	return es.GetBondRequirementRateInJSON(s.newCallContext(s.cc))
+}
