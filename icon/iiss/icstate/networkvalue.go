@@ -286,6 +286,22 @@ func (s *State) GetBondRequirementInfo(revision int) *BondRequirementInfo {
 	return nil
 }
 
+func (s *State) setBondRequirementInfo(revision int, brInfo *BondRequirementInfo) error {
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return errors.InvalidStateError.Errorf("SetBondRequirementInfoNotAllowed(rev=%d)", revision)
+	}
+	if brInfo == nil {
+		return scoreresult.InvalidParameterError.New("BondRequirementInfoIsNil")
+	}
+	if !brInfo.Rate().IsValid() || !brInfo.NextRate().IsValid() {
+		return scoreresult.InvalidParameterError.Errorf(
+			"InvalidBondRequirementRate(rate=%d,nextRate=%d)",
+			brInfo.Rate(), brInfo.NextRate())
+	}
+
+	return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
+}
+
 func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
 	if !br.IsValid() {
 		return errors.IllegalArgumentError.New("Bond Requirement should range from 0% to 100%")
@@ -299,7 +315,7 @@ func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
 			return errors.InvalidStateError.Errorf("GetBondRequirementInfoFailure(rev=%d)", revision)
 		}
 		brInfo.SetNextRate(br)
-		return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
+		return s.setBondRequirementInfo(revision, brInfo)
 	}
 }
 
@@ -309,7 +325,7 @@ func (s *State) MigrateBondRequirement(revision int) error {
 	}
 	rate := s.getBondRequirementV1()
 	brInfo := NewBondRequirementInfo(rate, rate)
-	return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
+	return s.setBondRequirementInfo(revision, brInfo)
 }
 
 func (s *State) ShiftBondRequirement(revision int) error {
@@ -320,7 +336,7 @@ func (s *State) ShiftBondRequirement(revision int) error {
 		}
 		if brInfo.Rate() != brInfo.NextRate() {
 			brInfo.SetRate(brInfo.NextRate())
-			return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
+			return s.setBondRequirementInfo(revision, brInfo)
 		}
 	}
 	return nil
