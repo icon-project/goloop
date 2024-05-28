@@ -2067,12 +2067,10 @@ func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, ra
 	revision := cc.Revision().Value()
 
 	brInfo, err = es.State.GetBondRequirementInfo(revision)
-	if err != nil {
-		return err
-	}
-	if rate != brInfo.NextRate() {
-		err = es.State.SetBondRequirement(revision, rate)
-		EmitBondRequirementRateSetEvent(cc, rate)
+	if err == nil && rate != brInfo.NextRate() {
+		if err = es.State.SetBondRequirement(revision, rate); err == nil {
+			EmitBondRequirementRateSetEvent(cc, rate)
+		}
 	}
 	return err
 }
