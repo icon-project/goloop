@@ -29,6 +29,7 @@ var revHandlerTable = []revHandlerItem{
 	//{icmodule.RevisionBlockAccounts2, onRevBlockAccounts2},
 	{icmodule.RevisionIISS4R0, onRevIISS4R0},
 	{icmodule.RevisionIISS4R1, onRevIISS4R1},
+	{icmodule.RevisionSetBondRequirementRate, onRevSetBondRequirementRate},
 }
 
 // DO NOT update revHandlerMap manually
@@ -266,4 +267,9 @@ func onRevIISS4R0(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 func onRevIISS4R1(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	es := getExtensionState(wc)
 	return es.State.SetIISSVersion(icstate.IISSVersion4)
+}
+
+func onRevSetBondRequirementRate(sim *simulatorImpl, wc WorldContext, rev, _ int) error {
+	es := getExtensionState(wc)
+	return es.State.MigrateBondRequirement(rev)
 }

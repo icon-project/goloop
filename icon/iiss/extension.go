@@ -2063,10 +2063,12 @@ func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, ra
 	}
 
 	var err error
+	var brInfo *icstate.BondRequirementInfo
 	revision := cc.Revision().Value()
-	brInfo := es.State.GetBondRequirementInfo(revision)
-	if brInfo == nil {
-		return errors.InvalidStateError.Errorf("FailedToGetBondRequirementInfo")
+
+	brInfo, err = es.State.GetBondRequirementInfo(revision)
+	if err != nil {
+		return err
 	}
 	if rate != brInfo.NextRate() {
 		err = es.State.SetBondRequirement(revision, rate)
@@ -2077,9 +2079,9 @@ func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, ra
 
 func (es *ExtensionStateImpl) GetBondRequirementRateInJSON(cc icmodule.CallContext) (map[string]interface{}, error) {
 	revision := cc.Revision().Value()
-	brInfo := es.State.GetBondRequirementInfo(revision)
-	if brInfo == nil {
-		return nil, errors.InvalidStateError.Errorf("FailedToGetBondRequirementInfo")
+	brInfo, err := es.State.GetBondRequirementInfo(revision)
+	if err != nil {
+		return nil, err
 	}
 	jso := brInfo.ToJSON()
 	jso["blockHeight"] = cc.BlockHeight()

@@ -269,21 +269,22 @@ func (s *State) getBondRequirementV2() icmodule.Rate {
 	return brInfo.Rate()
 }
 
-func (s *State) GetBondRequirementInfo(revision int) *BondRequirementInfo {
+func (s *State) GetBondRequirementInfo(revision int) (*BondRequirementInfo, error) {
 	if revision < icmodule.RevisionSetBondRequirementRate {
 		// BondRequirementInfo is enabled after RevisionSetBondRequirementRate
-		return nil
+		return nil, errors.InvalidStateError.Errorf("GetBondRequirementInfoNotAllowed(rev=%d)", revision)
 	}
 
 	bs := getValue(s.store, VarBondRequirement2).Bytes()
 	if bs == nil {
-		rate := s.getBondRequirementV1()
-		return NewBondRequirementInfo(rate, rate)
+		return nil, errors.InvalidStateError.Errorf("BondRequirementInfoIsNil")
 	}
-	if info, err := NewBondRequirementInfoFromByte(bs); err == nil {
-		return info
+
+	info, err := NewBondRequirementInfoFromByte(bs)
+	if err != nil {
+		return nil, scoreresult.IllegalFormatError.Wrapf(err, "IllegalBondRequirementInfoFormat")
 	}
-	return nil
+	return info, nil
 }
 
 func (s *State) setBondRequirementInfo(revision int, brInfo *BondRequirementInfo) error {
@@ -310,9 +311,9 @@ func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
 	if revision < icmodule.RevisionSetBondRequirementRate {
 		return setValue(s.store, VarBondRequirement, br.Percent())
 	} else {
-		brInfo := s.GetBondRequirementInfo(revision)
-		if brInfo == nil {
-			return errors.InvalidStateError.Errorf("GetBondRequirementInfoFailure(rev=%d)", revision)
+		brInfo, err := s.GetBondRequirementInfo(revision)
+		if err != nil {
+			return err
 		}
 		brInfo.SetNextRate(br)
 		return s.setBondRequirementInfo(revision, brInfo)
@@ -330,9 +331,9 @@ func (s *State) MigrateBondRequirement(revision int) error {
 
 func (s *State) ShiftBondRequirement(revision int) error {
 	if revision >= icmodule.RevisionSetBondRequirementRate {
-		brInfo := s.GetBondRequirementInfo(revision)
-		if brInfo == nil {
-			return errors.CriticalUnknownError.Errorf("BondRequirementInfoIsNil(rev=%d)", revision)
+		brInfo, err := s.GetBondRequirementInfo(revision)
+		if err != nil {
+			return err
 		}
 		if brInfo.Rate() != brInfo.NextRate() {
 			brInfo.SetRate(brInfo.NextRate())
