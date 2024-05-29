@@ -579,7 +579,11 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
 	jso["termPeriod"] = s.GetTermPeriod()
-	jso["bondRequirement"] = br.Percent()
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		jso["bondRequirement"] = br.Percent()
+	} else {
+		jso["bondRequirement"] = br.NumInt64()
+	}
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund(revision).ToJSON()

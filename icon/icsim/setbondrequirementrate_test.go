@@ -27,16 +27,24 @@ import (
 
 func assertBondRequirement(t *testing.T, sim Simulator, br, nextBr icmodule.Rate) {
 	jso, err := sim.GetBondRequirementRate()
-	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
-		"blockHeight": sim.BlockHeight(), "current": br, "next": nextBr,
-	}, jso)
-
 	term := sim.GetPRepTermInJSON()
-	assert.Equal(t, br.Percent(), term["bondRequirement"])
-
 	networkInfo := sim.GetNetworkInfoInJSON()
-	assert.Equal(t, br.Percent(), networkInfo["bondRequirement"])
+
+	if sim.Revision().Value() < icmodule.RevisionSetBondRequirementRate {
+		assert.Error(t, err)
+		assert.Nil(t, jso)
+
+		assert.Equal(t, br.Percent(), term["bondRequirement"])
+		assert.Equal(t, br.Percent(), networkInfo["bondRequirement"])
+	} else {
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{
+			"blockHeight": sim.BlockHeight(), "current": br, "next": nextBr,
+		}, jso)
+
+		assert.Equal(t, br.NumInt64(), term["bondRequirement"])
+		assert.Equal(t, br.NumInt64(), networkInfo["bondRequirement"])
+	}
 }
 
 func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
@@ -47,8 +55,6 @@ func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
 	var csi module.ConsensusInfo
 	var receipts []Receipt
 	var nextBr icmodule.Rate
-	var term map[string]interface{}
-	var networkInfo map[string]interface{}
 	br := icmodule.ToRate(5)
 	rev := icmodule.ValueToRevision(icmodule.RevisionSetBondRequirementRate - 1)
 
@@ -63,17 +69,9 @@ func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
 	assert.Equal(t, sim.Revision().Value(), rev.Value())
 
 	// T(0)
-	jso := sim.GetNetworkInfoInJSON()
-	assert.Equal(t, br.Percent(), jso["bondRequirement"])
-
-	term = sim.GetPRepTermInJSON()
-	assert.Equal(t, br.Percent(), term["bondRequirement"])
-
-	// GetBondRequirementRate is not allowed before icmodule.RevisionSetBondRequirementRate
-	jso, err = sim.GetBondRequirementRate()
-	assert.Error(t, err)
-	assert.Nil(t, jso)
-
+	assertBondRequirement(t, sim, br, br)
+	assert.NoError(t, sim.Go(csi, 1))
+	assertBondRequirement(t, sim, br, br)
 	assert.NoError(t, sim.GoToTermEnd(csi))
 
 	// T(1)
@@ -81,17 +79,7 @@ func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
 	receipts, err = sim.GoBySetBondRequirementRate(csi, env.Governance(), icmodule.ToRate(3))
 	assert.NoError(t, err)
 	assert.Equal(t, Failure, receipts[1].Status())
-
-	// GetBondRequirementRate is forbidden before icmodule.RevisionSetBondRequirementRate
-	jso, err = sim.GetBondRequirementRate()
-	assert.Error(t, err)
-	assert.Nil(t, jso)
-
-	term = sim.GetPRepTermInJSON()
-	assert.Equal(t, br.Percent(), term["bondRequirement"])
-
-	networkInfo = sim.GetNetworkInfoInJSON()
-	assert.Equal(t, br.Percent(), networkInfo["bondRequirement"])
+	assertBondRequirement(t, sim, br, br)
 
 	// Revision update to RevisionSetBondRequirementRate
 	rev = icmodule.ValueToRevision(icmodule.RevisionSetBondRequirementRate)
@@ -102,11 +90,7 @@ func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
 	assert.Equal(t, sim.Revision().Value(), rev.Value())
 
 	// GetBondRequirementRate() works after RevisionSetBondRequirementRate
-	jso, err = sim.GetBondRequirementRate()
-	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
-		"blockHeight": sim.BlockHeight(), "current": br, "next": br,
-	}, jso)
+	assertBondRequirement(t, sim, br, br)
 
 	// Ensure that calling setBondRequirementRate() more than once during the same term works well
 	for i := 0; i < 2; i++ {
@@ -122,18 +106,14 @@ func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
 	assert.NoError(t, sim.GoToTermEnd(csi))
 
 	// T(2)
-	jso, err = sim.GetBondRequirementRate()
-	assert.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{
-		"blockHeight": sim.BlockHeight(), "current": nextBr, "next": nextBr,
-	}, jso)
-
+	assertBondRequirement(t, sim, nextBr, nextBr)
 	assert.NoError(t, sim.Go(csi, 1))
 	assertBondRequirement(t, sim, nextBr, nextBr)
-
 	assert.NoError(t, sim.GoToTermEnd(csi))
 
 	// T(3)
+	assertBondRequirement(t, sim, nextBr, nextBr)
+	assert.NoError(t, sim.Go(csi, 1))
 	assertBondRequirement(t, sim, nextBr, nextBr)
 
 	// Ensure that only valid BondRequirementRates are allowed

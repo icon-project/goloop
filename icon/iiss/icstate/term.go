@@ -245,7 +245,7 @@ func (term *termDataCommon) clone() termDataCommon {
 }
 
 func (term *termDataCommon) ToJSON(sc icmodule.StateContext, state *State) map[string]interface{} {
-	return map[string]interface{}{
+	jso := map[string]interface{}{
 		"sequence":         term.sequence,
 		"startBlockHeight": term.startHeight,
 		"endBlockHeight":   term.GetEndHeight(),
@@ -254,13 +254,18 @@ func (term *termDataCommon) ToJSON(sc icmodule.StateContext, state *State) map[s
 		"totalPower":       term.getTotalPower(),
 		"period":           term.period,
 		"rewardFund":       term.rewardFund.ToJSON(),
-		"bondRequirement":  term.bondRequirement.Percent(),
 		"revision":         term.revision,
 		"isDecentralized":  term.isDecentralized,
 		"mainPRepCount":    term.mainPRepCount,
 		"iissVersion":      term.GetIISSVersion(),
 		"preps":            term.prepsToJSON(sc, state),
 	}
+	if sc.RevisionValue() < icmodule.RevisionSetBondRequirementRate {
+		jso["bondRequirement"] = term.bondRequirement.Percent()
+	} else {
+		jso["bondRequirement"] = term.bondRequirement.NumInt64()
+	}
+	return jso
 }
 
 func (term *termDataCommon) prepsToJSON(sc icmodule.StateContext, state *State) []interface{} {
