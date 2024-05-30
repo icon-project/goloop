@@ -22,7 +22,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/icon/icmodule"
+	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 func assertBondRequirement(t *testing.T, sim Simulator, br, nextBr icmodule.Rate) {
@@ -45,6 +48,11 @@ func assertBondRequirement(t *testing.T, sim Simulator, br, nextBr icmodule.Rate
 		assert.Equal(t, br.NumInt64(), term["bondRequirementRate"])
 		assert.Equal(t, br.NumInt64(), networkInfo["bondRequirementRate"])
 	}
+}
+
+func assertEventSetBondRequirementRate(t *testing.T, ev *txresult.TestEventLog, rate icmodule.Rate) {
+	err := ev.Assert(state.SystemAddress, iiss.EventBondRequirementRateSet, nil, []any{rate.NumInt64()})
+	assert.NoError(t, err)
 }
 
 func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
@@ -96,12 +104,24 @@ func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		nextBr = icmodule.ToRate(int64(i))
 		receipts, err = sim.GoBySetBondRequirementRate(csi, env.Governance(), nextBr)
+		rcpt := receipts[1]
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(receipts))
-		assert.Equal(t, Success, receipts[1].Status())
-
+		assert.Equal(t, Success, rcpt.Status())
+		assert.Equal(t, 1, len(rcpt.Events()))
+		assertEventSetBondRequirementRate(t, rcpt.Events()[0], nextBr)
 		assertBondRequirement(t, sim, br, nextBr)
 	}
+
+	// When calling setBondRequirementRate() with the new rate that is the same as the existing one,
+	// the transaction succeeds without any event logs
+	receipts, err = sim.GoBySetBondRequirementRate(csi, env.Governance(), nextBr)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(receipts))
+	rcpt := receipts[1]
+	assert.Equal(t, Success, rcpt.Status())
+	assert.Zero(t, len(rcpt.Events()))
+	assertBondRequirement(t, sim, br, nextBr)
 
 	assert.NoError(t, sim.GoToTermEnd(csi))
 
@@ -122,7 +142,7 @@ func TestSimulatorImpl_SetBondRequirementRate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(receipts))
 		assert.Equal(t, Failure, receipts[1].Status())
-
+		assert.Zero(t, len(receipts[1].Events()))
 		assertBondRequirement(t, sim, nextBr, nextBr)
 	}
 }
