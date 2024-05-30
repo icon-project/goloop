@@ -961,10 +961,6 @@ func (es *ExtensionStateImpl) onTermEnd(wc icmodule.WorldContext) error {
 	var err error
 
 	revision := wc.Revision().Value()
-	// BondRequirement is set to the next rate
-	if err = es.State.ShiftBondRequirement(revision); err != nil {
-		return err
-	}
 	pcCfg := es.State.GetPRepCountConfig(revision)
 
 	totalSupply := wc.GetTotalSupply()
@@ -2058,16 +2054,17 @@ func (es *ExtensionStateImpl) SetMinimumBond(cc icmodule.CallContext, nBond *big
 }
 
 func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, rate icmodule.Rate) error {
+	revision := cc.Revision().Value()
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return scoreresult.AccessDeniedError.Errorf("SetBondRequirementRateNotAllowed(rev=%d)", revision)
+	}
 	if !rate.IsValid() {
 		return scoreresult.InvalidParameterError.Errorf("InvalidBondRequirementRate(%d)", rate)
 	}
 
 	var err error
-	var brInfo *icstate.BondRequirementInfo
-	revision := cc.Revision().Value()
-
-	brInfo, err = es.State.GetBondRequirementInfo(revision)
-	if err == nil && rate != brInfo.NextRate() {
+	oldRate := es.State.GetBondRequirement(revision)
+	if rate != oldRate {
 		if err = es.State.SetBondRequirement(revision, rate); err == nil {
 			EmitBondRequirementRateSetEvent(cc, rate)
 		}
@@ -2077,11 +2074,15 @@ func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, ra
 
 func (es *ExtensionStateImpl) GetBondRequirementRateInJSON(cc icmodule.CallContext) (map[string]interface{}, error) {
 	revision := cc.Revision().Value()
-	brInfo, err := es.State.GetBondRequirementInfo(revision)
-	if err != nil {
-		return nil, err
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return nil, scoreresult.AccessDeniedError.Errorf("GetBondRequirementRateNotAllowed(rev=%d)", revision)
 	}
-	jso := brInfo.ToJSON()
-	jso["blockHeight"] = cc.BlockHeight()
-	return jso, nil
+
+	term := es.State.GetTermSnapshot()
+	nextRate := es.State.GetBondRequirement(revision)
+	return map[string]interface{}{
+		"blockHeight": cc.BlockHeight(),
+		"current":     term.BondRequirement().NumInt64(),
+		"next":        nextRate.NumInt64(),
+	}, nil
 }

@@ -38,15 +38,17 @@ func assertBondRequirement(t *testing.T, sim Simulator, br, nextBr icmodule.Rate
 		assert.Nil(t, jso)
 
 		assert.Equal(t, br.Percent(), term["bondRequirement"])
-		assert.Equal(t, br.Percent(), networkInfo["bondRequirement"])
+		assert.Equal(t, nextBr.Percent(), networkInfo["bondRequirement"])
 	} else {
 		assert.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"blockHeight": sim.BlockHeight(), "current": br, "next": nextBr,
+			"blockHeight": sim.BlockHeight(),
+			"current":     br.NumInt64(),
+			"next":        nextBr.NumInt64(),
 		}, jso)
 
 		assert.Equal(t, br.NumInt64(), term["bondRequirementRate"])
-		assert.Equal(t, br.NumInt64(), networkInfo["bondRequirementRate"])
+		assert.Equal(t, nextBr.NumInt64(), networkInfo["bondRequirementRate"])
 	}
 }
 

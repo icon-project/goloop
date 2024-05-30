@@ -37,7 +37,6 @@ const (
 	VarIISSVersion                          = "iiss_version"
 	VarTermPeriod                           = "term_period"
 	VarBondRequirement                      = "bond_requirement"
-	VarBondRequirement2                     = "bond_requirement2"
 	VarUnbondingPeriodMultiplier            = "unbonding_period_multiplier"
 	VarLockMinMultiplier                    = "lockMinMultiplier"
 	VarLockMaxMultiplier                    = "lockMaxMultiplier"
@@ -244,63 +243,12 @@ func (s *State) SetTotalStake(value *big.Int) error {
 }
 
 func (s *State) GetBondRequirement(revision int) icmodule.Rate {
-	if revision < icmodule.RevisionSetBondRequirementRate {
-		return s.getBondRequirementV1()
-	} else {
-		return s.getBondRequirementV2()
-	}
-}
-
-func (s *State) getBondRequirementV1() icmodule.Rate {
 	v := getValue(s.store, VarBondRequirement).Int64()
-	return icmodule.ToRate(v)
-}
-
-func (s *State) getBondRequirementV2() icmodule.Rate {
-	bs := getValue(s.store, VarBondRequirement2).Bytes()
-	if bs == nil {
-		return s.getBondRequirementV1()
-	}
-	brInfo, err := NewBondRequirementInfoFromByte(bs)
-	if brInfo == nil {
-		// TODO: What to do if brInfo is nil
-		s.logger.Panicf("FailedToGetBondRequirementInfo(err=%s)", err.Error())
-	}
-	return brInfo.Rate()
-}
-
-func (s *State) GetBondRequirementInfo(revision int) (*BondRequirementInfo, error) {
 	if revision < icmodule.RevisionSetBondRequirementRate {
-		// BondRequirementInfo is enabled after RevisionSetBondRequirementRate
-		return nil, errors.InvalidStateError.Errorf("GetBondRequirementInfoNotAllowed(rev=%d)", revision)
+		return icmodule.ToRate(v)
+	} else {
+		return icmodule.Rate(v)
 	}
-
-	bs := getValue(s.store, VarBondRequirement2).Bytes()
-	if bs == nil {
-		return nil, errors.InvalidStateError.Errorf("BondRequirementInfoIsNil")
-	}
-
-	info, err := NewBondRequirementInfoFromByte(bs)
-	if err != nil {
-		return nil, scoreresult.IllegalFormatError.Wrapf(err, "IllegalBondRequirementInfoFormat")
-	}
-	return info, nil
-}
-
-func (s *State) setBondRequirementInfo(revision int, brInfo *BondRequirementInfo) error {
-	if revision < icmodule.RevisionSetBondRequirementRate {
-		return errors.InvalidStateError.Errorf("SetBondRequirementInfoNotAllowed(rev=%d)", revision)
-	}
-	if brInfo == nil {
-		return scoreresult.InvalidParameterError.New("BondRequirementInfoIsNil")
-	}
-	if !brInfo.Rate().IsValid() || !brInfo.NextRate().IsValid() {
-		return scoreresult.InvalidParameterError.Errorf(
-			"InvalidBondRequirementRate(rate=%d,nextRate=%d)",
-			brInfo.Rate(), brInfo.NextRate())
-	}
-
-	return setValue(s.store, VarBondRequirement2, brInfo.Bytes())
 }
 
 func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
@@ -311,36 +259,17 @@ func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
 	if revision < icmodule.RevisionSetBondRequirementRate {
 		return setValue(s.store, VarBondRequirement, br.Percent())
 	} else {
-		brInfo, err := s.GetBondRequirementInfo(revision)
-		if err != nil {
-			return err
-		}
-		brInfo.SetNextRate(br)
-		return s.setBondRequirementInfo(revision, brInfo)
+		return setValue(s.store, VarBondRequirement, br.NumInt64())
 	}
 }
 
 func (s *State) MigrateBondRequirement(revision int) error {
 	if revision != icmodule.RevisionSetBondRequirementRate {
-		return errors.InvalidStateError.Errorf("BondRequirementRateMigrationNotAllowed(rev=%d)", revision)
+		return scoreresult.AccessDeniedError.Errorf("MigrateBondRequirementNotAllowed(rev=%d)", revision)
 	}
-	rate := s.getBondRequirementV1()
-	brInfo := NewBondRequirementInfo(rate, rate)
-	return s.setBondRequirementInfo(revision, brInfo)
-}
-
-func (s *State) ShiftBondRequirement(revision int) error {
-	if revision >= icmodule.RevisionSetBondRequirementRate {
-		brInfo, err := s.GetBondRequirementInfo(revision)
-		if err != nil {
-			return err
-		}
-		if brInfo.Rate() != brInfo.NextRate() {
-			brInfo.SetRate(brInfo.NextRate())
-			return s.setBondRequirementInfo(revision, brInfo)
-		}
-	}
-	return nil
+	// Change BondRequirementRate unit from 1% to 0.01%
+	rate := s.GetBondRequirement(revision - 1)
+	return s.SetBondRequirement(revision, rate)
 }
 
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
