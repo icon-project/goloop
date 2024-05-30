@@ -42,8 +42,8 @@ func assertBondRequirement(t *testing.T, sim Simulator, br, nextBr icmodule.Rate
 			"blockHeight": sim.BlockHeight(), "current": br, "next": nextBr,
 		}, jso)
 
-		assert.Equal(t, br.NumInt64(), term["bondRequirement"])
-		assert.Equal(t, br.NumInt64(), networkInfo["bondRequirement"])
+		assert.Equal(t, br.NumInt64(), term["bondRequirementRate"])
+		assert.Equal(t, br.NumInt64(), networkInfo["bondRequirementRate"])
 	}
 }
 

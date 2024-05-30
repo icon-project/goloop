@@ -263,7 +263,7 @@ func (term *termDataCommon) ToJSON(sc icmodule.StateContext, state *State) map[s
 	if sc.RevisionValue() < icmodule.RevisionSetBondRequirementRate {
 		jso["bondRequirement"] = term.bondRequirement.Percent()
 	} else {
-		jso["bondRequirement"] = term.bondRequirement.NumInt64()
+		jso["bondRequirementRate"] = term.bondRequirement.NumInt64()
 	}
 	return jso
 }

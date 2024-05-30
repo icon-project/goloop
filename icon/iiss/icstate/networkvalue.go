@@ -582,7 +582,7 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	if revision < icmodule.RevisionSetBondRequirementRate {
 		jso["bondRequirement"] = br.Percent()
 	} else {
-		jso["bondRequirement"] = br.NumInt64()
+		jso["bondRequirementRate"] = br.NumInt64()
 	}
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
