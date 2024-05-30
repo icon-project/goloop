@@ -2071,18 +2071,3 @@ func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, ra
 	}
 	return err
 }
-
-func (es *ExtensionStateImpl) GetBondRequirementRateInJSON(cc icmodule.CallContext) (map[string]interface{}, error) {
-	revision := cc.Revision().Value()
-	if revision < icmodule.RevisionSetBondRequirementRate {
-		return nil, scoreresult.AccessDeniedError.Errorf("GetBondRequirementRateNotAllowed(rev=%d)", revision)
-	}
-
-	term := es.State.GetTermSnapshot()
-	nextRate := es.State.GetBondRequirement(revision)
-	return map[string]interface{}{
-		"blockHeight": cc.BlockHeight(),
-		"current":     term.BondRequirement().NumInt64(),
-		"next":        nextRate.NumInt64(),
-	}, nil
-}

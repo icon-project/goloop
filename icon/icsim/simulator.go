@@ -186,7 +186,6 @@ type Simulator interface {
 		csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) ([]Receipt, error)
 
 	// After RevisionSetBondRequirementRate
-	GetBondRequirementRate() (map[string]interface{}, error)
 	SetBondRequirementRate(from module.Address, rate icmodule.Rate) Transaction
 	GoBySetBondRequirementRate(csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) ([]Receipt, error)
 }

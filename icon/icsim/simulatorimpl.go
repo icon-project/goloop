@@ -879,11 +879,6 @@ func (sim *simulatorImpl) setRewardFundAllocation2(
 	return es.State.SetRewardFund(rf)
 }
 
-func (sim *simulatorImpl) GetBondRequirementRate() (map[string]interface{}, error) {
-	es, cc := sim.getReadonlyExtensionStateAndCallContext()
-	return es.GetBondRequirementRateInJSON(cc)
-}
-
 func (sim *simulatorImpl) SetBondRequirementRate(from module.Address, rate icmodule.Rate) Transaction {
 	return NewTransaction(TypeSetBondRequirementRate, from, rate)
 }
