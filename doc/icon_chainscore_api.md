@@ -48,6 +48,7 @@
             + [getSlashingRates](#getslashingrates)
             + [getMinimumBond](#getminimumbond)
             + [getPRepCountConfig](#getprepcountconfig)
+            + [getBondRequirementRate](#getbondrequirementrate)
         * Writable APIs
             + [setStake](#setstake)
             + [setDelegation](#setdelegation)
@@ -70,6 +71,7 @@
             + [requestUnjail](#requestunjail)
             + [setPRepCountConfig](#setprepcountconfig)
             + [handleDoubleSignReport](#handledoublesignreport)
+            + [setBondRequirementRate](#setbondrequirementrate)
     - [BTP](#btp)
         * ReadOnly APIs
             + [getBTPNetworkTypeID](#getbtpnetworktypeid)
@@ -778,26 +780,31 @@ def getPRepTerm() -> dict:
 
 *Returns:*
 
-| Key              | Value Type                            | Description                                                 |
-|:-----------------|:--------------------------------------|:------------------------------------------------------------|
-| blockHeight      | int                                   | latest block height when this request was processed         |
-| sequence         | int                                   | sequence number                                             |
-| startBlockHeight | int                                   | start block height of the term                              |
-| endBlockHeight   | int                                   | end block height of the term                                |
-| totalSupply      | int                                   | total supply amount at `startBlockHeight`                   |
-| preps            | List\[[PRepSnapshot](#prepsnapshot)\] | Main/Sub P-Rep list at `startBlockHeight`                   |
-| totalDelegated   | int                                   | total delegation amount of `preps`                          |
-| totalPower       | int                                   | total power amount of `preps`                               |
-| period           | int                                   | term period                                                 |
-| rewardFund       | [RewardFund](#rewardfund)             | reward fund information for the term                        |
-| bondRequirement  | int                                   | bondRequirement for the term                                |
-| revision         | int                                   | revision for the term                                       |
-| isDecentralized  | bool                                  | `true` if network is decentralized                          |
-| mainPRepCount    | int                                   | Main P-Reps count for the term                              |
-| iissVersion      | int                                   | IISS version for the term                                   |
-| irep             | int                                   | (Optional. revision < 25) Irep for the term                 |
-| rrep             | int                                   | (Optional. revision < 25) Rrep for the term                 |
-| minimumBond      | int                                   | (Optional. revision >= 25) minimum bond amount for the term |
+| Key                 | Value Type                            | Description                                                                                                 |
+|:--------------------|:--------------------------------------|:------------------------------------------------------------------------------------------------------------|
+| blockHeight         | int                                   | latest block height when this request was processed                                                         |
+| sequence            | int                                   | sequence number                                                                                             |
+| startBlockHeight    | int                                   | start block height of the term                                                                              |
+| endBlockHeight      | int                                   | end block height of the term                                                                                |
+| totalSupply         | int                                   | total supply amount at `startBlockHeight`                                                                   |
+| preps               | List\[[PRepSnapshot](#prepsnapshot)\] | Main/Sub P-Rep list at `startBlockHeight`                                                                   |
+| totalDelegated      | int                                   | total delegation amount of `preps`                                                                          |
+| totalPower          | int                                   | total power amount of `preps`                                                                               |
+| period              | int                                   | term period                                                                                                 |
+| rewardFund          | [RewardFund](#rewardfund)             | reward fund information for the term                                                                        |
+| bondRequirement     | int                                   | bond requirement rate ranging from 0 (0%) to 100 (100%) for the current term<br/>removed after revision 26  |
+| bondRequirementRate | int                                   | bond requirement rate ranging from 0 (0%) to 10,000 (100%) for the current term<br/>added after revision 26 |
+| revision            | int                                   | revision for the term                                                                                       |
+| isDecentralized     | bool                                  | `true` if network is decentralized                                                                          |
+| mainPRepCount       | int                                   | Main P-Reps count for the term                                                                              |
+| iissVersion         | int                                   | IISS version for the term                                                                                   |
+| irep                | int                                   | (Optional. revision < 25) Irep for the term                                                                 |
+| rrep                | int                                   | (Optional. revision < 25) Rrep for the term                                                                 |
+| minimumBond         | int                                   | (Optional. revision >= 25) minimum bond amount for the term                                                 |
+
+* `bondRequirement` field is replaced with `bondRequirementRate` field after revision 26
+* 0 <= `bondRequirement` <= 100 (0: 0%, 100: 100%)
+* 0 <= `bondRequirementRate` <= 10,000 (0: 0%, 10,000: 100%)
 
 *Revision:* 5 ~
 
@@ -850,24 +857,29 @@ def getNetworkInfo() -> dict:
 
 *Returns:*
 
-| Key               | Value Type                | Description                                |
-|:------------------|:--------------------------|:-------------------------------------------|
-| mainPRepCount     | int                       | Main P-Reps count                          |
-| extraPRepCount    | int                       | Extra Main P-Reps count                    |
-| subPRepCount      | int                       | Sub Main P-Reps count                      |
-| iissVersion       | int                       | IISS version                               |
-| termPeriod        | int                       | period of term                             |
-| bondRequirement   | int                       | bond requirement                           |
-| lockMinMultiplier | int                       | multiplier for minimum unstake lock period |
-| lockMaxMultiplier | int                       | multiplier for maximum unstake lock period |
-| unstakeSlotMax    | int                       | maximum unstakes count of a account        |
-| delegationSlotMax | int                       | maximum delegation count of a account      |
-| rewardFund        | [RewardFund](#rewardfund) | reward fund information                    |
-| totalStake        | int                       | total stakes of ICONist                    |
-| totalBonded       | int                       | total bonded amount of P-Rep               |
-| totalDelegated    | int                       | total delegated amount of P-Rep            |
-| totalPower        | int                       | total power amount of P-Rep                |
-| preps             | int                       | count of all P-Reps                        |
+| Key                 | Value Type                | Description                                                                            |
+|:--------------------|:--------------------------|:---------------------------------------------------------------------------------------|
+| mainPRepCount       | int                       | Main P-Reps count                                                                      |
+| extraPRepCount      | int                       | Extra Main P-Reps count                                                                |
+| subPRepCount        | int                       | Sub Main P-Reps count                                                                  |
+| iissVersion         | int                       | IISS version                                                                           |
+| termPeriod          | int                       | period of term                                                                         |
+| bondRequirement     | int                       | bond requirement rate ranging from 0 (0%) to 100 (100%)<br/>removed after revision 26  |
+| bondRequirementRate | int                       | bond requirement rate ranging from 0 (0%) to 10,000 (100%)<br/>added after revision 26 |
+| lockMinMultiplier   | int                       | multiplier for minimum unstake lock period                                             |
+| lockMaxMultiplier   | int                       | multiplier for maximum unstake lock period                                             |
+| unstakeSlotMax      | int                       | maximum unstakes count of a account                                                    |
+| delegationSlotMax   | int                       | maximum delegation count of a account                                                  |
+| rewardFund          | [RewardFund](#rewardfund) | reward fund information                                                                |
+| totalStake          | int                       | total stakes of ICONist                                                                |
+| totalBonded         | int                       | total bonded amount of P-Rep                                                           |
+| totalDelegated      | int                       | total delegated amount of P-Rep                                                        |
+| totalPower          | int                       | total power amount of P-Rep                                                            |
+| preps               | int                       | count of all P-Reps                                                                    |
+
+* `bondRequirement` field is replaced with `bondRequirementRate` field after revision 26
+* 0 <= `bondRequirement` <= 100 (0: 0%, 100: 100%)
+* 0 <= `bondRequirementRate` <= 10,000 (0: 0%, 10,000: 100%)
 
 *Revision:* 13 ~
 
@@ -961,6 +973,26 @@ def getPRepCountConfig() -> dict:
 | extra | int  | number of extra main P-Reps |
 
 *Revision:* 24 ~
+
+### getBondRequirementRate
+
+Returns the current and next bond requirement rates
+
+```
+def getBondRequirementRate() -> dict
+```
+
+*Returns:*
+
+| Key     | Type | Description                                               |
+|:--------|:-----|:----------------------------------------------------------|
+| current | int  | currently applied bond requirement rate                   |
+| next    | int  | bond requirement rate that will apply after the next term |
+
+* 0 <= `current` <= 10,000 (0: 0%, 10,000: 100%)
+* 0 <= `next` <= 10,000 (0: 0%, 10,000: 100%)
+
+*Revision:* 26 ~
 
 ## Writable APIs
 
@@ -1545,6 +1577,36 @@ def DoubleSignReported(owner Address, blockHeight int, type: str)
 | type        | str     | `proposal`, `vote`                                                     |
 
 *Revision:* 25 ~
+
+### setBondRequirementRate
+
+* Update bondRequirementRate
+* Governance Only
+
+```
+def setBondRequirementRate(rate: int) -> None:    
+```
+
+*Parameters:*
+
+| Name | Type | Description               |
+|:-----|:-----|:--------------------------|
+| rate | int  | new bond requirement rate |
+
+* 0 <= `rate` <= 10,000 (0: 0%, 10,000: 100%)
+
+*Event Log:*
+
+```
+@eventlog(indexed=0)
+def BondRequirementRateSet(rate: int) -> None:
+```
+
+| Name  | Type    | Description               |
+|:------|:--------|:--------------------------|
+| rate  | int     | new bond requirement rate |
+
+*Revision:* 26 ~
 
 # BTP
 
