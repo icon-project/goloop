@@ -635,8 +635,6 @@ func (term *TermState) SetRrep(rrep *big.Int) {
 // It assumes that state and totalSupply are not nil.
 func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, preps PRepSet) *TermState {
 	rev := sc.RevisionValue()
-	// If the next bond requirement rate has been set,
-	// br reflects the new bond requirement for the next term
 	br := sc.GetBondRequirement()
 
 	// Previous term
