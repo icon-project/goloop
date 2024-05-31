@@ -974,26 +974,6 @@ def getPRepCountConfig() -> dict:
 
 *Revision:* 24 ~
 
-### getBondRequirementRate
-
-Returns the current and next bond requirement rates
-
-```
-def getBondRequirementRate() -> dict
-```
-
-*Returns:*
-
-| Key     | Type | Description                                               |
-|:--------|:-----|:----------------------------------------------------------|
-| current | int  | currently applied bond requirement rate                   |
-| next    | int  | bond requirement rate that will apply after the next term |
-
-* 0 <= `current` <= 10,000 (0: 0%, 10,000: 100%)
-* 0 <= `next` <= 10,000 (0: 0%, 10,000: 100%)
-
-*Revision:* 26 ~
-
 ## Writable APIs
 
 ### setStake
