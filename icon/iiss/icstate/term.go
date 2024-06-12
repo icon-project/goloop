@@ -258,12 +258,14 @@ func (term *termDataCommon) ToJSON(sc icmodule.StateContext, state *State) map[s
 		"isDecentralized":  term.isDecentralized,
 		"mainPRepCount":    term.mainPRepCount,
 		"iissVersion":      term.GetIISSVersion(),
-		"preps":            term.prepsToJSON(sc, state),
 	}
-	if sc.RevisionValue() < icmodule.RevisionSetBondRequirementRate {
+	if term.revision < icmodule.RevisionSetBondRequirementRate {
 		jso["bondRequirement"] = term.bondRequirement.Percent()
 	} else {
 		jso["bondRequirementRate"] = term.bondRequirement.NumInt64()
+	}
+	if term.revision < icmodule.RevisionRemovePRepsFieldInTerm {
+		jso["preps"] = term.prepsToJSON(sc, state)
 	}
 	return jso
 }
