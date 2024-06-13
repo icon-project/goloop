@@ -32,11 +32,14 @@ func assertBondRequirement(t *testing.T, sim Simulator, br, nextBr icmodule.Rate
 	term := sim.GetPRepTermInJSON()
 	networkInfo := sim.GetNetworkInfoInJSON()
 
-	if sim.Revision().Value() < icmodule.RevisionSetBondRequirementRate {
+	if term["revision"].(int) < icmodule.RevisionSetBondRequirementRate {
 		assert.Equal(t, br.Percent(), term["bondRequirement"])
-		assert.Equal(t, nextBr.Percent(), networkInfo["bondRequirement"])
 	} else {
 		assert.Equal(t, br.NumInt64(), term["bondRequirementRate"])
+	}
+	if sim.Revision().Value() < icmodule.RevisionSetBondRequirementRate {
+		assert.Equal(t, nextBr.Percent(), networkInfo["bondRequirement"])
+	} else {
 		assert.Equal(t, nextBr.NumInt64(), networkInfo["bondRequirementRate"])
 	}
 }
