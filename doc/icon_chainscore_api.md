@@ -772,7 +772,7 @@ def estimateUnstakeLockPeriod() -> dict:
 
 ### getPRepTerm
 
-Returns information for the current term.
+Returns the information about the current term.
 
 ```
 def getPRepTerm() -> dict:
@@ -805,6 +805,7 @@ def getPRepTerm() -> dict:
 * `bondRequirement` field is replaced with `bondRequirementRate` field after revision 26
 * 0 <= `bondRequirement` <= 100 (0: 0%, 100: 100%)
 * 0 <= `bondRequirementRate` <= 10,000 (0: 0%, 10,000: 100%)
+* `preps` field will be removed after revision 26. Please use [getMainPReps](#getmainpreps) or [getSubPReps](#getsubpreps) instead
 
 *Revision:* 5 ~
 
@@ -1848,7 +1849,7 @@ The list of fields below is subject to change based on revisions
 | nodeAddress             | Address    | node Key for only consensus                                                                                                                                                                               |
 | p2pEndpoint             | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
 | penalty                 | int        | [PENALTY_TYPE_ID](#penalty_type_id)                                                                                                                                                                       |
-| power                   | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 10000 / bondRequirementRate))                                                                               |
+| power                   | int        | amount of power that a P-Rep receives from ICONist. See [Power](#power) section for further information                                                                                                   |
 | status                  | int        | [PREP_STATUS](#prep_status)                                                                                                                                                                               |
 | totalBlocks             | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
 | validatedBlocks         | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
@@ -1863,12 +1864,12 @@ The list of fields below is subject to change based on revisions
 
 ## PRepSnapshot
 
-| Key       | Value Type | Description                                                                                                               |
-|:----------|:-----------|:--------------------------------------------------------------------------------------------------------------------------|
-| name      | str        | P-Rep name                                                                                                                |
-| address   | Address    | P-Rep address                                                                                                             |
-| delegated | int        | delegation amount that a P-Rep receives from ICONist                                                                      |
-| power     | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 10000 / bondRequirementRate)) |
+| Key       | Value Type | Description                                                                                                   |
+|:----------|:-----------|:--------------------------------------------------------------------------------------------------------------|
+| name      | str        | P-Rep name                                                                                                    |
+| address   | Address    | P-Rep address                                                                                                 |
+| delegated | int        | delegation amount that a P-Rep receives from ICONist                                                          |
+| power     | int        | amount of power that a P-Rep receives from ICONist. See [Power](#power) section for more details |
 
 ## PRepStats
 
@@ -1935,6 +1936,27 @@ The list of fields below is subject to change based on revisions
 |:------|:-----------|:------------|
 | name  | str        | name        |       
 | value | int        | value       |
+
+## Power
+
+* `Power` is also known as `VotingPower`.
+* `power` is calculated according to the following formular:
+
+```
+power = min(bonded + delegated, bonded * 10000 / bondRequirementRate)
+```
+
+| Name                | Type | Description                                                                                                |
+|:--------------------|:-----|:-----------------------------------------------------------------------------------------------------------|
+| bonded              | int  | bond amount that a P-Rep receives from ICONist                                                             |
+| delegated           | int  | delegation amount that a P-Rep receives from ICONist                                                       |
+| bondRequirementRate | int  | Network configuration value that can be adjusted via [setBondRequirementRate](#setbondrequirementrate) API |
+
+* bondRequirementRate contains the value ranging from 0 to 10000.
+  - 0: 0%
+  - 1000: 10%
+  - 5000: 50%
+  - 10000: 100%
 
 # Event logs
 
