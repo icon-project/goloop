@@ -780,27 +780,27 @@ def getPRepTerm() -> dict:
 
 *Returns:*
 
-| Key                 | Value Type                            | Description                                                                                                 |
-|:--------------------|:--------------------------------------|:------------------------------------------------------------------------------------------------------------|
-| blockHeight         | int                                   | latest block height when this request was processed                                                         |
-| sequence            | int                                   | sequence number                                                                                             |
-| startBlockHeight    | int                                   | start block height of the term                                                                              |
-| endBlockHeight      | int                                   | end block height of the term                                                                                |
-| totalSupply         | int                                   | total supply amount at `startBlockHeight`                                                                   |
-| preps               | List\[[PRepSnapshot](#prepsnapshot)\] | Main/Sub P-Rep list at `startBlockHeight`                                                                   |
-| totalDelegated      | int                                   | total delegation amount of `preps`                                                                          |
-| totalPower          | int                                   | total power amount of `preps`                                                                               |
-| period              | int                                   | term period                                                                                                 |
-| rewardFund          | [RewardFund](#rewardfund)             | reward fund information for the term                                                                        |
-| bondRequirement     | int                                   | bond requirement rate ranging from 0 (0%) to 100 (100%) for the current term<br/>removed after revision 26  |
-| bondRequirementRate | int                                   | bond requirement rate ranging from 0 (0%) to 10,000 (100%) for the current term<br/>added after revision 26 |
-| revision            | int                                   | revision for the term                                                                                       |
-| isDecentralized     | bool                                  | `true` if network is decentralized                                                                          |
-| mainPRepCount       | int                                   | Main P-Reps count for the term                                                                              |
-| iissVersion         | int                                   | IISS version for the term                                                                                   |
-| irep                | int                                   | (Optional. revision < 25) Irep for the term                                                                 |
-| rrep                | int                                   | (Optional. revision < 25) Rrep for the term                                                                 |
-| minimumBond         | int                                   | (Optional. revision >= 25) minimum bond amount for the term                                                 |
+| Key                 | Value Type                | Description                                                                                                 |
+|:--------------------|:--------------------------|:------------------------------------------------------------------------------------------------------------|
+| blockHeight         | int                       | latest block height when this request was processed                                                         |
+| sequence            | int                       | sequence number                                                                                             |
+| startBlockHeight    | int                       | start block height of the term                                                                              |
+| endBlockHeight      | int                       | end block height of the term                                                                                |
+| totalSupply         | int                       | total supply amount at `startBlockHeight`                                                                   |
+| preps               | List\[[PRep](#prep)\]     | (Optional. revison < 26) Main/Sub P-Rep list                                                                |
+| totalDelegated      | int                       | total delegation amount of `preps`                                                                          |
+| totalPower          | int                       | total power amount of `preps`                                                                               |
+| period              | int                       | term period                                                                                                 |
+| rewardFund          | [RewardFund](#rewardfund) | reward fund information for the term                                                                        |
+| bondRequirement     | int                       | bond requirement rate ranging from 0 (0%) to 100 (100%) for the current term<br/>removed after revision 26  |
+| bondRequirementRate | int                       | bond requirement rate ranging from 0 (0%) to 10,000 (100%) for the current term<br/>added after revision 26 |
+| revision            | int                       | revision for the term                                                                                       |
+| isDecentralized     | bool                      | `true` if network is decentralized                                                                          |
+| mainPRepCount       | int                       | Main P-Reps count for the term                                                                              |
+| iissVersion         | int                       | IISS version for the term                                                                                   |
+| irep                | int                       | (Optional. revision < 25) Irep for the term                                                                 |
+| rrep                | int                       | (Optional. revision < 25) Rrep for the term                                                                 |
+| minimumBond         | int                       | (Optional. revision >= 25) minimum bond amount for the term                                                 |
 
 * `bondRequirement` field is replaced with `bondRequirementRate` field after revision 26
 * 0 <= `bondRequirement` <= 100 (0: 0%, 100: 100%)
@@ -1848,7 +1848,7 @@ The list of fields below is subject to change based on revisions
 | nodeAddress             | Address    | node Key for only consensus                                                                                                                                                                               |
 | p2pEndpoint             | str        | network information used for connecting among P-Rep nodes                                                                                                                                                 |
 | penalty                 | int        | [PENALTY_TYPE_ID](#penalty_type_id)                                                                                                                                                                       |
-| power                   | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20))                                                                                                          |
+| power                   | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 10000 / bondRequirementRate))                                                                               |
 | status                  | int        | [PREP_STATUS](#prep_status)                                                                                                                                                                               |
 | totalBlocks             | int        | number of blocks that a P-Rep received when running as a Main P-Rep                                                                                                                                       |
 | validatedBlocks         | int        | number of blocks that a P-Rep validated when running as a Main P-Rep                                                                                                                                      |
@@ -1863,12 +1863,12 @@ The list of fields below is subject to change based on revisions
 
 ## PRepSnapshot
 
-| Key       | Value Type | Description                                                                                      |
-|:----------|:-----------|:-------------------------------------------------------------------------------------------------|
-| name      | str        | P-Rep name                                                                                       |
-| address   | Address    | P-Rep address                                                                                    |
-| delegated | int        | delegation amount that a P-Rep receives from ICONist                                             |
-| power     | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 20)) |
+| Key       | Value Type | Description                                                                                                               |
+|:----------|:-----------|:--------------------------------------------------------------------------------------------------------------------------|
+| name      | str        | P-Rep name                                                                                                                |
+| address   | Address    | P-Rep address                                                                                                             |
+| delegated | int        | delegation amount that a P-Rep receives from ICONist                                                                      |
+| power     | int        | amount of power that a P-Rep receives from ICONist. (= min(`bonded`+`delegated`, `bonded` * 10000 / bondRequirementRate)) |
 
 ## PRepStats
 
