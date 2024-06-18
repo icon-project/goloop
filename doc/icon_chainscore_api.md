@@ -1954,6 +1954,9 @@ power = min(bonded + delegated, bonded * 10000 / bondRequirementRate)
 
 * bondRequirementRate contains the value ranging from 0 to 10000.
   - 0: 0%
+  - 1: 0.01%
+  - 10: 0.1%
+  - 100: 1%
   - 1000: 10%
   - 5000: 50%
   - 10000: 100%
