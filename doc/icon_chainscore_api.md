@@ -1939,7 +1939,7 @@ The list of fields below is subject to change based on revisions
 
 ## Power
 
-* `Power` is also known as `VotingPower`.
+* `power` is also known as `votingPower`.
 * `power` is calculated according to the following formular:
 
 ```
