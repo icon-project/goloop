@@ -26,6 +26,7 @@ import (
 )
 
 type TxType int
+
 const (
 	TypeTransfer TxType = iota
 	TypeSetStake
@@ -46,6 +47,7 @@ const (
 	TypeHandleDoubleSignReport
 	TypeSetPRepCountConfig
 	TypeSetRewardFundAllocation2
+	TypeSetBondRequirementRate
 )
 
 type Transaction interface {
@@ -182,4 +184,8 @@ type Simulator interface {
 	SetRewardFundAllocation2(from module.Address, values map[icstate.RFundKey]icmodule.Rate) Transaction
 	GoBySetRewardFundAllocation2(
 		csi module.ConsensusInfo, from module.Address, values map[icstate.RFundKey]icmodule.Rate) ([]Receipt, error)
+
+	// After RevisionSetBondRequirementRate
+	SetBondRequirementRate(from module.Address, rate icmodule.Rate) Transaction
+	GoBySetBondRequirementRate(csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) ([]Receipt, error)
 }

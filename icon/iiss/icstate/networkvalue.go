@@ -242,16 +242,34 @@ func (s *State) SetTotalStake(value *big.Int) error {
 	return setValue(s.store, VarTotalStake, value)
 }
 
-func (s *State) GetBondRequirement() icmodule.Rate {
+func (s *State) GetBondRequirement(revision int) icmodule.Rate {
 	v := getValue(s.store, VarBondRequirement).Int64()
-	return icmodule.ToRate(v)
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return icmodule.ToRate(v)
+	} else {
+		return icmodule.Rate(v)
+	}
 }
 
-func (s *State) SetBondRequirement(br icmodule.Rate) error {
+func (s *State) SetBondRequirement(revision int, br icmodule.Rate) error {
 	if !br.IsValid() {
 		return errors.IllegalArgumentError.New("Bond Requirement should range from 0% to 100%")
 	}
-	return setValue(s.store, VarBondRequirement, br.Percent())
+
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return setValue(s.store, VarBondRequirement, br.Percent())
+	} else {
+		return setValue(s.store, VarBondRequirement, br.NumInt64())
+	}
+}
+
+func (s *State) MigrateBondRequirement(revision int) error {
+	if revision != icmodule.RevisionSetBondRequirementRate {
+		return scoreresult.AccessDeniedError.Errorf("MigrateBondRequirementNotAllowed(rev=%d)", revision)
+	}
+	// Change BondRequirementRate unit from 1% to 0.01%
+	rate := s.GetBondRequirement(revision - 1)
+	return s.SetBondRequirement(revision, rate)
 }
 
 func (s *State) SetUnbondingPeriodMultiplier(value int64) error {
@@ -482,7 +500,7 @@ func (s *State) SetMinimumBond(bond *big.Int) error {
 }
 
 func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, error) {
-	br := s.GetBondRequirement()
+	br := s.GetBondRequirement(revision)
 	jso := make(map[string]interface{})
 	jso["mainPRepCount"] = s.GetMainPRepCount()
 	jso["extraMainPRepCount"] = s.GetExtraMainPRepCount()
@@ -490,7 +508,11 @@ func (s *State) GetNetworkInfoInJSON(revision int) (map[string]interface{}, erro
 	jso["totalStake"] = s.GetTotalStake()
 	jso["iissVersion"] = int64(s.GetIISSVersion())
 	jso["termPeriod"] = s.GetTermPeriod()
-	jso["bondRequirement"] = br.Percent()
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		jso["bondRequirement"] = br.Percent()
+	} else {
+		jso["bondRequirementRate"] = br.NumInt64()
+	}
 	jso["lockMinMultiplier"] = s.GetLockMinMultiplier()
 	jso["lockMaxMultiplier"] = s.GetLockMaxMultiplier()
 	jso["rewardFund"] = s.GetRewardFund(revision).ToJSON()

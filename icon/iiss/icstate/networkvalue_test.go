@@ -173,29 +173,30 @@ func setTotalStakeTest(t *testing.T, s *State) {
 }
 
 func setBondRequirementTest(t *testing.T, s *State) {
+	revision := icmodule.RevisionSetBondRequirementRate - 1
 	br := icmodule.ToRate(0)
-	actual := s.GetBondRequirement()
+	actual := s.GetBondRequirement(revision)
 	assert.Equal(t, br, actual)
 
 	br = icmodule.ToRate(5)
-	assert.NoError(t, s.SetBondRequirement(br))
-	actual = s.GetBondRequirement()
+	assert.NoError(t, s.SetBondRequirement(revision, br))
+	actual = s.GetBondRequirement(revision)
 	assert.Equal(t, br, actual)
 
 	br = icmodule.ToRate(0)
-	err := s.SetBondRequirement(br)
+	err := s.SetBondRequirement(revision, br)
 	assert.NoError(t, err)
-	actual = s.GetBondRequirement()
+	actual = s.GetBondRequirement(revision)
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(icmodule.ToRate(101))
+	err = s.SetBondRequirement(revision, icmodule.ToRate(101))
 	assert.Error(t, err)
-	actual = s.GetBondRequirement()
+	actual = s.GetBondRequirement(revision)
 	assert.Equal(t, br, actual)
 
-	err = s.SetBondRequirement(icmodule.ToRate(-1))
+	err = s.SetBondRequirement(revision, icmodule.ToRate(-1))
 	assert.Error(t, err)
-	actual = s.GetBondRequirement()
+	actual = s.GetBondRequirement(revision)
 	assert.Equal(t, br, actual)
 }
 
@@ -752,4 +753,40 @@ func TestState_GetNetworkInfoInJSON(t *testing.T) {
 			assert.Zero(t, mb.Cmp(minBond))
 		}
 	}
+}
+
+func TestState_SetBondRequirement(t *testing.T) {
+	nextRate := icmodule.ToRate(5)
+
+	rev := icmodule.RevisionSetBondRequirementRate - 1
+	s := newDummyState(false)
+
+	assert.NoError(t, s.SetBondRequirement(rev, nextRate))
+	assert.Equal(t, nextRate, s.GetBondRequirement(rev))
+
+	rev = icmodule.RevisionSetBondRequirementRate
+
+	assert.NoError(t, s.MigrateBondRequirement(rev))
+	assert.Equal(t, nextRate, s.GetBondRequirement(rev))
+
+	nextRate = icmodule.ToRate(3)
+	assert.NoError(t, s.SetBondRequirement(rev, nextRate))
+	assert.Equal(t, nextRate, s.GetBondRequirement(rev))
+
+	assert.NoError(t, s.SetBondRequirement(rev, nextRate))
+	assert.Equal(t, nextRate, s.GetBondRequirement(rev))
+}
+
+func TestState_MigrateBondRequirement(t *testing.T) {
+	s := newDummyState(false)
+
+	rev := icmodule.RevisionSetBondRequirementRate - 1
+	rate := icmodule.ToRate(10)
+	assert.NoError(t, s.SetBondRequirement(rev, rate))
+	assert.Equal(t, rate, s.GetBondRequirement(rev))
+	assert.Error(t, s.MigrateBondRequirement(rev))
+
+	rev = icmodule.RevisionSetBondRequirementRate
+	assert.NoError(t, s.MigrateBondRequirement(rev))
+	assert.Equal(t, rate, s.GetBondRequirement(rev))
 }

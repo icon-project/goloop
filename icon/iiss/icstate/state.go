@@ -429,7 +429,7 @@ func (s *State) OnValidatorOut(sc icmodule.StateContext, owner module.Address) e
 
 func (s *State) GetPRepStatuses() ([]*PRepStatusState, error) {
 	size := s.allPRepCache.Size()
-	pss := make([]*PRepStatusState, 0, size / 2)
+	pss := make([]*PRepStatusState, 0, size/2)
 
 	for i := 0; i < size; i++ {
 		owner := s.allPRepCache.Get(i)
@@ -544,7 +544,7 @@ func (s *State) SetLastBlockVotersSnapshot(value *BlockVotersSnapshot) error {
 
 func (s *State) IsDecentralizationConditionMet(revision int, totalSupply *big.Int, preps PRepSet) bool {
 	predefinedMainPRepCount := int(s.GetMainPRepCount())
-	br := s.GetBondRequirement()
+	br := s.GetBondRequirement(revision)
 
 	if revision >= icmodule.RevisionDecentralize && preps.Size() >= predefinedMainPRepCount {
 		prep := preps.GetByIndex(predefinedMainPRepCount - 1)
