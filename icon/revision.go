@@ -17,6 +17,9 @@
 package icon
 
 import (
+	"math/big"
+
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/icon/icmodule"
 	"github.com/icon-project/goloop/icon/iiss"
 	"github.com/icon-project/goloop/icon/iiss/icstate"
@@ -42,6 +45,7 @@ var revHandlerTable = []revHandlerItem{
 	{icmodule.RevisionBlockAccounts2, onRevBlockAccounts2},
 	{icmodule.RevisionIISS4R0, onRevIISS4R0},
 	{icmodule.RevisionIISS4R1, onRevIISS4R1},
+	{icmodule.RevisionFixIssueRegulator, onRevFixIssueRegulator},
 }
 
 // DO NOT update revHandlerMap manually
@@ -355,6 +359,41 @@ func onRevIISS4R1(s *chainScore, _, _ int) error {
 	if err := es.State.SetConsistentValidationPenaltyCondition(3); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func onRevFixIssueRegulator(s *chainScore, _, _ int) error {
+	if s.cc.ChainID() != CIDForMainNet {
+		return nil
+	}
+
+	cc := s.newCallContext(s.cc)
+	// deposit 6M to treasury
+	issueAmount := new(big.Int).Mul(icmodule.BigIntICX, big.NewInt(6_000_000))
+	if err := cc.Deposit(cc.Treasury(), issueAmount, module.Issue); err != nil {
+		return err
+	}
+	// increase total supply
+	if _, err := cc.AddTotalSupply(issueAmount); err != nil {
+		return err
+	}
+
+	// emit event logs
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	issue, err := es.State.GetIssue()
+	if err != nil {
+		issue = icstate.NewIssue()
+	}
+	iiss.EmitICXIssuedEvent(
+		cc,
+		&iiss.IssueResultJSON{
+			common.HexIntZero,
+			common.HexIntZero,
+			common.NewHexInt(0).SetValue(issueAmount),
+		},
+		issue,
+	)
 
 	return nil
 }
