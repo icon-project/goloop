@@ -41,6 +41,7 @@ const (
 	EventPRepRegistered            = "PRepRegistered(Address)"
 	EventPRepSet                   = "PRepSet(Address)"
 	EventRewardFundTransferred     = "RewardFundTransferred(str,Address,Address,int)"
+	EventRewardFundTransferFailed  = "RewardFundTransferFailed(str,Address,Address,int)"
 	EventRewardFundBurned          = "RewardFundBurned(str,Address,int)"
 	EventPRepUnregistered          = "PRepUnregistered(Address)"
 	EventBTPNetworkTypeActivated   = "BTPNetworkTypeActivated(str,int)"
@@ -209,6 +210,18 @@ func EmitPRepSetEvent(cc icmodule.CallContext) {
 func EmitRewardFundTransferredEvent(cc icmodule.CallContext, key string, from, to module.Address, amount *big.Int) {
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte(EventRewardFundTransferred)},
+		[][]byte{
+			[]byte(key),
+			from.Bytes(),
+			to.Bytes(),
+			intconv.BigIntToBytes(amount),
+		},
+	)
+}
+
+func EmitRewardFundTransferFailedEvent(cc icmodule.CallContext, key string, from, to module.Address, amount *big.Int) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte(EventRewardFundTransferFailed)},
 		[][]byte{
 			[]byte(key),
 			from.Bytes(),

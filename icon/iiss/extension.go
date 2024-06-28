@@ -1703,9 +1703,10 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 		amount.Div(amount, div)
 		if ok {
 			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {
-				return err
+				EmitRewardFundTransferFailedEvent(cc, k.key, from, to, amount)
+			} else {
+				EmitRewardFundTransferredEvent(cc, k.key, from, to, amount)
 			}
-			EmitRewardFundTransferredEvent(cc, k.key, from, to, amount)
 		} else {
 			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
 				if err := cc.Withdraw(from, amount, module.Burn); err != nil {
