@@ -46,6 +46,7 @@ var revHandlerTable = []revHandlerItem{
 	{icmodule.RevisionIISS4R0, onRevIISS4R0},
 	{icmodule.RevisionIISS4R1, onRevIISS4R1},
 	{icmodule.RevisionFixIssueRegulator, onRevFixIssueRegulator},
+	{icmodule.RevisionRecoverUnderIssuance, onRevRecoverUnderIssuance},
 }
 
 // DO NOT update revHandlerMap manually
@@ -391,6 +392,94 @@ func onRevFixIssueRegulator(s *chainScore, _, _ int) error {
 			common.HexIntZero,
 			common.HexIntZero,
 			common.NewHexInt(0).SetValue(issueAmount),
+		},
+		issue,
+	)
+
+	return nil
+}
+
+func onRevRecoverUnderIssuance(s *chainScore, _, _ int) error {
+	if s.cc.ChainID() != CIDForMainNet {
+		return nil
+	}
+
+	// Under issuance due to IISS4
+	// Period1 : IISS4 ~ Balanced Enshrinement = Term(1564) ~ Term(1573) = 10 Terms
+	//   - cps
+	//  	ISSUE_AMOUNT_FOR_CPS_PER_A_TERM * Period1
+	// 		= (Iglobal * Icps * Term.Period // (DenomInRate * DayBlock * DayPerMonth)) * Period1
+	// 		= (3000000000000000000000000 * 1000 * 43120 // (10000 * 43200 * 30)) * 10
+	//		= 9981481481481481481481 * 10
+	//		= 99814814814814814814810
+	//   - relay : N/A
+	// Period2 : Balanced Enshrinement ~ Revision 26 = Term(1574) ~ Term(1696) = 123 Terms
+	//   - cps
+	//  	ISSUE_AMOUNT_FOR_CPS_PER_A_TERM * Period2
+	// 		= (Iglobal * Icps * Term.Period // (DenomInRate * DayBlock * DayPerMonth)) * Period1
+	// 		= (5678910000000000000000000 * 250 * 43120 // (10000 * 43200 * 30)) * 123
+	//		= 4723661250000000000000 * 123
+	//		= 581010333750000000000000
+	//   - relay
+	//  	ISSUE_AMOUNT_FOR_RELAY_PER_A_TERM * Period2
+	// 		= (Iglobal * Irelay * Term.Period // (DenomInRate * DayBlock * DayPerMonth)) * Period1
+	// 		= (5678910000000000000000000 * 5000 * 43120 // (10000 * 43200 * 30)) * 123
+	//		= 94473225000000000000000 * 123
+	//		= 11620206675000000000000000
+	divider := big.NewInt(icmodule.DenomInRate * icmodule.MonthBlock)
+
+	period1 := big.NewInt(10)
+	iglobal1 := new(big.Int).Mul(icmodule.BigIntICX, big.NewInt(3_000_000))
+	underIssuanceForCPS1 := new(big.Int).Mul(iglobal1, big.NewInt(1_000*43_120))
+	underIssuanceForCPS1.Div(underIssuanceForCPS1, divider)
+	underIssuanceForCPS1.Mul(underIssuanceForCPS1, period1)
+
+	period2 := big.NewInt(123)
+	iglobal2 := new(big.Int).Mul(icmodule.BigIntICX, big.NewInt(5_678_910))
+	underIssuanceForCPS2 := new(big.Int).Mul(iglobal2, big.NewInt(250*43_120))
+	underIssuanceForCPS2.Div(underIssuanceForCPS2, divider)
+	underIssuanceForCPS2.Mul(underIssuanceForCPS2, period2)
+
+	underIssuanceForRelay := new(big.Int).Mul(iglobal2, big.NewInt(5_000*43_120))
+	underIssuanceForRelay.Div(underIssuanceForRelay, divider)
+	underIssuanceForRelay.Mul(underIssuanceForRelay, period2)
+
+	// total under issuance
+	// = 99814814814814814814810 + 581010333750000000000000 + 11620206675000000000000000
+	// = 12301031823564814814814810 = 12.3M icx
+	totalUnderIssuance := new(big.Int).Add(underIssuanceForCPS1, underIssuanceForCPS2)
+	totalUnderIssuance.Add(totalUnderIssuance, underIssuanceForRelay)
+
+	// 6M icx was recovered at Revision 26
+	recoveredAtRevision26 := new(big.Int).Mul(icmodule.BigIntICX, big.NewInt(6_000_000))
+
+	// recover amount at revision 27
+	// = 12301031823564814814814810 - 6000000000000000000000000
+	// = 6301031823564814814814810 = 6.3M icx
+	recoverAmount := new(big.Int).Sub(totalUnderIssuance, recoveredAtRevision26)
+
+	cc := s.newCallContext(s.cc)
+	// deposit recover amount to treasury
+	if err := cc.Deposit(cc.Treasury(), recoverAmount, module.Issue); err != nil {
+		return err
+	}
+	// increase total supply
+	if _, err := cc.AddTotalSupply(recoverAmount); err != nil {
+		return err
+	}
+
+	// emit event logs
+	es := s.cc.GetExtensionState().(*iiss.ExtensionStateImpl)
+	issue, err := es.State.GetIssue()
+	if err != nil {
+		issue = icstate.NewIssue()
+	}
+	iiss.EmitICXIssuedEvent(
+		cc,
+		&iiss.IssueResultJSON{
+			common.HexIntZero,
+			common.HexIntZero,
+			common.NewHexInt(0).SetValue(recoverAmount),
 		},
 		issue,
 	)
