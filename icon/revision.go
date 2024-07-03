@@ -416,13 +416,13 @@ func onRevRecoverUnderIssuance(s *chainScore, _, _ int) error {
 	// Period2 : Balanced Enshrinement ~ Revision 26 = Term(1574) ~ Term(1696) = 123 Terms
 	//   - cps
 	//  	ISSUE_AMOUNT_FOR_CPS_PER_A_TERM * Period2
-	// 		= (Iglobal * Icps * Term.Period // (DenomInRate * DayBlock * DayPerMonth)) * Period1
+	// 		= (Iglobal * Icps * Term.Period // (DenomInRate * DayBlock * DayPerMonth)) * Period2
 	// 		= (5678910000000000000000000 * 250 * 43120 // (10000 * 43200 * 30)) * 123
 	//		= 4723661250000000000000 * 123
 	//		= 581010333750000000000000
 	//   - relay
 	//  	ISSUE_AMOUNT_FOR_RELAY_PER_A_TERM * Period2
-	// 		= (Iglobal * Irelay * Term.Period // (DenomInRate * DayBlock * DayPerMonth)) * Period1
+	// 		= (Iglobal * Irelay * Term.Period // (DenomInRate * DayBlock * DayPerMonth)) * Period2
 	// 		= (5678910000000000000000000 * 5000 * 43120 // (10000 * 43200 * 30)) * 123
 	//		= 94473225000000000000000 * 123
 	//		= 11620206675000000000000000
