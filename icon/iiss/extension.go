@@ -927,19 +927,39 @@ func (es *ExtensionStateImpl) regulateIssue(iScore *big.Int) error {
 		return err
 	}
 	reward := new(big.Int).Set(iScore)
-	if prevGlobal != nil && icstate.IISSVersion3 == prevGlobal.GetIISSVersion() {
-		pg := prevGlobal.GetV2()
-		multiplier := big.NewInt(int64(prevGlobal.GetTermPeriod() * icmodule.IScoreICXRatio))
-		divider := big.NewInt(icmodule.MonthBlock * icmodule.DenomInRate)
-		rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().NumBigInt())
-		rewardCPS.Mul(rewardCPS, multiplier)
-		rewardCPS.Div(rewardCPS, divider)
-		reward.Add(reward, rewardCPS)
-		rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().NumBigInt())
-		rewardRelay.Mul(rewardRelay, multiplier)
-		rewardRelay.Div(rewardRelay, divider)
-		reward.Add(reward, rewardRelay)
-		es.logger.Tracef("regulateIssue with cps: %d, relay: %d", rewardCPS, rewardRelay)
+	if prevGlobal != nil {
+		switch prevGlobal.GetIISSVersion() {
+		case icstate.IISSVersion2:
+		case icstate.IISSVersion3:
+			pg := prevGlobal.GetV2()
+			multiplier := big.NewInt(int64(prevGlobal.GetTermPeriod() * icmodule.IScoreICXRatio))
+			divider := big.NewInt(icmodule.MonthBlock * icmodule.DenomInRate)
+			rewardCPS := new(big.Int).Mul(pg.GetIGlobal(), pg.GetICps().NumBigInt())
+			rewardCPS.Mul(rewardCPS, multiplier)
+			rewardCPS.Div(rewardCPS, divider)
+			reward.Add(reward, rewardCPS)
+			rewardRelay := new(big.Int).Mul(pg.GetIGlobal(), pg.GetIRelay().NumBigInt())
+			rewardRelay.Mul(rewardRelay, multiplier)
+			rewardRelay.Div(rewardRelay, divider)
+			reward.Add(reward, rewardRelay)
+			es.logger.Tracef("regulateIssue with cps: %d, relay: %d", rewardCPS, rewardRelay)
+		case icstate.IISSVersion4:
+			if term.Revision() >= icmodule.RevisionFixIssueRegulator {
+				pg := prevGlobal.GetV3()
+				multiplier := big.NewInt(int64(pg.GetTermPeriod() * icmodule.IScoreICXRatio))
+
+				keys := []icstate.RFundKey{icstate.KeyIcps, icstate.KeyIrelay}
+				for _, key := range keys {
+					amount := pg.GetRewardFundAmountByKey(key)
+					amount.Mul(amount, multiplier)
+					amount.Div(amount, big.NewInt(icmodule.MonthBlock))
+					reward.Add(reward, amount)
+					es.logger.Tracef("regulateIssue with %s: %s", key, amount)
+				}
+			}
+		default:
+			panic("regulateIssue: unknown IISS version")
+		}
 	}
 
 	is, err := es.State.GetIssue()
@@ -1703,9 +1723,10 @@ func (es *ExtensionStateImpl) transferRewardFund(cc icmodule.CallContext) error 
 		amount.Div(amount, div)
 		if ok {
 			if err := cc.Transfer(from, to, amount, module.Reward); err != nil {
-				return err
+				EmitRewardFundTransferFailedEvent(cc, k.key, from, to, amount)
+			} else {
+				EmitRewardFundTransferredEvent(cc, k.key, from, to, amount)
 			}
-			EmitRewardFundTransferredEvent(cc, k.key, from, to, amount)
 		} else {
 			if cc.Revision().Value() >= icmodule.RevisionFixTransferRewardFund {
 				if err := cc.Withdraw(from, amount, module.Burn); err != nil {

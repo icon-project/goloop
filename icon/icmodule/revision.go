@@ -47,6 +47,7 @@ const (
 	Revision25
 	Revision26
 	Revision27
+	Revision28
 	RevisionReserved
 )
 
@@ -123,8 +124,12 @@ const (
 
 	RevisionIISS4R1 = Revision25
 
-	RevisionSetBondRequirementRate = Revision26
-	RevisionRemovePRepsFieldInTerm = Revision26
+	RevisionFixIssueRegulator = Revision26
+
+	RevisionRecoverUnderIssuance = Revision27
+
+	RevisionSetBondRequirementRate = Revision28
+	RevisionRemovePRepsFieldInTerm = Revision28
 )
 
 var revisionFlags []module.Revision

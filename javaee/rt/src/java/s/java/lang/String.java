@@ -220,8 +220,9 @@ public final class String extends Object implements Comparable<String>, CharSequ
     }
 
     public int avm_indexOf(int ch, int fromIndex) {
-        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.String_avm_indexOf_1,
-                java.lang.Math.max(internalLength() - fromIndex, 0));
+        int oldLen = java.lang.Math.max(internalLength() - fromIndex, 0);
+        int newLen = fromIndex < 0 ? internalLength() : oldLen;
+        EnergyCalculator.chargeEnergyLevel2(RuntimeMethodFeeSchedule.String_avm_indexOf_1, oldLen, newLen);
         lazyLoad();
         return this.v.indexOf(ch, fromIndex);
     }
