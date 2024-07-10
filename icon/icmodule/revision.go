@@ -129,7 +129,6 @@ const (
 	RevisionRecoverUnderIssuance = Revision27
 
 	RevisionSetBondRequirementRate = Revision28
-	RevisionRemovePRepsFieldInTerm = Revision28
 )
 
 var revisionFlags []module.Revision
