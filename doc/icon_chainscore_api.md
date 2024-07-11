@@ -48,7 +48,6 @@
             + [getSlashingRates](#getslashingrates)
             + [getMinimumBond](#getminimumbond)
             + [getPRepCountConfig](#getprepcountconfig)
-            + [getBondRequirementRate](#getbondrequirementrate)
         * Writable APIs
             + [setStake](#setstake)
             + [setDelegation](#setdelegation)
