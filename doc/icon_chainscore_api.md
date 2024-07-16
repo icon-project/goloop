@@ -778,26 +778,26 @@ def getPRepTerm() -> dict:
 
 *Returns:*
 
-| Key              | Value Type                            | Description                                                 |
-|:-----------------|:--------------------------------------|:------------------------------------------------------------|
-| blockHeight      | int                                   | latest block height when this request was processed         |
-| sequence         | int                                   | sequence number                                             |
-| startBlockHeight | int                                   | start block height of the term                              |
-| endBlockHeight   | int                                   | end block height of the term                                |
-| totalSupply      | int                                   | total supply amount at `startBlockHeight`                   |
-| preps            | List\[[PRepSnapshot](#prepsnapshot)\] | Main/Sub P-Rep list at `startBlockHeight`                   |
-| totalDelegated   | int                                   | total delegation amount of `preps`                          |
-| totalPower       | int                                   | total power amount of `preps`                               |
-| period           | int                                   | term period                                                 |
-| rewardFund       | [RewardFund](#rewardfund)             | reward fund information for the term                        |
-| bondRequirement  | int                                   | bondRequirement for the term                                |
-| revision         | int                                   | revision for the term                                       |
-| isDecentralized  | bool                                  | `true` if network is decentralized                          |
-| mainPRepCount    | int                                   | Main P-Reps count for the term                              |
-| iissVersion      | int                                   | IISS version for the term                                   |
-| irep             | int                                   | (Optional. revision < 25) Irep for the term                 |
-| rrep             | int                                   | (Optional. revision < 25) Rrep for the term                 |
-| minimumBond      | int                                   | (Optional. revision >= 25) minimum bond amount for the term |
+| Key              | Value Type                | Description                                                 |
+|:-----------------|:--------------------------|:------------------------------------------------------------|
+| blockHeight      | int                       | latest block height when this request was processed         |
+| sequence         | int                       | sequence number                                             |
+| startBlockHeight | int                       | start block height of the term                              |
+| endBlockHeight   | int                       | end block height of the term                                |
+| totalSupply      | int                       | total supply amount at `startBlockHeight`                   |
+| preps            | List\[[PRep](#prep)\]     | Main/Sub P-Rep list at `startBlockHeight`                   |
+| totalDelegated   | int                       | total delegation amount of `preps`                          |
+| totalPower       | int                       | total power amount of `preps`                               |
+| period           | int                       | term period                                                 |
+| rewardFund       | [RewardFund](#rewardfund) | reward fund information for the term                        |
+| bondRequirement  | int                       | bondRequirement for the term                                |
+| revision         | int                       | revision for the term                                       |
+| isDecentralized  | bool                      | `true` if network is decentralized                          |
+| mainPRepCount    | int                       | Main P-Reps count for the term                              |
+| iissVersion      | int                       | IISS version for the term                                   |
+| irep             | int                       | (Optional. revision < 25) Irep for the term                 |
+| rrep             | int                       | (Optional. revision < 25) Rrep for the term                 |
+| minimumBond      | int                       | (Optional. revision >= 25) minimum bond amount for the term |
 
 *Revision:* 5 ~
 
