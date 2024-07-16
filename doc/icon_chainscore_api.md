@@ -786,7 +786,7 @@ def getPRepTerm() -> dict:
 | startBlockHeight    | int                       | start block height of the term                                                                              |
 | endBlockHeight      | int                       | end block height of the term                                                                                |
 | totalSupply         | int                       | total supply amount at `startBlockHeight`                                                                   |
-| preps               | List\[[PRep](#prep)\]     | (Optional. revison < 26) Main/Sub P-Rep list                                                                |
+| preps               | List\[[PRep](#prep)\]     | Main/Sub P-Rep list at `startBlockHeight`                                                                   |
 | totalDelegated      | int                       | total delegation amount of `preps`                                                                          |
 | totalPower          | int                       | total power amount of `preps`                                                                               |
 | period              | int                       | term period                                                                                                 |
@@ -1863,11 +1863,11 @@ The list of fields below is subject to change based on revisions
 
 ## PRepSnapshot
 
-| Key       | Value Type | Description                                                                                                   |
-|:----------|:-----------|:--------------------------------------------------------------------------------------------------------------|
-| name      | str        | P-Rep name                                                                                                    |
-| address   | Address    | P-Rep address                                                                                                 |
-| delegated | int        | delegation amount that a P-Rep receives from ICONist                                                          |
+| Key       | Value Type | Description                                                                                      |
+|:----------|:-----------|:-------------------------------------------------------------------------------------------------|
+| name      | str        | P-Rep name                                                                                       |
+| address   | Address    | P-Rep address                                                                                    |
+| delegated | int        | delegation amount that a P-Rep receives from ICONist                                             |
 | power     | int        | amount of power that a P-Rep receives from ICONist. See [Power](#power) section for more details |
 
 ## PRepStats
