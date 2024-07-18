@@ -791,8 +791,8 @@ def getPRepTerm() -> dict:
 | totalPower          | int                       | total power amount of `preps`                                                                               |
 | period              | int                       | term period                                                                                                 |
 | rewardFund          | [RewardFund](#rewardfund) | reward fund information for the term                                                                        |
-| bondRequirement     | int                       | bond requirement rate ranging from 0 (0%) to 100 (100%) for the current term<br/>removed after revision 26  |
-| bondRequirementRate | int                       | bond requirement rate ranging from 0 (0%) to 10,000 (100%) for the current term<br/>added after revision 26 |
+| bondRequirement     | int                       | bond requirement rate ranging from 0 (0%) to 100 (100%) for the current term<br/>removed after revision 28  |
+| bondRequirementRate | int                       | bond requirement rate ranging from 0 (0%) to 10,000 (100%) for the current term<br/>added after revision 28 |
 | revision            | int                       | revision for the term                                                                                       |
 | isDecentralized     | bool                      | `true` if network is decentralized                                                                          |
 | mainPRepCount       | int                       | Main P-Reps count for the term                                                                              |
@@ -801,10 +801,9 @@ def getPRepTerm() -> dict:
 | rrep                | int                       | (Optional. revision < 25) Rrep for the term                                                                 |
 | minimumBond         | int                       | (Optional. revision >= 25) minimum bond amount for the term                                                 |
 
-* `bondRequirement` field is replaced with `bondRequirementRate` field after revision 26
+* `bondRequirement` field is replaced with `bondRequirementRate` field after revision 28
 * 0 <= `bondRequirement` <= 100 (0: 0%, 100: 100%)
 * 0 <= `bondRequirementRate` <= 10,000 (0: 0%, 10,000: 100%)
-* `preps` field will be removed after revision 26. Please use [getMainPReps](#getmainpreps) or [getSubPReps](#getsubpreps) instead
 
 *Revision:* 5 ~
 
@@ -864,8 +863,8 @@ def getNetworkInfo() -> dict:
 | subPRepCount        | int                       | Sub Main P-Reps count                                                                  |
 | iissVersion         | int                       | IISS version                                                                           |
 | termPeriod          | int                       | period of term                                                                         |
-| bondRequirement     | int                       | bond requirement rate ranging from 0 (0%) to 100 (100%)<br/>removed after revision 26  |
-| bondRequirementRate | int                       | bond requirement rate ranging from 0 (0%) to 10,000 (100%)<br/>added after revision 26 |
+| bondRequirement     | int                       | bond requirement rate ranging from 0 (0%) to 100 (100%)<br/>removed after revision 28  |
+| bondRequirementRate | int                       | bond requirement rate ranging from 0 (0%) to 10,000 (100%)<br/>added after revision 28 |
 | lockMinMultiplier   | int                       | multiplier for minimum unstake lock period                                             |
 | lockMaxMultiplier   | int                       | multiplier for maximum unstake lock period                                             |
 | unstakeSlotMax      | int                       | maximum unstakes count of a account                                                    |
@@ -877,7 +876,7 @@ def getNetworkInfo() -> dict:
 | totalPower          | int                       | total power amount of P-Rep                                                            |
 | preps               | int                       | count of all P-Reps                                                                    |
 
-* `bondRequirement` field is replaced with `bondRequirementRate` field after revision 26
+* `bondRequirement` field is replaced with `bondRequirementRate` field after revision 28
 * 0 <= `bondRequirement` <= 100 (0: 0%, 100: 100%)
 * 0 <= `bondRequirementRate` <= 10,000 (0: 0%, 10,000: 100%)
 
@@ -1586,7 +1585,7 @@ def BondRequirementRateSet(rate: int) -> None:
 |:------|:--------|:--------------------------|
 | rate  | int     | new bond requirement rate |
 
-*Revision:* 26 ~
+*Revision:* 28 ~
 
 # BTP
 
