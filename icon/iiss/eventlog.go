@@ -58,6 +58,7 @@ const (
 	EventRewardFundSet             = "RewardFundSet(int)"
 	EventRewardFundAllocationSet   = "RewardFundAllocationSet(str,int)"
 	EventNetworkScoreSet           = "NetworkScoreSet(str,Address)"
+	EventBondRequirementRateSet    = "BondRequirementRateSet(int)"
 )
 
 func EmitSlashingRateSetEvent(cc icmodule.CallContext, penaltyType icmodule.PenaltyType, rate icmodule.Rate) {
@@ -391,5 +392,12 @@ func EmitNetworkScoreSetEvent(cc icmodule.CallContext, role string, address modu
 	cc.OnEvent(state.SystemAddress,
 		[][]byte{[]byte(EventNetworkScoreSet)},
 		[][]byte{[]byte(role), addrBytes},
+	)
+}
+
+func EmitBondRequirementRateSetEvent(cc icmodule.CallContext, rate icmodule.Rate) {
+	cc.OnEvent(state.SystemAddress,
+		[][]byte{[]byte(EventBondRequirementRateSet)},
+		[][]byte{intconv.Int64ToBytes(rate.NumInt64())},
 	)
 }

@@ -62,7 +62,7 @@ func (sc *stateContext) TermIISSVersion() int {
 
 func (sc *stateContext) GetBondRequirement() icmodule.Rate {
 	if !sc.br.IsValid() {
-		sc.br = sc.State.GetBondRequirement()
+		sc.br = sc.State.GetBondRequirement(sc.RevisionValue())
 	}
 	return sc.br
 }

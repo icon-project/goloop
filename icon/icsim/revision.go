@@ -29,6 +29,7 @@ var revHandlerTable = []revHandlerItem{
 	//{icmodule.RevisionBlockAccounts2, onRevBlockAccounts2},
 	{icmodule.RevisionIISS4R0, onRevIISS4R0},
 	{icmodule.RevisionIISS4R1, onRevIISS4R1},
+	{icmodule.RevisionSetBondRequirementRate, onRevSetBondRequirementRate},
 }
 
 // DO NOT update revHandlerMap manually
@@ -99,7 +100,7 @@ func onRevIISS(sim *simulatorImpl, wc WorldContext, rev, _ int) error {
 	if err := es.State.SetSubPRepCount(cfg.SubPRepCount); err != nil {
 		return err
 	}
-	if err := es.State.SetBondRequirement(cfg.BondRequirement); err != nil {
+	if err := es.State.SetBondRequirement(rev, cfg.BondRequirement); err != nil {
 		return err
 	}
 	if err := es.State.SetLockVariables(big.NewInt(cfg.LockMinMultiplier), big.NewInt(cfg.LockMaxMultiplier)); err != nil {
@@ -194,7 +195,7 @@ func onRevIISS2(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	return nil
 }
 
-func onRevICON2R1(_ *simulatorImpl, wc WorldContext, _, _ int) error {
+func onRevICON2R1(_ *simulatorImpl, wc WorldContext, rev, _ int) error {
 	es := getExtensionState(wc)
 	as := wc.GetAccountState(state.SystemID)
 
@@ -209,8 +210,8 @@ func onRevICON2R1(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	if err := scoredb.NewVarDB(as, state.VarNextBlockVersion).Set(module.BlockVersion2); err != nil {
 		return err
 	}
-	if es.State.GetBondRequirement() == icmodule.ToRate(icmodule.IISS2BondRequirement) {
-		if err := es.State.SetBondRequirement(icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
+	if es.State.GetBondRequirement(rev) == icmodule.ToRate(icmodule.IISS2BondRequirement) {
+		if err := es.State.SetBondRequirement(rev, icmodule.ToRate(icmodule.DefaultBondRequirement)); err != nil {
 			return err
 		}
 	}
@@ -266,4 +267,9 @@ func onRevIISS4R0(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 func onRevIISS4R1(_ *simulatorImpl, wc WorldContext, _, _ int) error {
 	es := getExtensionState(wc)
 	return es.State.SetIISSVersion(icstate.IISSVersion4)
+}
+
+func onRevSetBondRequirementRate(sim *simulatorImpl, wc WorldContext, rev, _ int) error {
+	es := getExtensionState(wc)
+	return es.State.MigrateBondRequirement(rev)
 }

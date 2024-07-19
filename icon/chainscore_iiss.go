@@ -1048,3 +1048,14 @@ func (s *chainScore) Ex_getPRepCountConfig() (map[string]interface{}, error) {
 	}
 	return es.GetPRepCountConfig()
 }
+
+func (s *chainScore) Ex_setBondRequirementRate(rate int64) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	es, err := s.getExtensionState()
+	if err != nil {
+		return err
+	}
+	return es.SetBondRequirementRate(s.newCallContext(s.cc), icmodule.Rate(rate))
+}
