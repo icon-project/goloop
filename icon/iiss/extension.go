@@ -2073,3 +2073,22 @@ func (es *ExtensionStateImpl) SetMinimumBond(cc icmodule.CallContext, nBond *big
 	EmitMinimumBondSetEvent(cc, nBond)
 	return nil
 }
+
+func (es *ExtensionStateImpl) SetBondRequirementRate(cc icmodule.CallContext, rate icmodule.Rate) error {
+	revision := cc.Revision().Value()
+	if revision < icmodule.RevisionSetBondRequirementRate {
+		return scoreresult.AccessDeniedError.Errorf("SetBondRequirementRateNotAllowed(rev=%d)", revision)
+	}
+	if !rate.IsValid() {
+		return scoreresult.InvalidParameterError.Errorf("InvalidBondRequirementRate(%d)", rate)
+	}
+
+	var err error
+	oldRate := es.State.GetBondRequirement(revision)
+	if rate != oldRate {
+		if err = es.State.SetBondRequirement(revision, rate); err == nil {
+			EmitBondRequirementRateSetEvent(cc, rate)
+		}
+	}
+	return err
+}

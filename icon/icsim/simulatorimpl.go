@@ -448,6 +448,8 @@ func (sim *simulatorImpl) executeTx(cc *callContext, tx Transaction) error {
 		err = sim.setPRepCountConfig(es, cc, tx)
 	case TypeSetRewardFundAllocation2:
 		err = sim.setRewardFundAllocation2(es, cc, tx)
+	case TypeSetBondRequirementRate:
+		err = sim.setBondRequirementRate(es, cc, tx)
 	default:
 		return errors.Errorf("Unexpected transaction: %v", tx.Type())
 	}
@@ -875,6 +877,21 @@ func (sim *simulatorImpl) setRewardFundAllocation2(
 		return err
 	}
 	return es.State.SetRewardFund(rf)
+}
+
+func (sim *simulatorImpl) SetBondRequirementRate(from module.Address, rate icmodule.Rate) Transaction {
+	return NewTransaction(TypeSetBondRequirementRate, from, rate)
+}
+
+func (sim *simulatorImpl) GoBySetBondRequirementRate(
+	csi module.ConsensusInfo, from module.Address, rate icmodule.Rate) ([]Receipt, error) {
+	return sim.goByOneTransaction(csi, TypeSetBondRequirementRate, from, rate)
+}
+
+func (sim *simulatorImpl) setBondRequirementRate(es *iiss.ExtensionStateImpl, cc *callContext, tx Transaction) error {
+	args := tx.Args()
+	rate := args[0].(icmodule.Rate)
+	return es.SetBondRequirementRate(cc, rate)
 }
 
 func NewSimulator(

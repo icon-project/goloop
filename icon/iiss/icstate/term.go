@@ -124,8 +124,8 @@ type termDataCommon struct {
 	period          int64
 	revision        int
 	isDecentralized bool
-	totalSupply     *big.Int // not nil
-	totalDelegated  *big.Int // total delegated amount of all active P-Reps. not nil
+	totalSupply     *big.Int    // not nil
+	totalDelegated  *big.Int    // total delegated amount of all active P-Reps. not nil
 	rewardFund      *RewardFund // not nil
 	bondRequirement icmodule.Rate
 	mainPRepCount   int
@@ -245,7 +245,7 @@ func (term *termDataCommon) clone() termDataCommon {
 }
 
 func (term *termDataCommon) ToJSON(sc icmodule.StateContext, state *State) map[string]interface{} {
-	return map[string]interface{}{
+	jso := map[string]interface{}{
 		"sequence":         term.sequence,
 		"startBlockHeight": term.startHeight,
 		"endBlockHeight":   term.GetEndHeight(),
@@ -254,13 +254,18 @@ func (term *termDataCommon) ToJSON(sc icmodule.StateContext, state *State) map[s
 		"totalPower":       term.getTotalPower(),
 		"period":           term.period,
 		"rewardFund":       term.rewardFund.ToJSON(),
-		"bondRequirement":  term.bondRequirement.Percent(),
 		"revision":         term.revision,
 		"isDecentralized":  term.isDecentralized,
 		"mainPRepCount":    term.mainPRepCount,
 		"iissVersion":      term.GetIISSVersion(),
 		"preps":            term.prepsToJSON(sc, state),
 	}
+	if term.revision < icmodule.RevisionSetBondRequirementRate {
+		jso["bondRequirement"] = term.bondRequirement.Percent()
+	} else {
+		jso["bondRequirementRate"] = term.bondRequirement.NumInt64()
+	}
+	return jso
 }
 
 func (term *termDataCommon) prepsToJSON(sc icmodule.StateContext, state *State) []interface{} {
@@ -411,7 +416,7 @@ func (term *termData) equal(other *termData) bool {
 
 func (term *termData) clone() termData {
 	td := termData{
-		termDataCommon:	term.termDataCommon.clone(),
+		termDataCommon: term.termDataCommon.clone(),
 	}
 	switch term.Version() {
 	case termVersion1:
@@ -630,6 +635,8 @@ func (term *TermState) SetRrep(rrep *big.Int) {
 // It assumes that state and totalSupply are not nil.
 func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, preps PRepSet) *TermState {
 	rev := sc.RevisionValue()
+	br := sc.GetBondRequirement()
+
 	// Previous term
 	tss := state.GetTermSnapshot()
 	if tss == nil {
@@ -660,7 +667,7 @@ func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, p
 				totalSupply:     totalSupply,
 				totalDelegated:  state.GetTotalDelegation(),
 				rewardFund:      state.GetRewardFund(rev),
-				bondRequirement: state.GetBondRequirement(),
+				bondRequirement: br,
 				revision:        rev,
 				isDecentralized: isDecentralized,
 			},
@@ -676,7 +683,7 @@ func NewNextTerm(sc icmodule.StateContext, state *State, totalSupply *big.Int, p
 	// Update PRepSnapshots
 	if isDecentralized {
 		termState.mainPRepCount = preps.GetPRepSize(GradeMain)
-		termState.prepSnapshots = preps.ToPRepSnapshots(sc.GetBondRequirement())
+		termState.prepSnapshots = preps.ToPRepSnapshots(br)
 	}
 
 	return termState
@@ -693,7 +700,7 @@ func GenesisTerm(state *State, startHeight int64, revision int) *TermState {
 				totalSupply:     icmodule.BigIntZero,
 				totalDelegated:  icmodule.BigIntZero,
 				rewardFund:      state.GetRewardFundV1().Clone(),
-				bondRequirement: state.GetBondRequirement(),
+				bondRequirement: state.GetBondRequirement(revision),
 				revision:        revision,
 				isDecentralized: false,
 			},
