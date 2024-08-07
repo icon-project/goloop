@@ -786,7 +786,7 @@ def getPRepTerm() -> dict:
 | startBlockHeight    | int                       | start block height of the term                                                                              |
 | endBlockHeight      | int                       | end block height of the term                                                                                |
 | totalSupply         | int                       | total supply amount at `startBlockHeight`                                                                   |
-| preps               | List\[[PRep](#prep)\]     | Main/Sub P-Rep list at `startBlockHeight`                                                                   |
+| preps               | List\[[PRep](#prep)\]     | (Deprecated) Main/Sub P-Rep list at `startBlockHeight`                                                      |
 | totalDelegated      | int                       | total delegation amount of `preps`                                                                          |
 | totalPower          | int                       | total power amount of `preps`                                                                               |
 | period              | int                       | term period                                                                                                 |
@@ -801,6 +801,7 @@ def getPRepTerm() -> dict:
 | rrep                | int                       | (Optional. revision < 25) Rrep for the term                                                                 |
 | minimumBond         | int                       | (Optional. revision >= 25) minimum bond amount for the term                                                 |
 
+* `preps` field will be deprecated and removed soon, so use [getMainPReps](#getmainpreps) and [getSubPReps](#getsubpreps) APIs instead.
 * `bondRequirement` field is replaced with `bondRequirementRate` field after revision 28
 * 0 <= `bondRequirement` <= 100 (0: 0%, 100: 100%)
 * 0 <= `bondRequirementRate` <= 10,000 (0: 0%, 10,000: 100%)
