@@ -362,7 +362,7 @@ func (r *iiss3Reward) loadPRepInfo() (map[string]*pRepEnable, error) {
 	return prepInfo, nil
 }
 
-// varForPRepDelegatingReward return variables for ICONist delegating reward
+// varForVotingReward return variables for ICONist delegating reward
 // IISS 2.0
 //
 //	multiplier = Rrep * IScoreICXRatio

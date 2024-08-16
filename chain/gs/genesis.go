@@ -308,7 +308,7 @@ func processContent(c *templateContext, o interface{}) (interface{}, error) {
 	}
 }
 
-// WriteGenesisStorageFromPath write genesis data from the template.
+// WriteFromPath write genesis data from the template.
 // You may specify directory containing genesis.json. Or specify template
 // file itself.
 func WriteFromPath(w io.Writer, p string) error {
