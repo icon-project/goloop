@@ -401,7 +401,7 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
     }
 
     private void verifyBitLength(int length) {
-        if (length > 512) {
+        if (Math.abs(length) > 512) {
             throw new ArithmeticException("Out of the supported range");
         }
     }
