@@ -3,7 +3,7 @@ apply plugin: 'java-library'
 dependencies {
     implementation project(':api')
 
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
     implementation 'org.msgpack:msgpack-core:0.8.17'
     implementation 'org.slf4j:slf4j-api:1.7.26'
     implementation 'org.ow2.asm:asm:7.3.1'
