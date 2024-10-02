@@ -9,7 +9,7 @@ java {
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
-    bouncycastleVersion = '1.77'
+    bouncycastleVersion = '1.78.1'
     jacksonVersion = '2.13.4.2'
     okhttpVersion = '4.10.0'
 }
