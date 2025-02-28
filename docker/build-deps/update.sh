@@ -199,6 +199,7 @@ update_image() {
             --build-arg ${LABEL}=${HASH_OF_DIR} \
             --build-arg GOLANG_VERSION=${GOLANG_VERSION} \
             --build-arg PYTHON_VERSION=${PYTHON_VERSION} \
+            --build-arg PYTHON_UPDATES="${PYTHON_UPDATES}" \
             --build-arg JAVA_VERSION=${JAVA_VERSION} \
             --build-arg ROCKSDB_VERSION=${ROCKSDB_VERSION} \
             --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
