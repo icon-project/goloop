@@ -60,9 +60,10 @@ get_hash_of_dir() {
         HASH_OF_DIR="${GOLANG_VERSION}-alpine${ALPINE_VERSION}-${SUM}"
     ;;
     py)
-        SUM=$(get_hash_of_files \
-          "${SRC_DIR}/pyee/requirements.txt" \
-          "${DOCKERFILE}" )
+        SUM=$(get_hash_of_any \
+          "${PYTHON_UPDATES}" \
+          "@${SRC_DIR}/pyee/requirements.txt" \
+          "@${DOCKERFILE}" )
         HASH_OF_DIR="${PYTHON_VERSION}-alpine${ALPINE_VERSION}-${SUM}"
     ;;
     java)
