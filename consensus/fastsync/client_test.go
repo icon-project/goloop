@@ -110,10 +110,14 @@ func (s *clientTestSetUp) assertBlockEvent(expected []byte, actual interface{}) 
 	assert.Equal(s.t, expected, buf.Bytes())
 }
 
-func (s *clientTestSetUp) assertEndEvent(expected error, actual interface{}) {
+func (s *clientTestSetUp) assertEndEvent(expected bool, actual interface{}) {
 	eev, ok := actual.(tOnEndEvent)
 	assert.True(s.t, ok, "event is not tOnEndEvent: %s\n", fmt.Sprintf("%T %#v", actual, actual))
-	assert.Equal(s.t, expected, eev.err)
+	if expected {
+		assert.Error(s.t, eev.err)
+	} else {
+		assert.NoError(s.t, eev.err)
+	}
 }
 
 func (s *clientTestSetUp) assertNoEvent(ch chan interface{}) {
@@ -173,5 +177,51 @@ func TestClient_SuccessMulti(t *testing.T) {
 	ev2.(tOnBlockEvent).br.Consume()
 
 	ev2 = <-s.cb.ch
-	s.assertEndEvent(nil, ev2)
+	s.assertEndEvent(false, ev2)
+}
+
+func TestClient_Success2(t *testing.T) {
+	s := newClientTestSetUp(t, 2, 0)
+	_, err := s.m.FetchBlocks(1, 1, s.cb)
+	assert.Nil(t, err)
+
+	ev := <-s.reactors[1].ch
+	s.assertEqualReceiveEvent(ProtoBlockRequest, &BlockRequestV1{0x10000, 1}, s.nms[0].ID, ev)
+	blk := s.rawBlocks[1]
+	s.send(s.phs[1], ProtoBlockMetadata, &BlockMetadata{0x10000, int32(len(blk)), s.votes[2]}, s.nms[0].ID)
+	for i := 0; i < len(blk); i++ {
+		s.send(s.phs[1], ProtoBlockData, &BlockData{0x10000, blk[i : i+1]}, s.nms[0].ID)
+	}
+	ev2 := <-s.cb.ch
+	s.assertBlockEvent(blk, ev2)
+	ev2.(tOnBlockEvent).br.Consume()
+	ev2 = <-s.cb.ch
+	s.assertEndEvent(false, ev2)
+}
+
+func TestClient_FailInvalidData(t *testing.T) {
+	s := newClientTestSetUp(t, 2, 0)
+	_, err := s.m.FetchBlocks(1, 1, s.cb)
+	assert.Nil(t, err)
+
+	ev := <-s.reactors[1].ch
+	s.assertEqualReceiveEvent(ProtoBlockRequest, &BlockRequestV1{0x10000, 1}, s.nms[0].ID, ev)
+	blk := s.rawBlocks[1]
+	s.send(s.phs[1], ProtoBlockMetadata, &BlockMetadata{0x10000, int32(len(blk)), s.votes[2]}, s.nms[0].ID)
+	blk = append(blk, 0)
+	s.send(s.phs[1], ProtoBlockData, &BlockData{0x10000, blk}, s.nms[0].ID)
+	ev2 := <-s.cb.ch
+	s.assertEndEvent(true, ev2)
+}
+
+func TestClient_FailTooLongBlock(t *testing.T) {
+	s := newClientTestSetUp(t, 2, 1)
+	_, err := s.m.FetchBlocks(1, 1, s.cb)
+	assert.Nil(t, err)
+
+	ev := <-s.reactors[1].ch
+	s.assertEqualReceiveEvent(ProtoBlockRequest, &BlockRequestV1{0x10000, 1}, s.nms[0].ID, ev)
+	s.respondBlockRequest(s.phs[1], 0x10000, s.rawBlocks[1], s.votes[2], s.nms[0].ID)
+	ev2 := <-s.cb.ch
+	s.assertEndEvent(true, ev2)
 }
