@@ -265,8 +265,11 @@ type syncer struct {
 	fetchCanceler func() bool
 }
 
-func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) (Syncer, error) {
-	fsm, err := fastsync.NewManager(nm, bm, e, logger)
+func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager,
+	bm module.BlockManager, mutex *common.Mutex, addr module.Address,
+	maxBlockBytes int,
+) (Syncer, error) {
+	fsm, err := fastsync.NewManager(nm, bm, e, logger, maxBlockBytes)
 	if err != nil {
 		return nil, err
 	}

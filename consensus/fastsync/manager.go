@@ -105,12 +105,13 @@ func NewManager(
 	bm module.BlockManager,
 	bpp BlockProofProvider,
 	logger log.Logger,
+	maxBlockBytes int,
 ) (Manager, error) {
 	m := &manager{
 		nm: nm,
 	}
 	m.server = newServer(nm, nil, bm, bpp, logger)
-	m.client = newClient(nm, nil, bm, logger)
+	m.client = newClient(nm, nil, bm, logger, maxBlockBytes)
 
 	// lock to prevent enter server.onJoin / client.onJoin
 	m.server.Lock()
@@ -130,12 +131,13 @@ func NewManagerOnlyForClient(
 	nm module.NetworkManager,
 	bdf module.BlockDataFactory,
 	logger log.Logger,
+	maxBlockBytes int,
 ) (Manager, error) {
 	m := &manager{
 		nm: nm,
 	}
 	m.server = newServer(nm, nil, nil, nil, logger)
-	m.client = newClient(nm, nil, bdf, logger)
+	m.client = newClient(nm, nil, bdf, logger, maxBlockBytes)
 
 	// lock to prevent enter server.onJoin / client.onJoin
 	m.server.Lock()

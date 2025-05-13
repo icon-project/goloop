@@ -1850,7 +1850,7 @@ func (cs *consensus) Start() error {
 
 	cs.started = true
 	cs.log.Infof("Start consensus wallet:%v", common.HexPre(cs.c.Wallet().Address().ID()))
-	cs.syncer, err = newSyncer(cs, cs.log, cs.c.NetworkManager(), cs.c.BlockManager(), &cs.mutex, cs.c.Wallet().Address())
+	cs.syncer, err = newSyncer(cs, cs.log, cs.c.NetworkManager(), cs.c.BlockManager(), &cs.mutex, cs.c.Wallet().Address(), base.MaxBlockSize(cs.c))
 	if err != nil {
 		return err
 	}

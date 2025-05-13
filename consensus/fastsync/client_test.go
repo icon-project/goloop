@@ -23,7 +23,7 @@ type clientTestSetUp struct {
 	cb       *tFetchCallback
 }
 
-func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
+func newClientTestSetUp(t *testing.T, n int, maxBlockBytes int) *clientTestSetUp {
 	s := &clientTestSetUp{}
 	s.fastSyncTestSetUp = newFastSyncTestSetUp(t)
 	s.nms = make([]*test.NetworkManager, n)
@@ -40,7 +40,7 @@ func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 		}
 	}
 	var err error
-	s.m, err = NewManager(s.nms[0], s.bm, s.bm, log.New())
+	s.m, err = NewManager(s.nms[0], s.bm, s.bm, log.New(), maxBlockBytes)
 	assert.Nil(t, err)
 	s.cb = newTFetchCallback()
 	return s
@@ -125,7 +125,7 @@ func (s *clientTestSetUp) assertNoEvent(ch chan interface{}) {
 }
 
 func TestClient_Success(t *testing.T) {
-	s := newClientTestSetUp(t, 2)
+	s := newClientTestSetUp(t, 2, 0)
 	_, err := s.m.FetchBlocks(1, 10, s.cb)
 	assert.Nil(t, err)
 	ev := <-s.reactors[1].ch
@@ -139,7 +139,7 @@ func TestClient_Success(t *testing.T) {
 }
 
 func TestClient_SuccessMulti(t *testing.T) {
-	s := newClientTestSetUp(t, 3)
+	s := newClientTestSetUp(t, 3, 0)
 	_, err := s.m.FetchBlocks(1, 3, s.cb)
 	assert.Nil(t, err)
 
