@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/base"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -200,7 +201,7 @@ func (t *taskReset) _prepareBlocks(height int64, blockHash []byte) (module.Block
 	if err != nil {
 		return nil, nil, err
 	}
-	fsm, err := fastsync.NewManagerOnlyForClient(c.nm, bdf, c.logger)
+	fsm, err := fastsync.NewManagerOnlyForClient(c.nm, bdf, c.logger, base.MaxBlockSize(c))
 	if err != nil {
 		return nil, nil, err
 	}

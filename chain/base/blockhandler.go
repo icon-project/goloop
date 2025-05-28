@@ -65,6 +65,7 @@ type BlockHandler interface {
 }
 
 type Chain interface {
+	MaxBlockTxBytes() int
 	Database() db.Database
 	CommitVoteSetDecoder() module.CommitVoteSetDecoder
 	ServiceManager() module.ServiceManager
@@ -77,4 +78,10 @@ type Chain interface {
 	Regulator() module.Regulator
 	Wallet() module.Wallet
 	WalletFor(dsa string) module.BaseWallet
+}
+
+const blockSizeMargin = 10 * 1024
+
+func MaxBlockSize(c Chain) int {
+	return c.MaxBlockTxBytes() + blockSizeMargin
 }

@@ -4,6 +4,16 @@ get_hash_of_files() {
     cat "$@" | sha1sum | cut -d " " -f1
 }
 
+get_hash_of_any() {
+    for item in "$@"; do
+        if [ "${item#@}" == "${item}" ] ; then
+          echo "${item}"
+        else
+          cat "${item#@}"
+        fi
+    done | sha1sum | cut -d " " -f1
+}
+
 get_label_of_image() {
     local LABEL=$1
     local TAG=$2

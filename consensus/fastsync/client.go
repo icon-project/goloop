@@ -2,7 +2,6 @@ package fastsync
 
 import (
 	"bytes"
-	"io"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -21,10 +20,11 @@ const (
 
 type client struct {
 	common.Mutex
-	nm  module.NetworkManager
-	ph  module.ProtocolHandler
-	bm  module.BlockDataFactory
-	log log.Logger
+	nm            module.NetworkManager
+	ph            module.ProtocolHandler
+	bm            module.BlockDataFactory
+	log           log.Logger
+	maxBlockBytes int
 
 	fetchID uint16
 	fr      *fetchRequest
@@ -135,12 +135,13 @@ type fetchRequest struct {
 }
 
 func newClient(nm module.NetworkManager, ph module.ProtocolHandler,
-	bm module.BlockDataFactory, logger log.Logger) *client {
+	bm module.BlockDataFactory, logger log.Logger, maxBlockBytes int) *client {
 	cl := &client{}
 	cl.nm = nm
 	cl.ph = ph
 	cl.bm = bm
 	cl.log = logger
+	cl.maxBlockBytes = maxBlockBytes
 	return cl
 }
 
@@ -382,7 +383,7 @@ type fetcher struct {
 	timer    *time.Timer
 	left     int32
 	voteList []byte
-	dataList [][]byte
+	data     []byte
 }
 
 func (fr *fetchRequest) newFetcher(id module.PeerID, height int64, requestID uint32) *fetcher {
@@ -482,6 +483,8 @@ func (f *fetcher) cancel() {
 	}
 }
 
+const blockBufferStart = 100 * 1024
+
 func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 	if f.step == fstepWaitResp {
 		if pi != ProtoBlockMetadata {
@@ -496,17 +499,24 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 			return
 		}
 		f.cl.log.Tracef("onReceive BlockMetadata rid=%d, len=%d\n", msg.RequestID, msg.BlockLength)
-		if msg.BlockLength < 0 {
+		if msg.BlockLength < 0 ||
+			(f.cl.maxBlockBytes > 0 && int(msg.BlockLength) > f.cl.maxBlockBytes) {
 			f.step = fstepFin
 			if f.timer != nil {
 				f.timer.Stop()
 				f.timer = nil
 			}
 			f.cl.onResult(f, errNoBlock, nil, nil)
+			return
 		}
 		f.left = msg.BlockLength
 		f.voteList = msg.Proof
 		f.step = fstepWaitData
+		if f.data == nil {
+			f.data = make([]byte, 0, blockBufferStart)
+		} else {
+			f.data = f.data[:0]
+		}
 	} else if f.step == fstepWaitData {
 		if pi != ProtoBlockData {
 			return
@@ -519,7 +529,11 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 		if msg.RequestID != f.requestID {
 			return
 		}
-		f.dataList = append(f.dataList, msg.Data)
+		l := f.left
+		if l > int32(len(msg.Data)) {
+			l = int32(len(msg.Data))
+		}
+		f.data = append(f.data, msg.Data[:l]...)
 		f.left -= int32(len(msg.Data))
 		f.cl.log.Tracef("onReceive BlockData rid=%d, data len=%d left=%d\n", msg.RequestID, len(msg.Data), f.left)
 		if f.left == 0 {
@@ -528,11 +542,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 				f.timer.Stop()
 				f.timer = nil
 			}
-			bufs := make([]io.Reader, len(f.dataList))
-			for i, d := range f.dataList {
-				bufs[i] = bytes.NewReader(d)
-			}
-			r := io.MultiReader(bufs...)
+			r := bytes.NewReader(f.data)
 			blk, err := f.cl.bm.NewBlockDataFromReader(r)
 			if err != nil {
 				f.cl.onResult(f, err, nil, nil)

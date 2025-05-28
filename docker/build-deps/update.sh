@@ -60,9 +60,10 @@ get_hash_of_dir() {
         HASH_OF_DIR="${GOLANG_VERSION}-alpine${ALPINE_VERSION}-${SUM}"
     ;;
     py)
-        SUM=$(get_hash_of_files \
-          "${SRC_DIR}/pyee/requirements.txt" \
-          "${DOCKERFILE}" )
+        SUM=$(get_hash_of_any \
+          "${PYTHON_UPDATES}" \
+          "@${SRC_DIR}/pyee/requirements.txt" \
+          "@${DOCKERFILE}" )
         HASH_OF_DIR="${PYTHON_VERSION}-alpine${ALPINE_VERSION}-${SUM}"
     ;;
     java)
@@ -199,6 +200,7 @@ update_image() {
             --build-arg ${LABEL}=${HASH_OF_DIR} \
             --build-arg GOLANG_VERSION=${GOLANG_VERSION} \
             --build-arg PYTHON_VERSION=${PYTHON_VERSION} \
+            --build-arg PYTHON_UPDATES="${PYTHON_UPDATES}" \
             --build-arg JAVA_VERSION=${JAVA_VERSION} \
             --build-arg ROCKSDB_VERSION=${ROCKSDB_VERSION} \
             --build-arg ALPINE_VERSION=${ALPINE_VERSION} \

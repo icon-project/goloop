@@ -9,8 +9,9 @@ LABEL="GOLOOP_BASE_SHA"
 get_hash_of_dir() {
     local ENGINE=$1
     local SRC_DIR=$2
-    local SUM=$(get_hash_of_files \
-        "${SRC_DIR}/docker/base/Dockerfile")
+    local SUM=$(get_hash_of_any \
+        "${ALPINE_UPDATES}" \
+        "@${SRC_DIR}/docker/base/Dockerfile")
     local GOLOOP_ROCKSDBDEP_SHA=$(get_label_of_image GOLOOP_ROCKSDBDEP_SHA ${IMAGE_ROCKSDB_DEPS})
     local GOLOOP_PYDEP_SHA=$(get_label_of_image GOLOOP_PYDEP_SHA ${IMAGE_PY_DEPS})
     case $TARGET in
@@ -79,6 +80,7 @@ update_image() {
         docker build \
             --build-arg ${LABEL}=${HASH_OF_DIR} \
             --build-arg ALPINE_VERSION="${ALPINE_VERSION}" \
+            --build-arg ALPINE_UPDATES="${ALPINE_UPDATES}" \
             --build-arg IMAGE_PY_DEPS="${IMAGE_PY_DEPS}" \
             --build-arg IMAGE_ROCKSDB_DEPS="${IMAGE_ROCKSDB_DEPS}" \
             --build-arg BASE="${BASE}" \

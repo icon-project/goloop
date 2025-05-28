@@ -8,10 +8,11 @@ RUN apk add --no-cache build-base libffi-dev openssl-dev
 # setup python env
 ADD requirements.txt /goloop/
 WORKDIR /goloop
-RUN python3 -m venv /goloop/venv && \
+ARG PYTHON_UPDATES
+RUN pip install --upgrade pip ${PYTHON_UPDATES} && \
+    python3 -m venv /goloop/venv && \
     source /goloop/venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install wheel && \
+    pip install --upgrade pip wheel ${PYTHON_UPDATES} && \
     pip install -r /goloop/requirements.txt
 
 ARG GOLOOP_PYDEP_SHA
