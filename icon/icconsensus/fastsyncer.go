@@ -89,6 +89,7 @@ func (f *fastSyncer) Start() error {
 		f.c.BlockManager(),
 		f,
 		f.c.Logger(),
+		base.MaxBlockSize(f.c),
 	)
 	if err != nil {
 		return err
